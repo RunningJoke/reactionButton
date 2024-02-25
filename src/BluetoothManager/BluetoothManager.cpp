@@ -34,7 +34,7 @@ VBLEDataField* BluetoothManager::createCharacteristic(uint16_t characteristicNam
             pNewDataField = new BLELongDataField(
                 characteristicName , 
                 pNewCharacteristic , 
-                CHECK_BIT(characteristicModes, 1) );
+                CHECK_BIT(characteristicModes, 2) );
             break;
         }
     }

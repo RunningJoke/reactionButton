@@ -21,6 +21,14 @@
 #define BLE_NAME_MODE_ID 1
 
 
+/**
+ * MODE DEFINITIONS
+*/
+
+#define MODE_REACTION 0
+#define MODE_BUTTON 1
+
+
 // UUIDS
 #define BLE_REACTION_POD_ID "7a675ad4-770c-46ed-9cd1-813ee38f3503"
 #define BLE_MODE_UID "31f89785-3d4e-4bf8-a6c1-d465a218bb3f"
