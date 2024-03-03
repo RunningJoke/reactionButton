@@ -8,23 +8,31 @@ ColorSet* LEDManager::MAGENTA = new ColorSet{255,0,255};
 ColorSet* LEDManager::CYAN = new ColorSet{0,255,255};
 ColorSet* LEDManager::WHITE = new ColorSet{255,255,255};
 
-LEDManager::LEDManager(uint8_t pinRedLed, uint8_t pinGreenLed, uint8_t pinBlueLed)
+LEDManager::LEDManager(uint8_t neoPixelPin)
 {
     this->pOffConfiguration = new ColorSet{0,0,0};
-    this->pinRedLed = pinRedLed;
-    this->pinGreenLed = pinGreenLed;
-    this->pinBlueLed = pinBlueLed;
-    pinMode(this->pinRedLed , OUTPUT);
-    pinMode(this->pinGreenLed , OUTPUT);
-    pinMode(this->pinBlueLed , OUTPUT);
+    this->neoPixelPin = neoPixelPin;
+
+    this->pixelManager = new Adafruit_NeoPixel(NEOPIXEL_SIZE, neoPixelPin, NEO_GRB + NEO_KHZ800);
+    this->pixelManager->begin();
 }
 
 void LEDManager::setLEDColors(ColorSet* pNewColorSet)
 {
     this->pCurrentColorConfiguration = pNewColorSet;
-    analogWrite(this->pinRedLed , this->pCurrentColorConfiguration->red);
-    analogWrite(this->pinGreenLed , this->pCurrentColorConfiguration->green);
-    analogWrite(this->pinBlueLed , this->pCurrentColorConfiguration->blue);
+
+    this->pixelManager->clear();
+
+    for(int i=0; i<NEOPIXEL_SIZE; i++) {
+
+         this->pixelManager->setPixelColor(i, 
+                    this->pixelManager->Color(
+                        this->pCurrentColorConfiguration->red, 
+                        this->pCurrentColorConfiguration->green, 
+                        this->pCurrentColorConfiguration->blue)
+                    );
+    }
+    this->pixelManager->show();
 }
 
 void LEDManager::turnOff()

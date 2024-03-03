@@ -32,7 +32,7 @@ void setup() {
   pinMode(PIN_BUTTON_PRESS , INPUT_PULLUP);
 
   bleManager = new BluetoothManager();
-  ledManager = new LEDManager(PIN_LED_RED , PIN_LED_GREEN , PIN_LED_BLUE);
+  ledManager = new LEDManager(13);
 
   ledManager->turnOff();
 
