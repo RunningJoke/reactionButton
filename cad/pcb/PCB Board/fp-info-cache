@@ -1,4 +1,4 @@
-23039450999761100
+23044579239266202
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -13,6 +13,13 @@ audio belton reverb
 0
 7
 7
+BOB-12009
+CONV_BOB-12009
+
+
+0
+12
+12
 Battery
 BatteryClip_Keystone_54_D16-19mm
 Battery clip for batteries with a diameter between 16-19 mm: https://www.keyelco.com/product.cfm/product_id/826
@@ -63412,6 +63419,20 @@ Yellow 5381 Series LED
 0
 2
 2
+Library
+Lolin32 Lite
+
+
+0
+26
+26
+Library
+StepUp
+
+
+0
+4
+4
 Module
 A20_OLINUXINO_LIME2
 A20 Olinuxino LIME2, 1.2GHz, 512-1024MB RAM, Micro-SD, NAND or eMMC, 1000Mbit Ethernet
