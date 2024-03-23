@@ -23,13 +23,13 @@ void ReactionMode::run(uint64_t timestamp)
 
         this->internalState = 2;
       }
-      if(digitalRead(PIN_BUTTON_PRESS) == HIGH) {        
+      if(digitalRead(PIN_BUTTON_PRESS) == LOW) {        
         ledManager->setLEDColors(LEDManager::RED);
         this->internalState = 4;
       }
       break;
     case 2:
-      if(digitalRead(PIN_BUTTON_PRESS) == HIGH) {
+      if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
         this->reactionTimerStop = timestamp;
         ledManager->turnOff();
         this->internalState = 3;
