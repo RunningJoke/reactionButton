@@ -11,7 +11,7 @@
 #define PIN_LED_GREEN 33
 #define PIN_LED_BLUE 32
 
-#define PIN_BUTTON_PRESS 26
+#define PIN_BUTTON_PRESS 18
 
 /**
  * BLE DEFINITIONS

@@ -35,6 +35,19 @@ void LEDManager::setLEDColors(ColorSet* pNewColorSet)
     this->pixelManager->show();
 }
 
+void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
+{
+    if(index < NEOPIXEL_SIZE) {
+         this->pixelManager->setPixelColor(index, 
+                    this->pixelManager->Color(
+                        pNewColorSet->red, 
+                        pNewColorSet->green, 
+                        pNewColorSet->blue)
+                    );
+        this->pixelManager->show();
+    }
+}
+
 void LEDManager::turnOff()
 {
     this->setLEDColors(this->pOffConfiguration);

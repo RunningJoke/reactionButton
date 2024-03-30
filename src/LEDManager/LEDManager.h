@@ -16,6 +16,7 @@ class LEDManager {
     public:
         LEDManager(uint8_t neoPixelPin);
         void setLEDColors(ColorSet* pNewColorSet);
+        void setLEDColors(uint8_t index, ColorSet* pNewColorSet);
         void turnOff();
 
         static ColorSet* RED;
