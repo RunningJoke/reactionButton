@@ -1,8 +1,9 @@
 #include "ReactionMode.h"
 
-ReactionMode::ReactionMode(LEDManager* ledManager)
+ReactionMode::ReactionMode(LEDManager* ledManager, BLELongDataField* stopwatchField)
 {
     this->ledManager = ledManager;
+    this->stopwatchField = stopwatchField;
 }
 
 void ReactionMode::run(uint64_t timestamp)
@@ -35,6 +36,7 @@ void ReactionMode::run(uint64_t timestamp)
       }
       break;
     case 3: {
+      this->stopwatchField->setValue((reactionTimerStop - reactionTimerStart));
       Serial.println((reactionTimerStop - reactionTimerStart));
       ledManager->turnOff();
       delay(300);      
@@ -44,6 +46,7 @@ void ReactionMode::run(uint64_t timestamp)
       break;
     }
     case 4: {
+      this->stopwatchField->setValue(0);
       Serial.println("FALSE START");
       this->blink(LEDManager::RED , 3);
       delay(3500);

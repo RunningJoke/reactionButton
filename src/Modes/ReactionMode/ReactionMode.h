@@ -4,6 +4,7 @@
 #include "_Definitions.h"
 #include "../VMode.h"
 #include "LEDManager/LEDManager.h"
+#include "BLEDataField/BLELongDataField.h"
 
 class ReactionMode : public VMode 
 {
@@ -15,9 +16,11 @@ class ReactionMode : public VMode
         uint64_t reactionTimerDelay = 0;
         LEDManager* ledManager;
 
+        BLELongDataField* stopwatchField;
+
         void blink(ColorSet* color, uint8_t repetitions);
     public:
-        ReactionMode(LEDManager* ledManager);
+        ReactionMode(LEDManager* ledManager , BLELongDataField* stopwatchField);
         void run(uint64_t timestamp) override;
         void reset() override;
 };

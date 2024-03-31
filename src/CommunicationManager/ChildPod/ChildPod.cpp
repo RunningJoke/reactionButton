@@ -44,8 +44,6 @@ int8_t ChildPod::update(uint64_t timestamp)
 
                 //send again
                 
-                //@todo: ESP now not working, use BLE here
-                Serial.println(this->pModeField->getValue());
                 if(this->pModeField->getValue() != 0) {
                     
                     //Pod was claimed, switch to childMode
@@ -77,7 +75,13 @@ int8_t ChildPod::update(uint64_t timestamp)
 
         case 2: //parent responded
             //run basic configuration based on parent data
+            this->currentStatus = 3;
+            this->currentMode = new ReactionMode(ledManager, this->getLongDataField(BLE_NAME_STOPWATCH_ID));
             return 0; //return status code 0 to stay in child mode
+        case 3:
+            this->currentMode->run(timestamp);
+            break;
+
     }
 
     return this->currentStatus;

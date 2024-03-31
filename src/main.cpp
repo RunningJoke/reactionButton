@@ -47,12 +47,10 @@ void setup() {
 
   randomSeed(analogRead(0));
 
-  reactionMode = new ReactionMode(ledManager);
 
-
+  
 
     
-  WiFi.mode(WIFI_AP);
 
   currentPodMode->start();
 
@@ -61,7 +59,6 @@ void setup() {
 void loop() {
 
   uint64_t timestamp = millis();
-
 
   switch(mainStateSwitch) {
     case 0: 
@@ -72,7 +69,6 @@ void loop() {
       break;
     case 1: 
       currentPodMode->stop();
-      delete currentPodMode;
       currentPodMode = new ParentPod(ledManager);
       currentPodMode->start();
       mainStateSwitch = 2;

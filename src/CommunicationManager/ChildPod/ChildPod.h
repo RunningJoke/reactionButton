@@ -4,6 +4,7 @@
 #include "_Definitions.h"
 #include "../VPod.h"
 #include "LEDManager/LEDManager.h"
+#include "Modes/ReactionMode/ReactionMode.h"
 
 
 class ChildPod : public VPod {
@@ -13,7 +14,7 @@ class ChildPod : public VPod {
         uint8_t discoveryTries;
         uint64_t lastDiscoveryTry;
 
-        
+        VMode* currentMode;
         
 
         BLELongDataField *pModeField = nullptr;
