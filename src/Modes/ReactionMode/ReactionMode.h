@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
+#include "_Definitions.h"
 #include "../VMode.h"
-#include "BluetoothManager/BluetoothManager.h"
 #include "LEDManager/LEDManager.h"
 
 class ReactionMode : public VMode 
@@ -14,11 +14,10 @@ class ReactionMode : public VMode
         uint64_t reactionTimerStop = 0;
         uint64_t reactionTimerDelay = 0;
         LEDManager* ledManager;
-        BluetoothManager* bleManager;
 
         void blink(ColorSet* color, uint8_t repetitions);
     public:
-        ReactionMode(LEDManager* ledManager, BluetoothManager* bleManager);
+        ReactionMode(LEDManager* ledManager);
         void run(uint64_t timestamp) override;
         void reset() override;
 };

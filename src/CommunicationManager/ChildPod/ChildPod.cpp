@@ -1,5 +1,4 @@
 #include "ChildPod.h"
-#include <esp_now.h>
 
 ChildPod::ChildPod(LEDManager* ledManager)
 {
@@ -7,6 +6,30 @@ ChildPod::ChildPod(LEDManager* ledManager)
     this->currentStatus = 0;
     this->discoveryTries = 0;
     this->lastDiscoveryTry = 0;
+
+
+    //configure BLE for childpod here
+
+    BLEDevice::init("Homeless Reaction Pod");
+    this->pServer = BLEDevice::createServer();
+    this->pService = pServer->createService(BLEUUID(BLE_REACTION_POD_ID) );
+
+    this->createCharacteristic(
+    BLE_NAME_STOPWATCH_ID , 
+    BLE_REACTION_TIME_UID , 
+    BLE_FIELDTYPE_LONG , 
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY);
+
+    this->createCharacteristic(
+    BLE_NAME_MODE_ID , 
+    BLE_MODE_UID , 
+    BLE_FIELDTYPE_LONG , 
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_WRITE);
+
+    this->pModeField = this->getLongDataField(BLE_NAME_MODE_ID);
+
 }
 
 int8_t ChildPod::update(uint64_t timestamp)
@@ -22,6 +45,14 @@ int8_t ChildPod::update(uint64_t timestamp)
                 //send again
                 
                 //@todo: ESP now not working, use BLE here
+                Serial.println(this->pModeField->getValue());
+                if(this->pModeField->getValue() != 0) {
+                    
+                    //Pod was claimed, switch to childMode
+                    this->currentStatus = 2;
+                    this->ledManager->setLEDColors(this->ledManager->GREEN);
+                    return 0;
+                }
 
                 lastDiscoveryTry = timestamp;
 
@@ -53,27 +84,25 @@ int8_t ChildPod::update(uint64_t timestamp)
     
 }
 
-void ChildPod::handleData(const uint8_t *data, int data_len)
-{
-    if(this->currentStatus == 0 && //looking for our parent
-        data_len == 5 && 
-        strcasecmp((char*)data, "POLO") == 0) {
-            Serial.println("Found a Marco");
-            this->currentStatus = 2; //parent was found, submit as child
-        }
-}
 
 void ChildPod::start()
 {
-    ChildPodESPNowHandler::registerChildPod(this);
+    //start advertising and wait for recognition
+    this->pService->start();
+    this->pAdvertising = BLEDevice::getAdvertising();
+    this->pAdvertising->addServiceUUID(BLE_REACTION_POD_ID);
+    this->pAdvertising->setScanResponse(true);
+    this->pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    this->pAdvertising->setMinPreferred(0x12);
+    BLEDevice::startAdvertising();
 
-    esp_now_register_recv_cb(ChildPodESPNowHandler::receive);
-    esp_now_register_send_cb(ChildPodESPNowHandler::transmit);
 
 }
 
 void ChildPod::stop()
 {
-    esp_now_unregister_recv_cb();
-    esp_now_unregister_send_cb();
+    this->pService->stop();
+    BLEDevice::deinit(false);
+    delete this->fieldArray[BLE_NAME_MODE_ID];
+    delete this->fieldArray[BLE_NAME_STOPWATCH_ID];
 }

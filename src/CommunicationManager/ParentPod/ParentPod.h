@@ -4,6 +4,8 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <WebServer.h>
+#include <BLEAdvertising.h>
+#include <BLEScan.h>
 #include "LEDManager/LEDManager.h"
 
 class ParentPod : public VPod {
@@ -13,8 +15,8 @@ class ParentPod : public VPod {
         void start() override;
         void stop() override;
 
-        void handleData(const uint8_t *mac_addr, const uint8_t *data, int data_len);
-
+        void registerChild(BLEAdvertisedDevice* device);
+        
     protected:
         const char* PARENT_POD_WIFI_SSID = "ReactionPod network";  // Enter SSID here
         const char* PARENT_POD_WIFI_PASSWORD = "Alli-Go!";  //Enter Password here
@@ -26,9 +28,28 @@ class ParentPod : public VPod {
 
         WebServer* parentServer;
 
+        BLEClient* pBLEClient;
+
     private:
         LEDManager* ledManager; 
         void configureWebServer();
+};
+
+
+class ParentPodAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+    public:
+        ParentPod* linkedParentPod;
+
+    
+    void onResult(BLEAdvertisedDevice advertisedDevice) {
+      // We have found a device, let us now see if it contains the service we are looking for.
+      if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(BLEUUID(BLE_REACTION_POD_ID))) {
+        BLEAddress serverAddress = advertisedDevice.getAddress();
+
+        this->linkedParentPod->registerChild(&advertisedDevice);
+
+      }
+    }
 };
 
 

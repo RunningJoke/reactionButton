@@ -8,8 +8,13 @@ ParentPod::ParentPod(LEDManager* ledManager)
 
 int8_t ParentPod::update(uint64_t timestamp)
 {
-    //this->parentServer->handleClient();
-      return 0;
+    this->parentServer->handleClient();
+
+
+    //
+
+    
+    return 0;
 }
 
 void ParentPod::start()
@@ -26,7 +31,23 @@ void ParentPod::start()
     this->configureWebServer();
 
     this->parentServer->begin();
-    //now start broadcasting the esp now master signal
+
+
+    BLEDevice::init("Parent Reaction Pod");
+    this->pBLEClient = BLEDevice::createClient();
+
+    BLEScan* pBLEScan = BLEDevice::getScan();
+
+    ParentPodAdvertisedDeviceCallbacks* advCB = new ParentPodAdvertisedDeviceCallbacks();
+    advCB->linkedParentPod = this;
+
+    pBLEScan->setAdvertisedDeviceCallbacks(advCB);
+    pBLEScan->setInterval(1349);
+    pBLEScan->setWindow(449);
+    pBLEScan->setActiveScan(true);
+    pBLEScan->start(600);
+
+
     
 
 }
@@ -40,20 +61,40 @@ void ParentPod::stop()
 void ParentPod::configureWebServer()
 {
     ParentPodWebServerHandlers::registerWebServer(this->parentServer);
-    ParentPodWebServerHandlers::registerParentPod(this);
     this->parentServer->on("/",HTTPMethod::HTTP_GET, ParentPodWebServerHandlers::serverGetHomepage);
 }
 
-void ParentPod::handleData(const uint8_t *mac_addr, const uint8_t *data, int data_len)
+
+void ParentPod::registerChild(BLEAdvertisedDevice* device)
 {
-    Serial.print("Data received: " );
-    Serial.println((char*)data);
-    if(data_len == 6 && strcasecmp((char*)data, "MARCO") == 0) {
-            Serial.println("Someone is looking for a polo");
-            
-            const uint8_t data[] = "POLO";
-            esp_now_send(mac_addr , data , 5);
-        }
+    Serial.println("Running Child registration");
+
+    auto adress = device->getAddress().toString();
+
+    Serial.println(adress.c_str());
+    Serial.println(device->getName().c_str());
+    if(this->pBLEClient->connect(device->getAddress()) == false) {
+        Serial.println("Failed to connect");
+        return;
+    } else {
+        Serial.println("Connection successful");
+    }
+
+    BLERemoteService* pRemoteService = this->pBLEClient->getService(BLEUUID(BLE_REACTION_POD_ID));
+    if (pRemoteService == nullptr) {
+        Serial.print("Failed to find our service UUID");
+        return;
+    }
+
+    BLERemoteCharacteristic* modeCharacteristic = pRemoteService->getCharacteristic(BLE_MODE_UID);
+
+    if(modeCharacteristic == nullptr) {
+        Serial.print("Failed to find mode characteristic");        
+        return;
+    }
+    Serial.println("Writing characteristic");
+    modeCharacteristic->writeValue('1');
+
 }
 
 
