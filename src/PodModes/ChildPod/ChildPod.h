@@ -15,9 +15,13 @@ class ChildPod : public VPod {
         uint64_t lastDiscoveryTry;
 
         VMode* currentMode;
+
+        uint64_t stopwatchTimer;
         
 
         BLELongDataField *pModeField = nullptr;
+        BLELongDataField *pActivationField = nullptr;
+        BLELongDataField *pStopwatchField = nullptr;
     public:
         ChildPod(LEDManager* ledManager);
         int8_t update(uint64_t timestamp) override;

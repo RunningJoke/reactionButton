@@ -7,6 +7,9 @@
 #include <BLEAdvertising.h>
 #include <BLEScan.h>
 #include "LEDManager/LEDManager.h"
+#include "NodeManager/NodeManager.h"
+#include "Modes/ReactionMode/ReactionMode.h"
+#include "Modes/AlternatingMode/AlternatingMode.h"
 
 class ParentPodAdvertisedDeviceCallbacks;
 
@@ -40,10 +43,13 @@ class ParentPod : public VPod {
         uint8_t linkedChildrenCount = 0;
         ParentPodAdvertisedDeviceCallbacks* pScanCallback;
 
+        VMode* activeMode;
+
         bool acknowledgePod(BLEClient* client, BLEAddress* newPod);
 
     private:
         LEDManager* ledManager; 
+        uint8_t currentStatus;
 
         void configureWebServer();
         void runScan();
@@ -57,11 +63,13 @@ class ParentPodAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         BLEScan* pBLEScan;
     
     public:
+        BLEAdvertisedDevice* pendingRegistration;
 
         ParentPodAdvertisedDeviceCallbacks(ParentPod* pParentPod, BLEScan* pBLEScan)
         {
             this->linkedParentPod = pParentPod;
             this->pBLEScan = pBLEScan;
+            this->pendingRegistration = nullptr;
         }
 
         
@@ -70,9 +78,11 @@ class ParentPodAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
       // We have found a device, let us now see if it contains the service we are looking for.
       if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(BLEUUID(BLE_REACTION_POD_ID))) {
-        
+        Serial.println("Found child");
+        this->pBLEScan->stop();
         BLEAddress serverAddress = advertisedDevice.getAddress();
-        this->linkedParentPod->registerChild(&advertisedDevice);
+        
+        this->pendingRegistration = new BLEAdvertisedDevice(advertisedDevice);
 
       }
     }

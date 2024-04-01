@@ -79,31 +79,6 @@ void loop() {
   }
   
 
-/*
-  pModeField->fetchValue();
-
-  uint8_t newModeState = pModeField->getValue();
-  bool stateSwitched = newModeState != currentModeState;
-   
-  if(stateSwitched) {
-    currentMode->reset();
-  }
-
-
-  switch(newModeState) 
-  {
-    case MODE_REACTION:
-      currentMode = reactionMode;
-      break;
-    default:
-      ledManager->turnOff();
-      break;
-  }
-
-*/
-  //parentPod->update(timestamp);
- // currentMode->run(timestamp);
-
  
 
   

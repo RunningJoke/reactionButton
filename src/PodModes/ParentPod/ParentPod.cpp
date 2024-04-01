@@ -4,73 +4,68 @@
 ParentPod::ParentPod(LEDManager* ledManager)
 {
     this->ledManager = ledManager;
+    this->currentStatus = 0;
+    NodeManager::ledManager = ledManager;
+    NodeManager::registerManagingNode();
 }
 
-bool ParentPod::acknowledgePod(BLEClient* client, BLEAddress* newPod)
-{
-        //create a new client for the connection
-        
-        if(client->connect(*newPod) == false) {
-            Serial.println("Failed to connect");
-            return false;
-        } else {
-            Serial.println("Connection successful");
-        }
-
-
-        BLERemoteService* pRemoteService = client->getService(BLEUUID(BLE_REACTION_POD_ID));
-        if (pRemoteService == nullptr) {
-            Serial.print("Failed to find our service UUID");
-            return false;
-        }
-
-        BLERemoteCharacteristic* modeCharacteristic = pRemoteService->getCharacteristic(BLE_MODE_UID);
-
-        if(modeCharacteristic == nullptr) {
-            Serial.print("Failed to find mode characteristic");        
-            return false;
-        }
-        Serial.println("Writing characteristic");
-        modeCharacteristic->writeValue('1');
-
-        BLERemoteCharacteristic* stopWatchCharacteristic = pRemoteService->getCharacteristic(BLE_REACTION_TIME_UID);
-        if(stopWatchCharacteristic == nullptr) {
-            Serial.print("Failed to find stopwatch characteristic");        
-            return false;
-        }
-
-        stopWatchCharacteristic->registerForNotify(ParentPod::notifyCallback);
-
-        return true;
-        
-}
-
-void ParentPod::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify)
-{
-    Serial.println("NOTIFY RECEIVED");
-    Serial.println((char*)pData);
-}
 
 int8_t ParentPod::update(uint64_t timestamp)
 {
     this->parentServer->handleClient();
 
-    for(uint8_t i = 0; i < this->linkedChildrenCount ; i++) {
+    //monitor own button status
+    if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+        NodeManager::getNode(0)->pressed(timestamp);
+    }
 
-        if(this->linkedChildrenStatus[i] == PodStatus::ADDED) {
-            this->linkedChildrenClients[i] = BLEDevice::createClient();
-            if(this->acknowledgePod(this->linkedChildrenClients[i], this->linkedChildren[i]) == true) {
-                Serial.println("Pod acknowledged");
-                this->linkedChildrenStatus[i] = PodStatus::ACKNOWLEDGED;
+    switch(this->currentStatus)
+    {
+        case 0: //config mode, register new children and wait
+        {
+
+            if(timestamp % 5000 == 0) {
+                //run a scan
+                Serial.println("Run scan");
+                this->runScan();
             }
-        } 
+
+            if(this->pScanCallback->pendingRegistration != nullptr) {
+                NodeManager::registerNode(*this->pScanCallback->pendingRegistration);
+                this->pScanCallback->pendingRegistration = nullptr;
+            }
+
+            if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+                //button pressed, switch to actual active mode
+                this->currentStatus = 1;
+            }
+            break;
+        }
+        case 1:
+        {
+            //select the program to run
+            switch(NodeManager::getNodeCount()) {
+                case 1:
+                    this->activeMode = new ReactionMode(this->ledManager);
+                    this->currentStatus = 2;
+                    break;
+                case 2:
+                    this->activeMode = new AlternatingMode(this->ledManager, 10);
+                    this->currentStatus = 2;
+                    break;
+                default:
+                    Serial.println("no valid mode found. Restarting...");
+                    esp_restart();
+                    break;
+            }
+            break;
+        }
+        case 2:
+            this->activeMode->run(timestamp);
+            break;
     }
 
-    if(timestamp % 5000 == 0) {
-        //run a scan
-        Serial.println("Run scan");
-        this->runScan();
-    }
+    
     
     return 0;
 }
@@ -101,7 +96,7 @@ void ParentPod::start()
     BLEDevice::init("Parent Reaction Pod");
     this->pBLEClient = BLEDevice::createClient();
     this->pBLEScan = BLEDevice::getScan();
-
+    Serial.println("Register callback");
     this->pScanCallback = new ParentPodAdvertisedDeviceCallbacks(this, pBLEScan);
 
     pBLEScan->setAdvertisedDeviceCallbacks(this->pScanCallback);
@@ -121,28 +116,6 @@ void ParentPod::configureWebServer()
 {
     ParentPodWebServerHandlers::registerWebServer(this->parentServer);
     this->parentServer->on("/",HTTPMethod::HTTP_GET, ParentPodWebServerHandlers::serverGetHomepage);
-}
-
-
-void ParentPod::registerChild(BLEAdvertisedDevice* device)
-{
-    //Stop blocking advertising
-    this->pBLEScan->stop();
-    Serial.println("Running Child registration");    
-
-    this->linkedChildren[this->linkedChildrenCount]  = new BLEAddress(device->getAddress());
-    this->linkedChildrenStatus[this->linkedChildrenCount]  = PodStatus::ADDED;
-
-    Serial.print("Added ");
-    Serial.print(this->linkedChildren[this->linkedChildrenCount]->toString().c_str());
-    Serial.println(" as child");
-
-    
-
-    this->linkedChildrenCount++;
-
-    
-
 }
 
 

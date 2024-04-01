@@ -1,23 +1,34 @@
 #pragma once
 
+#include <Arduino.h>
+#include "_Definitions.h"
 #include "ManagedNode/ManagedNode.h"
-#include "ProgramStep/ProgramStep.h"
+#include "ManagingNode/ManagingNode.h"
+#include "PodModes/ParentPod/ProgramStep/ProgramStep.h"
+#include "LEDManager/LEDManager.h"
+
 
 class NodeManager
 {
     protected:
-        static ManagedNode* nodeList[5];
+        static VNode* nodeList[5];
         static uint8_t nodeCount;
+
 
         static ProgramStep* steps[100];
         static uint8_t currentStep;
     
     private:
-    public:
+    public:        
+        static LEDManager* ledManager;
 
-        static ManagedNode* getNode(uint8_t nodeId);
+        static VNode* registerManagingNode();
 
-        static ManagedNode* registerNode(BLEAddress* address);
+        static VNode* getNode(uint8_t nodeId);
+
+        static uint8_t getNodeCount();
+
+        static VNode* registerNode(BLEAdvertisedDevice device);
 
         static void runProgram();
 

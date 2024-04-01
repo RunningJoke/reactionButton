@@ -27,8 +27,18 @@ ChildPod::ChildPod(LEDManager* ledManager)
     BLE_FIELDTYPE_LONG , 
     BLECharacteristic::PROPERTY_READ |
     BLECharacteristic::PROPERTY_WRITE);
+    
+    this->createCharacteristic(
+    BLE_NAME_ACTIVATE_ID , 
+    BLE_ACTIVATION_UID , 
+    BLE_FIELDTYPE_LONG , 
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_WRITE);
+
 
     this->pModeField = this->getLongDataField(BLE_NAME_MODE_ID);
+    this->pStopwatchField = this->getLongDataField(BLE_NAME_STOPWATCH_ID);
+    this->pActivationField = this->getLongDataField(BLE_NAME_ACTIVATE_ID);
 
 }
 
@@ -48,7 +58,7 @@ int8_t ChildPod::update(uint64_t timestamp)
                     
                     //Pod was claimed, switch to childMode
                     this->currentStatus = 2;
-                    this->ledManager->setLEDColors(this->ledManager->GREEN);
+                    this->ledManager->setLEDColors(this->ledManager->YELLOW);
                     return 0;
                 }
 
@@ -78,7 +88,25 @@ int8_t ChildPod::update(uint64_t timestamp)
             this->currentStatus = 3;
             return 0; //return status code 0 to stay in child mode
         case 3:
+        {
+            uint64_t activationValue = this->pActivationField->getValue();
+            if(activationValue != 0 && activationValue < 0xFF) {
+                this->ledManager->setLEDColors((uint8_t)activationValue);
+                this->stopwatchTimer = timestamp;
+                this->pActivationField->setValue(0);
+                this->currentStatus = 4;
+            }
+
             break;
+        }
+        case 4:
+        {
+            if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+                this->pStopwatchField->setValue((timestamp - this->stopwatchTimer));
+                this->ledManager->turnOff();
+                this->currentStatus = 3;
+            }
+        }
 
     }
 

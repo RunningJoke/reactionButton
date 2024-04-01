@@ -19,6 +19,7 @@
 
 #define BLE_NAME_STOPWATCH_ID 0
 #define BLE_NAME_MODE_ID 1
+#define BLE_NAME_ACTIVATE_ID 2
 
 
 /**
@@ -33,3 +34,4 @@
 #define BLE_REACTION_POD_ID "7a675ad4-770c-46ed-9cd1-813ee38f3503"
 #define BLE_MODE_UID "31f89785-3d4e-4bf8-a6c1-d465a218bb3f"
 #define BLE_REACTION_TIME_UID "5c93c690-eb0f-4350-a03f-3bd52587d5f5"
+#define BLE_ACTIVATION_UID "c14a39c7-4fcf-47d7-a6cc-4cd2f585b815"

@@ -5,17 +5,19 @@
 #include "../VMode.h"
 #include "LEDManager/LEDManager.h"
 #include "BLEDataField/BLELongDataField.h"
+#include "PodModes/ParentPod/NodeManager/NodeManager.h"
 
-class ReactionMode : public VMode 
+class AlternatingMode : public VMode 
 {
     protected:
         uint8_t internalState = 0;
-        uint64_t internalTimerStart = 0;
-        uint64_t reactionTimerStart = 0;
-        uint64_t reactionTimerStop = 0;
-        uint64_t reactionTimerDelay = 0;
+        uint8_t numberOfSets = 0;
+        uint8_t setCounter = 0;
+        LEDManager* ledManager;
+
+
     public:
-        ReactionMode(LEDManager* ledManager);
+        AlternatingMode(LEDManager* ledManager, uint8_t numberOfSets);
         void run(uint64_t timestamp) override;
         void reset() override;
 };
