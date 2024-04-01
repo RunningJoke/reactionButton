@@ -2,8 +2,8 @@
 #include <SPIFFS.h>
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
-#include "CommunicationManager/ParentPod/ParentPod.h"
-#include "CommunicationManager/ChildPod/ChildPod.h"
+#include "PodModes/ParentPod/ParentPod.h"
+#include "PodModes/ChildPod/ChildPod.h"
 
 #include "Modes/ReactionMode/ReactionMode.h"
 
