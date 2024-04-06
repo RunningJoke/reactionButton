@@ -11,6 +11,7 @@ BLELongDataField::BLELongDataField(uint16_t fieldId , BLECharacteristic *pCharac
 
 uint64_t BLELongDataField::getValue()
 {
+    this->fetchValue();
     return this->currentValue;
 }
 

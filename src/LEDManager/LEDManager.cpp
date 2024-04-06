@@ -17,6 +17,19 @@ LEDManager::LEDManager(uint8_t neoPixelPin)
     this->pixelManager->begin();
 }
 
+void LEDManager::setLEDColors(uint8_t colorId)
+{
+    switch(colorId) {
+        case 0: this->setLEDColors(LEDManager::RED); break;
+        case 1: this->setLEDColors(LEDManager::GREEN); break;
+        case 2: this->setLEDColors(LEDManager::BLUE); break;
+        case 3: this->setLEDColors(LEDManager::YELLOW); break;
+        case 4: this->setLEDColors(LEDManager::MAGENTA); break;
+        case 5: this->setLEDColors(LEDManager::CYAN); break;
+        case 6: this->setLEDColors(LEDManager::WHITE); break;
+    }
+}
+
 void LEDManager::setLEDColors(ColorSet* pNewColorSet)
 {
     this->pCurrentColorConfiguration = pNewColorSet;
@@ -33,6 +46,19 @@ void LEDManager::setLEDColors(ColorSet* pNewColorSet)
                     );
     }
     this->pixelManager->show();
+}
+
+void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
+{
+    if(index < NEOPIXEL_SIZE) {
+         this->pixelManager->setPixelColor(index, 
+                    this->pixelManager->Color(
+                        pNewColorSet->red, 
+                        pNewColorSet->green, 
+                        pNewColorSet->blue)
+                    );
+        this->pixelManager->show();
+    }
 }
 
 void LEDManager::turnOff()

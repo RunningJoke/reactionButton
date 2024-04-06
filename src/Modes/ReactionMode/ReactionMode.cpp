@@ -1,9 +1,8 @@
 #include "ReactionMode.h"
 
-ReactionMode::ReactionMode(LEDManager* ledManager, BluetoothManager* bleManager)
+ReactionMode::ReactionMode(LEDManager* ledManager)
 {
     this->ledManager = ledManager;
-    this->bleManager = bleManager;
 }
 
 void ReactionMode::run(uint64_t timestamp)
@@ -36,7 +35,6 @@ void ReactionMode::run(uint64_t timestamp)
       }
       break;
     case 3: {
-      this->bleManager->getLongDataField(BLE_NAME_STOPWATCH_ID)->setValue((reactionTimerStop - reactionTimerStart));
       Serial.println((reactionTimerStop - reactionTimerStart));
       ledManager->turnOff();
       delay(300);      
@@ -46,7 +44,6 @@ void ReactionMode::run(uint64_t timestamp)
       break;
     }
     case 4: {
-      this->bleManager->getLongDataField(BLE_NAME_STOPWATCH_ID)->setValue(0);
       Serial.println("FALSE START");
       this->blink(LEDManager::RED , 3);
       delay(3500);
@@ -57,16 +54,6 @@ void ReactionMode::run(uint64_t timestamp)
   }
 }
 
-void ReactionMode::blink(ColorSet* color, uint8_t repetitions)
-{
-    uint8_t i = 0;
-    for(i = 0; i < repetitions ; i++) {
-        ledManager->setLEDColors(color);
-        delay(300);      
-        ledManager->turnOff();
-        delay(300); 
-    }
-}
 
 void ReactionMode::reset()
 {
