@@ -47,6 +47,7 @@ void AlternatingMode::run(uint64_t timestamp)
         case 4:
             this->blink(LEDManager::BLUE, 3);
             this->reset();
+            this->internalState = 1;
             break;
     }
 }

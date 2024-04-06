@@ -13,8 +13,6 @@ class AlternatingMode : public VMode
         uint8_t internalState = 0;
         uint8_t numberOfSets = 0;
         uint8_t setCounter = 0;
-        LEDManager* ledManager;
-
 
     public:
         AlternatingMode(LEDManager* ledManager, uint8_t numberOfSets);
