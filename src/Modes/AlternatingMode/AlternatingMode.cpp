@@ -14,7 +14,7 @@ void AlternatingMode::run(uint64_t timestamp)
     switch(this->internalState)
     {
         case 0: //disable all remote pods
-
+            NodeManager::getNode(1)->deactivate();
             this->internalState = 1;
             break;
         case 1: //start by lighting up managing pod

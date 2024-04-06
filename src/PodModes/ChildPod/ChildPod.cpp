@@ -58,6 +58,7 @@ int8_t ChildPod::update(uint64_t timestamp)
                     
                     //Pod was claimed, switch to childMode
                     this->currentStatus = 2;
+
                     this->ledManager->setLEDColors(this->ledManager->YELLOW);
                     return 0;
                 }
@@ -95,6 +96,11 @@ int8_t ChildPod::update(uint64_t timestamp)
                 this->stopwatchTimer = timestamp;
                 this->pActivationField->setValue(0);
                 this->currentStatus = 4;
+            } else {
+                //invalid value or activation signal is zero: turn off
+                if(activationValue == 0xFF) {
+                    this->ledManager->turnOff();
+                }
             }
 
             break;

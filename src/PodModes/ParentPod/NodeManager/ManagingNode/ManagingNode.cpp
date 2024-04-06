@@ -20,6 +20,11 @@ void ManagingNode::activate(uint8_t colorId)
     this->ledManager->setLEDColors(colorId);
 }
 
+
+void ManagingNode::deactivate() {
+    this->ledManager->turnOff();
+}
+
 bool ManagingNode::isPressed()
 {
     return this->wasPressed;

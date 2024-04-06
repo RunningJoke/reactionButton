@@ -41,7 +41,7 @@ void ManagedNode::activate(uint8_t colorId)
 
 void ManagedNode::deactivate()
 {
-    
+    this->activationSignal->writeValue(0xFF);
 }
 
 bool ManagedNode::isPressed()

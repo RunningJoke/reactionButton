@@ -11,6 +11,7 @@ class VNode {
         virtual void pressed(uint64_t timestamp) = 0;
 
         virtual void activate(uint8_t colorId) = 0;
+        virtual void deactivate() = 0;
 
         virtual bool isPressed() = 0;
 

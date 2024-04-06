@@ -14,6 +14,7 @@ class ManagingNode : public VNode
 
         virtual void pressed(uint64_t timestamp);
         virtual void activate(uint8_t colorId);
+        void deactivate();
         virtual bool isPressed();
 
 };
