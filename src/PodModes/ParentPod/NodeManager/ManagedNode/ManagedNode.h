@@ -18,7 +18,7 @@ class ManagedNode : public VNode
         ManagedNode(BLEAdvertisedDevice advertisedDevice, uint8_t id);
 
         virtual void pressed(uint64_t timestamp);
-        virtual void activate(uint8_t colorId);
+        virtual void activate(const char* messageId);
         void deactivate();
         virtual bool isPressed();
         

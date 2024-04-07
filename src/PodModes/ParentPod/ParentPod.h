@@ -10,6 +10,8 @@
 #include "NodeManager/NodeManager.h"
 #include "Modes/ReactionMode/ReactionMode.h"
 #include "Modes/AlternatingMode/AlternatingMode.h"
+#include "Modes/RandomMode/RandomMode.h"
+#include "Modes/StarMode/StarMode.h"
 
 class ParentPodAdvertisedDeviceCallbacks;
 

@@ -53,9 +53,12 @@ int8_t ParentPod::update(uint64_t timestamp)
                     this->activeMode = new AlternatingMode(this->ledManager, 10);
                     this->currentStatus = 2;
                     break;
+                case 5:
+                    this->activeMode = new StarMode(this->ledManager, NodeManager::getNodeCount(), 12);
+                    break;
                 default:
-                    Serial.println("no valid mode found. Restarting...");
-                    esp_restart();
+                    this->activeMode = new RandomMode(this->ledManager, NodeManager::getNodeCount() , 12);
+                    this->currentStatus = 2;
                     break;
             }
             break;

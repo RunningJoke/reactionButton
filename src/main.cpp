@@ -1,3 +1,6 @@
+#define CONFIG_BT_NIMBLE_MAX_CONNECTIONS 4
+#define CONFIG_BT_NIMBLE_MAX_BONDS 4
+
 #include <Arduino.h>
 #include <SPIFFS.h>
 #include "_Definitions.h"

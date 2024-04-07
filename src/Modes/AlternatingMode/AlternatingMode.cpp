@@ -18,7 +18,7 @@ void AlternatingMode::run(uint64_t timestamp)
             this->internalState = 1;
             break;
         case 1: //start by lighting up managing pod
-            NodeManager::getNode(0)->activate(1);
+            NodeManager::getNode(0)->activate("1");
             this->internalState = 2;
             break;
         case 2:
@@ -26,7 +26,7 @@ void AlternatingMode::run(uint64_t timestamp)
                 //activate the other node
                 Serial.println("activate remote pad");
 
-                NodeManager::getNode(1)->activate(1);
+                NodeManager::getNode(1)->activate("1");
                 this->internalState = 3;
             }
             break;

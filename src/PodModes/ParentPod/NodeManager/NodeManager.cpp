@@ -35,6 +35,28 @@ VNode* NodeManager::registerNode(BLEAdvertisedDevice device)
     return NodeManager::getNode(NodeManager::nodeCount - 1);
 }
 
+void NodeManager::activateAllNodes(const char* commandId) 
+{
+    for(uint8_t i = 1; i < NodeManager::nodeCount; i++) {
+        NodeManager::nodeList[i]->activate(commandId);
+    }
+
+    //handle managing node always last (if e.g. blocking behaviour might occur)
+    NodeManager::nodeList[0]->activate(commandId);
+}
+
+
+void NodeManager::deactivateAllNodes() 
+{
+    for(uint8_t i = 1; i < NodeManager::nodeCount; i++) {
+        NodeManager::nodeList[i]->deactivate();
+    }
+
+    //handle managing node always last (if e.g. blocking behaviour might occur)
+    NodeManager::nodeList[0]->deactivate();
+}
+
+
 
 
 void NodeManager::nodeNotifyCallback_1(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify)

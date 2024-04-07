@@ -2,12 +2,10 @@
 
 ManagedNode::ManagedNode(BLEAdvertisedDevice advertisedDevice, uint8_t id)
 {
-    Serial.println("creating managed node");
     this->pClient = BLEDevice::createClient();
     this->pClient->connect(&advertisedDevice);
     Serial.println("Successfully connected");
     BLERemoteService* pRemoteService = this->pClient->getService(BLEUUID(BLE_REACTION_POD_ID));
-    Serial.println("Service found");
             
     this->activationSignal = pRemoteService->getCharacteristic(BLE_ACTIVATION_UID);
 
@@ -31,17 +29,18 @@ void ManagedNode::pressed(uint64_t timestamp)
     this->wasPressed = true;
 }
 
-void ManagedNode::activate(uint8_t colorId)
+void ManagedNode::activate(const char* messageId)
 {
     this->wasPressed = false;
     this->lastTimePressed = millis();
-    this->activationSignal->writeValue('1');
+    this->activationSignal->writeValue(messageId);
 
 }
 
 void ManagedNode::deactivate()
 {
-    this->activationSignal->writeValue(0xFF);
+    this->wasPressed = false;
+    this->activationSignal->writeValue("255");
 }
 
 bool ManagedNode::isPressed()

@@ -90,30 +90,40 @@ int8_t ChildPod::update(uint64_t timestamp)
             return 0; //return status code 0 to stay in child mode
         case 3:
         {
-            uint64_t activationValue = this->pActivationField->getValue();
-            if(activationValue != 0 && activationValue < 0xFF) {
-                this->ledManager->setLEDColors((uint8_t)activationValue);
-                this->stopwatchTimer = timestamp;
-                this->pActivationField->setValue(0);
-                this->currentStatus = 4;
-            } else {
-                //invalid value or activation signal is zero: turn off
-                if(activationValue == 0xFF) {
+            uint64_t activationValue = this->pActivationField->getValue();            
+            switch(activationValue) {
+                case 0x00: //do nothing. No signal sent/signal was reset
+                    break;
+                case 254L: //cycle complete signal. Blink blue 3 times
+                    Serial.println("Blink");
+                    this->blink(LEDManager::BLUE, 3);
+                    this->pActivationField->setValue(0x00);
+                    break;
+                case 255L: //deactivation signal
+                    Serial.println("Deactivate");
                     this->ledManager->turnOff();
-                }
+                    this->pActivationField->setValue(0x00);
+                    break;
+                case 240L: //waiting for button press
+                    if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+                        Serial.println("Pressed");
+
+                        this->pStopwatchField->setValue((timestamp - this->stopwatchTimer));
+                        this->ledManager->turnOff();
+                        this->pActivationField->setValue(0x00);
+                    }
+                    break;
+                default:   
+                    Serial.println(activationValue) ;
+                    this->ledManager->setLEDColors((uint8_t)activationValue);
+                    this->stopwatchTimer = timestamp;
+                    this->pActivationField->setValue(0xF0);
+                    break;
             }
 
+            
             break;
         }
-        case 4:
-        {
-            if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
-                this->pStopwatchField->setValue((timestamp - this->stopwatchTimer));
-                this->ledManager->turnOff();
-                this->currentStatus = 3;
-            }
-        }
-
     }
 
     return this->currentStatus;
@@ -141,4 +151,16 @@ void ChildPod::stop()
     BLEDevice::deinit(false);
     delete this->fieldArray[BLE_NAME_MODE_ID];
     delete this->fieldArray[BLE_NAME_STOPWATCH_ID];
+}
+
+
+void ChildPod::blink(ColorSet* color, uint8_t repetitions)
+{
+    uint8_t i = 0;
+    for(i = 0; i < repetitions ; i++) {
+        this->ledManager->setLEDColors(color);
+        delay(300);      
+        this->ledManager->turnOff();
+        delay(300); 
+    }
 }

@@ -27,6 +27,9 @@ class ChildPod : public VPod {
         int8_t update(uint64_t timestamp) override;
         void start() override;
         void stop() override;
+
+    protected:
+        void blink(ColorSet* color, uint8_t repetitions);
     
 };
 

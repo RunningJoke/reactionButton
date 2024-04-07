@@ -24,7 +24,7 @@ void BLELongDataField::setValue(uint64_t val)
 {
     this->currentValue = val;
     char buffer[32];
-    sprintf(buffer, "%u" , this->currentValue);
+    sprintf(buffer, "%llu" , this->currentValue);
     this->pDefinedCharacteristic->setValue(buffer);
 
     if(this->isNotify) {

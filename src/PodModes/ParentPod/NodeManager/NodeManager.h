@@ -30,6 +30,10 @@ class NodeManager
 
         static VNode* registerNode(BLEAdvertisedDevice device);
 
+        static void deactivateAllNodes();
+        static void activateAllNodes(const char* commandId);
+        static void activateAllNodes(uint8_t commandId);
+
         static void runProgram();
 
 
