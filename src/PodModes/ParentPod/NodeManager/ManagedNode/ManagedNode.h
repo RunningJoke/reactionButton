@@ -1,9 +1,6 @@
 #pragma once
 
 #include "_Definitions.h"
-#include <BLEClient.h>
-#include <BLEAddress.h>
-#include <BLEClient.h>
 #include <BLEDevice.h>
 #include "PodModes/ParentPod/NodeManager/VNode.h"
 #include "PodModes/ParentPod/NodeManager/NodeManager.h"

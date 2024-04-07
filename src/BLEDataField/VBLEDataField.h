@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <BLECharacteristic.h>
+#include <BLEDevice.h>
 
 class VBLEDataField {
     public:

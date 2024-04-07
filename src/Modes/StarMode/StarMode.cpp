@@ -46,8 +46,8 @@ void StarMode::run(uint64_t timestamp)
             break;
         case 3:
             //wait for managing node to be pressed
-            if(NodeManager::getNode(this->currentPodId)->isPressed()) {
-                this->internalState = 3;
+            if(NodeManager::getNode(0)->isPressed()) {
+                this->internalState = 1;
                 
                 //one set completed
                 this->setCounter++;

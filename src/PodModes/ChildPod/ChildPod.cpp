@@ -93,6 +93,7 @@ int8_t ChildPod::update(uint64_t timestamp)
             uint64_t activationValue = this->pActivationField->getValue();            
             switch(activationValue) {
                 case 0x00: //do nothing. No signal sent/signal was reset
+                    delay(0);
                     break;
                 case 254L: //cycle complete signal. Blink blue 3 times
                     Serial.println("Blink");

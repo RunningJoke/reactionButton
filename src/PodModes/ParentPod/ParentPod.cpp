@@ -55,6 +55,7 @@ int8_t ParentPod::update(uint64_t timestamp)
                     break;
                 case 5:
                     this->activeMode = new StarMode(this->ledManager, NodeManager::getNodeCount(), 12);
+                    this->currentStatus = 2;
                     break;
                 default:
                     this->activeMode = new RandomMode(this->ledManager, NodeManager::getNodeCount() , 12);
@@ -103,8 +104,8 @@ void ParentPod::start()
     this->pScanCallback = new ParentPodAdvertisedDeviceCallbacks(this, pBLEScan);
 
     pBLEScan->setAdvertisedDeviceCallbacks(this->pScanCallback);
-    pBLEScan->setInterval(100);
-    pBLEScan->setWindow(449);
+    pBLEScan->setInterval(160);
+    pBLEScan->setWindow(718);
     pBLEScan->setActiveScan(true);
 
 }

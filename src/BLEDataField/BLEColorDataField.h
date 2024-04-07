@@ -1,5 +1,6 @@
 #pragma once
 
+#include <BLEDevice.h>
 #include "BLEDataField/VBLEDataField.h"
 #include "ColorSet/ColorSet.h"
 

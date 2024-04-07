@@ -1,6 +1,3 @@
-#define CONFIG_BT_NIMBLE_MAX_CONNECTIONS 4
-#define CONFIG_BT_NIMBLE_MAX_BONDS 4
-
 #include <Arduino.h>
 #include <SPIFFS.h>
 #include "_Definitions.h"
@@ -12,7 +9,9 @@
 
 #include "BLEDataField/BLEColorDataField.h"
 #include "BLEDataField/BLELongDataField.h"
-#include <BLECharacteristic.h>
+#include <BLEDevice.h>
+
+#include "esp_task_wdt.h"
 
 uint64_t startTime = 0;
 uint64_t waitTime = 0;
@@ -80,6 +79,9 @@ void loop() {
       currentPodMode->update(timestamp);
       break;
   }
+
+  vTaskDelay(1/portTICK_PERIOD_MS);
+  esp_task_wdt_reset();
   
 
  
