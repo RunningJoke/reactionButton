@@ -2,4 +2,5 @@
   (version 7)
   (lib (name "BOB-12009")(type "KiCad")(uri "${KIPRJMOD}/additionalData/BOB-12009")(options "")(descr ""))
   (lib (name "Library")(type "KiCad")(uri "${KIPRJMOD}/additionalData/StepUpBoost/Library.pretty")(options "")(descr ""))
+  (lib (name "symbols")(type "KiCad")(uri "${KIPRJMOD}/symbols")(options "")(descr ""))
 )
