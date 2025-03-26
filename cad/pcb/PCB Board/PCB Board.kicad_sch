@@ -8631,7 +8631,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.we-https://www.mouser.de/datasheet/2/1628/slw_1277545_3a_ra_n_d-3510939.pdf"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_1912111437_SHOU-HAN-SK12D07VG3_C431547.pdf"
 			(at 252.73 31.75 0)
 			(effects
 				(font
@@ -8641,6 +8641,15 @@
 			)
 		)
 		(property "Description" "Switch slide, single pole double throw"
+			(at 252.73 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C431547"
 			(at 252.73 39.37 0)
 			(effects
 				(font
@@ -8685,7 +8694,7 @@
 				)
 			)
 		)
-		(property "Value" "MMFTN170"
+		(property "Value" "NDS331N"
 			(at 238.76 43.18 90)
 			(effects
 				(font
@@ -8704,7 +8713,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://diotec.com/request/datasheet/mmftn170.pdf"
+		(property "Datasheet" "https://www.onsemi.com/download/data-sheet/pdf/nds331n-d.pdf"
 			(at 234.95 39.37 0)
 			(effects
 				(font
@@ -8714,7 +8723,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "50V Vds, 0.5A Id, N-Channel MOSFET, SOT-23"
+		(property "Description" "20V Vds, 0.5A Id, N-Channel MOSFET, SOT-23"
 			(at 238.76 34.29 0)
 			(effects
 				(font

@@ -513,10 +513,10 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "D:/6_ReactPod/cad/pcb/PCB Board/gerber/",
+      "plot": "gerber/",
       "pos_files": "gerber/",
       "specctra_dsn": "",
-      "step": "PCB Board.step",
+      "step": "PCB Board.stl",
       "svg": "",
       "vrml": ""
     },
