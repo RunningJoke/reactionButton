@@ -4,7 +4,6 @@
 #include "_Definitions.h"
 #include "../VMode.h"
 #include "LEDManager/LEDManager.h"
-#include "BLEDataField/BLELongDataField.h"
 
 class ReactionMode : public VMode 
 {
