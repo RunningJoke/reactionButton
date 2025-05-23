@@ -20,11 +20,5 @@ class LEDManager {
         void setLEDColors(uint8_t index, ColorSet* pNewColorSet);
         void turnOff();
 
-        static ColorSet* RED;
-        static ColorSet* GREEN;
-        static ColorSet* BLUE;
-        static ColorSet* YELLOW;
-        static ColorSet* MAGENTA;
-        static ColorSet* CYAN;
-        static ColorSet* WHITE;
+        
 };
