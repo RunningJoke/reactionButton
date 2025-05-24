@@ -1,5 +1,13 @@
 #include "LEDManager.h"
 
+LEDManager* LEDManager::manager = nullptr;
+
+LEDManager* LEDManager::getManager() {
+    if(LEDManager::manager == nullptr) {
+        LEDManager::manager = new LEDManager(LED_PIN);
+    }
+    return LEDManager::manager;
+}
 
 LEDManager::LEDManager(uint8_t neoPixelPin)
 {
