@@ -6,28 +6,25 @@
 #include "ColorSet/ColorSet.h"
 
 struct DelayBlockConfiguration : public IBlockConfiguration {
-    uint64_t delay;    
+    uint64_t delay; // Delay in milliseconds
 
-    BlockType getBlockType() override {
-        return BlockType::DELAY;
-    }
-
+    DelayBlockConfiguration(const char* blockName, const char* nextBlockName, uint64_t delayTime)
+        : IBlockConfiguration(blockName, BlockType::DELAY, nextBlockName) {
+            this->delay = delayTime;
+        }
 };
-
 
 class DelayBlock : public VBlock {
 
     protected:
-    DelayBlockConfiguration* blockConfiguration;
+        DelayBlockConfiguration* blockConfiguration;
 
 
-public:
-    DelayBlock(IBlockConfiguration* blockConfiguration);
-    ~DelayBlock();
+    public:
+        DelayBlock(DelayBlockConfiguration* blockConfiguration);
+        ~DelayBlock();
 
-    block_err_t executeBlock() override;
-    String getBlockName() override;
-    IBlockConfiguration * getBlockConfiguration() override;
+        block_err_t executeBlock() override;
 
 };
 

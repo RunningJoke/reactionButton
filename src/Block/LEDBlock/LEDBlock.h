@@ -7,12 +7,12 @@
 #include "ColorSet/ColorSet.h"
 
 struct LEDBlockConfiguration : public IBlockConfiguration {
-    ColorSet color;    
+    ColorSet* color;    
 
-    BlockType getBlockType() override {
-        return BlockType::LED;
-    }
-
+    LEDBlockConfiguration(const char* blockName, const char* nextBlockName, ColorSet* colorSet)
+        : IBlockConfiguration(blockName, BlockType::LED, nextBlockName) {
+            this->color = colorSet;
+        }
 };
 
 
@@ -23,13 +23,10 @@ class LEDBlock : public VBlock {
 
 
 public:
-    LEDBlock(IBlockConfiguration* blockConfiguration);
+    LEDBlock(LEDBlockConfiguration* blockConfiguration);
     ~LEDBlock();
 
     block_err_t executeBlock() override;
-    String getBlockName() override;
-    IBlockConfiguration * getBlockConfiguration() override;
-
 };
 
 #endif

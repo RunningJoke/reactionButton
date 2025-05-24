@@ -12,18 +12,18 @@ enum class BlockType {
     // Add other block types as needed
 } ;
 
-class IBlockConfiguration
+struct IBlockConfiguration
 {
-private:
-    String blockName;
+    IBlockConfiguration(const char* blockName, BlockType blockType, const char* nextBlockName)
+        : blockName(blockName), blockType(blockType), nextBlockName(nextBlockName) {}
+        
+    const char* blockName;
     BlockType blockType;
-    String nextBlockName;
-public:
-    virtual String getBlockName();
-    virtual BlockType getBlockType();
-    virtual String getNextBlockName();
+    const char* nextBlockName;
 
-    // Add other necessary methods and properties
+    virtual const char* getNextBlockName() {
+        return nextBlockName;
+    }
 };
 
 

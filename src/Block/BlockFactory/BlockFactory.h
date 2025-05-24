@@ -7,6 +7,7 @@
 
 #include "Block/LEDBlock/LEDBlock.h"
 #include "Block/DelayBlock/DelayBlock.h"
+#include "Block/ButtonBlock/ButtonBlock.h"
 
 
 class BlockFactory

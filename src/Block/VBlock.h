@@ -9,10 +9,12 @@
 typedef int8_t block_err_t;
 
 class VBlock {
+    protected:
+        IBlockConfiguration* genericBlockConfiguration;
     public:
-        virtual String getBlockName() = 0;
+        virtual String getBlockName();
         virtual block_err_t executeBlock() = 0;
-        virtual IBlockConfiguration* getBlockConfiguration() = 0;
+        virtual IBlockConfiguration* getBlockConfiguration();
 };
 
 #endif

@@ -12,19 +12,21 @@
 
 
 void setup() {
-  Serial.begin(9600);
+  initArduino();
 
   SPIFFS.begin(false);
   
 
-  pinMode(PIN_BUTTON_PRESS , INPUT_PULLUP);
+  pinMode(PIN_BUTTON_PRESS , INPUT);
 
   randomSeed(analogRead(0));
+
+  ESP_LOGI("MAIN", "Starting up...");
 
   BlockManager* blockManager = BlockManager::getManager();
   blockManager->assignBlock(DelayBlock1000ms);
   blockManager->assignBlock(LEDRed);
-  blockManager->assignBlock(DelayBlock1000ms_2);
+  blockManager->assignBlock(ButtonBlock);
   blockManager->assignBlock(LEDGreen);
   blockManager->defineStartBlock("Delay 1000ms");
 
@@ -34,11 +36,7 @@ void setup() {
 void loop() {
 
   BlockManager* blockManager = BlockManager::getManager();
+  ESP_LOGD("MAIN", "Running blocks...");
   blockManager->runBlocks();
-
-
-  vTaskDelay(1/portTICK_PERIOD_MS);
-  esp_task_wdt_reset();
-  
 
 }

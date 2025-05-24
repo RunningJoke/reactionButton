@@ -3,7 +3,9 @@
 BlockManager* BlockManager::manager = nullptr;
 
 BlockManager* BlockManager::getManager() {
-    if(BlockManager::manager == nullptr) {
+
+    if(BlockManager::manager == nullptr) {        
+        ESP_LOGI("BLOCKMANAGER", "Initializing Block manager");
         BlockManager::manager = new BlockManager();
     }
 
@@ -35,14 +37,16 @@ BlockManager::BlockManager() {};
 void BlockManager::defineStartBlock(String blockName) {
     for (uint32_t i = 0; i < blockCount; i++) {
         if (blockList[i]->getBlockName() == blockName) {
+            this->currentBlockIndex = i;
             break;
         }
     }
 };
 
 void BlockManager::runBlocks() {
-    for (uint32_t i = 0; i < blockCount; i++) {
-        blockList[i]->executeBlock();
-    }
+    this->blockList[this->currentBlockIndex]->executeBlock();
+    const char* nextBlockName = this->blockList[this->currentBlockIndex]->getBlockConfiguration()->getNextBlockName();
+    ESP_LOGD("BLOCKMANAGER", "Next block name: %s", nextBlockName);
+    this->defineStartBlock(nextBlockName);
     return;
 }

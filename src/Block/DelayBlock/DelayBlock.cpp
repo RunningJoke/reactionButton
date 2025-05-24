@@ -1,7 +1,8 @@
 #include "DelayBlock.h"
 
-DelayBlock::DelayBlock(IBlockConfiguration* blockConfiguration) {
+DelayBlock::DelayBlock(DelayBlockConfiguration* blockConfiguration) {
     this->blockConfiguration = static_cast<DelayBlockConfiguration*>(blockConfiguration);
+    this->genericBlockConfiguration = blockConfiguration;
 }
 
 DelayBlock::~DelayBlock() {
@@ -14,10 +15,3 @@ block_err_t DelayBlock::executeBlock() {
     return 0;
 }
 
-String DelayBlock::getBlockName() {
-    return this->blockConfiguration->getBlockName();
-}
-
-IBlockConfiguration* DelayBlock::getBlockConfiguration() {
-    return this->blockConfiguration;
-}

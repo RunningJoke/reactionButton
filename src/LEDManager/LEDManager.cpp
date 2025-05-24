@@ -4,6 +4,7 @@ LEDManager* LEDManager::manager = nullptr;
 
 LEDManager* LEDManager::getManager() {
     if(LEDManager::manager == nullptr) {
+        ESP_LOGI("LEDMANAGER", "Initializing LED manager");
         LEDManager::manager = new LEDManager(LED_PIN);
     }
     return LEDManager::manager;

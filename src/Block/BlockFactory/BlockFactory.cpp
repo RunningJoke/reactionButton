@@ -15,21 +15,23 @@ BlockFactory::BlockFactory() {
 }
 
 VBlock* BlockFactory::createBlock(IBlockConfiguration* blockConfiguration) {
-    switch (blockConfiguration->getBlockType()) {
+    switch (blockConfiguration->blockType) {
     case BlockType::DELAY:
-        return new DelayBlock(blockConfiguration);
-        break;  
+        // Create and return a Delay block
+        return new DelayBlock(static_cast<DelayBlockConfiguration*>(blockConfiguration));
+        break;
+    
     case BlockType::WAIT_FOR_PRESS:
-        // Create and return a WaitForPress block
-        return nullptr;
+        return new ButtonBlock(static_cast<ButtonBlockConfiguration*>(blockConfiguration));
         break; 
+        
     case BlockType::COUNTDOWN:
         // Create and return a Countdown block
         return nullptr;
         break;  
     case BlockType::LED:
         // Create and return a LED block
-        return new LEDBlock(blockConfiguration);
+        return new LEDBlock(static_cast<LEDBlockConfiguration*>(blockConfiguration));
         break;    
     }
 

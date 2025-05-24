@@ -4,7 +4,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "ColorSet/ColorSet.h"
 
-#define LED_PIN 19
+#define LED_PIN 7
 #define NEOPIXEL_SIZE 18
 
 class LEDManager {
