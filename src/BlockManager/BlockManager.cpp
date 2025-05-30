@@ -35,18 +35,31 @@ int32_t BlockManager::findNextBlockIndex() {
 BlockManager::BlockManager() {}; 
 
 void BlockManager::defineStartBlock(String blockName) {
-    for (uint32_t i = 0; i < blockCount; i++) {
-        if (blockList[i]->getBlockName() == blockName) {
-            this->currentBlockIndex = i;
-            break;
+    this->currentBlockIndex = this->findIndex(blockName);
+};
+
+uint32_t BlockManager::findIndex(String blockName) {
+    for (uint32_t i = 0; i < this->blockCount; i++) {
+        if (this->blockList[i]->getBlockName() == blockName) {
+            return i;
         }
     }
-};
+    return 0xFF;
+}
 
 void BlockManager::runBlocks() {
     this->blockList[this->currentBlockIndex]->executeBlock();
     const char* nextBlockName = this->blockList[this->currentBlockIndex]->getBlockConfiguration()->getNextBlockName();
+
     ESP_LOGD("BLOCKMANAGER", "Next block name: %s", nextBlockName);
-    this->defineStartBlock(nextBlockName);
+    uint32_t nextBlockIndex = this->findIndex(nextBlockName);
+
+    if(this->currentBlockIndex != nextBlockIndex) {
+        //handle beforeExit and beforeEnter if block changed
+        this->blockList[this->currentBlockIndex]->exitBlock();
+        this->blockList[nextBlockIndex]->enterBlock();
+
+        this->currentBlockIndex = nextBlockIndex;
+    }
     return;
 }

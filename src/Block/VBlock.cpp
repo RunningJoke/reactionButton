@@ -10,3 +10,11 @@ String VBlock::getBlockName() {
 IBlockConfiguration* VBlock::getBlockConfiguration() {
     return this->genericBlockConfiguration;
 }
+
+block_err_t VBlock::enterBlock() {
+    return 0;
+}
+
+block_err_t VBlock::exitBlock() {
+    return 0;
+}

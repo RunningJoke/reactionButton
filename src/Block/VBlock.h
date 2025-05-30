@@ -15,6 +15,9 @@ class VBlock {
         virtual String getBlockName();
         virtual block_err_t executeBlock() = 0;
         virtual IBlockConfiguration* getBlockConfiguration();
+
+        virtual block_err_t enterBlock();
+        virtual block_err_t exitBlock();
 };
 
 #endif

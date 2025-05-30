@@ -26,6 +26,7 @@ class BlockManager {
         block_err_t assignBlock(IBlockConfiguration* blockConfiguration);
 
         void defineStartBlock(String blockName);
+        uint32_t findIndex(String blockName) ;
 
 
         void runBlocks();
