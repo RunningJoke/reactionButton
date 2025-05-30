@@ -5,7 +5,6 @@
 #include "BlockManager/BlockManager.h"
 #include "BlockConfigs.h"
 
-#include <BLEDevice.h>
 
 #include "esp_task_wdt.h"
 
@@ -14,21 +13,25 @@
 void setup() {
   initArduino();
 
-  SPIFFS.begin(false);
+  SPIFFS.begin(true);
   
 
   pinMode(PIN_BUTTON_PRESS , INPUT);
 
   randomSeed(analogRead(0));
 
+
   ESP_LOGI("MAIN", "Starting up...");
 
   BlockManager* blockManager = BlockManager::getManager();
-  blockManager->assignBlock(DelayBlock1000ms);
+  blockManager->assignBlock(LEDBlue);
+  blockManager->assignBlock(ButtonWaitBlock);
   blockManager->assignBlock(LEDRed);
-  blockManager->assignBlock(ButtonBlock);
   blockManager->assignBlock(LEDGreen);
-  blockManager->defineStartBlock("Delay 1000ms");
+  blockManager->assignBlock(ButtonBlock);
+  blockManager->assignBlock(LEDCyan);
+  blockManager->assignBlock(TimeToReset);
+  blockManager->defineStartBlock("LEDBlue");
 
 
 }

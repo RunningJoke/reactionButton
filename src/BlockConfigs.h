@@ -7,28 +7,62 @@
 #include "Block/LEDBlock/LEDBlock.h"
 #include "Block/ButtonBlock/ButtonBlock.h"
 
-DelayBlockConfiguration* DelayBlock1000ms = new DelayBlockConfiguration(
-    "Delay 1000ms",
-    "LEDRed",
-    1000
+
+LEDBlockConfiguration* LEDBlue = new LEDBlockConfiguration(
+    "LEDBlue",
+    "Button Wait Block",
+    BLUE
 );
+
+ButtonBlockParameter waitConfig = ButtonBlockParameter{
+    .shortPressLimit = 0,
+    .longPressMinimum = 0,
+    .minTimeout = 800,
+    .maxTimeout = 5000,
+    .randomizeTimeout = true
+};
+
+ButtonBlockConfiguration* ButtonWaitBlock = new ButtonBlockConfiguration(
+    "Button Wait Block",
+    "LEDRed",
+    nullptr, nullptr, nullptr, "LEDGreen", &waitConfig
+);
+
 
 LEDBlockConfiguration* LEDRed = new LEDBlockConfiguration(
     "LEDRed",
-    "Button Block",
+    "ResetDelay",
     RED
-);
-
-ButtonBlockConfiguration* ButtonBlock = new ButtonBlockConfiguration(
-    "Button Block",
-    "LEDGreen"
 );
 
 LEDBlockConfiguration* LEDGreen = new LEDBlockConfiguration(
     "LEDGreen",
-    "Delay 1000ms",
+    "Button Block",
     GREEN
 );
+
+ButtonBlockConfiguration* ButtonBlock = new ButtonBlockConfiguration(
+    "Button Block",
+    "LEDCyan"
+);
+
+
+
+LEDBlockConfiguration* LEDCyan = new LEDBlockConfiguration(
+    "LEDCyan",
+    "ResetDelay",
+    CYAN
+);
+
+
+DelayBlockConfiguration* TimeToReset = new DelayBlockConfiguration(
+    "ResetDelay",
+    "LEDBlue",
+    2500,
+    2500
+);
+
+
 
 
 

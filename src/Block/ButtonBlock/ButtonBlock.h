@@ -23,6 +23,7 @@ class ButtonBlock : public VBlock {
     ButtonBlockConfiguration* blockConfiguration;
     ButtonState currentState = ButtonState::NO_PRESS;
     uint64_t timestamp = 0;
+    uint64_t timeout = 0;
 
 public:
     ButtonBlock(ButtonBlockConfiguration* blockConfiguration);
@@ -37,7 +38,9 @@ public:
 struct ButtonBlockParameter {
     uint64_t shortPressLimit;
     uint64_t longPressMinimum;
-    uint64_t timeout;
+    uint64_t minTimeout;
+    uint64_t maxTimeout;
+    bool randomizeTimeout;
 } ;
 
 extern ButtonBlockParameter DEFAULT_BUTTON_PARAMETERS;
