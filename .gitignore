@@ -4,3 +4,4 @@
 .vscode/launch.json
 .vscode/ipch
 cad/pcb/PCB Board/PCB Board-backups
+managed_components
