@@ -8,6 +8,7 @@
 
 #include "esp_task_wdt.h"
 
+uint64_t timestamp = 0;
 
 
 void setup() {
@@ -17,6 +18,8 @@ void setup() {
   
 
   pinMode(PIN_BUTTON_PRESS , INPUT);
+
+  pinMode(PIN_BATTERY_LEVEL , INPUT);
 
   randomSeed(analogRead(0));
 
@@ -33,11 +36,22 @@ void setup() {
   blockManager->assignBlock(TimeToReset);
   blockManager->defineStartBlock("LEDBlue");
 
+  
+  bootUpAnimation->bitmask = bootUpPattern->ids;
 
+  timestamp = millis();
 }
 
 void loop() {
 
+  uint16_t batteryLevel = analogRead(PIN_BATTERY_LEVEL);
+  ESP_LOGI("BOOTUP"," Battery status: %i", batteryLevel);
+  
+  while(timestamp + 5000UL > millis()) {
+    //run the battery status script
+    LEDManager::getManager()->setLEDColors(bootUpPattern);
+  }
+  
   BlockManager* blockManager = BlockManager::getManager();
   ESP_LOGD("MAIN", "Running blocks...");
   blockManager->runBlocks();

@@ -7,4 +7,5 @@
 */
 
 #define PIN_BUTTON_PRESS 3
+#define PIN_BATTERY_LEVEL 5
 

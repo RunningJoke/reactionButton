@@ -63,6 +63,26 @@ void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
     }
 }
 
+void LEDManager::setLEDColors(LEDPattern* pattern)
+{
+    this->pixelManager->clear();
+    if(pattern->animation != nullptr) {
+        pattern->animation->animate(millis());
+    }
+
+    for(int i=0; i<NEOPIXEL_SIZE; i++) {
+        uint8_t paletteId = pattern->ids->getPaletteID(i);
+
+         this->pixelManager->setPixelColor(i, 
+                    this->pixelManager->Color(
+                        pattern->palette[paletteId]->red,
+                        pattern->palette[paletteId]->green,
+                        pattern->palette[paletteId]->blue)
+                    );
+    }
+    this->pixelManager->show();
+}
+
 void LEDManager::turnOff()
 {
     this->setLEDColors(this->pOffConfiguration);

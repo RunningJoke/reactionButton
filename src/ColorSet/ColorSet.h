@@ -8,6 +8,7 @@ struct ColorSet {
     uint8_t blue;
 };
 
+static ColorSet* BLACK = new ColorSet{0,0,0};
 static ColorSet* RED = new ColorSet{255,0,0};
 static ColorSet* GREEN = new ColorSet{0,255,0};
 static ColorSet* BLUE = new ColorSet{0,0,255};
