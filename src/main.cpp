@@ -3,17 +3,20 @@
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
 #include "BlockManager/BlockManager.h"
+#include "BLEManager/BLEManager.h"
 #include "BlockConfigs.h"
 
 
 #include "esp_task_wdt.h"
 
-uint64_t timestamp = 0;
 
+
+uint64_t timestamp = 0;
+BLEMode bootMode = BLEMode::PERIPHERAL;
 
 void setup() {
   initArduino();
-
+  Serial.begin(115200);
   SPIFFS.begin(true);
   
 
@@ -24,7 +27,19 @@ void setup() {
   randomSeed(analogRead(0));
 
 
-  ESP_LOGI("MAIN", "Starting up...");
+  Serial.println("Starting ReactPod Bootup...");
+
+  if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+    bootMode = BLEMode::CENTRAL;
+    //a button press during bootup makes the system boot in central mode
+    BLEManager::getManager()->bootMode(BLEMode::CENTRAL);
+  } else {
+    bootMode = BLEMode::PERIPHERAL;
+    //no button press during bootup makes the system boot in peripheral mode
+    BLEManager::getManager()->bootMode(BLEMode::PERIPHERAL);
+
+    
+  }
 
   BlockManager* blockManager = BlockManager::getManager();
   blockManager->assignBlock(LEDBlue);
@@ -44,16 +59,16 @@ void setup() {
 
 void loop() {
 
-  uint16_t batteryLevel = analogRead(PIN_BATTERY_LEVEL);
-  ESP_LOGI("BOOTUP"," Battery status: %i", batteryLevel);
-  
-  while(timestamp + 5000UL > millis()) {
-    //run the battery status script
-    LEDManager::getManager()->setLEDColors(bootUpPattern);
-  }
-  
-  BlockManager* blockManager = BlockManager::getManager();
-  ESP_LOGD("MAIN", "Running blocks...");
-  blockManager->runBlocks();
+  if(bootMode == BLEMode::PERIPHERAL) {
+      BLEManager::getManager()->runAsPeripheral();
+  } else {
+      BLEManager::getManager()->runAsCentral();
+    //BlockManager* blockManager = BlockManager::getManager();
+    //ESP_LOGD("MAIN", "Running blocks...");
+    //blockManager->runBlocks();
 
+  }
+
+  
+  
 }

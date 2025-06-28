@@ -29,6 +29,7 @@ void LEDManager::setLEDColors(uint8_t colorId)
         case 4: this->setLEDColors(MAGENTA); break;
         case 5: this->setLEDColors(CYAN); break;
         case 6: this->setLEDColors(WHITE); break;
+        case 255: this->setLEDColors(BLACK); break;
     }
 }
 
