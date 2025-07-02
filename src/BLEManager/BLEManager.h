@@ -14,15 +14,9 @@
 #include <BLEService.h>
 #include <BLERemoteCharacteristic.h>
 #include <BLERemoteService.h>
-#include <LEDManager/LEDManager.h>
+#include <LEDManager/LEDManager.h> 
 
-
-// UUIDs for GATT characteristics
-#define SERVICE_UUID           "12345678-1234-1234-1234-1234567890ab"
-#define CHAR_TEAM_ID_UUID      "12345678-1234-1234-1234-1234567890ac"
-#define CHAR_LED_COLOR_UUID    "12345678-1234-1234-1234-1234567890ad"
-#define CHAR_ACTION_MODE_UUID  "12345678-1234-1234-1234-1234567890ae"
-#define CHAR_NOTIFY_UUID       "12345678-1234-1234-1234-1234567890af"
+class Peripheral; // Forward declaration of Peripheral
 
 enum class BLEMode {
     CENTRAL,
@@ -37,6 +31,7 @@ enum class BLEPeripheralState {
     WAIT_FOR_RESET
 };
 
+
 class BLEManager {
     private:
         BLEManager();
@@ -50,7 +45,7 @@ class BLEManager {
 
         void clientScanForPeripherals();
 
-        BLERemoteService* remoteService[2];  
+        Peripheral* peripherals[32];  
         uint8_t requiredPeripherals = 1;
         uint8_t connectedPeripherals = 0;
 
@@ -64,7 +59,7 @@ class BLEManager {
         uint64_t peripheralTimer;
         uint64_t centralTimer;
 
-        static std::map<BLERemoteCharacteristic*, BLEManager*> notifyMap;
+        static std::map<BLERemoteCharacteristic*, Peripheral*> notifyMap;
 
     public:
         static BLEManager* getManager();
@@ -79,8 +74,8 @@ class BLEManager {
             uint8_t* pData, size_t length, bool isNotify
         );
 
-        void subscribeNotify(BLERemoteCharacteristic* pChar);
-        void handleNotify(BLERemoteCharacteristic* pChar, uint8_t* pData, size_t length, bool isNotify);
+        void subscribeNotify(BLERemoteCharacteristic* pChar, Peripheral* peripheral);
+        void handleNotify(Peripheral* peripheral);
 
 
 };

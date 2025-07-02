@@ -1,8 +1,9 @@
-#include "BLEManager.h"
+#include "BLEManager/BLEManager.h"
+#include "Peripheral/Peripheral.h"
 
 BLEManager* BLEManager::manager = nullptr;
 
-std::map<BLERemoteCharacteristic*, BLEManager*> BLEManager::notifyMap;
+std::map<BLERemoteCharacteristic*, Peripheral*> BLEManager::notifyMap;
 
 BLEManager* BLEManager::getManager() {
 
@@ -60,7 +61,7 @@ void BLEManager::runAsPeripheral() {
         }
         case BLEPeripheralState::WAIT_FOR_RESET:
             if(this->actionModeCharacteristic->getData()[0] == 'o') {
-                Serial.println("Peripheral reset");
+                Serial.println("resetting...");
                 this->actionModeCharacteristic->setValue("");
                 this->notifyCharacteristic->setValue("");
                 this->peripheralState = BLEPeripheralState::READY;
@@ -78,13 +79,9 @@ void BLEManager::runAsCentral() {
         switch(this->waitingForPeripheral) {
             case 0: //activate peripheral
                 {
-                    BLERemoteCharacteristic* configArrayCharacteristic = this->remoteService[0]->getCharacteristic(CHAR_LED_COLOR_UUID);
-                    BLERemoteCharacteristic* actionCharacteristic = this->remoteService[0]->getCharacteristic(CHAR_ACTION_MODE_UUID);
-
-                    uint8_t ledColor[3] = {2, 1, 255}; // Example: Blue color
-
-                    configArrayCharacteristic->writeValue(ledColor , false); // Example: Set initial LED color
-                    actionCharacteristic->writeValue('1', false);
+                    
+                    this->peripherals[0]->activate();
+                    
                     this->centralTimer = millis();
                     this->waitingForPeripheral = 1;
                 break;
@@ -94,13 +91,8 @@ void BLEManager::runAsCentral() {
             case 2: //peripheral was activated, reset
                 {
                 this->waitingForPeripheral = 0;
-                BLERemoteCharacteristic* actionCharacteristic = this->remoteService[0]->getCharacteristic(CHAR_ACTION_MODE_UUID);
-
-                // If we have received a notification, we can process it
-                Serial.printf("Received notification: %d\n", this->peripheralTimer);
-                Serial.printf("Response time: %d\n", this->centralTimer);
-                this->waitingForPeripheral = false;
-                actionCharacteristic->writeValue("o"); // Example action to reset peripheral
+                Serial.println("Resetting peripheral");
+                this->peripherals[0]->resetPeripheral();
                 delay(3000UL);
                 break;
                 }
@@ -190,21 +182,14 @@ void BLEManager::clientScanForPeripherals() {
         BLEAdvertisedDevice advertisedDevice = foundDevices.getDevice(i);
 
         if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(BLEUUID(SERVICE_UUID))) {
-            BLEClient* pClient = BLEDevice::createClient();
-            if (pClient->connect(&advertisedDevice)) {
-                this->remoteService[this->connectedPeripherals] = pClient->getService(SERVICE_UUID);
-                if (this->remoteService[this->connectedPeripherals]) {
-                    // Write unique team ID
-                    BLERemoteCharacteristic* teamIdChar = this->remoteService[this->connectedPeripherals]->getCharacteristic(CHAR_TEAM_ID_UUID);
-                    if (teamIdChar && teamIdChar->canWrite()) {
-                        std::string teamId = "TEAM123";
-                        teamIdChar->writeValue(teamId);
-                    }
-                    BLERemoteCharacteristic* notifyChar = this->remoteService[this->connectedPeripherals]->getCharacteristic(CHAR_NOTIFY_UUID);
-                    this->subscribeNotify(notifyChar);
-                    this->connectedPeripherals++;
-                }
-            }            
+            Serial.printf("Found device: %s\n", advertisedDevice.toString().c_str());
+            Serial.printf("Address: %s\n", advertisedDevice.getAddress().toString().c_str());
+
+            // Create a Peripheral instance for the found device
+            Peripheral* peripheral = new Peripheral(advertisedDevice, this->connectedPeripherals);
+            this->peripherals[this->connectedPeripherals] = peripheral;
+            // Increment the count of connected peripherals
+            this->connectedPeripherals++;
         }
 
         if(this->connectedPeripherals == this->requiredPeripherals) {
@@ -213,9 +198,10 @@ void BLEManager::clientScanForPeripherals() {
     }
 }
 
-void BLEManager::subscribeNotify(BLERemoteCharacteristic* pChar) {
-    BLEManager::notifyMap[pChar] = this;
+void BLEManager::subscribeNotify(BLERemoteCharacteristic* pChar , Peripheral* peripheral) {
+    BLEManager::notifyMap[pChar] = peripheral;
     pChar->registerForNotify(BLEManager::notifyCallback);
+    Serial.println("Subscribed to notifications for characteristic: ");
 }
 
 void BLEManager::notifyCallback(
@@ -228,12 +214,11 @@ void BLEManager::notifyCallback(
     }
 }
 
-void BLEManager::handleNotify(
-    BLERemoteCharacteristic* pChar,
-    uint8_t* pData, size_t length, bool isNotify
-) {
-    this->centralTimer = millis() - this->centralTimer;
-    this->peripheralTimer = atoi((char*)pData);
+void BLEManager::handleNotify(Peripheral* peripheral) {
+    Serial.println("Handling notification from peripheral");
+    //this->centralTimer = millis() - this->centralTimer;    
     this->waitingForPeripheral = 2; // Set the state to indicate that we received a notification
+
+    
 }
 
