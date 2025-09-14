@@ -1,6 +1,8 @@
 #include "BLEManager/BLEManager.h"
 #include "Peripheral/Peripheral.h"
 
+#include "ErrorAnimation.h"
+
 BLEManager* BLEManager::manager = nullptr;
 
 std::map<BLERemoteCharacteristic*, Peripheral*> BLEManager::notifyMap;
@@ -44,19 +46,18 @@ void BLEManager::runAsPeripheral() {
             break;
         case BLEPeripheralState::ACTIVE:
         {
-            LEDManager::getManager()->setLEDColors(this->ledColorCharacteristic->getData()[0]);
+            LEDManager::getManager()->setLEDColors((uint8_t)this->ledColorCharacteristic->getData()[0]);
             if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
                 Serial.println("Peripheral button hit");
                 // If the button is pressed, we can transition to ACTIVE state
                 this->peripheralState = BLEPeripheralState::WAIT_FOR_RESET;
-                LEDManager::getManager()->setLEDColors(this->ledColorCharacteristic->getData()[1]);
+                LEDManager::getManager()->setLEDColors((uint8_t)this->ledColorCharacteristic->getData()[1]);
 
                 auto reactionTime = millis() - this->peripheralTimer;
                 Serial.printf("Reaction time: %lu ms\n", reactionTime);
                 this->notifyCharacteristic->setValue(std::to_string(reactionTime));
                 this->notifyCharacteristic->notify();
             }
-            // Depending on given 
             break;
         }
         case BLEPeripheralState::WAIT_FOR_RESET:
@@ -74,35 +75,101 @@ void BLEManager::runAsPeripheral() {
 void BLEManager::runAsCentral() {
     // In Central mode, we will scan for peripherals and connect to them
     
+    //The central state machine has the following modes:
+    // 1. Waiting for the model to be selected
+    // 2. Waiting for the required number of peripherals to be connected
+    // 3. Confirm
+    // 4. Run the block manager 
 
-    if(this->connectedPeripherals == this->requiredPeripherals) {
-        switch(this->waitingForPeripheral) {
-            case 0: //activate peripheral
-                {
-                    
-                    this->peripherals[0]->activate();
-                    
-                    this->centralTimer = millis();
-                    this->waitingForPeripheral = 1;
-                break;
-                }
-            case 1: //waiting for peripheral                
-                break;
-            case 2: //peripheral was activated, reset
-                {
-                this->waitingForPeripheral = 0;
-                Serial.println("Resetting peripheral");
-                this->peripherals[0]->resetPeripheral();
-                delay(3000UL);
-                break;
-                }
+    switch(this->centralState) {
+        case BLECentralState::WAITING_FOR_MODEL_SELECTION:
+        {
+            // In this state, the central is waiting for the model to be selected
+            Serial.println("Waiting for model selection...");
+            // Here you can implement logic to select a model
+            this->centralState = BLECentralState::WAITING_FOR_PERIPHERALS;
+
+
+            //Model selection
+            initBlockRandomTriangle();
+
+
+            this->requiredPeripherals = VariableManager::getManager()->getVariable("REQUIRED_PERIPHERALS"); // Set the required number of peripherals to connect
+            this->connectedPeripherals = 0; // Reset the count of connected peripherals
+
+
+            break;
         }
+        case BLECentralState::WAITING_FOR_PERIPHERALS:
+            {
+                LEDManager* led = LEDManager::getManager();
+                
+                //set LEDs for progress bar
+                for(uint8_t i = 0; i < this->requiredPeripherals; i++) {
+                    led->setLEDColors(2*i, BLUE);    
+                    if(i < this->connectedPeripherals) {
+                        led->setLEDColors(2*i+1, BLUE); 
+                    } else {
+                        led->setLEDColors(2*i+1, BLACK); 
+                    }
+                }
+                // In this state, the central is waiting for the required number of peripherals to be connected
+                if(this->connectedPeripherals < this->requiredPeripherals) {
+                    this->clientScanForPeripherals();
+                } else {
+                    BLEScan* pBLEScan = BLEDevice::getScan();
+                    pBLEScan->stop(); // Stop the scan once we have the required number of peripherals
+                    Serial.printf("Connected to %d peripherals\n", this->connectedPeripherals);
+                    this->centralState = BLECentralState::CONFIRM;
+                }
+                break;
+            }
+        case BLECentralState::CONFIRM:
+        {
+            LEDManager::getManager()->setLEDColors(GREEN);
+            // In this state, the central confirms the connection with the peripherals
+            if(this->connectedPeripherals == this->requiredPeripherals && digitalRead(PIN_BUTTON_PRESS) == LOW) {                    
+                Serial.println("Confirmed connection with peripherals");
 
-    } else {
-        this->clientScanForPeripherals();
+                    this->centralState = BLECentralState::RUN_BLOCK_MANAGER;
+                    LEDManager::getManager()->turnOff(); // Turn off LEDs after confirmation
+                }
+            
+            break;
+        }
+        case BLECentralState::RUN_BLOCK_MANAGER:
+        {
+            //check if all peripherals are still connected
+            for(uint8_t i = 0; i < this->connectedPeripherals; i++) {
+                if(!this->peripherals[i]->isConnected()) {
+                    this->centralState = BLECentralState::ERROR;
+                    break;
+                }
+            }
+
+            // In this state, the central runs the block manager
+            // Here you can implement logic to run the block manager
+            BlockManager::getManager()->runBlocks();
+            
+
+            break;
+        }
+        case BLECentralState::ERROR:
+        {
+            LEDManager::getManager()->setLEDColors(errorPattern);
+            // Handle error state
+            Serial.println("An error occurred in Central mode");
+            break;
+        }
     }
 }
 
+Peripheral* BLEManager::getPeripheral(uint8_t peripheralId) {
+    if (peripheralId < 32) {
+        return this->peripherals[peripheralId];
+    }
+    return nullptr; // Return nullptr if the peripheralId is out of bounds
+}
 
 void BLEManager::bootMode(BLEMode mode) {
     
@@ -167,7 +234,7 @@ void BLEManager::startServer() {
 // --- Client (Central) Implementation ---
 void BLEManager::startClient() {
     //placeholder for now
-
+    this->centralState = BLECentralState::WAITING_FOR_MODEL_SELECTION;
 }
 
 void BLEManager::clientScanForPeripherals() {
@@ -215,10 +282,8 @@ void BLEManager::notifyCallback(
 }
 
 void BLEManager::handleNotify(Peripheral* peripheral) {
-    Serial.println("Handling notification from peripheral");
-    //this->centralTimer = millis() - this->centralTimer;    
-    this->waitingForPeripheral = 2; // Set the state to indicate that we received a notification
-
+    Serial.println("Handling notification from peripheral"); 
+    this->peripheralQueue.push(peripheral);
     
 }
 

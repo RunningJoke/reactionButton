@@ -15,6 +15,12 @@
 #include <BLERemoteCharacteristic.h>
 #include <BLERemoteService.h>
 #include <LEDManager/LEDManager.h> 
+#include <BlockManager/BlockManager.h>
+#include "VariableManager/VariableManager.h"
+#include "BlockConfigs.h"
+
+
+#include <queue>
 
 class Peripheral; // Forward declaration of Peripheral
 
@@ -31,6 +37,14 @@ enum class BLEPeripheralState {
     WAIT_FOR_RESET
 };
 
+enum class BLECentralState {
+    WAITING_FOR_MODEL_SELECTION,
+    WAITING_FOR_PERIPHERALS,
+    CONFIRM,
+    RUN_BLOCK_MANAGER,
+    ERROR
+};
+
 
 class BLEManager {
     private:
@@ -38,6 +52,8 @@ class BLEManager {
         static BLEManager* manager;
 
         BLEPeripheralState peripheralState;
+
+        BLECentralState centralState;
 
     protected:
         void startServer();
@@ -62,12 +78,15 @@ class BLEManager {
         static std::map<BLERemoteCharacteristic*, Peripheral*> notifyMap;
 
     public:
+        std::queue<Peripheral*> peripheralQueue; 
         static BLEManager* getManager();
 
         void bootMode(BLEMode mode);
 
         void runAsPeripheral();
         void runAsCentral();
+
+        Peripheral* getPeripheral(uint8_t peripheralId);
 
         static void notifyCallback(
             BLERemoteCharacteristic* pChar,

@@ -4,15 +4,17 @@
 #include "LEDManager/LEDManager.h"
 #include "BlockManager/BlockManager.h"
 #include "BLEManager/BLEManager.h"
+#include "VariableManager/VariableManager.h"
 #include "BlockConfigs.h"
 
 
 #include "esp_task_wdt.h"
 
-
+#include "BLEManager/BootupAnimation.h"
 
 uint64_t timestamp = 0;
 BLEMode bootMode = BLEMode::PERIPHERAL;
+
 
 void setup() {
   initArduino();
@@ -29,6 +31,18 @@ void setup() {
 
   Serial.println("Starting ReactPod Bootup...");
 
+
+
+  LEDManager::getManager()->turnOff();
+  
+  timestamp = millis();
+  while(millis() - timestamp < 2000) {
+    LEDManager::getManager()->setLEDColors(&bootupPattern);
+    delay(10);
+  }
+
+ LEDManager::getManager()->turnOff();
+
   if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
     bootMode = BLEMode::CENTRAL;
     //a button press during bootup makes the system boot in central mode
@@ -38,23 +52,12 @@ void setup() {
     //no button press during bootup makes the system boot in peripheral mode
     BLEManager::getManager()->bootMode(BLEMode::PERIPHERAL);
 
-    
   }
 
-  BlockManager* blockManager = BlockManager::getManager();
-  blockManager->assignBlock(LEDBlue);
-  blockManager->assignBlock(ButtonWaitBlock);
-  blockManager->assignBlock(LEDRed);
-  blockManager->assignBlock(LEDGreen);
-  blockManager->assignBlock(ButtonBlock);
-  blockManager->assignBlock(LEDCyan);
-  blockManager->assignBlock(TimeToReset);
-  blockManager->defineStartBlock("LEDBlue");
-
-  
-  bootUpAnimation->bitmask = bootUpPattern->ids;
 
   timestamp = millis();
+
+
 }
 
 void loop() {
@@ -63,12 +66,7 @@ void loop() {
       BLEManager::getManager()->runAsPeripheral();
   } else {
       BLEManager::getManager()->runAsCentral();
-    //BlockManager* blockManager = BlockManager::getManager();
-    //ESP_LOGD("MAIN", "Running blocks...");
-    //blockManager->runBlocks();
 
   }
 
-  
-  
 }

@@ -1,8 +1,8 @@
 #ifndef BUTTONBLOCK_H
 #define BUTTONBLOCK_H
+
 #include <Arduino.h>
 #include "Block/VBlock.h"
-#include "LEDManager/LEDManager.h"
 #include "Block/IBlockConfiguration.h"
 #include "ColorSet/ColorSet.h"
 #include "_Definitions.h"

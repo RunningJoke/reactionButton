@@ -34,6 +34,10 @@ Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralI
 
 }
 
+bool Peripheral::isConnected() {
+    return this->pClient->isConnected();
+}
+
 void Peripheral::resetPeripheral() {
     Serial.println("Peripheral reset");
     this->actionModeCharacteristic->writeValue('o'); // Reset action mode
@@ -43,9 +47,9 @@ void Peripheral::activate()
 {
     // Activate the peripheral, which could mean setting up characteristics or starting notifications
     // This is a placeholder for now
-    uint8_t ledColor[3] = {2, 1, 255}; // Example: Blue color
+    uint8_t ledColor[3] = {1, 255, 255}; // Example: Blue color
 
-    this->ledColorCharacteristic->writeValue(ledColor , false); // Example: Set initial LED color
+    this->ledColorCharacteristic->writeValue(ledColor , 3 , false); // Example: Set initial LED color
     this->actionModeCharacteristic->writeValue('1', false);
 }
 

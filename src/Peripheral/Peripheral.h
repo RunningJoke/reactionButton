@@ -24,6 +24,8 @@ class Peripheral {
 
         void activate();
 
+        bool isConnected();
+
         void handleNotify(
             BLERemoteCharacteristic* pChar,
             uint8_t* pData, size_t length, bool isNotify

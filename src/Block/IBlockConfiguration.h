@@ -9,6 +9,9 @@ enum class BlockType {
     WAIT_FOR_PRESS,
     COUNTDOWN,
     LED,
+    REMOTE_PRESS,
+    IF,
+    SET_VARIABLE
     // Add other block types as needed
 } ;
 

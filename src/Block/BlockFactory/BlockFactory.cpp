@@ -33,6 +33,16 @@ VBlock* BlockFactory::createBlock(IBlockConfiguration* blockConfiguration) {
         // Create and return a LED block
         return new LEDBlock(static_cast<LEDBlockConfiguration*>(blockConfiguration));
         break;    
+    case BlockType::REMOTE_PRESS:
+        // Create and return a Remote Press block
+        return new RemotePressBlock(static_cast<RemotePressBlockConfiguration*>(blockConfiguration));
+        break;
+    case BlockType::IF:
+        return new IfBlock(static_cast<IfBlockConfiguration*>(blockConfiguration));
+        break;
+    case BlockType::SET_VARIABLE:
+        return new SetVariableBlock(static_cast<SetVariableBlockConfiguration*>(blockConfiguration));
+        break;
     }
 
     return nullptr;
