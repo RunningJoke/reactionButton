@@ -27,6 +27,7 @@ extern LEDBlockConfiguration* mainBuzzerPressed;
 extern RemotePressBlockConfiguration* remoteBuzzer;
 extern IfBlockConfiguration* checkEnd;
 
+extern void initReactionMode();
 extern void initBlockRandomTriangle();
 
 #endif

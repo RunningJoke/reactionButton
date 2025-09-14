@@ -25,12 +25,30 @@ LEDBlockConfiguration* clearLED = new LEDBlockConfiguration(
     BLACK
 );
 
-SetVariableBlockConfiguration* resetVar1 = new SetVariableBlockConfiguration(
+SetVariableBlockConfiguration* resetRunCounter = new SetVariableBlockConfiguration(
     "ResetVar1",
     "StartLoop",
     "RUNS",
     '=',
     0
+);
+
+SetVariableBlockConfiguration* startLoop = new SetVariableBlockConfiguration(
+    "StartLoop",
+    "EnterProgram",
+    "RUNS",
+    '+',
+    1
+);
+
+
+IfBlockConfiguration* endLoop = new IfBlockConfiguration(
+    "EndLoop",
+    '=',
+    "RUNS",
+    "MAX_LOOPS",
+    "StartReset",
+    "StartLoop"
 );
 
 /**
@@ -39,18 +57,79 @@ SetVariableBlockConfiguration* resetVar1 = new SetVariableBlockConfiguration(
 
 
 /**
- * START OF MAIN BLOCK CHAIN
+ * START OF REACTION MODE
  */
 
-SetVariableBlockConfiguration* startLoop = new SetVariableBlockConfiguration(
-    "StartLoop",
-    "RandomBuzzer",
-    "RUNS",
-    '+',
-    1
+ButtonBlockParameter rm_waitConfig = ButtonBlockParameter{
+    .shortPressLimit = 0,
+    .longPressMinimum = 0,
+    .minTimeout = 800,
+    .maxTimeout = 5000,
+    .randomizeTimeout = true
+    };
+
+ButtonBlockConfiguration* rm_ButtonWaitBlock = new ButtonBlockConfiguration(
+    "Button Wait Block",
+    "LEDRed",
+    nullptr, nullptr, nullptr, "LEDGreen", &rm_waitConfig
 );
 
-SetVariableBlockConfiguration* randomBuzzer = new SetVariableBlockConfiguration(
+LEDBlockConfiguration* rm_LEDRed = new LEDBlockConfiguration(
+    "LEDRed",
+    "ResetDelay",
+    RED
+);
+
+LEDBlockConfiguration* rm_LEDGreen = new LEDBlockConfiguration(
+    "LEDGreen",
+    "Button Block",
+    GREEN
+);
+
+LEDBlockConfiguration* rm_LEDBlue = new LEDBlockConfiguration(
+    "LEDBlue",
+    "Button Wait Block",
+    BLUE
+);
+
+ButtonBlockConfiguration* rm_ButtonBlock = new ButtonBlockConfiguration(
+    "Button Block",
+    "LEDCyan"
+);
+
+LEDBlockConfiguration* rm_LEDCyan = new LEDBlockConfiguration(
+    "LEDCyan",
+    "ResetDelay",
+    CYAN
+);
+
+DelayBlockConfiguration* rm_TimeToReset = new DelayBlockConfiguration(
+    "ResetDelay",
+    "LEDBlue",
+    2500,
+    2500
+);
+
+/**
+  * END OF REACTION MODE
+  */
+
+
+
+
+/**
+ * START OF RANDOM TRIANGLE BLOCK CHAIN
+ */
+
+DelayBlockConfiguration* rtm_startProgramTriangle = new DelayBlockConfiguration(
+    "EnterProgram",
+    "RandomBuzzer",
+    10,
+    10
+);
+
+
+SetVariableBlockConfiguration* rtm_randomBuzzer = new SetVariableBlockConfiguration(
     "RandomBuzzer",
     "BuzzerSelect",
     "SELECTED_BUZZER",
@@ -58,7 +137,7 @@ SetVariableBlockConfiguration* randomBuzzer = new SetVariableBlockConfiguration(
     3
 );
 
-IfBlockConfiguration* buzzerSelect = new IfBlockConfiguration(
+IfBlockConfiguration* rtm_buzzerSelect = new IfBlockConfiguration(
     "BuzzerSelect",
     '=',
     "SELECTED_BUZZER",
@@ -67,62 +146,87 @@ IfBlockConfiguration* buzzerSelect = new IfBlockConfiguration(
     "RemoteBuzzer"
 );
 
-LEDBlockConfiguration* buzzerLED = new LEDBlockConfiguration(
+LEDBlockConfiguration* rtm_buzzerLED = new LEDBlockConfiguration(
     "MainBuzzerLed",
     "MainBuzzer",
     GREEN
 );
 
-ButtonBlockConfiguration* mainBuzzer = new ButtonBlockConfiguration(
+ButtonBlockConfiguration* rtm_mainBuzzer = new ButtonBlockConfiguration(
     "MainBuzzer",
     "MainBuzzerPressed"
 );
 
-LEDBlockConfiguration* mainBuzzerPressed = new LEDBlockConfiguration(
+LEDBlockConfiguration* rtm_mainBuzzerPressed = new LEDBlockConfiguration(
     "MainBuzzerPressed",
-    "CheckEnd",
+    "EndLoop",
     BLACK
 );
 
-RemotePressBlockConfiguration* remoteBuzzer = new RemotePressBlockConfiguration(
+RemotePressBlockConfiguration* rtm_remoteBuzzer = new RemotePressBlockConfiguration(
     "RemoteBuzzer",
-    "CheckEnd",
+    "EndLoop",
     "SELECTED_BUZZER"
 );
 
-IfBlockConfiguration* checkEnd = new IfBlockConfiguration(
-    "CheckEnd",
-    '=',
-    "RUNS",
-    "MAX_LOOPS",
-    "StartReset",
-    "StartLoop"
-);
+/**
+ * END OF RANDOM TRIANGLE BLOCK CHAIN
+ */
 
 
-void initBlockRandomTriangle() {
-    VariableManager* variableManager = VariableManager::getManager();
 
-    variableManager->setVariable("REQUIRED_PERIPHERALS", 2);
-
-    variableManager->setVariable("RUNS", 0);
-    variableManager->setVariable("MAX_LOOPS", 5);
-    variableManager->setVariable("SELECTED_BUZZER", 0);
-
+void registerResetLoop() {
     BlockManager* bm = BlockManager::getManager();
+    VariableManager* vm = VariableManager::getManager();
+
+    vm->setVariable("RUNS", 0);
+    vm->setVariable("MAX_LOOPS", 12);
 
     bm->assignBlock(resetLED);
     bm->assignBlock(resetDelay);
     bm->assignBlock(clearLED);
-    bm->assignBlock(resetVar1);
+    bm->assignBlock(resetRunCounter);
     bm->assignBlock(startLoop);
-    bm->assignBlock(randomBuzzer);
-    bm->assignBlock(buzzerSelect);
-    bm->assignBlock(buzzerLED);
-    bm->assignBlock(mainBuzzer);
-    bm->assignBlock(mainBuzzerPressed);
-    bm->assignBlock(remoteBuzzer);
-    bm->assignBlock(checkEnd);
+    bm->assignBlock(endLoop);
 
-    bm->defineStartBlock("StartLoop");
+    bm->defineStartBlock("StartReset");
+}
+
+void initReactionMode() {
+    VariableManager* variableManager = VariableManager::getManager();
+
+    variableManager->setVariable("REQUIRED_PERIPHERALS", 0);    
+
+    BlockManager* bm = BlockManager::getManager();
+
+    bm->assignBlock(rm_LEDBlue);
+    bm->assignBlock(rm_ButtonWaitBlock);
+    bm->assignBlock(rm_LEDRed);
+    bm->assignBlock(rm_LEDGreen);
+    bm->assignBlock(rm_ButtonBlock);
+    bm->assignBlock(rm_LEDCyan);
+    bm->assignBlock(rm_TimeToReset);
+    bm->defineStartBlock("LEDBlue");
+
+
+}
+
+void initBlockRandomTriangle() {
+    VariableManager* variableManager = VariableManager::getManager();
+
+    variableManager->setVariable("REQUIRED_PERIPHERALS", 2);    
+    variableManager->setVariable("SELECTED_BUZZER", 0);
+
+    BlockManager* bm = BlockManager::getManager();
+
+    registerResetLoop();
+
+    bm->assignBlock(rtm_startProgramTriangle);
+    bm->assignBlock(rtm_randomBuzzer);
+    bm->assignBlock(rtm_buzzerSelect);
+    bm->assignBlock(rtm_buzzerLED);
+    bm->assignBlock(rtm_mainBuzzer);
+    bm->assignBlock(rtm_mainBuzzerPressed);
+    bm->assignBlock(rtm_remoteBuzzer);
+
 }

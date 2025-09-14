@@ -18,6 +18,8 @@ BLEManager* BLEManager::getManager() {
 
 BLEManager::BLEManager() {
     BLEDevice::init("ReactPod");
+
+    this->modelSelectorColor = new ColorSet{0,0,0};
 }
 
 void BLEManager::runAsPeripheral() {
@@ -71,6 +73,111 @@ void BLEManager::runAsPeripheral() {
     }
 }
 
+bool BLEManager::runModelSelector() {
+
+    auto buttonPressed = digitalRead(PIN_BUTTON_PRESS) == LOW;
+    if(buttonPressed) {
+        if(this->modelSelectorCounter == 0) {
+            this->modelSelectorPressStart = millis();
+            this->modelSelectorCounter++;  
+        } else {
+            //check if the button has been pressed for more than 2 seconds
+            if(this->modelSelectorPressStart + this->modelSelectorCounter*10 < millis()) {
+                this->modelSelectorCounter++;   
+
+                this->modelSelectorColor->red = this->modelSelectorCounter;
+                this->modelSelectorColor->green = this->modelSelectorCounter;
+                this->modelSelectorColor->blue = this->modelSelectorCounter;
+                
+                //increase brightness of selection LED
+                LEDManager::getManager()->setLEDColors(16 , this->modelSelectorColor);
+                LEDManager::getManager()->setLEDColors(17 , this->modelSelectorColor);
+                LEDManager::getManager()->setLEDColors(0 , this->modelSelectorColor);
+                LEDManager::getManager()->setLEDColors(1 , this->modelSelectorColor);
+                LEDManager::getManager()->setLEDColors(2 , this->modelSelectorColor);
+
+                if(this->modelSelectorCounter > 250) {
+                    //model selected. Run corresponding block configuration
+
+                    switch(this->selectedModel) {
+                        case 0:
+                            Serial.println("Model selected: Reaction Buzzer");
+                            initReactionMode();
+                            break;
+                        case 1:
+                            Serial.println("Model selected: Start/Stop Buzzer");
+                            initBlockRandomTriangle();
+                        case 2:
+                            Serial.println("Model selected: Random Triangle");
+                            initBlockRandomTriangle();
+                            break;
+                        case 3:
+                            Serial.println("Model selected: Square Config");
+                            initBlockRandomTriangle();
+                            break;
+                        case 4:
+                            Serial.println("Model selected: Star Config");
+                            initBlockRandomTriangle();
+                            break;
+                        default:
+                            Serial.println("Model selected: Default");
+                            initBlockRandomTriangle();
+                            break;
+                    }
+                    return true;
+                }
+            }
+
+        }
+    } else {
+        //trigger on release
+        if(this->modelSelectorCounter > 0 && this->modelSelectorCounter <= 100) {
+            //long press detected
+            this->selectedModel = (this->selectedModel + 1) % 5; //only one model for now
+            
+            LEDManager::getManager()->turnOff();
+            
+            switch(this->selectedModel) {
+                case 0:
+                    LEDManager::getManager()->setLEDColors(9, BLUE);
+                    break;
+                case 1:
+                    LEDManager::getManager()->setLEDColors(8, BLUE);
+                    LEDManager::getManager()->setLEDColors(10, BLUE);
+                    break;
+                case 2:
+                    LEDManager::getManager()->setLEDColors(7, BLUE);
+                    LEDManager::getManager()->setLEDColors(9, BLUE);
+                    LEDManager::getManager()->setLEDColors(11, BLUE);
+                    break;
+                case 3:
+                    LEDManager::getManager()->setLEDColors(6, BLUE);
+                    LEDManager::getManager()->setLEDColors(8, BLUE);
+                    LEDManager::getManager()->setLEDColors(10, BLUE);
+                    LEDManager::getManager()->setLEDColors(12, BLUE);
+                    break;
+                case 4:
+                    LEDManager::getManager()->setLEDColors(5, BLUE);
+                    LEDManager::getManager()->setLEDColors(7, BLUE);
+                    LEDManager::getManager()->setLEDColors(9, YELLOW);
+                    LEDManager::getManager()->setLEDColors(11, BLUE);
+                    LEDManager::getManager()->setLEDColors(13, BLUE);
+                    break;
+                default:
+                    break;
+            }
+
+        }
+
+
+        this->modelSelectorCounter = 0;
+        this->modelSelectorPressStart = 0;
+    }
+
+
+    return false;
+}
+
 
 void BLEManager::runAsCentral() {
     // In Central mode, we will scan for peripherals and connect to them
@@ -85,24 +192,23 @@ void BLEManager::runAsCentral() {
         case BLECentralState::WAITING_FOR_MODEL_SELECTION:
         {
             // In this state, the central is waiting for the model to be selected
-            Serial.println("Waiting for model selection...");
             // Here you can implement logic to select a model
-            this->centralState = BLECentralState::WAITING_FOR_PERIPHERALS;
 
 
-            //Model selection
-            initBlockRandomTriangle();
+            bool modelSelected = runModelSelector(); // Placeholder for model selection logic
 
-
-            this->requiredPeripherals = VariableManager::getManager()->getVariable("REQUIRED_PERIPHERALS"); // Set the required number of peripherals to connect
-            this->connectedPeripherals = 0; // Reset the count of connected peripherals
-
+            if(modelSelected) {
+                this->centralState = BLECentralState::WAITING_FOR_PERIPHERALS;
+                this->requiredPeripherals = VariableManager::getManager()->getVariable("REQUIRED_PERIPHERALS"); // Set the required number of peripherals to connect
+                this->connectedPeripherals = 0; // Reset the count of connected peripherals
+            }
 
             break;
         }
         case BLECentralState::WAITING_FOR_PERIPHERALS:
             {
                 LEDManager* led = LEDManager::getManager();
+                led->turnOff();
                 
                 //set LEDs for progress bar
                 for(uint8_t i = 0; i < this->requiredPeripherals; i++) {

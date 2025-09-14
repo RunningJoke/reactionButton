@@ -55,6 +55,14 @@ class BLEManager {
 
         BLECentralState centralState;
 
+        uint64_t modelSelectorPressStart;
+        uint8_t modelSelectorCounter;
+        ColorSet* modelSelectorColor;
+
+        uint8_t selectedModel;
+
+        bool runModelSelector();
+
     protected:
         void startServer();
         void startClient();
