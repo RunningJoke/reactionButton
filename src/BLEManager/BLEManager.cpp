@@ -17,8 +17,6 @@ BLEManager* BLEManager::getManager() {
 };
 
 BLEManager::BLEManager() {
-    BLEDevice::init("ReactPod");
-
     this->modelSelectorColor = new ColorSet{0,0,0};
 }
 
@@ -120,7 +118,7 @@ bool BLEManager::runModelSelector() {
                             break;
                         case 4:
                             Serial.println("Model selected: Star Config");
-                            initStarMode(5, 255);
+                            initStarMode(5, 12);
                             break;
                         default:
                             Serial.println("Model selected: Default");
@@ -182,6 +180,35 @@ bool BLEManager::runModelSelector() {
     return false;
 }
 
+void BLEManager::startConfigurationBLE() {
+    BLEDevice::deinit(true);   // true = release memory
+    BLEDevice::init("ReactPod Config");
+    BLEServer *pServer = BLEDevice::createServer();
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+
+    // Action Mode characteristic (writable by client)
+    this->maxLoopCharacteristic= pService->createCharacteristic(
+        CHAR_MAX_LOOP_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+    );
+    this->maxLoopCharacteristic->setValue(std::to_string(-1));
+
+    pService->start();
+
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    pAdvertising->setMinPreferred(0x12);
+    BLEDevice::startAdvertising();
+
+    Serial.println("BLE Server advertising...");
+    if(this->peripheralState == BLEPeripheralState::WAITING_FOR_CONNECTION) {
+        this->startServer();
+    } else {
+        Serial.println("Already in Peripheral mode");
+    }
+}
+
 
 void BLEManager::runAsCentral() {
     // In Central mode, we will scan for peripherals and connect to them
@@ -211,6 +238,8 @@ void BLEManager::runAsCentral() {
         }
         case BLECentralState::WAITING_FOR_PERIPHERALS:
             {
+                
+                BLEDevice::init("ReactPod Running");
                 LEDManager* led = LEDManager::getManager();
                 led->turnOff();
                 
@@ -244,7 +273,11 @@ void BLEManager::runAsCentral() {
                     this->centralState = BLECentralState::RUN_BLOCK_MANAGER;
                     LEDManager::getManager()->turnOff(); // Turn off LEDs after confirmation
                 }
+
+            //check the max loop parameter 
             
+            std::string value = this->maxLoopCharacteristic->getValue();
+            VariableManager::getManager()->setVariable("MAX_LOOPS", std::stoll(value));
             break;
         }
         case BLECentralState::RUN_BLOCK_MANAGER:
@@ -300,7 +333,7 @@ void BLEManager::bootMode(BLEMode mode) {
 
 // --- Server (Peripheral) Implementation ---
 void BLEManager::startServer() {
-
+    BLEDevice::init("ReactPod");
     this->peripheralState = BLEPeripheralState::WAITING_FOR_CONNECTION;
 
     BLEServer *pServer = BLEDevice::createServer();
@@ -345,6 +378,7 @@ void BLEManager::startServer() {
 void BLEManager::startClient() {
     //placeholder for now
     this->centralState = BLECentralState::WAITING_FOR_MODEL_SELECTION;
+    this->startConfigurationBLE();
 }
 
 void BLEManager::clientScanForPeripherals() {

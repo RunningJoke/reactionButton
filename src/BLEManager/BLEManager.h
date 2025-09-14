@@ -77,6 +77,7 @@ class BLEManager {
         BLECharacteristic* ledColorCharacteristic;
         BLECharacteristic* actionModeCharacteristic;
         BLECharacteristic* notifyCharacteristic;
+        BLECharacteristic* maxLoopCharacteristic;
 
         uint8_t waitingForPeripheral = 0;
 
@@ -84,6 +85,10 @@ class BLEManager {
         uint64_t centralTimer;
 
         static std::map<BLERemoteCharacteristic*, Peripheral*> notifyMap;
+
+
+        int64_t phoneOverrideLoopCount = -1;
+        int64_t phoneOverridePeripheralCount = -1;
 
     public:
         std::queue<Peripheral*> peripheralQueue; 
@@ -93,6 +98,10 @@ class BLEManager {
 
         void runAsPeripheral();
         void runAsCentral();
+
+        void startConfigurationBLE();
+
+        void startClientBLE();
 
         Peripheral* getPeripheral(uint8_t peripheralId);
 
