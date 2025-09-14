@@ -118,7 +118,7 @@ DelayBlockConfiguration* rm_TimeToReset = new DelayBlockConfiguration(
 
 
 /**
- * START OF RANDOM TRIANGLE BLOCK CHAIN
+ * START OF RANDOM BLOCK CHAIN
  */
 
 DelayBlockConfiguration* rtm_startProgramTriangle = new DelayBlockConfiguration(
@@ -134,7 +134,7 @@ SetVariableBlockConfiguration* rtm_randomBuzzer = new SetVariableBlockConfigurat
     "BuzzerSelect",
     "SELECTED_BUZZER",
     '!',
-    3
+    0
 );
 
 IfBlockConfiguration* rtm_buzzerSelect = new IfBlockConfiguration(
@@ -171,16 +171,64 @@ RemotePressBlockConfiguration* rtm_remoteBuzzer = new RemotePressBlockConfigurat
 
 /**
  * END OF RANDOM TRIANGLE BLOCK CHAIN
+
+/**
+ * START OF STAR BLOCK CHAIN
+ */
+
+
+DelayBlockConfiguration* sm_Start = new DelayBlockConfiguration(
+    "EnterProgram",
+    "starLEDOn",
+    10,
+    10
+);
+
+
+LEDBlockConfiguration* sm_starLEDOn = new LEDBlockConfiguration(
+    "starLEDOn",
+    "starBuzzer",
+    GREEN
+);
+
+ButtonBlockConfiguration* sm_starBuzzer = new ButtonBlockConfiguration(
+    "starBuzzer",
+    "starBuzzerPressed"
+);
+
+LEDBlockConfiguration* sm_starBuzzerPressed = new LEDBlockConfiguration(
+    "starBuzzerPressed",
+    "selectPeripheral",
+    BLACK
+);
+
+SetVariableBlockConfiguration* sm_selectPeripheral = new SetVariableBlockConfiguration(
+    "selectPeripheral",
+    "BuzzerSelect",
+    "SELECTED_BUZZER",
+    '?',
+    0
+);
+
+RemotePressBlockConfiguration* sm_remoteBuzzer = new RemotePressBlockConfiguration(
+    "BuzzerSelect",
+    "EndLoop",
+    "SELECTED_BUZZER"
+);
+
+/**
+ * END OF STAR BLOCK CHAIN
  */
 
 
 
-void registerResetLoop() {
+void registerResetLoop(int64_t maxLoops) {
+     VariableManager* variableManager = VariableManager::getManager();
     BlockManager* bm = BlockManager::getManager();
     VariableManager* vm = VariableManager::getManager();
 
     vm->setVariable("RUNS", 0);
-    vm->setVariable("MAX_LOOPS", 12);
+    vm->setVariable("MAX_LOOPS", maxLoops);
 
     bm->assignBlock(resetLED);
     bm->assignBlock(resetDelay);
@@ -189,7 +237,7 @@ void registerResetLoop() {
     bm->assignBlock(startLoop);
     bm->assignBlock(endLoop);
 
-    bm->defineStartBlock("StartReset");
+    bm->defineStartBlock("StartLoop");
 }
 
 void initReactionMode() {
@@ -211,15 +259,17 @@ void initReactionMode() {
 
 }
 
-void initBlockRandomTriangle() {
+void initRandomMode(uint64_t nodeCount, int64_t maxLoops) {
     VariableManager* variableManager = VariableManager::getManager();
 
-    variableManager->setVariable("REQUIRED_PERIPHERALS", 2);    
+    variableManager->setVariable("REQUIRED_PERIPHERALS", nodeCount - 1);    
     variableManager->setVariable("SELECTED_BUZZER", 0);
 
     BlockManager* bm = BlockManager::getManager();
 
-    registerResetLoop();
+    rtm_randomBuzzer->changeSize = nodeCount;
+
+    registerResetLoop(maxLoops);
 
     bm->assignBlock(rtm_startProgramTriangle);
     bm->assignBlock(rtm_randomBuzzer);
@@ -228,5 +278,28 @@ void initBlockRandomTriangle() {
     bm->assignBlock(rtm_mainBuzzer);
     bm->assignBlock(rtm_mainBuzzerPressed);
     bm->assignBlock(rtm_remoteBuzzer);
+}
+
+
+void initStarMode(uint64_t nodeCount, int64_t maxLoops) {
+    VariableManager* variableManager = VariableManager::getManager();
+
+    registerResetLoop(maxLoops);
+
+    variableManager->setVariable("REQUIRED_PERIPHERALS", nodeCount - 1);    
+    variableManager->setVariable("SELECTED_BUZZER", 0);
+
+    BlockManager* bm = BlockManager::getManager();
+
+    sm_selectPeripheral->changeSize = nodeCount - 1;
+
+    bm->assignBlock(sm_Start);
+    bm->assignBlock(sm_starLEDOn);
+    bm->assignBlock(sm_starBuzzer);
+    bm->assignBlock(sm_starBuzzerPressed);
+    bm->assignBlock(sm_selectPeripheral);
+    bm->assignBlock(sm_remoteBuzzer);
 
 }
+
+

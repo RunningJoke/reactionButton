@@ -27,6 +27,7 @@ block_err_t SetVariableBlock::executeBlock() {
                 randomResult = (int64_t)random(0 , this->blockConfiguration->changeSize);
             }
             VariableManager::getManager()->setVariable(this->blockConfiguration->variableName, randomResult);
+            Serial.println(randomResult);
             break;
         }
         case '=':

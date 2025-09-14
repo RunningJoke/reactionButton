@@ -27,9 +27,11 @@ void BLEManager::runAsPeripheral() {
     switch(this->peripheralState) {
         case BLEPeripheralState::WAITING_FOR_CONNECTION:
             // In this state, the peripheral is waiting for a client to connect
+            LEDManager::getManager()->setLEDColors(YELLOW);
             if(this->teamIdCharacteristic->getValue().length() > 0) {
                 // If the team ID is set, we can transition to READY state
                 this->peripheralState = BLEPeripheralState::CONNECTED;
+                LEDManager::getManager()->turnOff();
             }
             break;
         case BLEPeripheralState::CONNECTED:
@@ -96,7 +98,7 @@ bool BLEManager::runModelSelector() {
                 LEDManager::getManager()->setLEDColors(1 , this->modelSelectorColor);
                 LEDManager::getManager()->setLEDColors(2 , this->modelSelectorColor);
 
-                if(this->modelSelectorCounter > 250) {
+                if(this->modelSelectorCounter > 180) {
                     //model selected. Run corresponding block configuration
 
                     switch(this->selectedModel) {
@@ -105,23 +107,24 @@ bool BLEManager::runModelSelector() {
                             initReactionMode();
                             break;
                         case 1:
-                            Serial.println("Model selected: Start/Stop Buzzer");
-                            initBlockRandomTriangle();
+                            Serial.println("Model selected: Decider");
+                            initStarMode(3, 255);
+                            break;
                         case 2:
                             Serial.println("Model selected: Random Triangle");
-                            initBlockRandomTriangle();
+                            initRandomMode(3, 12);
                             break;
                         case 3:
                             Serial.println("Model selected: Square Config");
-                            initBlockRandomTriangle();
+                            initRandomMode(4, 12);
                             break;
                         case 4:
                             Serial.println("Model selected: Star Config");
-                            initBlockRandomTriangle();
+                            initStarMode(5, 255);
                             break;
                         default:
                             Serial.println("Model selected: Default");
-                            initBlockRandomTriangle();
+                            initReactionMode();
                             break;
                     }
                     return true;
@@ -142,8 +145,9 @@ bool BLEManager::runModelSelector() {
                     LEDManager::getManager()->setLEDColors(9, BLUE);
                     break;
                 case 1:
-                    LEDManager::getManager()->setLEDColors(8, BLUE);
-                    LEDManager::getManager()->setLEDColors(10, BLUE);
+                    LEDManager::getManager()->setLEDColors(7, BLUE);
+                    LEDManager::getManager()->setLEDColors(9, YELLOW);
+                    LEDManager::getManager()->setLEDColors(11, BLUE);
                     break;
                 case 2:
                     LEDManager::getManager()->setLEDColors(7, BLUE);

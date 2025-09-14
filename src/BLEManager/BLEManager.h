@@ -70,7 +70,7 @@ class BLEManager {
         void clientScanForPeripherals();
 
         Peripheral* peripherals[32];  
-        uint8_t requiredPeripherals = 1;
+        uint8_t requiredPeripherals = 0;
         uint8_t connectedPeripherals = 0;
 
         BLECharacteristic* teamIdCharacteristic;

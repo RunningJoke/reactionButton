@@ -13,21 +13,9 @@
 #include "VariableManager/VariableManager.h"
 #include "BlockManager/BlockManager.h"
 
-
-extern LEDBlockConfiguration* resetLED;
-extern DelayBlockConfiguration* resetDelay;
-extern LEDBlockConfiguration* clearLED;
-extern SetVariableBlockConfiguration* resetVar1;
-extern SetVariableBlockConfiguration* startLoop;
-extern SetVariableBlockConfiguration* randomBuzzer;
-extern IfBlockConfiguration* buzzerSelect;
-extern ButtonBlockConfiguration* mainBuzzer;
-extern LEDBlockConfiguration* buzzerLED;
-extern LEDBlockConfiguration* mainBuzzerPressed;
-extern RemotePressBlockConfiguration* remoteBuzzer;
-extern IfBlockConfiguration* checkEnd;
-
+extern void initRandomMode(uint64_t peripheralCount, int64_t maxLoops);
 extern void initReactionMode();
-extern void initBlockRandomTriangle();
+extern void initStarMode(uint64_t peripheralCount, int64_t maxLoops);
+
 
 #endif
