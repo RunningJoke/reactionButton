@@ -120,6 +120,10 @@ bool BLEManager::runModelSelector() {
                             Serial.println("Model selected: Star Config");
                             initStarMode(5, 12);
                             break;
+                        case 5:
+                            Serial.println("Model selected: Star Config");
+                            initStarMode(4, 18);
+                            break;
                         default:
                             Serial.println("Model selected: Default");
                             initReactionMode();
@@ -134,7 +138,7 @@ bool BLEManager::runModelSelector() {
         //trigger on release
         if(this->modelSelectorCounter > 0 && this->modelSelectorCounter <= 100) {
             //long press detected
-            this->selectedModel = (this->selectedModel + 1) % 5; //only one model for now
+            this->selectedModel = (this->selectedModel + 1) % 6; //only one model for now
             
             LEDManager::getManager()->turnOff();
             
@@ -164,6 +168,12 @@ bool BLEManager::runModelSelector() {
                     LEDManager::getManager()->setLEDColors(9, YELLOW);
                     LEDManager::getManager()->setLEDColors(11, BLUE);
                     LEDManager::getManager()->setLEDColors(13, BLUE);
+                    break;
+                case 5:
+                    LEDManager::getManager()->setLEDColors(6, YELLOW);
+                    LEDManager::getManager()->setLEDColors(8, BLUE);
+                    LEDManager::getManager()->setLEDColors(10, BLUE);
+                    LEDManager::getManager()->setLEDColors(12, BLUE);
                     break;
                 default:
                     break;
@@ -277,7 +287,10 @@ void BLEManager::runAsCentral() {
             //check the max loop parameter 
             
             std::string value = this->maxLoopCharacteristic->getValue();
-            VariableManager::getManager()->setVariable("MAX_LOOPS", std::stoll(value));
+            auto setValue = std::stoll(value);
+            if(setValue > 0) {
+                VariableManager::getManager()->setVariable("MAX_LOOPS", setValue);
+            }
             break;
         }
         case BLECentralState::RUN_BLOCK_MANAGER:
@@ -385,7 +398,7 @@ void BLEManager::clientScanForPeripherals() {
     BLEScan* pBLEScan = BLEDevice::getScan();
     Serial.println("Starting BLE scan...");
     pBLEScan->setActiveScan(true);
-    BLEScanResults foundDevices = pBLEScan->start(5, false);
+    BLEScanResults foundDevices = pBLEScan->start(2, false);
     Serial.println("Scan complete, found devices: ");
 
     for (int i = 0; i < foundDevices.getCount(); i++) {
