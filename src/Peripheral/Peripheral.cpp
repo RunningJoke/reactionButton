@@ -1,13 +1,14 @@
 #include "Peripheral.h"
 #include "BLEManager/BLEManager.h"
 
-Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralId)
+Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralId, IBuzzerMode* mode)
 {
     // Initialize the peripheral with the advertised device and ID
     // This could include setting up characteristics, services, etc.
     // For now, we will just store the advertised device and ID
     this->advertisedDevice = advertisedDevice;
     this->peripheralId = peripheralId;
+    this->mode = mode;
 
     //register the peripheral
     this->pClient = BLEDevice::createClient();
@@ -28,7 +29,7 @@ Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralI
             this->actionModeCharacteristic = this->remoteService->getCharacteristic(CHAR_ACTION_MODE_UUID);
             this->notifyCharacteristic = this->remoteService->getCharacteristic(CHAR_NOTIFY_UUID);
 
-            BLEManager::getManager()->subscribeNotify(this->notifyCharacteristic , this);
+            this->mode->subscribeNotify(this->notifyCharacteristic , this);
         }
     } 
 
@@ -74,5 +75,5 @@ void Peripheral::handleNotify(
     this->peripheralTimer = atoi((char*)pData);
     // Process the notification data as needed
     // This could include updating the LED color or action mode based on the notification
-    BLEManager::getManager()->handleNotify(this);
+    this->mode->handleNotify(this);
 }

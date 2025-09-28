@@ -17,101 +17,41 @@
 #include <LEDManager/LEDManager.h> 
 #include <BlockManager/BlockManager.h>
 #include "VariableManager/VariableManager.h"
+#include "IBuzzerMode.h"
+#include "ServerMode/ServerMode.h" 
+#include "CentralMode/CentralMode.h"
 #include "BlockConfigs.h"
 
 
-#include <queue>
 
 class Peripheral; // Forward declaration of Peripheral
+
 
 enum class BLEMode {
     CENTRAL,
     PERIPHERAL
 };
 
-enum class BLEPeripheralState {
-    WAITING_FOR_CONNECTION,
-    CONNECTED,
-    READY,
-    ACTIVE,
-    WAIT_FOR_RESET
-};
-
-enum class BLECentralState {
-    WAITING_FOR_MODEL_SELECTION,
-    WAITING_FOR_PERIPHERALS,
-    CONFIRM,
-    RUN_BLOCK_MANAGER,
-    ERROR
-};
 
 
 class BLEManager {
     private:
         BLEManager();
         static BLEManager* manager;
-
-        BLEPeripheralState peripheralState;
-
-        BLECentralState centralState;
-
-        uint64_t modelSelectorPressStart;
-        uint8_t modelSelectorCounter;
-        ColorSet* modelSelectorColor;
-
-        uint8_t selectedModel;
-
-        bool runModelSelector();
+        IBuzzerMode* currentMode = nullptr;
 
     protected:
-        void startServer();
-        void startClient();
 
-        void clientScanForPeripherals();
-
-        Peripheral* peripherals[32];  
-        uint8_t requiredPeripherals = 0;
-        uint8_t connectedPeripherals = 0;
-
-        BLECharacteristic* teamIdCharacteristic;
-        BLECharacteristic* ledColorCharacteristic;
-        BLECharacteristic* actionModeCharacteristic;
-        BLECharacteristic* notifyCharacteristic;
-        BLECharacteristic* maxLoopCharacteristic;
-
-        uint8_t waitingForPeripheral = 0;
-
-        uint64_t peripheralTimer;
-        uint64_t centralTimer;
-
-        static std::map<BLERemoteCharacteristic*, Peripheral*> notifyMap;
-
-
-        int64_t phoneOverrideLoopCount = -1;
-        int64_t phoneOverridePeripheralCount = -1;
+       
 
     public:
-        std::queue<Peripheral*> peripheralQueue; 
         static BLEManager* getManager();
 
         void bootMode(BLEMode mode);
 
-        void runAsPeripheral();
-        void runAsCentral();
+        void runCurrentMode();
 
-        void startConfigurationBLE();
-
-        void startClientBLE();
-
-        Peripheral* getPeripheral(uint8_t peripheralId);
-
-        static void notifyCallback(
-            BLERemoteCharacteristic* pChar,
-            uint8_t* pData, size_t length, bool isNotify
-        );
-
-        void subscribeNotify(BLERemoteCharacteristic* pChar, Peripheral* peripheral);
-        void handleNotify(Peripheral* peripheral);
+        IBuzzerMode* getCurrentMode();
 
 
 };

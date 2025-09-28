@@ -18,7 +18,7 @@ block_err_t RemotePressBlock::enterBlock() {
     this->reset();
     BLEManager* bleManager = BLEManager::getManager();
     VariableManager* variableManager = VariableManager::getManager();
-    bleManager->getPeripheral((uint8_t)variableManager->getVariable(this->blockConfiguration->peripheralIdVariableName))->activate();
+    bleManager->getCurrentMode()->getPeripheral((uint8_t)variableManager->getVariable(this->blockConfiguration->peripheralIdVariableName))->activate();
     this->activated = false;
 
     return 0;
@@ -27,9 +27,9 @@ block_err_t RemotePressBlock::enterBlock() {
 block_err_t RemotePressBlock::executeBlock() {
     //check if peripheral was queued
     BLEManager* bleManager = BLEManager::getManager();
-    if (!bleManager->peripheralQueue.empty()) {
-        Peripheral* peripheral = bleManager->peripheralQueue.front();
-        bleManager->peripheralQueue.pop();
+    if (!bleManager->getCurrentMode()->peripheralQueue.empty()) {
+        Peripheral* peripheral = bleManager->getCurrentMode()->peripheralQueue.front();
+        bleManager->getCurrentMode()->peripheralQueue.pop();
         
         if (peripheral != nullptr) {
             this->activated = true;

@@ -10,11 +10,12 @@
 #include <BLERemoteCharacteristic.h>
 #include <BLERemoteService.h>
 #include "_Definitions.h"
+#include "BLEManager/IBuzzerMode.h"
 
 
 class Peripheral {
     public:
-        Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralId);
+        Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralId, IBuzzerMode* mode);
 
         // Set the LED color characteristic value
         void setLedColor(const std::string& color);
@@ -32,6 +33,7 @@ class Peripheral {
         );
 
         void resetPeripheral();
+        IBuzzerMode* mode; // Pointer to the mode (CentralMode or ServerMode) that manages this peripheral
 
         uint64_t peripheralTimer; // Timer for the peripheral
     

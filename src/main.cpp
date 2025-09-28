@@ -62,11 +62,7 @@ void setup() {
 
 void loop() {
 
-  if(bootMode == BLEMode::PERIPHERAL) {
-      BLEManager::getManager()->runAsPeripheral();
-  } else {
-      BLEManager::getManager()->runAsCentral();
+  BLEManager::getManager()->runCurrentMode();
 
-  }
 
 }
