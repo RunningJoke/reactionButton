@@ -9,6 +9,8 @@
 #include "Block/DelayBlock/DelayBlock.h"
 #include "Block/ButtonBlock/ButtonBlock.h"
 #include "Block/RemotePressBlock/RemotePressBlock.h"
+#include "Block/RemoteMultiplePressBlock/RemoteMultiplePressBlock.h"
+#include "Block/RemoteResetAllBlocks/RemoteResetAllBlocks.h"
 #include "Block/IfBlock/IfBlock.h"
 #include "Block/SetVariableBlock/SetVariableBlock.h"
 

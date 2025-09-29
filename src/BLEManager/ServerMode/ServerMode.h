@@ -22,6 +22,13 @@ enum class BLEPeripheralState {
     WAIT_FOR_RESET
 };
 
+enum class ServerActionModes : uint8_t {
+    HIT = '1',
+    AVOID = '2',
+    COUNTER = '3',
+    COUNTDOWN = '4',
+};
+
 
 class ServerMode : public IBuzzerMode
 {
@@ -36,6 +43,8 @@ private:
 
     
     uint64_t peripheralTimer;
+
+    void handleActionMode(ServerActionModes actionMode);
 
 public:
     ServerMode();

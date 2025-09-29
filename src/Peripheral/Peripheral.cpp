@@ -28,6 +28,7 @@ Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralI
             this->ledColorCharacteristic = this->remoteService->getCharacteristic(CHAR_LED_COLOR_UUID);
             this->actionModeCharacteristic = this->remoteService->getCharacteristic(CHAR_ACTION_MODE_UUID);
             this->notifyCharacteristic = this->remoteService->getCharacteristic(CHAR_NOTIFY_UUID);
+            this->resetCharacteristic = this->remoteService->getCharacteristic(CHAR_RESET_UUID);
 
             this->mode->subscribeNotify(this->notifyCharacteristic , this);
         }
@@ -41,17 +42,12 @@ bool Peripheral::isConnected() {
 
 void Peripheral::resetPeripheral() {
     Serial.println("Peripheral reset");
-    this->actionModeCharacteristic->writeValue('o'); // Reset action mode
+    this->resetCharacteristic->writeValue('1', false);
 }
 
 void Peripheral::activate()
 {
-    // Activate the peripheral, which could mean setting up characteristics or starting notifications
-    // This is a placeholder for now
-    uint8_t ledColor[3] = {1, 255, 255}; // Example: Blue color
-
-    this->ledColorCharacteristic->writeValue(ledColor , 3 , false); // Example: Set initial LED color
-    this->actionModeCharacteristic->writeValue('1', false);
+    this->setActionMode(PeripheralActionMode::HIT);
 }
 
 // Set the LED color characteristic value
@@ -60,10 +56,50 @@ void Peripheral::setLedColor(const std::string& color)
 
 }
 
-// Set the action mode characteristic value
-void Peripheral::setActionMode(const std::string& mode)
-{
+PeripheralActionMode Peripheral::getActionMode() {
+    return this->actionMode;
+}
 
+// Set the action mode characteristic value
+void Peripheral::setActionMode(PeripheralActionMode mode)
+{   
+    this->actionMode = mode;
+    switch (mode)
+    {
+        case PeripheralActionMode::HIT:
+        {
+                // Activate the peripheral, which could mean setting up characteristics or starting notifications
+                // This is a placeholder for now
+                uint8_t ledColor[3] = {1, 255, 255}; // Example:  color
+
+                this->ledColorCharacteristic->writeValue(ledColor , 3 , false); // Example: Set initial LED color
+                this->actionModeCharacteristic->writeValue('1', false);
+            break;
+        }
+        case PeripheralActionMode::AVOID:
+        {
+             uint8_t ledColor[3] = {0, 255, 255}; // Example:  color
+
+                this->ledColorCharacteristic->writeValue(ledColor , 3 , false); // Example: Set initial LED color
+            this->actionModeCharacteristic->writeValue('2', false);
+            break;
+        }
+        case PeripheralActionMode::COUNTER:
+        {
+            this->actionModeCharacteristic->writeValue('3', false);
+            break;
+        }
+        case PeripheralActionMode::COUNTDOWN:
+        {
+            this->actionModeCharacteristic->writeValue('4', false);
+            break;
+        }
+        default:
+        {
+            this->actionModeCharacteristic->writeValue('1', false);
+            break;
+        }
+    }
 }
 
 void Peripheral::handleNotify(

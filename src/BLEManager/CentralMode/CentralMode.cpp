@@ -4,6 +4,7 @@ std::map<BLERemoteCharacteristic*, Peripheral*> CentralMode::notifyMap;
 
 // --- Server (Peripheral) Implementation ---
 CentralMode::CentralMode() {//placeholder for now
+
     this->centralState = BLECentralState::WAITING_FOR_MODEL_SELECTION;
     this->startConfigurationBLE();
     
@@ -193,6 +194,14 @@ bool CentralMode::runModelSelector() {
                             Serial.println("Model selected: Star Config");
                             initStarMode(4, 18);
                             break;
+                        case 6:
+                            Serial.println("Model selected: Hit all");
+                            initMultipleMode(3,0);
+                            break;
+                        case 7:
+                            Serial.println("Model selected: Hit with avoid");
+                            initMultipleMode(5,2);
+                            break;
                         default:
                             Serial.println("Model selected: Default");
                             initReactionMode();
@@ -207,7 +216,7 @@ bool CentralMode::runModelSelector() {
         //trigger on release
         if(this->modelSelectorCounter > 0 && this->modelSelectorCounter <= 100) {
             //long press detected
-            this->selectedModel = (this->selectedModel + 1) % 6; //only one model for now
+            this->selectedModel = (this->selectedModel + 1) % 8; //only one model for now
             
             LEDManager::getManager()->turnOff();
             
@@ -243,6 +252,18 @@ bool CentralMode::runModelSelector() {
                     LEDManager::getManager()->setLEDColors(8, BLUE);
                     LEDManager::getManager()->setLEDColors(10, BLUE);
                     LEDManager::getManager()->setLEDColors(12, BLUE);
+                    break;
+                case 6:
+                    LEDManager::getManager()->setLEDColors(5, CYAN);
+                    LEDManager::getManager()->setLEDColors(7, CYAN);
+                    LEDManager::getManager()->setLEDColors(9, CYAN);
+                    break;
+                case 7:
+                    LEDManager::getManager()->setLEDColors(5, CYAN);
+                    LEDManager::getManager()->setLEDColors(7, RED);
+                    LEDManager::getManager()->setLEDColors(9, CYAN);
+                    LEDManager::getManager()->setLEDColors(11, RED);
+                    LEDManager::getManager()->setLEDColors(13, CYAN);
                     break;
                 default:
                     break;

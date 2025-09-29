@@ -171,6 +171,8 @@ RemotePressBlockConfiguration* rtm_remoteBuzzer = new RemotePressBlockConfigurat
 
 /**
  * END OF RANDOM TRIANGLE BLOCK CHAIN
+ * 
+ */
 
 /**
  * START OF STAR BLOCK CHAIN
@@ -216,10 +218,34 @@ RemotePressBlockConfiguration* sm_remoteBuzzer = new RemotePressBlockConfigurati
     "SELECTED_BUZZER"
 );
 
+
+
 /**
  * END OF STAR BLOCK CHAIN
  */
 
+
+
+ DelayBlockConfiguration* mm_Start = new DelayBlockConfiguration(
+    "EnterProgram",
+    "activateAll",
+    3000,
+    3000
+);
+
+RemoteMultiplePressBlockConfiguration* mm_remoteMultiple = new RemoteMultiplePressBlockConfiguration(
+    "activateAll",
+    "ResetAll",
+    "REQUIRED_PERIPHERALS",
+    "AVOID_COUNT",
+    "ResetAll"
+);
+
+RemoteResetAllBlocksConfiguration* mm_remoteReset = new RemoteResetAllBlocksConfiguration(
+    "ResetAll",
+    "EnterProgram",
+    "REQUIRED_PERIPHERALS"
+);
 
 
 void registerResetLoop(int64_t maxLoops) {
@@ -302,4 +328,21 @@ void initStarMode(uint64_t nodeCount, int64_t maxLoops) {
 
 }
 
+
+
+void initMultipleMode(uint64_t nodeCount, int64_t avoidCount) {
+    VariableManager* variableManager = VariableManager::getManager();
+
+    variableManager->setVariable("REQUIRED_PERIPHERALS", nodeCount - 1);    
+    variableManager->setVariable("AVOID_COUNT", avoidCount);
+
+    BlockManager* bm = BlockManager::getManager();
+
+    bm->assignBlock(mm_Start);
+    bm->assignBlock(mm_remoteMultiple);
+    bm->assignBlock(mm_remoteReset);
+
+    
+    bm->defineStartBlock("EnterProgram");
+}
 

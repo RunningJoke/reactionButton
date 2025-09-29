@@ -12,6 +12,13 @@
 #include "_Definitions.h"
 #include "BLEManager/IBuzzerMode.h"
 
+enum class PeripheralActionMode : uint8_t {
+    HIT = '1',
+    AVOID = '2',
+    COUNTER = '3',
+    COUNTDOWN = '4',
+};
+
 
 class Peripheral {
     public:
@@ -21,7 +28,8 @@ class Peripheral {
         void setLedColor(const std::string& color);
 
         // Set the action mode characteristic value
-        void setActionMode(const std::string& mode);
+        void setActionMode(PeripheralActionMode actionMode);
+        PeripheralActionMode getActionMode();
 
         void activate();
 
@@ -38,6 +46,9 @@ class Peripheral {
         uint64_t peripheralTimer; // Timer for the peripheral
     
     protected:
+
+        PeripheralActionMode actionMode;
+
         BLEAdvertisedDevice advertisedDevice; // The advertised device information
         uint8_t peripheralId; // Unique ID for the peripheral
         BLERemoteService* remoteService; // Remote service associated with the peripheral
@@ -47,6 +58,7 @@ class Peripheral {
         BLERemoteCharacteristic* ledColorCharacteristic; // Characteristic for LED color 
         BLERemoteCharacteristic* actionModeCharacteristic; // Characteristic for action mode
         BLERemoteCharacteristic* notifyCharacteristic; // Characteristic for notifications
+        BLERemoteCharacteristic* resetCharacteristic; 
 
 };
 

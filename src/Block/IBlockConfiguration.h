@@ -10,6 +10,8 @@ enum class BlockType {
     COUNTDOWN,
     LED,
     REMOTE_PRESS,
+    REMOTE_MULTIPLE_PRESS,
+    REMOTE_RESET,
     IF,
     SET_VARIABLE
     // Add other block types as needed

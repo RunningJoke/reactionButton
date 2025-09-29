@@ -37,6 +37,12 @@ VBlock* BlockFactory::createBlock(IBlockConfiguration* blockConfiguration) {
         // Create and return a Remote Press block
         return new RemotePressBlock(static_cast<RemotePressBlockConfiguration*>(blockConfiguration));
         break;
+    case BlockType::REMOTE_MULTIPLE_PRESS:
+        return new RemoteMultiplePressBlock(static_cast<RemoteMultiplePressBlockConfiguration*>(blockConfiguration));
+        break;
+    case BlockType::REMOTE_RESET:
+        return new RemoteResetAllBlocks(static_cast<RemoteResetAllBlocksConfiguration*>(blockConfiguration));
+        break;
     case BlockType::IF:
         return new IfBlock(static_cast<IfBlockConfiguration*>(blockConfiguration));
         break;

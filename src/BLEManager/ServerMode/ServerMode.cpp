@@ -27,7 +27,7 @@ ServerMode::ServerMode() {
     );
 
     this->resetCharacteristic = pService->createCharacteristic(
-        CHAR_ACTION_MODE_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+        CHAR_RESET_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
     );
 
     // Notify characteristic (notifies client on change)
@@ -76,27 +76,64 @@ void ServerMode::runMode() {
             break;
         case BLEPeripheralState::ACTIVE:
         {
+            this->handleActionMode((ServerActionModes)this->actionModeCharacteristic->getData()[0]);
+            break;
+        }
+        case BLEPeripheralState::WAIT_FOR_RESET:
+            break;
+    }
+
+
+    //if reset characteristic is set, reset the peripheral state
+    if(this->resetCharacteristic->getData()[0] == '1') {
+        LEDManager::getManager()->turnOff();
+        this->actionModeCharacteristic->setValue("");
+        this->notifyCharacteristic->setValue("");
+        this->resetCharacteristic->setValue("0");
+        this->peripheralState = BLEPeripheralState::READY;
+    }
+}
+
+
+void ServerMode::handleActionMode(ServerActionModes actionMode) {
+    switch(actionMode) {
+        case ServerActionModes::HIT:
+        {            
             LEDManager::getManager()->setLEDColors((uint8_t)this->ledColorCharacteristic->getData()[0]);
             if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
-                Serial.println("Peripheral button hit");
                 // If the button is pressed, we can transition to ACTIVE state
                 this->peripheralState = BLEPeripheralState::WAIT_FOR_RESET;
                 LEDManager::getManager()->setLEDColors((uint8_t)this->ledColorCharacteristic->getData()[1]);
 
                 auto reactionTime = millis() - this->peripheralTimer;
-                Serial.printf("Reaction time: %lu ms\n", reactionTime);
                 this->notifyCharacteristic->setValue(std::to_string(reactionTime));
                 this->notifyCharacteristic->notify();
             }
             break;
         }
-        case BLEPeripheralState::WAIT_FOR_RESET:
-            if(this->actionModeCharacteristic->getData()[0] == 'o') {
-                Serial.println("resetting...");
-                this->actionModeCharacteristic->setValue("");
-                this->notifyCharacteristic->setValue("");
-                this->peripheralState = BLEPeripheralState::READY;
+        case ServerActionModes::AVOID:
+        {
+            LEDManager::getManager()->setLEDColors((uint8_t)this->ledColorCharacteristic->getData()[0]);
+            if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+                // If the button is pressed, we can transition to ACTIVE state
+                this->peripheralState = BLEPeripheralState::WAIT_FOR_RESET;
+                LEDManager::getManager()->setLEDColors((uint8_t)this->ledColorCharacteristic->getData()[1]);
+
+                auto reactionTime = millis() - this->peripheralTimer;
+                this->notifyCharacteristic->setValue("-1");
+                this->notifyCharacteristic->notify();
             }
             break;
+        }
+        case ServerActionModes::COUNTER:
+        {
+            Serial.println("Action Mode: COUNTER");
+            break;
+        }
+        case ServerActionModes::COUNTDOWN:
+        {
+            Serial.println("Action Mode: COUNTDOWN");
+            break;
+        }
     }
-}
+}   
