@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <deque>
 #include <vector>
+#include <ArduinoJson.h>
 #include "Link/IPodNetwork.h"
 #include "Link/EspNowLink.h"
 #include "Store/StoreSync.h"
@@ -31,6 +32,12 @@ class PodNetwork : public IPodNetwork {
         void setSyncAllowed(bool allowed);
 
         bool allAlive() const;
+
+        bool isStarted() const { return this->link.isStarted(); }
+        bool isSyncing() const { return this->sync.isPulling(); }
+
+        // Connection data of every pod: id, mac, alive, lastSeenMs, link statistics
+        void describe(JsonArray out) const;
 
         uint8_t podCount() const override { return (uint8_t)this->pods.size(); }
         bool isAlive(uint8_t podId) const override;

@@ -49,6 +49,12 @@ class BlockManager {
         void restartCurrentBlock();
 
         bool isRunning() const { return this->running; }
+
+        // Name of the current block ("" if not running)
+        const char* currentBlockName() const;
+
+        // Test support: called with the block name whenever a block is entered (nullptr = off)
+        void setEnterHook(void (*hook)(const char* blockName)) { this->enterHook = hook; }
         size_t blockCount() const { return this->blocks.size(); }
         const String& getLastError() const { return this->lastError; }
 
@@ -79,6 +85,9 @@ class BlockManager {
         String lastError;
 
         BlockContext* context = nullptr;
+        void (*enterHook)(const char* blockName) = nullptr;
+
+        void enterCurrent();
 };
 
 

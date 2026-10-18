@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <map>
 #include <string>
+#include <ArduinoJson.h>
 
 /**
  * Collects measurements produced by blocks (reaction times, later other metrics).
@@ -29,6 +30,9 @@ class Results {
 
         // Returns empty stats if the metric was never recorded
         Stats stats(const char* metric) const;
+
+        // {"<metric>": {"count", "average", "best", "worst"}, ...}
+        void toJson(JsonObject out) const;
 
         void reset(const char* metric);
         void resetAll();

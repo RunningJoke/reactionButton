@@ -33,3 +33,10 @@ void Button::update() {
     }
 }
 
+void Button::simulatePress() {
+    int64_t now = esp_timer_get_time();
+    this->down = true;
+    this->lastEdgeUs = now;
+    this->presses++;
+    this->pressTimeUs = now;
+}

@@ -1,7 +1,11 @@
 #include <Arduino.h>
+#include "Config/Console.h"
 #include "RoleManager.h"
+#include "_Definitions.h"
 #include "Roles/Central/CentralRole.h"
 #include "Roles/Peripheral/PeripheralRole.h"
+#include "Config/SerialConsole.h"
+#include "Diagnostics/Diag.h"
 
 RoleManager* RoleManager::manager = nullptr;
 
@@ -15,17 +19,26 @@ RoleManager* RoleManager::getManager() {
 void RoleManager::boot(Role role) {
     switch(role) {
         case Role::CENTRAL:
-            Serial.println("Booting in Central mode");
+            Console.println("Booting in Central mode");
             this->role = new CentralRole();
             break;
         case Role::PERIPHERAL:
-            Serial.println("Booting in Peripheral mode");
+            Console.println("Booting in Peripheral mode");
             this->role = new PeripheralRole();
             break;
     }
+
+    JsonDocument event;
+    event["event"] = "boot";
+    event["role"] = this->role->name();
+    event["firmware"] = String(FW_VERSION_MAJOR) + "." + String(FW_VERSION_MINOR);
+    Diag::describe(event["lastReset"].to<JsonObject>());
+    SerialConsole::emit(event);
+    Diag::step("loop");
 }
 
 void RoleManager::run() {
+    SerialConsole::get().service();
     if(this->role != nullptr) {
         this->role->run();
     }

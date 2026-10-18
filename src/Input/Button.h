@@ -33,6 +33,10 @@ class Button {
         // Duration of the most recent completed press
         uint32_t lastHeldMs() const { return (uint32_t)((this->releaseTimeUs - this->pressTimeUs) / 1000); }
 
+        // Test support: behaves like a short press starting now. The release follows
+        // automatically after the lockout time (if the real button is not held).
+        void simulatePress();
+
     private:
         static const int64_t LOCKOUT_US = 20000;
 

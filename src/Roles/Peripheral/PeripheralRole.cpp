@@ -217,3 +217,61 @@ void PeripheralRole::activate() {
     this->state = State::ACTIVE;
 }
 
+// ---------------------------------------------------------------- configuration API
+
+const char* PeripheralRole::stateName(State state) {
+    switch(state) {
+        case State::UNCLAIMED: return "UNCLAIMED";
+        case State::READY: return "READY";
+        case State::SCHEDULED: return "SCHEDULED";
+        case State::ACTIVE: return "ACTIVE";
+        case State::DONE: return "DONE";
+    }
+    return "?";
+}
+
+bool PeripheralRole::storeEditable() const {
+    return !this->sync.isPulling() && this->state != State::ACTIVE && this->state != State::SCHEDULED;
+}
+
+void PeripheralRole::describe(JsonObject status) {
+    status["state"] = stateName(this->state);
+    status["syncing"] = this->sync.isPulling();
+    if(this->state == State::UNCLAIMED) {
+        return;
+    }
+
+    char mac[18];
+    snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x", this->centralMac[0], this->centralMac[1],
+             this->centralMac[2], this->centralMac[3], this->centralMac[4], this->centralMac[5]);
+    status["podId"] = this->podId;
+    status["central"] = mac;
+    status["lastPongMs"] = (uint32_t)((esp_timer_get_time() - this->lastPongUs) / 1000);
+
+    JsonObject clock = status["clock"].to<JsonObject>();
+    clock["synced"] = this->clock.isSynced();
+    clock["offsetUs"] = this->clock.offset();
+
+    EspNowLink::LinkStats st;
+    if(this->link.stats(this->centralMac, st)) {
+        JsonObject l = status["link"].to<JsonObject>();
+        l["txFrames"] = st.txFrames;
+        l["txRetries"] = st.txRetries;
+        l["txLost"] = st.txLost;
+        l["rxFrames"] = st.rxFrames;
+        l["rxDuplicates"] = st.rxDuplicates;
+        l["ackUsLast"] = st.lastAckUs;
+        l["ackUsAvg"] = st.avgAckUs;
+        l["ackUsMax"] = st.maxAckUs;
+    }
+}
+
+bool PeripheralRole::control(const char* op, JsonObjectConst request, JsonDocument& response) {
+    if(strcmp(op, "press") == 0) {
+        Button::get().simulatePress();
+        response["ok"] = true;
+        response["state"] = stateName(this->state);
+        return true;
+    }
+    return false;
+}

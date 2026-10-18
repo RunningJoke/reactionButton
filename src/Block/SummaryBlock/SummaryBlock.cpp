@@ -1,4 +1,5 @@
 #include "SummaryBlock.h"
+#include "Config/Console.h"
 #include "Block/JsonUtil.h"
 
 static VarId optionalVar(JsonVariantConst json, VariableManager& vars) {
@@ -23,7 +24,7 @@ BlockStatus SummaryBlock::execute(BlockContext& ctx) {
     int32_t best = s.count > 0 ? s.min : 0;
     int32_t worst = s.count > 0 ? s.max : 0;
 
-    Serial.printf("SUMMARY,%s,%lu,%ld,%ld,%ld\n", this->metric.c_str(),
+    Console.printf("SUMMARY,%s,%lu,%ld,%ld,%ld\n", this->metric.c_str(),
                   (unsigned long)s.count, (long)s.average(), (long)best, (long)worst);
 
     if(this->averageVar >= 0) ctx.vars.set(this->averageVar, s.average());

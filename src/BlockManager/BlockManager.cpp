@@ -200,7 +200,7 @@ bool BlockManager::start(IPodNetwork* network) {
 
     this->currentIndex = this->startIndex;
     this->running = true;
-    this->blocks[this->currentIndex]->enter(*this->context);
+    this->enterCurrent();
     return true;
 }
 
@@ -232,7 +232,7 @@ void BlockManager::run() {
         }
 
         this->currentIndex = next;
-        this->blocks[next]->enter(ctx);
+        this->enterCurrent();
     }
 }
 
@@ -240,8 +240,21 @@ void BlockManager::restartCurrentBlock() {
     if(!this->running) {
         return;
     }
-    Block* block = this->blocks[this->currentIndex];
-    block->exit(*this->context);
-    block->enter(*this->context);
+    this->blocks[this->currentIndex]->exit(*this->context);
+    this->enterCurrent();
 }
 
+void BlockManager::enterCurrent() {
+    Block* block = this->blocks[this->currentIndex];
+    block->enter(*this->context);
+    if(this->enterHook != nullptr) {
+        this->enterHook(block->getName().c_str());
+    }
+}
+
+const char* BlockManager::currentBlockName() const {
+    if(!this->running || this->currentIndex < 0) {
+        return "";
+    }
+    return this->blocks[this->currentIndex]->getName().c_str();
+}

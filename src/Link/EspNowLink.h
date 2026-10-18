@@ -49,6 +49,22 @@ class EspNowLink {
 
         static bool sameMac(const uint8_t* a, const uint8_t* b) { return memcmp(a, b, 6) == 0; }
 
+        bool isStarted() const { return this->started; }
+
+        // Per-peer statistics (for status / link tests)
+        struct LinkStats {
+            uint32_t txFrames = 0;      // frames acknowledged by the receiver's radio
+            uint32_t txRetries = 0;     // failed attempts that were retried
+            uint32_t txLost = 0;        // frames given up after all retries
+            uint32_t rxFrames = 0;
+            uint32_t rxDuplicates = 0;  // retransmissions dropped
+            uint32_t lastAckUs = 0;     // send -> acknowledgement of the last frame
+            uint32_t avgAckUs = 0;      // moving average (1/8)
+            uint32_t maxAckUs = 0;
+        };
+        bool stats(const uint8_t* mac, LinkStats& out) const;
+        void resetStats();
+
     private:
         struct Pending {
             uint8_t data[Protocol::MAX_FRAME];
@@ -65,11 +81,13 @@ class EspNowLink {
             int64_t sentAtUs = 0;
             bool hasRxSeq = false;
             uint8_t lastRxSeq = 0;
+            LinkStats stats;
         };
 
         struct TxStatus {
             uint8_t mac[6];
             bool ok;
+            int64_t atUs;       // when the send callback ran
         };
 
         static const uint8_t MAX_QUEUED_PER_PEER = 8;
@@ -78,6 +96,7 @@ class EspNowLink {
         EspNowLink() {}
 
         Peer* findPeer(const uint8_t* mac);
+        const Peer* findPeer(const uint8_t* mac) const;
         Peer* addPeer(const uint8_t* mac);
         void transmitHead(Peer& peer);
         uint8_t nextSeq() { return this->seq++; }

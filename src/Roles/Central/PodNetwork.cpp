@@ -218,3 +218,30 @@ bool PodNetwork::pollEvent(PodEvent& event) {
     return true;
 }
 
+void PodNetwork::describe(JsonArray out) const {
+    int64_t now = esp_timer_get_time();
+    for(size_t i = 0; i < this->pods.size(); i++) {
+        const Pod& pod = this->pods[i];
+        JsonObject entry = out.add<JsonObject>();
+        char mac[18];
+        snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x",
+                 pod.mac[0], pod.mac[1], pod.mac[2], pod.mac[3], pod.mac[4], pod.mac[5]);
+        entry["id"] = i;
+        entry["mac"] = mac;
+        entry["alive"] = this->isAlive((uint8_t)i);
+        entry["lastSeenMs"] = (uint32_t)((now - pod.lastSeenUs) / 1000);
+
+        EspNowLink::LinkStats st;
+        if(this->link.stats(pod.mac, st)) {
+            JsonObject l = entry["link"].to<JsonObject>();
+            l["txFrames"] = st.txFrames;
+            l["txRetries"] = st.txRetries;
+            l["txLost"] = st.txLost;
+            l["rxFrames"] = st.rxFrames;
+            l["rxDuplicates"] = st.rxDuplicates;
+            l["ackUsLast"] = st.lastAckUs;
+            l["ackUsAvg"] = st.avgAckUs;
+            l["ackUsMax"] = st.maxAckUs;
+        }
+    }
+}

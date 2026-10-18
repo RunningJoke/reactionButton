@@ -8,7 +8,7 @@ enum class Role {
 };
 
 /**
- * Creates the role chosen at boot and runs it.
+ * Creates the role chosen at boot and runs it, together with the USB serial console.
  */
 class RoleManager {
     public:
@@ -16,6 +16,9 @@ class RoleManager {
 
         void boot(Role role);
         void run();
+
+        // The active role, nullptr before boot()
+        IRole* current() const { return this->role; }
 
     private:
         RoleManager() {}

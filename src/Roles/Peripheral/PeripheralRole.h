@@ -29,6 +29,11 @@ class PeripheralRole : public IRole {
         PeripheralRole();
         void run() override;
 
+        const char* name() const override { return "peripheral"; }
+        void describe(JsonObject status) override;
+        bool control(const char* op, JsonObjectConst request, JsonDocument& response) override;
+        bool storeEditable() const override;
+
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, DONE };
 
@@ -43,6 +48,7 @@ class PeripheralRole : public IRole {
         void activate();
         void becomeUnclaimed();
         void sendPing();
+        static const char* stateName(State state);
 
         EspNowLink& link = EspNowLink::get();
         ClockSync clock;

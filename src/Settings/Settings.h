@@ -31,4 +31,10 @@ namespace Settings {
     // replaced from outside (uploadfs) and count as a local change
     uint32_t getStoreHash();
     void setStoreHash(uint32_t hash);
+
+    // Role for the next boot only, set via the serial/BLE "reboot" command
+    // (0 = none: decide by the button, 1 = central, 2 = peripheral)
+    void setBootRole(uint8_t role);
+    // Returns the stored boot role and clears it
+    uint8_t takeBootRole();
 }

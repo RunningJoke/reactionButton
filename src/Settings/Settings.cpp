@@ -5,6 +5,7 @@ static const char* NAMESPACE = "reactpod";
 static const char* KEY_SET_ID = "setId";
 static const char* KEY_STORE_GEN = "storeGen";
 static const char* KEY_SEEN_GEN = "seenGen";
+static const char* KEY_BOOT_ROLE = "bootRole";
 static const char* KEY_STORE_HASH = "storeHash";
 
 uint32_t Settings::getSetId() {
@@ -62,6 +63,24 @@ void Settings::setSeenGeneration(uint32_t generation) {
     prefs.begin(NAMESPACE, false);
     prefs.putUInt(KEY_SEEN_GEN, generation);
     prefs.end();
+}
+
+void Settings::setBootRole(uint8_t role) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    prefs.putUChar(KEY_BOOT_ROLE, role);
+    prefs.end();
+}
+
+uint8_t Settings::takeBootRole() {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    uint8_t role = prefs.getUChar(KEY_BOOT_ROLE, 0);
+    if(role != 0) {
+        prefs.putUChar(KEY_BOOT_ROLE, 0);
+    }
+    prefs.end();
+    return role;
 }
 
 uint32_t Settings::getStoreHash() {

@@ -2,6 +2,7 @@
 #include <esp_wifi.h>
 #include <WiFi.h>
 #include "EspNowLink.h"
+#include "Diagnostics/Diag.h"
 
 static const char* TAG = "ESPNOW";
 static const uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -20,6 +21,7 @@ bool EspNowLink::begin(uint8_t channel) {
     this->txStatusQueue = xQueueCreate(16, sizeof(TxStatus));
     this->seq = (uint8_t)esp_random();
 
+    Diag::step("radio: WiFi.mode");
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     esp_wifi_set_ps(WIFI_PS_NONE);      // radio always on: lowest latency
@@ -28,6 +30,7 @@ bool EspNowLink::begin(uint8_t channel) {
         return false;
     }
 
+    Diag::step("radio: esp_now_init");
     if(esp_now_init() != ESP_OK) {
         ESP_LOGE(TAG, "esp_now_init failed");
         return false;
@@ -40,6 +43,7 @@ bool EspNowLink::begin(uint8_t channel) {
     broadcastPeer.channel = 0;          // current channel
     broadcastPeer.ifidx = WIFI_IF_STA;
     esp_now_add_peer(&broadcastPeer);
+    Diag::step("radio: started");
 
     ESP_LOGI(TAG, "ESP-NOW started on channel %u, MAC %s", channel, WiFi.macAddress().c_str());
     this->started = true;
@@ -67,6 +71,7 @@ void EspNowLink::onSent(const uint8_t* mac, esp_now_send_status_t status) {
     TxStatus result;
     memcpy(result.mac, mac, 6);
     result.ok = status == ESP_NOW_SEND_SUCCESS;
+    result.atUs = esp_timer_get_time();
     xQueueSend(link.txStatusQueue, &result, 0);
 }
 
@@ -77,6 +82,30 @@ EspNowLink::Peer* EspNowLink::findPeer(const uint8_t* mac) {
         }
     }
     return nullptr;
+}
+
+const EspNowLink::Peer* EspNowLink::findPeer(const uint8_t* mac) const {
+    for(const Peer& peer : this->peers) {
+        if(EspNowLink::sameMac(peer.mac, mac)) {
+            return &peer;
+        }
+    }
+    return nullptr;
+}
+
+bool EspNowLink::stats(const uint8_t* mac, LinkStats& out) const {
+    const Peer* peer = this->findPeer(mac);
+    if(peer == nullptr) {
+        return false;
+    }
+    out = peer->stats;
+    return true;
+}
+
+void EspNowLink::resetStats() {
+    for(Peer& peer : this->peers) {
+        peer.stats = LinkStats();
+    }
 }
 
 EspNowLink::Peer* EspNowLink::addPeer(const uint8_t* mac) {
@@ -184,12 +213,22 @@ void EspNowLink::service() {
         }
         peer->inFlight = false;
         Pending& head = peer->queue.front();
+        LinkStats& st = peer->stats;
+        if(status.ok) {
+            uint32_t ack = (uint32_t)(status.atUs - peer->sentAtUs);
+            st.txFrames++;
+            st.lastAckUs = ack;
+            st.avgAckUs = st.txFrames == 1 ? ack : st.avgAckUs - st.avgAckUs / 8 + ack / 8;
+            if(ack > st.maxAckUs) st.maxAckUs = ack;
+        }
         if(status.ok || head.retriesLeft == 0) {
             if(!status.ok) {
+                st.txLost++;
                 ESP_LOGW(TAG, "frame type %u lost", (unsigned)head.data[2]);
             }
             peer->queue.pop_front();
         } else {
+            st.txRetries++;
             head.retriesLeft--;
         }
         this->transmitHead(*peer);
@@ -202,8 +241,10 @@ void EspNowLink::service() {
             peer.inFlight = false;
             if(!peer.queue.empty()) {
                 if(peer.queue.front().retriesLeft == 0) {
+                    peer.stats.txLost++;
                     peer.queue.pop_front();
                 } else {
+                    peer.stats.txRetries++;
                     peer.queue.front().retriesLeft--;
                 }
             }
@@ -226,8 +267,10 @@ bool EspNowLink::receive(RxFrame& frame) {
         Peer* peer = this->findPeer(frame.mac);
         if(peer != nullptr) {
             if(peer->hasRxSeq && peer->lastRxSeq == header->seq) {
+                peer->stats.rxDuplicates++;
                 continue;   // retransmission of a frame we already have
             }
+            peer->stats.rxFrames++;
             peer->hasRxSeq = true;
             peer->lastRxSeq = header->seq;
         }

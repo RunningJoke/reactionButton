@@ -36,6 +36,8 @@ class VariableManager {
         int64_t getVariable(const char* varName) const;
         void setVariable(const char* varName, int64_t value);
 
+        size_t count() const { return this->values.size(); }
+
         // Removes all variables (when a new program is loaded)
         void clear();
 };
