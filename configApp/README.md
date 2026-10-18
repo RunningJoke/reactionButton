@@ -230,6 +230,8 @@ type SyncState = {            // per pod set (setId), remembered after each sync
   has `next`, a dashed "→ next" hint is shown on that port.
 - The **start block** has a flag icon. Blocks without any target (program ends) get an end marker.
 - Blocks unreachable from `start` are dimmed.
+- Targets that no loaded file defines (a library part viewed on its own) are dashed "external" nodes.
+- The view opens at the top: the whole graph if it fits at a readable zoom (≥ 0.55), otherwise fitted to the width and scrolled vertically. Wheel / drag pans, pinch / Ctrl+wheel zooms.
 
 ### 7.2 Library: presets and templates (decision 4c)
 
@@ -237,7 +239,7 @@ type SyncState = {            // per pod set (setId), remembered after each sync
 
 | Mode | What happens | Graph |
 |---|---|---|
-| **Preset** (include) | `include: ["/prog/lib/loop.json"]` is kept. The program links to its blocks (e.g. `EnterProgram` → `EndLoop`) | fragment blocks shown greyed and locked, grouped in a frame labelled with the file |
+| **Preset** (include) | `include: ["/prog/lib/loop.json"]` is kept. The program links to its blocks (e.g. `EnterProgram` → `EndLoop`) | fragment blocks shown greyed with a lock and the file name ("Set variable · loop"). No frame: a preset like `loop` has blocks at the start *and* the end of a program, a frame would span the whole graph |
 | **Template** (copy) | the fragment's blocks and variables are copied into the program; name clashes get a suffix | normal editable blocks |
 
 Existing programs that use includes open in preset mode. "Convert to editable copy"
@@ -432,7 +434,7 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 | P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
 | P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
 | P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE waits for firmware CR-0 |
-| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | open |
+| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | built, review open |
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | open |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | open |

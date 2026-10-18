@@ -1,11 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Layers, ListOrdered, Play, Workflow } from "lucide-react";
+import { ListOrdered, Play, Workflow } from "lucide-react";
 import { Placeholder } from "./Placeholder";
-
-export function ProgramsPage() {
-  const { t } = useTranslation();
-  return <Placeholder icon={Layers} intro={t("programs.intro")} phase="P3" />;
-}
 
 export function EditorPage() {
   const { t } = useTranslation();

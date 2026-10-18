@@ -4,7 +4,9 @@
  */
 import { create } from "zustand";
 import { DEFAULT_FILES } from "../defaults";
+import { fileCache } from "../store/fileCache";
 import { PodClient } from "./client";
+import { readFile } from "./files";
 import { PodError, type InfoResponse, type ListResponse, type PodEvent, type PodRole } from "./protocol";
 import { SimulatedPod } from "./simulated/SimulatedPod";
 import { SimulatedTransport } from "./simulated/SimulatedTransport";
@@ -30,6 +32,10 @@ type PodSession = {
   info: InfoResponse | null;
   role: PodRole | null;
   list: ListResponse | null;
+  /** file texts read from the pod (path → text), filled after connecting */
+  files: Record<string, string>;
+  /** download progress while files are read */
+  loading: { done: number; total: number } | null;
   error: SessionError | null;
   log: LogEntry[];
   client: PodClient | null;
@@ -85,7 +91,26 @@ export const usePodSession = create<PodSession>((set, get) => {
     for (const off of unsubscribe) off();
     unsubscribe = [];
     get().client?.dispose();
-    set({ state: "disconnected", client: null, info: null, role: null, list: null, deviceName: null });
+    set({ state: "disconnected", client: null, info: null, role: null, list: null, deviceName: null, files: {}, loading: null });
+  };
+
+  /** Reads every listed file that is not cached yet (by size + CRC). */
+  const loadFiles = async (client: PodClient, list: ListResponse) => {
+    const files: Record<string, string> = {};
+    const missing: ListResponse["files"] = [];
+    for (const entry of list.files) {
+      const cached = await fileCache.get(entry.size, entry.crc);
+      if (cached !== undefined) files[entry.path] = cached;
+      else missing.push(entry);
+    }
+    set({ files: { ...files }, loading: missing.length ? { done: 0, total: missing.length } : null });
+    for (const [i, entry] of missing.entries()) {
+      const { text } = await readFile(client, entry.path, { chunkBytes: get().info?.maxGetChunk ?? 2048 });
+      await fileCache.put(text);
+      files[entry.path] = text;
+      if (get().client !== client) return; // disconnected meanwhile
+      set({ files: { ...files }, loading: i + 1 < missing.length ? { done: i + 1, total: missing.length } : null });
+    }
   };
 
   return {
@@ -95,6 +120,8 @@ export const usePodSession = create<PodSession>((set, get) => {
     info: null,
     role: null,
     list: null,
+    files: {},
+    loading: null,
     error: null,
     log: [],
     client: null,
@@ -130,7 +157,10 @@ export const usePodSession = create<PodSession>((set, get) => {
         set({ error: toSessionError(e) });
         await transport.disconnect().catch(() => undefined);
         reset();
+        return;
       }
+      // a failed download is reported, the connection stays
+      await loadFiles(client, get().list!).catch((e: unknown) => set({ error: toSessionError(e), loading: null }));
     },
 
     async disconnect() {
@@ -146,8 +176,9 @@ export const usePodSession = create<PodSession>((set, get) => {
       try {
         const [info, list] = [await client.info(), await client.list()];
         set({ info, list, error: null });
+        await loadFiles(client, list);
       } catch (e) {
-        set({ error: toSessionError(e) });
+        set({ error: toSessionError(e), loading: null });
       }
     },
 

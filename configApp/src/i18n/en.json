@@ -69,8 +69,27 @@
     "missingFile": "missing"
   },
   "programs": {
-    "title": "Programs",
-    "intro": "Your programs, the programs on the pod and the library."
+    "onPod": "On the pod",
+    "shipped": "Shipped programs",
+    "library": "Library",
+    "libraryHint": "Read-only parts that programs include (presets) or copy (templates).",
+    "connectHint": "Connect a pod to see its programs",
+    "reading": "Reading files from the pod… {{done}} of {{total}}",
+    "missingInMenu": "{{path}} is in the menu but missing on the pod",
+    "none": "No programs.",
+    "menuPattern": "Menu pattern",
+    "unchanged": "shipped",
+    "notInMenu": "not in menu",
+    "pods_one": "{{count}} pod",
+    "pods_other": "{{count}} pods",
+    "podsTitle": "Pods needed (central + peripherals)",
+    "blocks_one": "{{count}} block",
+    "blocks_other": "{{count}} blocks",
+    "errors_one": "{{count}} error",
+    "errors_other": "{{count}} errors",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings",
+    "valid": "Valid"
   },
   "editor": {
     "title": "Editor",
@@ -144,5 +163,89 @@
     "indexInvalid": "The menu file is invalid",
     "indexDuplicate": "{{path}} is in the menu twice",
     "indexNotProgram": "{{path}} is a library part, not a program"
+  },
+  "view": {
+    "back": "Back",
+    "details": "Details",
+    "close": "Close",
+    "notFound": "{{path}} was not found.",
+    "notConnected": "The pod is not connected.",
+    "fragment": "Library part",
+    "source": {
+      "pod": "on the pod",
+      "shipped": "shipped"
+    },
+    "issues_one": "{{count}} note",
+    "issues_other": "{{count}} notes",
+    "variables": "Variables",
+    "includes": "Includes",
+    "start": "Start",
+    "fallbackToNext": "continues at “next”"
+  },
+  "graph": {
+    "start": "Start block",
+    "locked": "From the library (read only)",
+    "external": "in another file",
+    "ends": "Program ends here",
+    "fallback": "{{ports}} → next"
+  },
+  "summary": {
+    "leds_one": "{{count}} LED",
+    "leds_other": "{{count}} LEDs",
+    "allLeds": "all LEDs",
+    "waitPress": "wait for press",
+    "pod": "pod",
+    "pods": "pods",
+    "allPods": "all pods",
+    "hit": "hit",
+    "avoid": "avoid"
+  },
+  "ports": {
+    "next": "next",
+    "pressed": "pressed",
+    "short": "short",
+    "long": "long",
+    "timeout": "timeout",
+    "true": "true",
+    "false": "false",
+    "avoidHit": "red hit"
+  },
+  "blocks": {
+    "led": {
+      "name": "LED",
+      "help": "Sets the central's LEDs to a colour, all or selected ones. Continues at once."
+    },
+    "delay": {
+      "name": "Wait",
+      "help": "Waits a fixed or random time."
+    },
+    "button": {
+      "name": "Button",
+      "help": "Waits for a press of the central's button. Only presses that start after the block began count."
+    },
+    "if": {
+      "name": "If",
+      "help": "Compares two values and continues at true or false."
+    },
+    "setVariable": {
+      "name": "Set variable",
+      "help": "Sets, adds, subtracts or draws a random value."
+    },
+    "remotePress": {
+      "name": "Light pod",
+      "help": "Lights one peripheral and waits for its press. The reaction time is measured on the pod."
+    },
+    "remoteMultiPress": {
+      "name": "Light several pods",
+      "help": "Lights several pods at once, some may be red (do not press)."
+    },
+    "remoteResetAll": {
+      "name": "Pods off",
+      "help": "Switches the peripherals (and the central) off."
+    },
+    "summary": {
+      "name": "Summary",
+      "help": "Average, best and worst of a measurement, printed on the serial console."
+    }
   }
 }

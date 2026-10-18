@@ -68,6 +68,8 @@ Needs firmware with change request CR-0 (`doc/changerequest/config-app-api.md` o
 | AT-U2 | Phone (360 px wide): create a 5-block program without drag and drop | possible, nothing cut off |
 | AT-U3 | Switch language de ↔ en | all texts translated, no missing keys |
 | AT-U4 | iPhone Safari | editor + simulator work, connecting explains that Bluetooth needs the app |
+| AT-U5 | Compare the menu pattern of each program in the app (Programs list) with the pod's menu | same LEDs lit at the same positions. The app assumes LED 0 at the top, clockwise; if not, tell the developer the position of LED 0 and the direction |
+| AT-U6 | Programs: open every shipped program and the 4 library parts, tap blocks | graphs readable on a phone, block details match the JSON file |
 
 ---
 

@@ -69,8 +69,27 @@
     "missingFile": "fehlt"
   },
   "programs": {
-    "title": "Programme",
-    "intro": "Deine Programme, die Programme auf dem Pod und die Bibliothek."
+    "onPod": "Auf dem Pod",
+    "shipped": "Mitgelieferte Programme",
+    "library": "Bibliothek",
+    "libraryHint": "Schreibgeschützte Teile, die Programme einbinden (Vorlage) oder kopieren (Muster).",
+    "connectHint": "Pod verbinden, um seine Programme zu sehen",
+    "reading": "Lese Dateien vom Pod… {{done}} von {{total}}",
+    "missingInMenu": "{{path}} steht im Menü, fehlt aber auf dem Pod",
+    "none": "Keine Programme.",
+    "menuPattern": "Menümuster",
+    "unchanged": "mitgeliefert",
+    "notInMenu": "nicht im Menü",
+    "pods_one": "{{count}} Pod",
+    "pods_other": "{{count}} Pods",
+    "podsTitle": "Benötigte Pods (Zentrale + Peripherie)",
+    "blocks_one": "{{count}} Block",
+    "blocks_other": "{{count}} Blöcke",
+    "errors_one": "{{count}} Fehler",
+    "errors_other": "{{count}} Fehler",
+    "warnings_one": "{{count}} Hinweis",
+    "warnings_other": "{{count}} Hinweise",
+    "valid": "Gültig"
   },
   "editor": {
     "title": "Editor",
@@ -144,5 +163,89 @@
     "indexInvalid": "Die Menüdatei ist ungültig",
     "indexDuplicate": "{{path}} steht doppelt im Menü",
     "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Programm"
+  },
+  "view": {
+    "back": "Zurück",
+    "details": "Details",
+    "close": "Schließen",
+    "notFound": "{{path}} wurde nicht gefunden.",
+    "notConnected": "Der Pod ist nicht verbunden.",
+    "fragment": "Bibliotheksteil",
+    "source": {
+      "pod": "auf dem Pod",
+      "shipped": "mitgeliefert"
+    },
+    "issues_one": "{{count}} Hinweis",
+    "issues_other": "{{count}} Hinweise",
+    "variables": "Variablen",
+    "includes": "Bindet ein",
+    "start": "Start",
+    "fallbackToNext": "geht bei „weiter“ weiter"
+  },
+  "graph": {
+    "start": "Startblock",
+    "locked": "Aus der Bibliothek (nur lesen)",
+    "external": "in einer anderen Datei",
+    "ends": "Programm endet hier",
+    "fallback": "{{ports}} → weiter"
+  },
+  "summary": {
+    "leds_one": "{{count}} LED",
+    "leds_other": "{{count}} LEDs",
+    "allLeds": "alle LEDs",
+    "waitPress": "auf Druck warten",
+    "pod": "Pod",
+    "pods": "Pods",
+    "allPods": "alle Pods",
+    "hit": "treffen",
+    "avoid": "meiden"
+  },
+  "ports": {
+    "next": "weiter",
+    "pressed": "gedrückt",
+    "short": "kurz",
+    "long": "lang",
+    "timeout": "Zeit um",
+    "true": "wahr",
+    "false": "falsch",
+    "avoidHit": "rot gedrückt"
+  },
+  "blocks": {
+    "led": {
+      "name": "LED",
+      "help": "Setzt die LEDs der Zentrale auf eine Farbe, alle oder ausgewählte. Geht sofort weiter."
+    },
+    "delay": {
+      "name": "Warten",
+      "help": "Wartet eine feste oder zufällige Zeit."
+    },
+    "button": {
+      "name": "Knopf",
+      "help": "Wartet auf einen Druck auf den Knopf der Zentrale. Nur Drücke, die nach Blockbeginn starten, zählen."
+    },
+    "if": {
+      "name": "Wenn",
+      "help": "Vergleicht zwei Werte und geht bei wahr oder falsch weiter."
+    },
+    "setVariable": {
+      "name": "Variable setzen",
+      "help": "Setzt, addiert, subtrahiert oder zieht einen Zufallswert."
+    },
+    "remotePress": {
+      "name": "Pod leuchten",
+      "help": "Lässt einen Peripherie-Pod leuchten und wartet auf seinen Druck. Die Reaktionszeit misst der Pod."
+    },
+    "remoteMultiPress": {
+      "name": "Mehrere Pods leuchten",
+      "help": "Lässt mehrere Pods gleichzeitig leuchten, manche evtl. rot (nicht drücken)."
+    },
+    "remoteResetAll": {
+      "name": "Pods aus",
+      "help": "Schaltet die Peripherie-Pods (und die Zentrale) aus."
+    },
+    "summary": {
+      "name": "Auswertung",
+      "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
+    }
   }
 }

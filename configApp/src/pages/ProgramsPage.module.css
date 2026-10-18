@@ -1,0 +1,153 @@
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: var(--space-2) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.entry:hover .name {
+  color: var(--accent);
+}
+
+.fragmentIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.tag {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.status {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.status[data-level="ok"] {
+  color: var(--ok);
+}
+
+.status[data-level="warn"] {
+  color: var(--warn);
+}
+
+.status[data-level="error"] {
+  color: var(--error);
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.loading,
+.missing,
+.connectHint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 14px;
+}
+
+.loading {
+  color: var(--text-muted);
+}
+
+.missing {
+  color: var(--warn);
+}
+
+.connectHint {
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+}
+
+.connectHint a {
+  color: var(--accent);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
