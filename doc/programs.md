@@ -6,8 +6,12 @@ upload the file system image:
 
 ```sh
 python tools/validate_programs.py   # checks types, fields, links, colours, path lengths
-pio run -e NewBoard -t uploadfs     # writes data/ to the SPIFFS partition
+pio run -e NewBoard -t uploadfs     # writes data/ to the SPIFFS partition (USB)
+python tools/reactpod_config.py push data   # or: upload over BLE to a central in the menu
 ```
+
+Programs uploaded over BLE spread to all pods of the set automatically. See
+[config-api.md](config-api.md).
 
 > Flashing the firmware (`-t upload`) does **not** update `data/`. After a fresh flash run
 > `uploadfs` once, otherwise the central shows the red error blink ("No programs found").
@@ -152,7 +156,9 @@ Ports: `next`
 | `timeoutMs` | value | no timeout |
 | `record`, `storeAs` | reaction time measured **on the peripheral** | – |
 
-Ports: `next` (pressed), `timeout` (also taken if the pod does not exist)
+Ports: `next` (pressed), `timeout` (also taken if the pod does not exist).
+Only the press that belongs to this activation counts. Presses of earlier activations
+are ignored.
 
 ### `remoteMultiPress` – light several pods at once
 | Field | | Default |
@@ -161,6 +167,7 @@ Ports: `next` (pressed), `timeout` (also taken if the pod does not exist)
 | `avoid` | value, number of red "do not press" pods (central included in the draw) | 0 |
 | `includeCentral` | central takes part | true |
 | `hitColor`, `avoidColor` | named colours | green, red |
+| `syncStartMs` | value: all pods (and the central) light together this long after the block starts. 0 = each pod as soon as its command arrives | 20 |
 | `timeoutMs` | value | no timeout |
 | `record` | metric for every green pod's reaction time | – |
 
@@ -213,5 +220,12 @@ To add a new kind of measurement (e.g. press duration or misses), a block calls
 3. Add the type to `BLOCK_TYPES` in [tools/validate_programs.py](../tools/validate_programs.py)
    and document it here.
 
-`BlockContext` gives access to variables, LEDs, the button, results and the connected
-peripherals. Blocks should not use the singletons directly.
+`BlockContext` gives access to variables, LEDs, the button, results and the pod network
+(`IPodNetwork`: `arm`, `reset`, `pollEvent`, `nowUs`). Blocks should not use the
+singletons directly.
+
+## 5. Phone override
+
+During the program menu the central offers a BLE characteristic `MaxLoop`. A number
+> 0 written there replaces `MAX_LOOPS` of the program that is selected next. After the
+selection BLE is switched off, so the value cannot be changed during a game.

@@ -8,6 +8,11 @@ Effort: **S** ≈ < 1 day · **M** ≈ 1–3 days · **L** ≈ > 3 days (hobby-t
 WP-T3 and WP-A5. It also completed most of WP-S1, WP-S2, WP-S5, WP-T2 and WP-A4. These are marked
 ✅ / ◐ below. See [programs.md](programs.md) for the result.
 
+**Firmware 2.0 (ESP-NOW link)** replaced the BLE pod link. It completes WP-S6 (pause +
+reconnect), WP-T5 (synchronous start), WP-F1 (pairing) and the protocol part of WP-A2.
+WP-T4 (BLE connection parameters) and WP-A1 (NimBLE) are obsolete. Details:
+[link-protocol.md](link-protocol.md).
+
 The order matters. Stabilise first (P0). Then make timing measurable and correct (P1).
 Then restructure (P2), and only then add features (P3). Quality work (Q) runs alongside.
 
@@ -61,7 +66,7 @@ Then restructure (P2), and only then add features (P3). Quality work (Q) runs al
 - **Done when**: on hardware, SOLO and star mode start without a phantom press. A 1.5 s
   press on the central is accepted.
 
-### WP-S6 Disconnect recovery · M · closes C4
+### ✅ WP-S6 Disconnect recovery · M · closes C4
 - Peripheral: register `BLEServerCallbacks`. On disconnect → state `WAITING_FOR_CONNECTION`,
   clear characteristics, `startAdvertising()`.
 - Central: on disconnect → new state `PAUSED` (pods amber, missing pod's LED pair blinks).
@@ -101,13 +106,13 @@ Then restructure (P2), and only then add features (P3). Quality work (Q) runs al
   `t1` from the button **press** edge timestamp (WP-S5). The block advances on press.
 - SOLO mode shows the result (e.g. number of lit LEDs ∝ time, or a colour band).
 
-### WP-T4 Connection parameters · S
+### ✗ obsolete: WP-T4 Connection parameters · S
 - After connecting each peripheral, call `esp_ble_gap_update_conn_params` with min/max
   interval 7.5–15 ms (≤ 4 pods) or 15–30 ms (5–7 pods), latency 0, timeout 4 s.
 - Fix `setMinPreferred`/`setMaxPreferred` in advertising (L3).
 - **Done when**: WP-T1 shows a stable CI and activation latency ≤ 2 CI.
 
-### WP-T5 Simultaneous start for multi-pod modes · M · closes M15
+### ✅ WP-T5 Simultaneous start for multi-pod modes · M · closes M15
 - Use write-without-response without waiting for the confirmation (or NimBLE, WP-A1), so
   that all ARM commands go out within one or two connection events.
 - Add a **start delay** to the ARM command: central timestamps each send `t_i` and sends
@@ -127,7 +132,7 @@ Then restructure (P2), and only then add features (P3). Quality work (Q) runs al
 
 ## P2 – Architecture
 
-### WP-A1 Evaluate NimBLE-Arduino · M
+### ✗ obsolete: WP-A1 Evaluate NimBLE-Arduino · M
 - NimBLE uses much less RAM than Bluedroid. It allows up to 9 connections and has
   non-blocking writes and better callbacks. It may let the project drop the `arduino, espidf`
   dual framework, which would mean faster builds and no sdkconfig handling.
@@ -136,7 +141,7 @@ Then restructure (P2), and only then add features (P3). Quality work (Q) runs al
 - Decide based on numbers. If adopted, do it **before** WP-A2, so the protocol is
   only implemented once.
 
-### WP-A2 Protocol v2 · L · closes M1, H3, H9 (with WP-F1), L1
+### ✅ WP-A2 Protocol v2 · L · closes M1, H3, H9 (with WP-F1), L1
 Replace the 5 polled characteristics with two:
 
 | Characteristic | Dir | Frame |
@@ -154,7 +159,8 @@ Replace the 5 polled characteristics with two:
 - Binary little-endian payloads. Reaction time in µs.
 - New random 128-bit UUID base.
 
-### WP-A3 Hardware abstraction & role split · M
+### ◐ WP-A3 Hardware abstraction & role split · M
+> ◐ Done in firmware 2.0: `RoleManager`/`CentralRole`/`PeripheralRole`, `IPodNetwork` as the link abstraction. Open: `IClock`/`IButton`/`ILeds` for host tests.
 - Interfaces `IClock`, `IButton`, `ILeds`, `IRemotePods`. The block engine and the game
   logic only depend on these.
 - Rename for clarity: `ServerMode` → `PeripheralRole`, `CentralMode` → `CentralRole`,
@@ -163,7 +169,7 @@ Replace the 5 polled characteristics with two:
 - This is the base for host-side unit tests (WP-Q1).
 
 ### ◐ WP-A4 Block engine v2 · M
-> ◐ Done: ports, `BlockStatus`, index links, instant chaining, timeouts on button/remote blocks, interned variables. Open: switching programs without reboot (engine supports it, CentralMode does not offer it).
+> ◐ Done: ports, `BlockStatus`, index links, instant chaining, timeouts on button/remote blocks, interned variables. Open: switching programs without reboot (engine supports it, CentralRole does not offer it).
 - Links resolved to indices at load time (from WP-S2). A program is an immutable
   `Program` object (blocks + variables), so switching programs does not need a reboot.
 - Blocks return `Status { RUNNING, DONE(outputPort) }` instead of each config overriding
@@ -188,7 +194,7 @@ Replace the 5 polled characteristics with two:
 
 | WP | Feature | Effort | Notes |
 |---|---|---|---|
-| F1 | **Set pairing** | M | Central creates a random `setId` once (NVS). Peripherals store their owner on first `CLAIM`. Advertising carries manufacturer data `{role, setId, battery}`, so the central filters without connecting. Pair mode = hold button 5 s at boot on a peripheral. Closes H9, M6 |
+| F1 ✅ | **Set pairing** | M | Central creates a random `setId` once (NVS). Peripherals store their owner on first `CLAIM`. Advertising carries manufacturer data `{role, setId, battery}`, so the central filters without connecting. Pair mode = hold button 5 s at boot on a peripheral. Closes H9, M6 |
 | F2 | **Battery monitoring** | S | `analogReadMilliVolts(PIN_BATTERY_LEVEL)`, divider ratio from schematic, averaging. Status event + adv data. Low battery → amber blink, block game start below threshold |
 | F3 | **Phone interface** | M | Extend the config service: program select, MAX_LOOPS, brightness, results notify (CSV/JSON per round), pod list with battery. Usable with a generic BLE app first, later a small web-bluetooth page |
 | F4 | **Power management** | M | Brightness cap (e.g. 40 %), LED off when idle, BT modem sleep + auto light sleep on idle peripherals, deep sleep after N min idle with GPIO 3 wake-up (RTC-capable on C3) |
@@ -199,6 +205,19 @@ Replace the 5 polled characteristics with two:
 | F9 | **Charging-dock awareness** | S | Detect USB/charge state (if the HW exposes it) and show a charge animation instead of game states |
 
 ---
+
+## Follow-ups from the ESP-NOW link
+
+| WP | Item | Effort |
+|---|---|---|
+| L1 | Measure link latency, loss and start skew on hardware ([timing.md](timing.md) §6) and replace the estimates | S |
+| L2 | **Pre-arming**: an `ARM` with trigger "after PRESSED of pod X" plus a pod-to-pod PRESSED broadcast saves one hop for remote → remote transitions. Needs program look-ahead (choose the next pod before the current press) | M |
+| L3 | ESP-NOW channel selectable via the phone, stored in NVS (M20) | S |
+| L4 | Battery level in PING frames, shown on the central (with WP-F2) | S |
+| L5 | Revert to the plain Arduino framework if the BLE connection limits in `sdkconfig` are no longer needed (faster builds) | S |
+| L6 | Optional ESP-NOW encryption (PMK/LMK per set) (M19) | M |
+| L7 ✅ | BLE config API for program upload/download + program store sync between pods ([config-api.md](config-api.md)) | done |
+| L8 | Config API: PIN protection, `setMenu` convenience op, upload of a whole program set as one transaction | S–M |
 
 ## Q – Quality (continuous)
 

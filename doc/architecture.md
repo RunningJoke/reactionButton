@@ -22,7 +22,7 @@ PCB and casing sources are in `cad/pcb` (KiCad) and `cad/casing` (FreeCAD).
 | File | Purpose |
 |---|---|
 | `platformio.ini` | Single env `NewBoard`: ESP32-C3, Arduino + ESP-IDF, USB-CDC console |
-| `sdkconfig.NewBoard` | ESP-IDF config. Relevant: Bluedroid, `BT_ACL_CONNECTIONS=8`, `BT_CTRL_BLE_MAX_ACT=10`, `BT_GATTC_NOTIF_REG_MAX=5`, `FREERTOS_HZ=1000`, task WDT **off**, C++ exceptions **off**, Arduino log level DEBUG |
+| `sdkconfig.NewBoard` | ESP-IDF config. Relevant: WiFi + SW coexistence on, Bluedroid (phone config only), `FREERTOS_HZ=1000`, task WDT **off**, C++ exceptions **off**, Arduino log level DEBUG |
 | `partitions.csv` | nvs 20 KB, otadata, **one** app slot (`ota_0`, 2 MB), SPIFFS 1.9 MB, coredump 64 KB |
 | `CMakeLists.txt`, `src/CMakeLists.txt` | ESP-IDF build glue (globs all of `src/`) |
 | `data/programs.json`, `data/prog/` | Game programs (JSON), uploaded with `pio run -t uploadfs`. See [programs.md](programs.md) |
@@ -34,28 +34,43 @@ PCB and casing sources are in `cad/pcb` (KiCad) and `cad/casing` (FreeCAD).
 
 ```
 src/
-├── main.cpp                  setup(): boot animation, role selection; loop(): run mode
-├── _Definitions.h            pins, GATT UUIDs
-├── BLEManager/
-│   ├── BLEManager.*          singleton, creates CentralMode or ServerMode
-│   ├── IBuzzerMode.h         interface: runMode(), notify handling, peripheral lookup, event queue
-│   ├── CentralMode/          CENTRAL role: program menu, scanning, connecting, runs BlockManager
-│   ├── ServerMode/           PERIPHERAL role: GATT server, local state machine, reaction timing
-│   ├── BootupAnimation.*     blue "running light" pattern
-│   └── ErrorAnimation.*      red blinking pattern
-├── Peripheral/Peripheral.*   central-side proxy for one connected peripheral (GATT client)
+├── main.cpp                  setup(): boot animation, role selection; loop(): run role
+├── _Definitions.h            firmware version, pins, ESP-NOW channel, phone BLE UUIDs
+├── Roles/
+│   ├── RoleManager.*         creates CentralRole or PeripheralRole at boot
+│   ├── IRole.h               interface: run() once per loop pass
+│   ├── Central/
+│   │   ├── CentralRole.*     menu, discovery, confirm, run, pause/resume
+│   │   ├── PodNetwork.*      central side of the link: claims pods, heartbeats, ARM/RESET, events
+│   │   └── PhoneConfig.*     BLE config API: settings + program upload/download (menu only)
+│   └── Peripheral/
+│       └── PeripheralRole.*  announce, get claimed, clock sync, arm/measure/report
+├── Link/
+│   ├── Protocol.h            wire format (frames, message types)
+│   ├── EspNowLink.*          ESP-NOW transport: ordered reliable unicast, dedupe, tx timestamps
+│   ├── ClockSync.h           NTP-style offset estimation (peripheral)
+│   └── IPodNetwork.h         what the game logic sees of the peripherals
+├── Config/
+│   ├── ConfigApi.*           configuration API (JSON requests), shared by BLE and USB serial
+│   ├── SerialConsole.*       USB serial transport: JSON / text commands, event lines
+│   └── Console.*             USB serial port object (HWCDC) + ESP-IDF log redirection
+├── Diagnostics/Diag.*        reset reason + last step across reboots (crash breadcrumbs)
+├── Settings/Settings.*       values in flash (NVS): set id, store generation, boot role
+├── Store/
+│   ├── ProgramStore.*        program files: list, CRC, manifest, atomic commit, generation
+│   └── StoreSync.*           pod-to-pod sync of the program store over ESP-NOW
 ├── BlockManager/             loads JSON programs into blocks, runs the block graph
 ├── Block/                    block types (see §6)
 │   ├── Block.h               base class: configure / enter / execute / exit, named ports
-│   ├── BlockContext.h        what blocks may use: variables, LEDs, button, results, peripherals
+│   ├── BlockContext.h        what blocks may use: variables, LEDs, button, results, pod network
 │   ├── Value.*               parameter that is a constant or a variable reference
 │   ├── JsonUtil.*            colour parsing
 │   └── BlockFactory/         table: JSON "type" -> block class
 ├── Program/ProgramCatalog.*  program menu read from /programs.json
-├── Input/Button.*            debounced button with edge counters (used by blocks)
+├── Input/Button.*            debounced button with edge counters and µs timestamps
 ├── Results/Results.*         measurement records + statistics, CSV on serial
 ├── VariableManager/          program variables (int64), resolved to ids at load time
-├── LEDManager/               singleton NeoPixel wrapper, palette patterns + animations
+├── LEDManager/               NeoPixel wrapper, palette patterns, boot + error animations
 └── ColorSet/                 RGB struct and colour constants
 ```
 
@@ -64,98 +79,98 @@ with `new` once and never freed.
 
 ```mermaid
 classDiagram
-    class BLEManager { +bootMode(BLEMode) +runCurrentMode() +getCurrentMode() }
-    class IBuzzerMode { <<interface>> +peripheralQueue +runMode() +subscribeNotify() +handleNotify() +getPeripheral(id) }
-    class CentralMode
-    class ServerMode
-    class Peripheral { +activate() +setActionMode() +resetPeripheral() +isConnected() }
-    class BlockManager { +loadProgram(path) +start(remote) +run() }
+    class RoleManager { +boot(Role) +run() }
+    class IRole { <<interface>> +run() }
+    class CentralRole
+    class PeripheralRole
+    class PodNetwork { +service() +allAlive() }
+    class IPodNetwork { <<interface>> +podCount() +arm(pod, cmd) +reset(pod) +pollEvent() +nowUs() }
+    class EspNowLink { +send() +broadcast() +receive() +service() }
+    class PhoneConfig
+    class BlockManager { +loadProgram(path) +start(network) +run() +restartCurrentBlock() }
     class ProgramCatalog { +load() +showMenu(i) }
     class Block { <<abstract>> +configure(json) +enter() +execute() BlockStatus +exit() }
     class BlockContext
-    class Results
-    class VariableManager { +getVariable() +setVariable() }
-    class LEDManager { +setLEDColors() +turnOff() }
 
-    BLEManager --> IBuzzerMode
-    IBuzzerMode <|-- CentralMode
-    IBuzzerMode <|-- ServerMode
-    CentralMode "1" --> "0..32" Peripheral
-    CentralMode --> ProgramCatalog
-    CentralMode --> BlockManager
+    RoleManager --> IRole
+    IRole <|-- CentralRole
+    IRole <|-- PeripheralRole
+    CentralRole --> PodNetwork
+    CentralRole --> PhoneConfig
+    CentralRole --> ProgramCatalog
+    CentralRole --> BlockManager
+    IPodNetwork <|-- PodNetwork
+    PodNetwork --> EspNowLink
+    PeripheralRole --> EspNowLink
     BlockManager "1" --> "*" Block
     Block ..> BlockContext
-    BlockContext ..> VariableManager
-    BlockContext ..> LEDManager
-    BlockContext ..> Results
-    BlockContext ..> IBuzzerMode : remote blocks
+    BlockContext ..> IPodNetwork : remote blocks
 ```
 
 ## 4. Boot flow
 
 ```mermaid
 flowchart TD
-    A[Power on] --> B[setup: Serial, SPIFFS, pins, randomSeed]
+    A[Power on] --> B[setup: Serial, SPIFFS, pins]
     B --> C[Boot animation 2 s<br/>blue dot runs around ring]
     C --> D{Button held<br/>at end of animation?}
-    D -- yes --> E[CentralMode<br/>BLE name 'ReactPod Config']
-    D -- no --> F[ServerMode<br/>BLE name 'ReactPod']
-    E --> G[loop: CentralMode::runMode]
-    F --> H[loop: ServerMode::runMode]
+    D -- yes --> E[CentralRole<br/>BLE 'ReactPod Config' for the phone]
+    D -- no --> F[PeripheralRole<br/>ESP-NOW, HELLO broadcasts]
+    E --> G[loop: CentralRole::run]
+    F --> H[loop: PeripheralRole::run]
 ```
 
-The BLE stack is only initialised after role selection. The role cannot change
-without a reboot.
+The role cannot change without a reboot. Protocol details: [link-protocol.md](link-protocol.md).
 
 ## 5. State machines
 
-### 5.1 Peripheral (`ServerMode::runMode`)
+### 5.1 Peripheral (`PeripheralRole`)
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WAITING_FOR_CONNECTION : advertise 'ReactPod' (LEDs yellow)
-    WAITING_FOR_CONNECTION --> CONNECTED : TeamID characteristic written
-    CONNECTED --> READY : next loop pass
-    READY --> ACTIVE : ActionMode != 0<br/>start timer = millis()
-    ACTIVE --> WAIT_FOR_RESET : button LOW (HIT/AVOID)<br/>notify result
-    WAIT_FOR_RESET --> READY : Reset == '1'
-    ACTIVE --> READY : Reset == '1'
-    READY --> READY : LEDs off
+    [*] --> UNCLAIMED : yellow, HELLO every 250 ms
+    UNCLAIMED --> READY : CLAIM from a central of our set (or any, if unpaired)
+    READY --> ACTIVE : ARM (immediate)
+    READY --> SCHEDULED : ARM with start time
+    SCHEDULED --> ACTIVE : synchronised clock reaches start time
+    ACTIVE --> DONE : press edge, PRESSED (reaction µs)
+    DONE --> READY : RESET
+    ACTIVE --> READY : RESET
+    SCHEDULED --> READY : RESET
+    READY --> UNCLAIMED : no PONG for 2 s
 ```
 
-- **ACTIVE / HIT (`'1'`)**: LEDs show colour index `LedColor[0]`; on press they switch to
-  `LedColor[1]` and the reaction time `millis() - timer` is notified as a decimal string.
-- **ACTIVE / AVOID (`'2'`)**: same, but `"-1"` is notified.
-- **COUNTER (`'3'`) / COUNTDOWN (`'4'`)**: only print a log line (not implemented).
-- The reset check runs after the state switch on every pass, in any state.
-- There is no disconnect handling: after the central disconnects, the peripheral does
-  not advertise again and must be power-cycled.
+- While claimed, a PING goes to the central every 200 ms (heartbeat + clock sync).
+- **ACTIVE**: the LEDs are updated, then `t0` is taken. Only presses that start after
+  that count. Reaction time = press edge − `t0`, in µs.
+- Frames are processed when they arrive (no polling of values), in the order sent.
+- Holding the button 3 s while UNCLAIMED clears the stored set id (white flash).
 
-### 5.2 Central (`CentralMode::runMode`)
+### 5.2 Central (`CentralRole`)
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WAITING_FOR_MODEL_SELECTION : advertise 'ReactPod Config'<br/>(MaxLoop characteristic)
-    WAITING_FOR_MODEL_SELECTION --> ERROR : no programs / load error
-    WAITING_FOR_MODEL_SELECTION --> WAITING_FOR_PERIPHERALS : long press ≥ ~1.8 s<br/>load program JSON
-    WAITING_FOR_PERIPHERALS --> WAITING_FOR_PERIPHERALS : 2 s scan + connect<br/>(blue progress bar)
-    WAITING_FOR_PERIPHERALS --> CONFIRM : connected == required
-    CONFIRM --> RUN_BLOCK_MANAGER : button LOW (LEDs green)
-    RUN_BLOCK_MANAGER --> ERROR : any peripheral disconnected
-    ERROR --> ERROR : red blink, forever
+    [*] --> MENU : program menu, BLE for the phone
+    MENU --> ERROR : no programs / load error
+    MENU --> DISCOVERY : long press ≥ ~1.8 s<br/>load program, BLE off, ESP-NOW on
+    DISCOVERY --> CONFIRM : claimed == required (blue progress bar)
+    CONFIRM --> RUN : new press (LEDs green)
+    RUN --> PAUSED : a pod silent > 1.5 s (all yellow)
+    PAUSED --> RUN : all pods back, restart current block
 ```
 
-- **Model selection**: the menu is read from `/programs.json` (`ProgramCatalog`). The current
+- **MENU**: the menu is read from `/programs.json` (`ProgramCatalog`). The current
   program's LED pattern is shown at once. The button hold used to enter CENTRAL mode is
   ignored until it is released. A short press (< 1 s) selects the next program. A long press
-  (~1.8 s, a white LED group ramps up in brightness) loads it. A load error leads to ERROR.
-  See [game-modes.md](game-modes.md).
-- **Scanning**: a device only counts as connected if the connection succeeded and all
-  five characteristics were found. Others (failed connects, another central) are skipped.
-- **CONFIRM**: while waiting, the phone-writable `MaxLoop` characteristic is read; a valid
-  number > 0 overrides `MAX_LOOPS`. Invalid text is ignored. The press starts the
-  program and discards notifications that arrived before.
-- **ERROR** is terminal; a reboot of the whole set is needed.
+  (~1.8 s, a white LED group ramps up in brightness) loads it. The phone's MaxLoop value
+  is read at this moment. See [game-modes.md](game-modes.md).
+- **DISCOVERY**: does not block. Pods are claimed one at a time, as their HELLOs arrive.
+  SOLO (0 peripherals) does not start the radio at all.
+- **CONFIRM**: a press that starts after CONFIRM was entered starts the program. Events
+  that arrived before are discarded.
+- **PAUSED**: the game resumes automatically. The current block is left and re-entered,
+  which re-arms its pods.
+- **ERROR**: red blink, reboot needed.
 
 ## 6. Block engine
 
@@ -177,7 +192,7 @@ Game programs are directed graphs of *blocks*, loaded from JSON files on SPIFFS
 ### 6.2 Execution model (`BlockManager::run`, called once per `loop()`)
 
 ```
-button.update()
+(CentralRole has already called button.update() and network.service() in this pass)
 repeat up to 32 times:
     status = current.execute(ctx)
     if status == running: return                 // block waits, try again next pass
@@ -216,16 +231,17 @@ load time. Unknown variables read as 0. Variables set by the system:
 
 | Variable | Set by | Used by |
 |---|---|---|
-| `REQUIRED_PERIPHERALS` | `"peripherals"` in the program file | CentralMode (how many to connect), programs |
+| `REQUIRED_PERIPHERALS` | `"peripherals"` in the program file | CentralRole (how many to claim), programs |
 | `NODE_COUNT` | `peripherals + 1` | random mode |
 | `MAX_LOOPS` | program variables, phone override in CONFIRM | `lib/loop.json` |
 
 ### 6.5 Events from peripherals and measurements
 
-- The BLE notify callback runs in the Bluedroid task. It pushes a `PodEvent`
-  `{podId, value, rxTime}` into a FreeRTOS queue (`CentralMode::handleNotify`). Remote
-  blocks read it with `IBuzzerMode::pollEvent()`. This makes the handover thread-safe.
-- `value` is the reaction time measured on the peripheral, or −1 for a pressed AVOID pod.
+- ESP-NOW receive callbacks run in the WiFi task and only copy frames into a FreeRTOS
+  queue (`EspNowLink`). `PodNetwork::service()` processes them in the main loop and turns
+  PRESSED frames into `PodEvent {podId, cmdSeq, result, reactionUs, rxTimeUs}`.
+- Remote blocks get the `cmdSeq` back from `IPodNetwork::arm()` and only accept the event
+  with the same pod and `cmdSeq`.
 - Blocks with `record` pass measurements to `Results`. Results prints a `RESULT,…` CSV
   line and keeps per-metric statistics for the `summary` block.
 

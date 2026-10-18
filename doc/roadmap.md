@@ -127,11 +127,15 @@ This release **breaks compatibility**: all pods must be updated together.
 
 The JSON block-system rework pulled parts of v0.9, v1.0, v1.1 and v2.0 forward (WP-S3, S4,
 S7, T3, A5 done; S1, S2, S5, T2, A4 mostly done; see [improvement-plan.md](improvement-plan.md)).
-Before v0.9 can be called finished, **all programs have to be tested on hardware**.
+Firmware 2.0 then replaced the BLE pod link with ESP-NOW. That is the core of the
+"Protocol v2" milestone: reconnect, pairing, synchronous start and ms latency. Battery
+monitoring, power management and OTA are still open.
+
+Before any of these milestones can be called finished, **all programs have to be tested on hardware**.
 
 ## Recommended next three steps
 
-1. **Hardware test of the JSON programs**: all 8 programs, 30 min each, check the
-   `RESULT`/`SUMMARY` output. Then fix what comes up.
-2. **WP-S6 (reconnect)**: the most important remaining reliability problem.
-3. **WP-T1** (instrumentation), so later changes can be measured instead of guessed.
+1. **Hardware test of firmware 2.0** on a full set: pairing, all 8 programs, power-cycle a
+   pod mid-game, 30 min soak. Then fix what comes up.
+2. **Measure the link** (improvement plan L1 / WP-T1) and update [timing.md](timing.md).
+3. **Battery monitoring** (WP-F2): with the radio always on, a low-battery warning matters more.

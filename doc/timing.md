@@ -1,151 +1,175 @@
 # Timing Structures
 
 This document lists every place where the firmware deals with time: the main loop,
-fixed constants, user-interaction timing, BLE latencies and how accurate the reaction
-time measurement is.
+constants, the latency between pods, and how reaction times are measured.
 
-All times come from `millis()` (1 ms resolution, per device, never synchronised between
-pods). `CONFIG_FREERTOS_HZ=1000`, so `vTaskDelay` also has 1 ms granularity.
+Since firmware 2.0 the pods talk over **ESP-NOW** (see [link-protocol.md](link-protocol.md)).
+The latency numbers below are **estimates** from the design and typical ESP-NOW figures.
+They have not been measured on ReactPod hardware yet (see §6).
+
+Time bases:
+- `esp_timer_get_time()`: µs since boot, per pod. Used for the link, clock sync, button edges and reaction times.
+- `millis()`: the same clock in ms. Used by blocks for delays and timeouts.
+- **Network time** = the central's `esp_timer`. Peripherals convert it with their
+  `ClockSync` offset.
 
 ## 1. Execution model
 
 ```
-Arduino loopTask (core 0, prio 1)            Bluedroid tasks (higher priority)
-──────────────────────────────────           ─────────────────────────────────
-loop() { BLEManager::runCurrentMode(); }     BTC/BTU: GATT events, notify callbacks
-   │ no delay / yield                           │
-   ├─ Peripheral: ServerMode::runMode()         └─ CentralMode::notifyCallback()
-   └─ Central:    CentralMode::runMode()             → peripheralQueue.push()
-                    └─ BlockManager::runBlocks()
+Arduino loopTask (core 0)                         WiFi task (higher priority)
+────────────────────────────────────────          ──────────────────────────────
+loop() → RoleManager::run()                       ESP-NOW receive callback
+  Central:    button.update()                       → copy frame + rx timestamp into rxQueue
+              network.service()                   ESP-NOW send callback
+                └ link.service(): tx results,       → tx status into txStatusQueue
+                  retries, next frame per peer
+                └ rx frames → claims, PONG, events
+              BlockManager::run()
+  Peripheral: button.update(), link.service(),
+              rx frames → state machine
 ```
 
-- **Busy loop**: `loop()` never sleeps. The only places that give up the CPU are the
-  blocking BLE calls (scan, connect, write) and `delay(10)` during the boot animation.
-  `DelayBlock` is non-blocking since the JSON rework: it stores a deadline and returns
-  `running` until it is reached.
-- **Single core**: ESP32-C3 has one core. BLE tasks preempt the loop task, so the BLE
-  stack still runs. The idle task gets almost no time. That prevents automatic light
-  sleep. The task watchdog is disabled in `sdkconfig`, so it does not reset the chip.
-- **Polling everywhere**: the button, characteristic values and block conditions are
-  all polled once per loop pass. There are no interrupts. On the central, peripheral
-  notifications reach the loop through a FreeRTOS queue (`PodEvent`).
+- **No blocking calls** in the game path. Delays, waiting for presses and waiting for
+  radio frames all return to the loop. The only blocking spots are the 2 s boot animation
+  and a 0.5 s white flash when pairing is cleared.
+- **LEDs are only rewritten on changes.** The peripheral no longer refreshes its LEDs every
+  pass, so its loop runs in the µs range and polls the button and the radio queue very often.
+- **Busy loop**: `loop()` still never sleeps. WiFi power save is off, so the radio is
+  always receiving. This trades battery for latency. A ~1 h runtime target is acceptable.
 
-### 1.1 Typical loop pass duration
+### 1.1 Typical loop pass duration (estimates)
 
 | Situation | Dominant cost | Approx. pass time |
 |---|---|---|
-| Peripheral, any state | one `NeoPixel::show()` of 18 LEDs (18 × 24 bit × 1.25 µs ≈ 0.54 ms + latch) | ~0.6–1 ms → **~1 kHz polling** |
-| Central, RUN, waiting block | `isConnected()` per pod + `button.update()` + one `execute()` | µs range |
-| Central, RUN, block chain | instant blocks run in the same pass (max 32 steps), one `show()` per LED block | ~0.6–1 ms per LED block |
-| Central, WAITING_FOR_PERIPHERALS | `turnOff()` + up to 2×N single-pixel `show()` + **2 s blocking scan** + blocking connects | ≥ 2 s |
-| Central, CONFIRM | `show()` + `std::stoll` | ~1 ms |
-| Any `Serial.print` / `ESP_LOGx` | USB-CDC output (log level DEBUG) | variable; can block if the TX buffer is full |
+| Peripheral, idle / waiting for press | button read + empty queues | a few µs |
+| Peripheral, pass with an LED change | one `NeoPixel::show()` (18 LEDs ≈ 0.54 ms + latch) | ~0.6–1 ms |
+| Central, RUN, waiting block | button, `network.service()`, one `execute()` | µs range |
+| Central, RUN, block chain | instant blocks in one pass (max 32), one `show()` per LED block | ~0.6–1 ms per LED block |
+| Any `Serial.print` / `ESP_LOGx` | USB-CDC output (log level DEBUG) | variable |
 
-The numbers are estimates from the code. They have not been measured on hardware.
-Measuring them is part of [improvement-plan.md](improvement-plan.md) WP-T1.
+## 2. Constants
 
-## 2. Fixed timing constants
+### 2.1 Link
+
+| Where | Constant | Value | Effect |
+|---|---|---|---|
+| PeripheralRole | HELLO interval | 250 ms | discovery speed (unclaimed pods only) |
+| | PING interval | 200 ms | heartbeat + clock sync sample rate |
+| | central timeout | 2 s without PONG | back to UNCLAIMED |
+| | pairing reset | hold 3 s while unclaimed | set id cleared |
+| PodNetwork | pod timeout | 1.5 s without frames | game PAUSED |
+| | claim timeout | 0.5 s | try the next HELLO |
+| EspNowLink | tx timeout | 100 ms without send callback | counted as failed attempt |
+| | retries | ARM/RESET 5, PRESSED 8, CLAIM 3, PING/PONG 0 | |
+| | queue | 8 frames per peer | oldest non-sent frame dropped when full |
+| ClockSync | window | 8 samples (1.6 s), min-delay sample used | |
+| `remoteMultiPress` | `syncStartMs` | 20 ms (per block) | lead time for synchronous start |
+
+### 2.2 User interaction
 
 | Where | Constant | Value | Effect |
 |---|---|---|---|
 | `main.cpp` | boot animation | 2000 ms, refresh every 10 ms | role decision at the end |
-| `BootupAnimation.h` | step | 50 ms per LED → 900 ms per revolution (~2.2 rounds) | |
+| `BootupAnimation.h` | step | 50 ms per LED → 900 ms per revolution | |
 | `ErrorAnimation.h` | blink | 1000 ms on / 1000 ms off | |
-| `CentralMode::runModelSelector` | ramp step | counter +1 every ~10 ms while held | white LEDs 16,17,0,1,2 brighten (value = counter) |
-| | short press | release after ~10 ms … 1.0 s (counter 1–100) | next program |
-| | dead zone | release after 1.0 … 1.8 s | nothing happens |
-| | long press | held > ~1.8 s (counter > 180) | program selected (while still held) |
-| `CentralMode::clientScanForPeripherals` | scan window | 2 s active scan, blocking | repeated until enough pods |
+| `CentralRole::runModelSelector` | ramp step | counter +1 every ~10 ms while held | |
+| | short press | release after ≤ 1.0 s | next program |
+| | dead zone | release after 1.0 … 1.8 s | nothing |
+| | long press | held > ~1.8 s | program selected |
 | `Input/Button` | lockout | 20 ms after each accepted edge | debounce. The first edge is accepted immediately |
-| `button` block | `shortMs` | default 1000 ms | release < shortMs → `short`, otherwise `long` (no dead zone) |
-| `solo.json` | random wait | 800 … 5000 ms, uniform, inclusive | time until green |
-| | result display | 2500 ms (`ShowResult`) | |
-| `lib/loop.json` | blue pause | 3000 ms | after `MAX_LOOPS` rounds |
-| `lib/star.json`, `lib/random.json` | `EnterProgram` | 10 ms | gap before each round |
-| `lib/multi.json` | `EnterProgram` / `FailDelay` | 3000 ms / 1000 ms | pause between rounds / red flash |
-| `MAX_LOOPS` | rounds per cycle | 12 / 18 / 255 by program; phone override | |
+| `button` block | `shortMs` | default 1000 ms | short/long on release |
 
-All program timings are now in the JSON files (`data/prog/`) and can be changed without
-recompiling.
+### 2.3 Programs (JSON, `data/prog/`)
+
+| File | Constant | Value |
+|---|---|---|
+| `solo.json` | random wait / result display | 800 … 5000 ms / 2500 ms |
+| `lib/loop.json` | blue pause after `MAX_LOOPS` rounds | 3000 ms |
+| `lib/star.json`, `lib/random.json` | `EnterProgram` | 0 ms (no artificial gap) |
+| `lib/multi.json` | pause between rounds / red flash | 3000 ms / 1000 ms |
 
 ## 3. Reaction-time measurement
 
-### 3.1 On a peripheral (measured)
+### 3.1 On a peripheral
 
 ```
-central write ActionMode ──air──► peripheral loop sees ActionMode≠0
-                                   t0 = millis()          (READY → ACTIVE)
-                                   next pass: LEDs on     (+1 pass ≈ 0.6–1 ms)
-                                   ... user reacts ...
-                                   pass with button LOW:
-                                   dt = millis() - t0     → notify "dt"
+ARM arrives (or scheduled start time reached)
+  → setLEDColors(colorActive)          LED data written (~0.6 ms)
+  → t0 = esp_timer_get_time()          reference point: LEDs just updated
+  ... user reacts ...
+  button.update() sees LOW (first edge, then 20 ms lockout)
+  → reaction = pressTimeUs - t0        sent in PRESSED (µs)
 ```
 
-- **Reference point**: `t0` is taken one loop pass *before* the LEDs actually light.
-  The measured time is therefore ≈ 0.6–1 ms too long. LED rise time is negligible.
-- **Resolution**: press is polled each pass → ≤ ~1 ms extra. `millis()` resolution 1 ms.
-- **Debounce**: the first LOW sample triggers. That is the right edge for reaction
-  timing, but contact bounce/EMI spikes can also trigger it.
-- **Accuracy overall**: about **+1 … +2 ms systematic, ±1 ms jitter**. That is good enough for
-  human reaction times (150–600 ms).
-- The value reaches the central as `PodEvent.value`. Blocks with `"record"` print it as a
-  `RESULT` line and add it to the statistics. It is not yet shown on the ring.
+- **Reference point** is right after the LED data was sent, so it is within ~0.3 ms of
+  the visible LED change (WS2812 latch). Earlier firmware started the timer one loop pass
+  (~1 ms) before the LEDs changed.
+- **Resolution**: the button is polled every pass. The peripheral loop is now in the µs
+  range, so press detection adds well under 1 ms.
+- **Accuracy overall**: about **±0.5 ms** (estimate). The radio does not affect it, because
+  the time is measured locally.
 
-### 3.2 On the central (measured since the JSON rework)
+### 3.2 On the central
 
-The `button` block with a `pressed` port continues on the **press edge**. With `"record"`
-it measures *press time − block entry time*:
+The `button` block with a `pressed` port continues on the press edge. With `"record"` it
+measures *press time − block entry time*. The block is entered in the same pass, right
+after the LED block that lit the central, so the accuracy is similar (≤ ~1 ms).
 
-- Reference: block entry. The block is entered in the same pass right after the LED block
-  that lights the central, so the LED onset is ≈ ≤ 1 ms before the reference point.
-- Press timestamp: taken by `Button::update()` at the first LOW sample, once per pass
-  (≤ ~1 ms resolution).
-- Accuracy is therefore in the same range as on the peripherals. This has not been verified on hardware yet.
+`remoteMultiPress` measures the central's own reaction from the moment it lit its LEDs at
+the synchronised start time.
 
-## 4. BLE latency chain
+## 4. Latency between pods
 
-Connection parameters are not set explicitly. The Bluedroid defaults apply. The
-peripheral advertises `setMinPreferred(0x12)` (= 22.5 ms) as its preferred minimum
-interval. In the formulas below *CI* is the effective connection interval, which should
-be measured (WP-T1).
+ESP-NOW frames are sent immediately; there is no connection interval to wait for.
 
-| Step | What happens | Cost |
+| Step | What happens | Estimate |
 |---|---|---|
-| A1 | `Peripheral::setActionMode(HIT)`: write LedColor, then write ActionMode (write-without-response) | The Arduino wrapper waits for the GATTC write event → each write can block the loop ~≤ 1 CI |
-| A2 | Air transfer to peripheral | ≤ 1 CI |
-| A3 | Peripheral loop notices value | ≤ 1 pass (~1 ms) |
-| R1 | Peripheral `notify()` after press | ≤ 1 CI |
-| R2 | Central BLE task → `peripheralQueue.push` | < 1 ms |
-| R3 | Central loop pops queue | ≤ 1 pass |
-| R4 | `resetPeripheral()` write | ≤ 1 CI, blocking |
+| T1 | Central loop decides (block chain in the same pass) | < 0.1 ms + LED shows of instant blocks |
+| T2 | `esp_now_send` → air → peripheral receive callback (≤ 64 byte frame at 1 Mbit/s) | ~0.5–2 ms |
+| T3 | Peripheral loop picks the frame up, updates LEDs | ≤ ~1 ms |
+| R1 | Press edge → PRESSED sent | < 0.1 ms |
+| R2 | Air → central receive callback | ~0.5–2 ms |
+| R3 | Central loop: event → block → next ARM | < 0.1 ms + LED shows |
+| retry | lost frame, resent after the failed send callback | + ~1–3 ms each |
 
-**Activation latency** (central decision → remote LED on) ≈ `A1 + A2 + A3` ≈ 1–3 CI.
+**Remote press → next remote pod lit** (random mode): `R1 + R2 + R3 + T2 + T3` ≈ **2–5 ms**.
+With BLE (firmware 1.x) this was estimated at ~60–200 ms.
 
-**Multi-pod activation skew**: `RemoteMultiplePressBlock::enterBlock` sends
-2 writes × N pods **sequentially**. After that the central lights itself. With N = 4 the
-last pod can light up to ~8 CI after the first one. For "RUN" modes the pods do not
-start simultaneously. Each pod's own `dt` is still correct, because it is measured locally.
+**Remote press → central lit** (star mode): `R1 + R2 + R3` ≈ **1–3 ms**.
 
-**Round turnaround in star mode** (remote press → central green):
-`R1 + R3 + R4` + 10 ms `EnterProgram` ≈ 2 CI + ~11 ms. The instant blocks in between
-are chained in the same pass.
+**Start skew in RUN modes**: all pods light at the same network time, `syncStartMs`
+(20 ms) after the block started. The remaining skew is the clock sync error, estimated at
+**well under 1 ms**. If an ARM needs so many retries that it arrives after the start time,
+that pod lights late but measures correctly from its own LED onset.
 
-## 5. Connection set-up timing
+## 5. Set-up timing
 
-Per scan cycle:
-1. `BLEScan::start(2, false)` – 2 s blocking active scan.
-2. For each matching device, sequentially: `connect()` → service discovery →
-   characteristic discovery → TeamID write → CCCD write. All of these block, roughly
-   0.5–2 s per pod depending on the stack.
-3. The progress bar is redrawn once per cycle. The button is not checked during this time.
+| Phase | Estimate |
+|---|---|
+| Program selected → radio up | BLE shutdown + WiFi start, ~0.2–0.5 s |
+| Per peripheral | waits for its next HELLO (≤ 250 ms) + CLAIM/ACK (a few ms). Claims are sequential |
+| 7 peripherals | ≈ 1–2 s until green |
+| Clock synchronised | first PING right after the claim; several samples before a game starts |
 
-For a 5-pod set, expect roughly 4–10 s from program selection to green.
+Before, BLE needed 2 s scan windows plus about 0.5–2 s per connection.
 
-## 6. Timing-related risks (summary)
+## 6. How to verify on hardware
 
-See [known-issues.md](known-issues.md) for details:
+1. **Link latency**: log `rxTimeUs` of PRESSED events against the central's ARM send
+   time over a few hundred activations (CSV on serial). Or toggle a spare GPIO on ARM
+   send (central) and on LED update (peripheral) and measure with a logic analyser.
+2. **Start skew**: RUN5, connect the WS2812 data lines of two pods to a logic analyser,
+   compare the start of the LED frames.
+3. **Reaction accuracy**: LED data line vs. button line on one pod, compare with the `RESULT` value.
+4. **Loss**: count `frame type … lost` warnings over a 30 min session.
 
-- ~~Blocking `DelayBlock`~~, ~~confirm press leaking into the first block~~ and ~~boot
-  hold leaking into the menu~~ are fixed by the JSON block rework.
-- Writes to several peripherals in sequence cause start skew in multi-pod modes.
-- Serial logging in hot paths can add unpredictable delays when the console buffer fills.
+The measured values replace the estimates in this document.
+
+## 7. Timing-related risks
+
+- **2.4 GHz congestion** (gyms with many WiFi networks) adds retries and jitter. The
+  channel is fixed (`ESPNOW_CHANNEL`). Choosing a less used channel can help.
+- **Serial logging** at DEBUG level in hot paths can add delays when the console buffer
+  fills. Use a lower log level for timing measurements.
+- **No pre-arming yet**: pod → pod always goes through the central (2 hops). A direct
+  pod-to-pod trigger would save one hop (~1–2 ms). See [improvement-plan.md](improvement-plan.md).
