@@ -13,6 +13,9 @@ class BlockFactory
     public:
         // Returns nullptr for unknown types
         static Block* create(const char* type);
+
+        // Name of the i-th known type, nullptr past the end (reported to the phone API)
+        static const char* typeName(size_t index);
 };
 
 

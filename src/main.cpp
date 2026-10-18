@@ -4,6 +4,7 @@
 #include "LEDManager/LEDManager.h"
 #include "LEDManager/BootupAnimation.h"
 #include "Roles/RoleManager.h"
+#include "Store/ProgramStore.h"
 
 uint64_t timestamp = 0;
 
@@ -12,6 +13,7 @@ void setup() {
   initArduino();
   Serial.begin(115200);
   SPIFFS.begin(true);
+  ProgramStore::get().begin();
 
 
   pinMode(PIN_BUTTON_PRESS , INPUT);

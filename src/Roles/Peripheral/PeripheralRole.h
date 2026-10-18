@@ -5,6 +5,7 @@
 #include "Link/EspNowLink.h"
 #include "Link/ClockSync.h"
 #include "Link/Protocol.h"
+#include "Store/StoreSync.h"
 
 /**
  * PERIPHERAL role.
@@ -19,6 +20,9 @@
  *
  * Without PONG from the central for 2 s the pod goes back to UNCLAIMED and can be
  * claimed again (e.g. after a central reboot).
+ *
+ * While claimed, the program store is synchronised with the central (StoreSync), so
+ * every pod of a set has all programs and can be the central next time.
  */
 class PeripheralRole : public IRole {
     public:
@@ -42,6 +46,7 @@ class PeripheralRole : public IRole {
 
         EspNowLink& link = EspNowLink::get();
         ClockSync clock;
+        StoreSync sync{0};
         State state = State::UNCLAIMED;
 
         uint32_t setId = 0;

@@ -18,12 +18,19 @@
  *                                ◄─── ARM (cmdSeq, mode, colours, start time)
  *   PRESSED (cmdSeq, reaction µs) ──►
  *                                ◄─── RESET
+ *
+ * Program store sync (see StoreSync): PING and PONG carry the store generation and hash.
+ * The pod with the older store reads the other pod's manifest and changed files with
+ * SYNC_READ requests, one chunk at a time.
+ *
+ *   SYNC_READ_REQ (path, offset) ───►
+ *                                ◄─── SYNC_READ_RESP (offset, total, data)
  */
 namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
     const uint8_t VERSION = 1;
-    const uint8_t MAX_FRAME = 64;
+    const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
         HELLO = 1,
@@ -34,6 +41,8 @@ namespace Protocol {
         ARM,
         RESET,
         PRESSED,
+        SYNC_READ_REQ,
+        SYNC_READ_RESP,
     };
 
     enum class PodMode : uint8_t {
@@ -80,11 +89,20 @@ namespace Protocol {
         uint8_t podId;
     };
 
+    // Program store state of the sender (for sync)
+    struct __attribute__((packed)) StoreState {
+        uint32_t generation;
+        uint32_t hash;
+    };
+
     // peripheral -> central. t1 = peripheral clock at transmission (µs)
     struct __attribute__((packed)) Ping {
         Header header;
         int64_t t1;
+        StoreState store;
     };
+
+    const uint8_t PONG_FLAG_SYNC_ALLOWED = 0x01;   // central is not running a game: sync may run
 
     // central -> peripheral. t2 = central clock at PING reception, t3 = central clock at transmission
     struct __attribute__((packed)) Pong {
@@ -92,6 +110,8 @@ namespace Protocol {
         int64_t t1;
         int64_t t2;
         int64_t t3;
+        StoreState store;
+        uint8_t flags;
     };
 
     // central -> peripheral
@@ -118,7 +138,33 @@ namespace Protocol {
         int32_t reactionUs;     // LED on -> button press, measured on the peripheral
     };
 
+    // Path of the virtual manifest file in SYNC_READ requests
+    const char* const MANIFEST_PATH = "@manifest";
+    const uint8_t SYNC_PATH_LEN = 32;
+    const uint8_t SYNC_CHUNK = 200;
+
+    // either direction: read part of a store file (or MANIFEST_PATH) of the receiver
+    struct __attribute__((packed)) SyncReadReq {
+        Header header;
+        uint8_t reqId;
+        uint32_t offset;
+        char path[SYNC_PATH_LEN];   // null terminated
+    };
+
+    enum class SyncStatus : uint8_t { OK = 0, NOT_FOUND = 1, BAD_OFFSET = 2 };
+
+    struct __attribute__((packed)) SyncReadResp {
+        Header header;
+        uint8_t reqId;
+        SyncStatus status;
+        uint32_t offset;
+        uint32_t total;             // file size
+        uint8_t len;                // bytes in data
+        uint8_t data[SYNC_CHUNK];   // only len bytes are sent
+    };
+
     static_assert(sizeof(Pong) <= MAX_FRAME, "frame too large");
+    static_assert(sizeof(SyncReadResp) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Arm) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Pressed) <= MAX_FRAME, "frame too large");
 
@@ -142,7 +188,7 @@ namespace Protocol {
         return header;
     }
 
-    // Size a frame of the given type must have
+    // Minimum size a frame of the given type must have
     inline size_t frameSize(MsgType type) {
         switch(type) {
             case MsgType::HELLO: return sizeof(Hello);
@@ -153,6 +199,8 @@ namespace Protocol {
             case MsgType::ARM: return sizeof(Arm);
             case MsgType::RESET: return sizeof(Reset);
             case MsgType::PRESSED: return sizeof(Pressed);
+            case MsgType::SYNC_READ_REQ: return sizeof(SyncReadReq);
+            case MsgType::SYNC_READ_RESP: return offsetof(SyncReadResp, data);   // + len bytes
         }
         return 0;
     }

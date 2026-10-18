@@ -13,9 +13,17 @@ CentralRole::CentralRole() {
 
     this->phone.start();
 
+    this->reloadMenu();
+}
+
+void CentralRole::reloadMenu() {
     if(!this->catalog.load()) {
-        this->fail("No programs found on the file system");
+        // stay in the menu: programs can still be uploaded via the phone API
+        Serial.println("No programs found - upload them via the config API or 'pio run -t uploadfs'");
         return;
+    }
+    if(this->selectedModel >= this->catalog.size()) {
+        this->selectedModel = 0;
     }
     this->catalog.showMenu(this->selectedModel, *LEDManager::getManager());
 }
@@ -33,6 +41,14 @@ void CentralRole::run() {
 
     switch(this->state) {
         case State::MENU:
+            this->phone.service();
+            if(this->phone.takeStoreChanged()) {
+                this->reloadMenu();
+            }
+            if(this->catalog.size() == 0) {
+                LEDManager::getManager()->setLEDColors(errorPattern);
+                break;
+            }
             if(this->runModelSelector() && this->startProgram()) {
                 this->state = State::DISCOVERY;
             }
@@ -59,6 +75,7 @@ void CentralRole::run() {
                 while(this->network.pollEvent(stale)) {}
 
                 if(BlockManager::getManager()->start(&this->network)) {
+                    this->network.setSyncAllowed(false);    // keep the link free for the game
                     this->state = State::RUN;
                 } else {
                     this->fail("Program could not be started");
@@ -70,6 +87,7 @@ void CentralRole::run() {
             if(!this->network.allAlive()) {
                 Serial.println("Peripheral lost, game paused");
                 LEDManager::getManager()->setLEDColors(YELLOW);
+                this->network.setSyncAllowed(true);
                 this->state = State::PAUSED;
                 break;
             }
@@ -80,6 +98,7 @@ void CentralRole::run() {
             if(this->network.allAlive()) {
                 Serial.println("All peripherals back, game continues");
                 LEDManager::getManager()->turnOff();
+                this->network.setSyncAllowed(false);
                 BlockManager::getManager()->restartCurrentBlock();
                 this->state = State::RUN;
             }

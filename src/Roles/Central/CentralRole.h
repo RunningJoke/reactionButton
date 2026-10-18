@@ -10,10 +10,12 @@
 /**
  * CENTRAL role.
  *
- *   MENU       program menu, phone config via BLE. Long press selects a program.
+ *   MENU       program menu, phone config via BLE (settings, program upload/download).
+ *              Long press selects a program. Without programs: red blinking, upload possible.
  *   DISCOVERY  BLE off, ESP-NOW on. Claims peripherals until the program has enough
  *              (blue progress bar).
  *   CONFIRM    all green. A press starts the program.
+ *              In DISCOVERY, CONFIRM and PAUSED the program stores of all pods are synced.
  *   RUN        block engine runs.
  *   PAUSED     a peripheral stopped answering: all yellow. When it is back, the current
  *              block is restarted (re-arms the pods) and the game continues.
@@ -30,6 +32,7 @@ class CentralRole : public IRole {
         static const uint8_t MAX_PERIPHERALS = 7;
 
         bool runModelSelector();
+        void reloadMenu();
         bool startProgram();
         void drawProgress();
         void fail(const char* message);

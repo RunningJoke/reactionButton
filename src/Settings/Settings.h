@@ -17,4 +17,18 @@ namespace Settings {
     // Returns the stored set id, creating and storing a random one if there is none
     uint32_t getOrCreateSetId();
 
+    // Generation of the program store: increased on every change of the stored programs.
+    // During sync the pod with the lower generation copies the store of the higher one.
+    uint32_t getStoreGeneration();
+    void setStoreGeneration(uint32_t generation);
+
+    // Highest store generation reported by any peer so far. A local change uses a
+    // generation above it, so it is never overwritten by an older but higher-numbered store.
+    uint32_t getSeenGeneration();
+    void setSeenGeneration(uint32_t generation);
+
+    // Store hash at the last commit; a different hash at boot means the files were
+    // replaced from outside (uploadfs) and count as a local change
+    uint32_t getStoreHash();
+    void setStoreHash(uint32_t hash);
 }

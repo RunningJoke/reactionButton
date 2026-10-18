@@ -49,6 +49,7 @@ class BlockManager {
         void restartCurrentBlock();
 
         bool isRunning() const { return this->running; }
+        size_t blockCount() const { return this->blocks.size(); }
         const String& getLastError() const { return this->lastError; }
 
     private:

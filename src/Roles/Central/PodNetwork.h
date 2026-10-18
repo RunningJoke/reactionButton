@@ -5,6 +5,7 @@
 #include <vector>
 #include "Link/IPodNetwork.h"
 #include "Link/EspNowLink.h"
+#include "Store/StoreSync.h"
 
 /**
  * Central side of the pod link.
@@ -14,6 +15,7 @@
  * - A peripheral that rebooted announces itself again; it is re-claimed with its old id.
  * - Answers PINGs (heartbeat + clock sync). A pod without PING for POD_TIMEOUT_US is lost.
  * - The central's esp_timer is the network time base.
+ * - Runs the program store sync with the peripherals (StoreSync), only while allowed.
  */
 class PodNetwork : public IPodNetwork {
     public:
@@ -24,6 +26,9 @@ class PodNetwork : public IPodNetwork {
 
         // Processes received frames. Call once per loop pass.
         void service();
+
+        // Program store sync in both directions; switch off while a game runs
+        void setSyncAllowed(bool allowed);
 
         bool allAlive() const;
 
@@ -56,6 +61,8 @@ class PodNetwork : public IPodNetwork {
         uint32_t setId = 0;
         std::vector<Pod> pods;
         std::deque<PodEvent> events;
+        StoreSync sync{0};
+        bool syncAllowed = true;
 
         bool acceptNew = false;
         uint8_t maxPods = 0;

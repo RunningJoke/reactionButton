@@ -10,6 +10,7 @@ static const char* TAG = "PERIPHERAL";
 
 PeripheralRole::PeripheralRole() {
     this->setId = Settings::getSetId();
+    this->sync.setSetId(this->setId);
 
     if(!this->link.begin(ESPNOW_CHANNEL)) {
         ESP_LOGE(TAG, "radio start failed");
@@ -60,7 +61,8 @@ void PeripheralRole::run() {
         return;
     }
 
-    // claimed: heartbeat, central supervision
+    // claimed: heartbeat, central supervision, store sync
+    this->sync.service();
     if(now - this->lastPingUs >= PING_INTERVAL_US) {
         this->lastPingUs = now;
         this->sendPing();
@@ -104,6 +106,7 @@ void PeripheralRole::sendPing() {
     Ping ping;
     fillHeader(ping.header, MsgType::PING, this->setId);
     ping.t1 = 0;    // stamped by the link when the frame goes to the radio
+    ping.store = StoreSync::localState();
     this->link.send(this->centralMac, &ping, sizeof(ping), 0, (int8_t)offsetof(Ping, t1));
 }
 
@@ -130,10 +133,16 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
             const Pong* pong = reinterpret_cast<const Pong*>(frame.data);
             this->clock.addSample(pong->t1, pong->t2, pong->t3, frame.rxUs);
             this->lastPongUs = frame.rxUs;
+            this->sync.peerState(frame.mac, pong->store, (pong->flags & PONG_FLAG_SYNC_ALLOWED) != 0);
             break;
         }
         case MsgType::ARM:
             this->handleArm(*reinterpret_cast<const Arm*>(frame.data));
+            break;
+
+        case MsgType::SYNC_READ_REQ:
+        case MsgType::SYNC_READ_RESP:
+            this->sync.handleFrame(frame);
             break;
 
         case MsgType::RESET:
@@ -159,6 +168,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
 
     if(this->setId != claim->header.setId) {
         this->setId = claim->header.setId;
+        this->sync.setSetId(this->setId);
         Settings::setSetId(this->setId);
         ESP_LOGI(TAG, "paired with set %08x", this->setId);
     }

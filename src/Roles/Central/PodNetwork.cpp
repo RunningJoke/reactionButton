@@ -7,7 +7,13 @@ static const char* TAG = "PODNET";
 
 bool PodNetwork::begin(uint32_t setId) {
     this->setId = setId;
+    this->sync.setSetId(setId);
     return this->link.begin(ESPNOW_CHANNEL);
+}
+
+void PodNetwork::setSyncAllowed(bool allowed) {
+    this->syncAllowed = allowed;
+    this->sync.setPullAllowed(allowed);
 }
 
 void PodNetwork::setAcceptNewPods(bool accept, uint8_t maxPods) {
@@ -73,6 +79,10 @@ void PodNetwork::service() {
         }
         this->pods[podId].lastSeenUs = esp_timer_get_time();
 
+        if(this->sync.handleFrame(frame)) {
+            continue;
+        }
+
         switch(header->type) {
             case MsgType::PING:
                 this->handlePing(frame, podId);
@@ -84,6 +94,8 @@ void PodNetwork::service() {
                 break;
         }
     }
+
+    this->sync.service();
 }
 
 void PodNetwork::sendClaim(const uint8_t* mac, uint8_t podId) {
@@ -147,7 +159,12 @@ void PodNetwork::handlePing(const RxFrame& frame, int16_t podId) {
     pong.t1 = ping->t1;
     pong.t2 = frame.rxUs;
     pong.t3 = 0;    // stamped by the link when the frame goes to the radio
+    pong.store = StoreSync::localState();
+    pong.flags = this->syncAllowed ? PONG_FLAG_SYNC_ALLOWED : 0;
     this->link.send(this->pods[podId].mac, &pong, sizeof(pong), 0, (int8_t)offsetof(Pong, t3));
+
+    // the peripheral may have a newer program store than we do
+    this->sync.peerState(frame.mac, ping->store, true);
 }
 
 void PodNetwork::handlePressed(const RxFrame& frame, int16_t podId) {

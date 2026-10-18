@@ -47,3 +47,7 @@ Block* BlockFactory::create(const char* type) {
     return nullptr;
 }
 
+
+const char* BlockFactory::typeName(size_t index) {
+    return index < sizeof(BLOCK_TYPES) / sizeof(BLOCK_TYPES[0]) ? BLOCK_TYPES[index].name : nullptr;
+}
