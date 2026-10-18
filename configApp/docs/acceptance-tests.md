@@ -75,4 +75,8 @@ Needs firmware with change request CR-0 (`doc/changerequest/config-app-api.md` o
 
 | ID | Date | Device / browser | Firmware | Result | Notes |
 |---|---|---|---|---|---|
-| | | | | | |
+| AT-S1 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
+| AT-S2 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
+| AT-S3 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
+| AT-S4 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
+| AT-B1 … AT-B5 | – | – | 2.0 | blocked | waits for firmware CR-0 |

@@ -431,7 +431,7 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 |---|---|---|---|
 | P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
 | P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
-| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | built, hardware tests open (BLE needs firmware CR-0) |
+| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE waits for firmware CR-0 |
 | P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | open |
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | open |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |
