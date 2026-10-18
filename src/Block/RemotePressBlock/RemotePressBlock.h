@@ -2,35 +2,49 @@
 #define REMOTE_PRESSBLOCK_H
 
 #include <Arduino.h>
-#include "Block/VBlock.h"
-#include "LEDManager/LEDManager.h"
-#include "VariableManager/VariableManager.h"
-#include "ColorSet/ColorSet.h"
-#include "_Definitions.h"
+#include <string>
+#include "Block/Block.h"
+#include "Block/Value.h"
 
+class Peripheral;
 
-class RemotePressBlockConfiguration;
+/**
+ * Lights one peripheral and waits until it is pressed.
+ *
+ *   { "type": "remotePress",
+ *     "pod": "SELECTED_BUZZER",    peripheral index (number or variable)
+ *     "mode": "hit",               "hit" or "avoid"
+ *     "color": "green",            colour while waiting (named colours only)
+ *     "colorAfter": "off",         colour after the press
+ *     "timeoutMs": 5000,           optional
+ *     "record": "reaction",        record the reaction time measured by the peripheral
+ *     "storeAs": "LAST_REACTION",  also write it into a variable
+ *     "next": "...",               pressed
+ *     "timeout": "..." }           not pressed in time (or pod not available)
+ */
+class RemotePressBlock : public Block {
+    public:
+        enum Port : uint8_t { NEXT = 0, TIMEOUT, PORT_COUNT };
 
-class RemotePressBlock : public VBlock {
+        bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
+        void enter(BlockContext& ctx) override;
+        BlockStatus execute(BlockContext& ctx) override;
+
+        uint8_t portCount() const override { return PORT_COUNT; }
+        const char* portName(uint8_t port) const override { return port == NEXT ? "next" : "timeout"; }
 
     protected:
-    RemotePressBlockConfiguration* blockConfiguration;
-    uint64_t timestamp = 0;
-    uint64_t timeout = 0;
-    uint8_t tmpState = 0;
+        Value pod;
+        bool avoid = false;
+        uint8_t colorActive = 1;
+        uint8_t colorAfter = 255;
+        Value timeoutMs;
+        std::string recordMetric;
+        VarId storeVar = -1;
 
-public:
-    RemotePressBlock(RemotePressBlockConfiguration* blockConfiguration);
-    ~RemotePressBlock();
-
-    void reset();
-
-    block_err_t executeBlock() override;
-    block_err_t enterBlock() override;
-
-    bool activated = false;
+        Peripheral* peripheral = nullptr;
+        uint8_t podId = 0;
+        uint32_t enterTime = 0;
 };
-
-#include "Block/RemotePressBlock/RemotePressBlockConfiguration.h"
 
 #endif

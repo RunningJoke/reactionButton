@@ -2,40 +2,27 @@
 #define DELAYBLOCK_H
 
 #include <Arduino.h>
-#include "Block/VBlock.h"
-#include "Block/IBlockConfiguration.h"
-#include "ColorSet/ColorSet.h"
+#include "Block/Block.h"
+#include "Block/Value.h"
 
-
-struct DelayBlockConfiguration : public IBlockConfiguration {
-    uint32_t minDelay; // Delay in milliseconds
-    uint32_t maxDelay; // Delay in milliseconds
-
-    DelayBlockConfiguration(const char* blockName, const char* nextBlockName, uint32_t minDelay, uint32_t maxDelay = 0)
-        : IBlockConfiguration(blockName, BlockType::DELAY, nextBlockName) {
-            this->minDelay = minDelay;
-
-            if(maxDelay == 0) {
-                this->maxDelay = minDelay;
-            } else {
-                this->maxDelay = maxDelay;
-            }
-        }
-};
-
-class DelayBlock : public VBlock {
+/**
+ * Waits without blocking the main loop.
+ *
+ *   { "type": "delay", "ms": 3000, "next": "..." }
+ *   { "type": "delay", "minMs": 800, "maxMs": 5000, "next": "..." }   random, inclusive
+ *
+ * All durations may also be variable names.
+ */
+class DelayBlock : public Block {
+    public:
+        bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
+        void enter(BlockContext& ctx) override;
+        BlockStatus execute(BlockContext& ctx) override;
 
     protected:
-        DelayBlockConfiguration* blockConfiguration;
-        uint64_t timestamp = 0;
-
-    public:
-        DelayBlock(DelayBlockConfiguration* blockConfiguration);
-        ~DelayBlock();
-
-        block_err_t executeBlock() override;
-        block_err_t enterBlock() override;
-
+        Value minMs;
+        Value maxMs;
+        uint32_t until = 0;
 };
 
 #endif

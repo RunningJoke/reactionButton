@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Solo",
+  "description": "Central only. Blue = get ready, green = press now, red = false start, cyan = hit. The reaction time is printed as RESULT line.",
+  "peripherals": 0,
+  "menu": [ { "leds": [9], "color": "blue" } ],
+  "start": "Ready",
+  "blocks": [
+    { "name": "Ready",      "type": "led", "color": "blue", "next": "Wait" },
+    { "name": "Wait",       "type": "button", "minTimeoutMs": 800, "maxTimeoutMs": 5000, "pressed": "FalseStart", "timeout": "Go" },
+    { "name": "FalseStart", "type": "led", "color": "red", "next": "ShowResult" },
+    { "name": "Go",         "type": "led", "color": "green", "next": "Hit" },
+    { "name": "Hit",        "type": "button", "pressed": "HitLED", "record": "reaction", "storeAs": "LAST_REACTION" },
+    { "name": "HitLED",     "type": "led", "color": "cyan", "next": "ShowResult" },
+    { "name": "ShowResult", "type": "delay", "ms": 2500, "next": "Ready" }
+  ]
+}

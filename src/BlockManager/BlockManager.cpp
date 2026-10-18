@@ -1,125 +1,238 @@
 #include "BlockManager.h"
+#include <SPIFFS.h>
+#include "Block/BlockFactory/BlockFactory.h"
+#include "BLEManager/IBuzzerMode.h"
+
+static const char* TAG = "BLOCKMANAGER";
 
 BlockManager* BlockManager::manager = nullptr;
 
 BlockManager* BlockManager::getManager() {
 
-    if(BlockManager::manager == nullptr) {        
-        ESP_LOGI("BLOCKMANAGER", "Initializing Block manager");
+    if(BlockManager::manager == nullptr) {
+        ESP_LOGI(TAG, "Initializing Block manager");
         BlockManager::manager = new BlockManager();
     }
 
     return BlockManager::manager;
 };
 
-block_err_t BlockManager::assignBlock(IBlockConfiguration* blockConfiguration) {
-    if(blockCount >= MAX_BLOCK_NUMBER) {
-        return -1; // No more blocks available
+BlockManager::BlockManager() {};
+
+void BlockManager::clear() {
+    for(Block* block : this->blocks) {
+        delete block;
     }
-
-    blockList[blockCount] = BlockFactory::getFactory()->createBlock(blockConfiguration);
-    blockCount++;
-
-    Serial.print("Assigned block ");
-    Serial.print(blockCount - 1);
-    Serial.print(": ");
-    Serial.println(blockConfiguration->blockName);
-
-    return 0;
+    this->blocks.clear();
+    this->pendingLinks.clear();
+    this->startIndex = -1;
+    this->currentIndex = -1;
+    this->running = false;
+    this->lastError = "";
 }
 
-int32_t BlockManager::findNextBlockIndex() {
-    for (uint32_t i = 0; i < blockCount; i++) {
-        if (blockList[i]->getBlockName() == blockList[currentBlockIndex]->getBlockConfiguration()->getNextBlockName()) {
-            Serial.print("Next block index: ");
-            Serial.println(i);
-            return i;
-        }
-    }
-    return -1; // Not found
+bool BlockManager::fail(const String& message) {
+    this->lastError = message;
+    ESP_LOGE(TAG, "%s", message.c_str());
+    return false;
 }
 
-BlockManager::BlockManager() {}; 
+bool BlockManager::loadProgram(const char* path) {
+    this->clear();
 
-void BlockManager::defineStartBlock(String blockName) {
-    this->currentBlockIndex = this->findIndex(blockName);
-};
+    VariableManager* vars = VariableManager::getManager();
+    vars->clear();
 
-uint32_t BlockManager::findIndex(String blockName) {
-    for (uint32_t i = 0; i < this->blockCount; i++) {
-        if (this->blockList[i]->getBlockName() == blockName) {
-            return i;
-        }
-    }
-    return 0xFF;
-}
-
-void BlockManager::runBlocks() {
-    this->blockList[this->currentBlockIndex]->executeBlock();
-    const char* nextBlockName = this->blockList[this->currentBlockIndex]->getBlockConfiguration()->getNextBlockName();
-    
-    uint32_t nextBlockIndex = this->findIndex(nextBlockName);
-
-    if(this->currentBlockIndex != nextBlockIndex) {
-        //handle beforeExit and beforeEnter if block changed
-        this->blockList[this->currentBlockIndex]->exitBlock();
-        this->blockList[nextBlockIndex]->enterBlock();
-
-        this->currentBlockIndex = nextBlockIndex;
-    }
-    return;
-}
-
-
-bool BlockManager::loadBlockConfigurationsFromJson(const String& filePath) {
-    File file = SPIFFS.open(filePath, "r");
-    if (!file) {
-        ESP_LOGE("BLOCKMANAGER", "Failed to open config file");
+    std::string startName;
+    if(!this->loadFile(path, 0, startName) || !this->resolveLinks()) {
+        this->clear();
         return false;
     }
 
+    if(startName.empty()) {
+        this->startIndex = this->blocks.empty() ? -1 : 0;
+    } else {
+        this->startIndex = this->findIndex(startName);
+    }
+    if(this->startIndex < 0) {
+        this->fail(String(path) + ": start block '" + startName.c_str() + "' not found");
+        this->clear();
+        return false;
+    }
+
+    ESP_LOGI(TAG, "Loaded %s: %u blocks, start '%s'", path, (unsigned)this->blocks.size(),
+             this->blocks[this->startIndex]->getName().c_str());
+    return true;
+}
+
+bool BlockManager::loadFile(const char* path, uint8_t depth, std::string& startName) {
+    if(depth > MAX_INCLUDE_DEPTH) {
+        return this->fail(String(path) + ": includes nested too deep");
+    }
+
+    File file = SPIFFS.open(path, "r");
+    if(!file) {
+        return this->fail(String("cannot open ") + path);
+    }
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, file);
     file.close();
-
-    if (error) {
-        ESP_LOGE("BLOCKMANAGER", "JSON parse error");
-        return false;
+    if(error) {
+        return this->fail(String(path) + ": " + error.c_str());
     }
 
-    JsonArray blocks = doc["blocks"].as<JsonArray>();
-    for (JsonObject block : blocks) {
-        String type = block["type"];
-        String name = block["name"];
-        String next = block["next"];
-        // Add more fields as needed
-
-        IBlockConfiguration* config = nullptr;
-        if (type == "fixedDelay") {
-            uint32_t delayMs = block["delayMs"];
-            config = new DelayBlockConfiguration(name.c_str(), next.c_str(), delayMs, delayMs);
-        } else if (type == "randomDelay") {
-            uint32_t minDelayMs = block["minDelayMs"];
-            uint32_t maxDelayMs = block["maxDelayMs"];
-            config = new DelayBlockConfiguration(name.c_str(), next.c_str(), minDelayMs, maxDelayMs);
-            config = new ButtonBlockConfiguration(name.c_str(), next.c_str());
-        } else if (type == "button") {
-
-            String nextShortPress = block["nextShortPress"];
-            String nextLongPress = block["nextLongPress"];
-            String nextPressed = block["nextPressed"];
-            String nextTimeout = block["nextTimeout"];
-
-            config = new ButtonBlockConfiguration(name.c_str(), next.c_str());
-        } else if(type == "remotePress") {
-            String peripheralId = block["peripheralId"];
-            config = new RemotePressBlockConfiguration(name.c_str(), next.c_str(), peripheralId.c_str());
+    for(JsonVariantConst include : doc["include"].as<JsonArrayConst>()) {
+        const char* includePath = include;
+        std::string ignoredStart;
+        if(includePath == nullptr || !this->loadFile(includePath, depth + 1, ignoredStart)) {
+            return this->lastError.length() > 0 ? false : this->fail(String(path) + ": invalid include");
         }
-        // Add more types as needed
+    }
 
-        if (config) {
-            assignBlock(config);
+    VariableManager* vars = VariableManager::getManager();
+    if(!doc["peripherals"].isNull()) {
+        int64_t peripherals = doc["peripherals"];
+        vars->setVariable("REQUIRED_PERIPHERALS", peripherals);
+        vars->setVariable("NODE_COUNT", peripherals + 1);
+    }
+    for(JsonPairConst var : doc["variables"].as<JsonObjectConst>()) {
+        if(!var.value().is<int64_t>()) {
+            return this->fail(String(path) + ": variable '" + var.key().c_str() + "' must be a number");
         }
+        vars->setVariable(var.key().c_str(), var.value().as<int64_t>());
+    }
+
+    const char* start = doc["start"];
+    if(start != nullptr) {
+        startName = start;
+    }
+
+    return this->loadBlocks(doc["blocks"].as<JsonArrayConst>(), path);
+}
+
+bool BlockManager::loadBlocks(JsonArrayConst blocks, const char* path) {
+    BlockLoadContext loadContext{*VariableManager::getManager(), String()};
+
+    for(JsonObjectConst json : blocks) {
+        const char* name = json["name"];
+        const char* type = json["type"];
+        if(name == nullptr || type == nullptr) {
+            return this->fail(String(path) + ": every block needs 'name' and 'type'");
+        }
+        if(this->findIndex(name) >= 0) {
+            return this->fail(String(path) + ": duplicate block name '" + name + "'");
+        }
+
+        Block* block = BlockFactory::create(type);
+        if(block == nullptr) {
+            return this->fail(String(path) + ": block '" + name + "' has unknown type '" + type + "'");
+        }
+        block->name = name;
+        this->blocks.push_back(block);   // owned from here on, freed by clear()
+
+        if(!block->configure(json, loadContext)) {
+            return this->fail(String(path) + ": block '" + name + "': " + loadContext.error);
+        }
+
+        PendingLinks links;
+        for(uint8_t port = 0; port < block->portCount() && port < Block::MAX_PORTS; port++) {
+            const char* target = json[block->portName(port)];
+            if(target != nullptr) {
+                links.targets[port] = target;
+            }
+        }
+        this->pendingLinks.push_back(links);
     }
     return true;
+}
+
+bool BlockManager::resolveLinks() {
+    for(size_t i = 0; i < this->blocks.size(); i++) {
+        Block* block = this->blocks[i];
+        bool anyPort = false;
+
+        for(uint8_t port = 0; port < block->portCount() && port < Block::MAX_PORTS; port++) {
+            const std::string& target = this->pendingLinks[i].targets[port];
+            if(target.empty()) {
+                continue;
+            }
+            int16_t index = this->findIndex(target);
+            if(index < 0) {
+                return this->fail(String("block '") + block->getName().c_str() + "' port '"
+                                  + block->portName(port) + "': unknown block '" + target.c_str() + "'");
+            }
+            block->targets[port] = index;
+            anyPort = true;
+        }
+
+        if(!anyPort) {
+            ESP_LOGW(TAG, "block '%s' has no outgoing connection, the program ends there", block->getName().c_str());
+        }
+    }
+    this->pendingLinks.clear();
+    return true;
+}
+
+int16_t BlockManager::findIndex(const std::string& name) const {
+    for(size_t i = 0; i < this->blocks.size(); i++) {
+        if(this->blocks[i]->getName() == name) {
+            return (int16_t)i;
+        }
+    }
+    return -1;
+}
+
+bool BlockManager::start(IBuzzerMode* remote) {
+    if(this->startIndex < 0) {
+        return this->fail("no program loaded");
+    }
+
+    uint8_t peripheralCount = remote != nullptr ? remote->getPeripheralCount() : 0;
+    delete this->context;
+    this->context = new BlockContext{
+        *VariableManager::getManager(),
+        *LEDManager::getManager(),
+        Button::get(),
+        Results::get(),
+        remote,
+        peripheralCount
+    };
+
+    this->currentIndex = this->startIndex;
+    this->running = true;
+    this->blocks[this->currentIndex]->enter(*this->context);
+    return true;
+}
+
+void BlockManager::run() {
+    if(!this->running) {
+        return;
+    }
+    BlockContext& ctx = *this->context;
+    ctx.button.update();
+
+    for(uint8_t step = 0; step < MAX_STEPS_PER_PASS; step++) {
+        Block* block = this->blocks[this->currentIndex];
+        BlockStatus status = block->execute(ctx);
+        if(status.isRunning()) {
+            return;
+        }
+
+        int16_t next = block->getTarget(status.port);
+        // unconnected ports fall back to "next" if the block has one
+        if(next < 0 && status.port != 0 && strcmp(block->portName(0), "next") == 0) {
+            next = block->getTarget(0);
+        }
+
+        block->exit(ctx);
+
+        if(next < 0) {
+            ESP_LOGI(TAG, "program ended in block '%s'", block->getName().c_str());
+            this->running = false;
+            return;
+        }
+
+        this->currentIndex = next;
+        this->blocks[next]->enter(ctx);
+    }
 }

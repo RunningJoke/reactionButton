@@ -1,25 +1,29 @@
 #include "DelayBlock.h"
+#include "Block/RandomUtil.h"
 
-DelayBlock::DelayBlock(DelayBlockConfiguration* blockConfiguration) {
-    this->blockConfiguration = static_cast<DelayBlockConfiguration*>(blockConfiguration);
-    this->genericBlockConfiguration = blockConfiguration;
+bool DelayBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
+    if(!json["ms"].isNull()) {
+        if(!this->minMs.parse(json["ms"], ctx.vars)) {
+            return ctx.fail("invalid 'ms'");
+        }
+        this->maxMs = this->minMs;
+        return true;
+    }
+    if(!this->minMs.parse(json["minMs"], ctx.vars) || !this->maxMs.parse(json["maxMs"], ctx.vars)
+        || !this->minMs.isSet() || !this->maxMs.isSet()) {
+        return ctx.fail("needs 'ms' or 'minMs' + 'maxMs'");
+    }
+    return true;
 }
 
-DelayBlock::~DelayBlock() {
-    // Destructor implementation
-}   
-
-block_err_t DelayBlock::enterBlock() {
-    this->timestamp = millis();
-    return 0;
+void DelayBlock::enter(BlockContext& ctx) {
+    int64_t duration = RandomUtil::between(this->minMs.get(ctx.vars), this->maxMs.get(ctx.vars));
+    this->until = millis() + (uint32_t)duration;
 }
 
-block_err_t DelayBlock::executeBlock() {
-        
-    uint64_t delayTime = (uint64_t)random(this->blockConfiguration->minDelay , this->blockConfiguration->maxDelay);
-
-    ESP_LOGI("DELAYBLOCK", "Delay for %u%u", (uint32_t)(delayTime >> 32) , (uint32_t)(delayTime));
-
-    vTaskDelay(delayTime / portTICK_PERIOD_MS);
-    return 0;
+BlockStatus DelayBlock::execute(BlockContext& ctx) {
+    if((int32_t)(millis() - this->until) >= 0) {
+        return BlockStatus::done();
+    }
+    return BlockStatus::running();
 }

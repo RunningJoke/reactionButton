@@ -2,36 +2,33 @@
 #define SETVARIABLEBLOCK_H
 
 #include <Arduino.h>
-#include "Block/VBlock.h"
-#include "Block/IBlockConfiguration.h"
-#include "VariableManager/VariableManager.h"
+#include "Block/Block.h"
+#include "Block/Value.h"
 
-
-struct SetVariableBlockConfiguration : public IBlockConfiguration {
-    const char* variableName;
-    char operatorType;
-    int64_t changeSize;
-
-    SetVariableBlockConfiguration(const char* blockName, const char* nextBlockName, const char* variableName, char operatorType, int64_t changeSize)
-        : IBlockConfiguration(blockName, BlockType::SET_VARIABLE, nextBlockName) {
-            this->variableName = variableName;
-            this->operatorType = operatorType;
-            this->changeSize = changeSize;
-        }
-};
-
-class SetVariableBlock : public VBlock {
+/**
+ * Changes a variable and continues immediately.
+ *
+ *   { "type": "setVariable", "var": "RUNS", "op": "+", "value": 1, "next": "..." }
+ *
+ * op:
+ *   "=" / "set"            var = value
+ *   "+" / "add"            var += value
+ *   "-" / "sub"            var -= value
+ *   "random" / "?"         var = random in [0, value)
+ *   "randomOther" / "!"    like random, but different from the current value
+ * value: number or variable name.
+ */
+class SetVariableBlock : public Block {
+    public:
+        bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
+        BlockStatus execute(BlockContext& ctx) override;
 
     protected:
-        SetVariableBlockConfiguration* blockConfiguration;
-        uint64_t timestamp = 0;
+        enum class Op : uint8_t { SET, ADD, SUB, RANDOM, RANDOM_OTHER };
 
-    public:
-        SetVariableBlock(SetVariableBlockConfiguration* blockConfiguration);
-        ~SetVariableBlock();
-
-        block_err_t executeBlock() override;
-
+        VarId var = -1;
+        Op op = Op::SET;
+        Value value;
 };
 
 #endif

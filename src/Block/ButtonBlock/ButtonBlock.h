@@ -2,122 +2,49 @@
 #define BUTTONBLOCK_H
 
 #include <Arduino.h>
-#include "Block/VBlock.h"
-#include "Block/IBlockConfiguration.h"
-#include "ColorSet/ColorSet.h"
-#include "_Definitions.h"
+#include <string>
+#include "Block/Block.h"
+#include "Block/Value.h"
 
-class ButtonBlockConfiguration;
+/**
+ * Waits for the central's own button.
+ *
+ *   { "type": "button",
+ *     "pressed": "...",            leave on the press edge (fastest, use for reaction games)
+ *     "short":   "...",            leave on release if held < shortMs
+ *     "long":    "...",            leave on release if held >= shortMs
+ *     "next":    "...",            fallback for short/long
+ *     "timeout": "...",            leave if no press within the timeout
+ *     "shortMs": 1000,
+ *     "timeoutMs": 3000            or "minTimeoutMs" + "maxTimeoutMs" for a random timeout
+ *     "record": "reaction",        record press time - block entry time as a result
+ *     "storeAs": "LAST_REACTION" } also write that time into a variable
+ *
+ * Only presses that start after the block was entered count. A button that is still
+ * held from an earlier step is ignored until it is released and pressed again.
+ */
+class ButtonBlock : public Block {
+    public:
+        enum Port : uint8_t { NEXT = 0, SHORT, LONG, PRESSED, TIMEOUT, PORT_COUNT };
 
-enum class ButtonState {
-    NO_PRESS,
-    PRESSED,
-    SHORT_PRESS,
-    LONG_PRESS,
-    TIMEOUT
-};
+        bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
+        void enter(BlockContext& ctx) override;
+        BlockStatus execute(BlockContext& ctx) override;
 
-class ButtonBlock : public VBlock {
+        uint8_t portCount() const override { return PORT_COUNT; }
+        const char* portName(uint8_t port) const override;
 
     protected:
-    ButtonBlockConfiguration* blockConfiguration;
-    ButtonState currentState = ButtonState::NO_PRESS;
-    uint64_t timestamp = 0;
-    uint64_t timeout = 0;
+        Value shortMs = Value(1000);
+        Value minTimeoutMs;
+        Value maxTimeoutMs;
+        std::string recordMetric;
+        VarId storeVar = -1;
 
-public:
-    ButtonBlock(ButtonBlockConfiguration* blockConfiguration);
-    ~ButtonBlock();
-
-    block_err_t executeBlock() override;
-    ButtonState getState();
-    void reset();
-    block_err_t enterBlock() override;
-};
-
-struct ButtonBlockParameter {
-    uint64_t shortPressLimit;
-    uint64_t longPressMinimum;
-    uint64_t minTimeout;
-    uint64_t maxTimeout;
-    bool randomizeTimeout;
-} ;
-
-extern ButtonBlockParameter DEFAULT_BUTTON_PARAMETERS;
-
-struct ButtonBlockConfiguration : public IBlockConfiguration {  
-
-    ButtonBlock* parentBlock;
-    const char* nextBlockNameShortPress = nullptr;
-    const char* nextBlockNameLongPress = nullptr;
-    const char* nextBlockNamePressed = nullptr;
-    const char* nextBlockNameTimeout = nullptr;
-
-    ButtonBlockParameter* parameters = &DEFAULT_BUTTON_PARAMETERS;
-
-    ButtonBlockConfiguration(
-            const char* blockName, 
-            const char* nextBlockNameAnyPress , 
-            const char* nextBlockNameShortPress = nullptr, 
-            const char* nextBlockNameLongPress = nullptr, 
-            const char* nextBlockNamePressed = nullptr,
-            const char* nextBlockNameTimeout = nullptr,
-            ButtonBlockParameter* parameters = nullptr    
-        )
-    
-        : IBlockConfiguration(blockName, BlockType::WAIT_FOR_PRESS, nextBlockNameAnyPress) {
-        
-            this->nextBlockNamePressed = nextBlockNamePressed;
-            this->nextBlockNameShortPress = nextBlockNameShortPress;
-            this->nextBlockNameLongPress = nextBlockNameLongPress;
-            this->nextBlockNameTimeout = nextBlockNameTimeout;
-
-            if(parameters == nullptr) {
-                this->parameters = &DEFAULT_BUTTON_PARAMETERS;
-            } else {
-                this->parameters = parameters;
-            }
-        
-        }
-
-    const char* getNextBlockName() override {
-        switch(this->parentBlock->getState()) {
-            case ButtonState::NO_PRESS:
-                return this->blockName;
-                break;
-            case ButtonState::SHORT_PRESS:
-                if(this->nextBlockNameShortPress != nullptr) {
-                    this->parentBlock->reset();
-                    return this->nextBlockNameShortPress;
-                }
-                break;
-            case ButtonState::LONG_PRESS:
-                if(this->nextBlockNameLongPress != nullptr) {
-                    this->parentBlock->reset();
-                    return this->nextBlockNameLongPress;
-                }
-                break;
-            case ButtonState::PRESSED:
-                if(this->nextBlockNamePressed != nullptr) {
-                    return this->nextBlockNamePressed;
-                }
-                break;
-            case ButtonState::TIMEOUT:
-                if(this->nextBlockNameTimeout != nullptr) {
-                    this->parentBlock->reset();
-                    return this->nextBlockNameTimeout;
-                }
-                break;
-        }
-
-        //check if button was pressed and run the generic handle
-        if(this->nextBlockName != nullptr && (this->parentBlock->getState() == ButtonState::LONG_PRESS || this->parentBlock->getState() == ButtonState::SHORT_PRESS)) {
-            return this->nextBlockName;
-        }
-
-        //if no item was triggered, fallback to repeat the block
-        return this->blockName;
-    }
+        uint32_t enterTime = 0;
+        uint32_t pressCountAtEnter = 0;
+        uint32_t timeout = 0;
+        bool pressed = false;
 };
 
 #endif

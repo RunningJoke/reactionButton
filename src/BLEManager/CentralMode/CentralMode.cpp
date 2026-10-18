@@ -2,20 +2,28 @@
 
 std::map<BLERemoteCharacteristic*, Peripheral*> CentralMode::notifyMap;
 
-// --- Server (Peripheral) Implementation ---
-CentralMode::CentralMode() {//placeholder for now
+CentralMode::CentralMode() {
 
     this->centralState = BLECentralState::WAITING_FOR_MODEL_SELECTION;
-    this->startConfigurationBLE();
-    
+    this->eventQueue = xQueueCreate(32, sizeof(PodEvent));
     this->modelSelectorColor = new ColorSet{0,0,0};
+
+    // the button was held to select CENTRAL at boot; that hold must not count as a menu press
+    this->waitForBootRelease = digitalRead(PIN_BUTTON_PRESS) == LOW;
+
+    this->startConfigurationBLE();
+
+    if(!this->catalog.load()) {
+        Serial.println("No programs found on the file system");
+        this->centralState = BLECentralState::ERROR;
+        return;
+    }
+    this->catalog.showMenu(this->selectedModel, *LEDManager::getManager());
 }
 
 void CentralMode::runMode() {
-    // In Central mode, we will scan for peripherals and connect to them
-    
-    //The central state machine has the following modes:
-    // 1. Waiting for the model to be selected
+    // The central state machine has the following modes:
+    // 1. Waiting for the program to be selected
     // 2. Waiting for the required number of peripherals to be connected
     // 3. Confirm
     // 4. Run the block manager
@@ -23,16 +31,15 @@ void CentralMode::runMode() {
     switch(this->centralState) {
         case BLECentralState::WAITING_FOR_MODEL_SELECTION:
         {
-            // In this state, the central is waiting for the model to be selected
-            // Here you can implement logic to select a model
-
-
-            bool modelSelected = runModelSelector(); // Placeholder for model selection logic
-
-            if(modelSelected) {
-                this->centralState = BLECentralState::WAITING_FOR_PERIPHERALS;
-                this->requiredPeripherals = VariableManager::getManager()->getVariable("REQUIRED_PERIPHERALS"); // Set the required number of peripherals to connect
-                this->connectedPeripherals = 0; // Reset the count of connected peripherals
+            if(this->runModelSelector()) {
+                if(this->loadSelectedProgram()) {
+                    this->centralState = BLECentralState::WAITING_FOR_PERIPHERALS;
+                    int64_t required = VariableManager::getManager()->getVariable("REQUIRED_PERIPHERALS");
+                    this->requiredPeripherals = (uint8_t)constrain(required, (int64_t)0, (int64_t)MAX_PERIPHERALS);
+                    this->connectedPeripherals = 0;
+                } else {
+                    this->centralState = BLECentralState::ERROR;
+                }
             }
 
             break;
@@ -67,20 +74,28 @@ void CentralMode::runMode() {
         case BLECentralState::CONFIRM:
         {
             LEDManager::getManager()->setLEDColors(GREEN);
-            // In this state, the central confirms the connection with the peripherals
-            if(this->connectedPeripherals == this->requiredPeripherals && digitalRead(PIN_BUTTON_PRESS) == LOW) {                    
-                Serial.println("Confirmed connection with peripherals");
 
-                    this->centralState = BLECentralState::RUN_BLOCK_MANAGER;
-                    LEDManager::getManager()->turnOff(); // Turn off LEDs after confirmation
-                }
-
-            //check the max loop parameter 
-            
+            //check the max loop parameter written by the phone
             std::string value = this->maxLoopCharacteristic->getValue();
-            auto setValue = std::stoll(value);
-            if(setValue > 0) {
+            char* end = nullptr;
+            long long setValue = strtoll(value.c_str(), &end, 10);
+            if(end != value.c_str() && *end == '\0' && setValue > 0) {
                 VariableManager::getManager()->setVariable("MAX_LOOPS", setValue);
+            }
+
+            if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
+                Serial.println("Confirmed connection with peripherals");
+                LEDManager::getManager()->turnOff();
+
+                // drop notifications that arrived before the game started
+                PodEvent stale;
+                while(this->pollEvent(stale)) {}
+
+                if(BlockManager::getManager()->start(this)) {
+                    this->centralState = BLECentralState::RUN_BLOCK_MANAGER;
+                } else {
+                    this->centralState = BLECentralState::ERROR;
+                }
             }
             break;
         }
@@ -89,69 +104,81 @@ void CentralMode::runMode() {
             //check if all peripherals are still connected
             for(uint8_t i = 0; i < this->connectedPeripherals; i++) {
                 if(!this->peripherals[i]->isConnected()) {
+                    Serial.printf("Peripheral %d disconnected\n", i);
                     this->centralState = BLECentralState::ERROR;
-                    break;
+                    return;
                 }
             }
 
-            // In this state, the central runs the block manager
-            // Here you can implement logic to run the block manager
-            BlockManager::getManager()->runBlocks();
-            
-
+            BlockManager::getManager()->run();
             break;
         }
         case BLECentralState::ERROR:
         {
             LEDManager::getManager()->setLEDColors(errorPattern);
-            // Handle error state
-            Serial.println("An error occurred in Central mode");
             break;
         }
     }
 }
 
+bool CentralMode::loadSelectedProgram() {
+    const ProgramCatalog::ProgramInfo& program = this->catalog.get(this->selectedModel);
+    Serial.printf("Program selected: %s (%s)\n", program.name.c_str(), program.path.c_str());
 
+    if(!BlockManager::getManager()->loadProgram(program.path.c_str())) {
+        Serial.printf("Program could not be loaded: %s\n", BlockManager::getManager()->getLastError().c_str());
+        return false;
+    }
+    return true;
+}
 
 void CentralMode::clientScanForPeripherals() {
     BLEScan* pBLEScan = BLEDevice::getScan();
     Serial.println("Starting BLE scan...");
     pBLEScan->setActiveScan(true);
     BLEScanResults foundDevices = pBLEScan->start(2, false);
-    Serial.println("Scan complete, found devices: ");
+    Serial.println("Scan complete");
 
-    for (int i = 0; i < foundDevices.getCount(); i++) {
-        
+    for (int i = 0; i < foundDevices.getCount() && this->connectedPeripherals < this->requiredPeripherals; i++) {
+
         BLEAdvertisedDevice advertisedDevice = foundDevices.getDevice(i);
 
-        if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(BLEUUID(SERVICE_UUID))) {
-            Serial.printf("Found device: %s\n", advertisedDevice.toString().c_str());
-            Serial.printf("Address: %s\n", advertisedDevice.getAddress().toString().c_str());
+        if (!advertisedDevice.haveServiceUUID() || !advertisedDevice.isAdvertisingService(BLEUUID(SERVICE_UUID))) {
+            continue;
+        }
+        Serial.printf("Found device: %s\n", advertisedDevice.getAddress().toString().c_str());
 
-            // Create a Peripheral instance for the found device
-            Peripheral* peripheral = new Peripheral(advertisedDevice, this->connectedPeripherals, this);
-            
-            this->peripherals[this->connectedPeripherals] = peripheral;
-            // Increment the count of connected peripherals
-            this->connectedPeripherals++;
+        Peripheral* peripheral = new Peripheral(advertisedDevice, this->connectedPeripherals, this);
+        if (!peripheral->isValid()) {
+            // connection failed or not a ReactPod peripheral (e.g. another central): do not count it
+            peripheral->disconnect();
+            continue;
         }
 
-        if(this->connectedPeripherals == this->requiredPeripherals) {
-                break;
-            }
+        this->peripherals[this->connectedPeripherals] = peripheral;
+        this->connectedPeripherals++;
     }
+    pBLEScan->clearResults();
 }
 
 
 bool CentralMode::runModelSelector() {
 
     auto buttonPressed = digitalRead(PIN_BUTTON_PRESS) == LOW;
+
+    if(this->waitForBootRelease) {
+        if(!buttonPressed) {
+            this->waitForBootRelease = false;
+        }
+        return false;
+    }
+
     if(buttonPressed) {
         if(this->modelSelectorCounter == 0) {
             this->modelSelectorPressStart = millis();
             this->modelSelectorCounter++;
         } else {
-            //check if the button has been pressed for more than 2 seconds
+            // the counter increases every ~10 ms while the button is held
             if(this->modelSelectorPressStart + this->modelSelectorCounter*10 < millis()) {
                 this->modelSelectorCounter++;
 
@@ -167,46 +194,8 @@ bool CentralMode::runModelSelector() {
                 LEDManager::getManager()->setLEDColors(2 , this->modelSelectorColor);
 
                 if(this->modelSelectorCounter > 180) {
-                    //model selected. Run corresponding block configuration
-
-                    switch(this->selectedModel) {
-                        case 0:
-                            Serial.println("Model selected: Reaction Buzzer");
-                            initReactionMode();
-                            break;
-                        case 1:
-                            Serial.println("Model selected: Decider");
-                            initStarMode(3, 255);
-                            break;
-                        case 2:
-                            Serial.println("Model selected: Random Triangle");
-                            initRandomMode(3, 12);
-                            break;
-                        case 3:
-                            Serial.println("Model selected: Square Config");
-                            initRandomMode(4, 12);
-                            break;
-                        case 4:
-                            Serial.println("Model selected: Star Config");
-                            initStarMode(5, 12);
-                            break;
-                        case 5:
-                            Serial.println("Model selected: Star Config");
-                            initStarMode(4, 18);
-                            break;
-                        case 6:
-                            Serial.println("Model selected: Hit all");
-                            initMultipleMode(3,0);
-                            break;
-                        case 7:
-                            Serial.println("Model selected: Hit with avoid");
-                            initMultipleMode(5,2);
-                            break;
-                        default:
-                            Serial.println("Model selected: Default");
-                            initReactionMode();
-                            break;
-                    }
+                    // long press (~1.8 s): program selected
+                    LEDManager::getManager()->turnOff();
                     return true;
                 }
             }
@@ -215,62 +204,13 @@ bool CentralMode::runModelSelector() {
     } else {
         //trigger on release
         if(this->modelSelectorCounter > 0 && this->modelSelectorCounter <= 100) {
-            //long press detected
-            this->selectedModel = (this->selectedModel + 1) % 8; //only one model for now
-            
-            LEDManager::getManager()->turnOff();
-            
-            switch(this->selectedModel) {
-                case 0:
-                    LEDManager::getManager()->setLEDColors(9, BLUE);
-                    break;
-                case 1:
-                    LEDManager::getManager()->setLEDColors(7, BLUE);
-                    LEDManager::getManager()->setLEDColors(9, YELLOW);
-                    LEDManager::getManager()->setLEDColors(11, BLUE);
-                    break;
-                case 2:
-                    LEDManager::getManager()->setLEDColors(7, BLUE);
-                    LEDManager::getManager()->setLEDColors(9, BLUE);
-                    LEDManager::getManager()->setLEDColors(11, BLUE);
-                    break;
-                case 3:
-                    LEDManager::getManager()->setLEDColors(6, BLUE);
-                    LEDManager::getManager()->setLEDColors(8, BLUE);
-                    LEDManager::getManager()->setLEDColors(10, BLUE);
-                    LEDManager::getManager()->setLEDColors(12, BLUE);
-                    break;
-                case 4:
-                    LEDManager::getManager()->setLEDColors(5, BLUE);
-                    LEDManager::getManager()->setLEDColors(7, BLUE);
-                    LEDManager::getManager()->setLEDColors(9, YELLOW);
-                    LEDManager::getManager()->setLEDColors(11, BLUE);
-                    LEDManager::getManager()->setLEDColors(13, BLUE);
-                    break;
-                case 5:
-                    LEDManager::getManager()->setLEDColors(6, YELLOW);
-                    LEDManager::getManager()->setLEDColors(8, BLUE);
-                    LEDManager::getManager()->setLEDColors(10, BLUE);
-                    LEDManager::getManager()->setLEDColors(12, BLUE);
-                    break;
-                case 6:
-                    LEDManager::getManager()->setLEDColors(5, CYAN);
-                    LEDManager::getManager()->setLEDColors(7, CYAN);
-                    LEDManager::getManager()->setLEDColors(9, CYAN);
-                    break;
-                case 7:
-                    LEDManager::getManager()->setLEDColors(5, CYAN);
-                    LEDManager::getManager()->setLEDColors(7, RED);
-                    LEDManager::getManager()->setLEDColors(9, CYAN);
-                    LEDManager::getManager()->setLEDColors(11, RED);
-                    LEDManager::getManager()->setLEDColors(13, CYAN);
-                    break;
-                default:
-                    break;
-            }
-
+            // short press: next program
+            this->selectedModel = (this->selectedModel + 1) % this->catalog.size();
         }
-
+        if(this->modelSelectorCounter > 0) {
+            // redraw after every release, also to remove the brightness ramp of an aborted long press
+            this->catalog.showMenu(this->selectedModel, *LEDManager::getManager());
+        }
 
         this->modelSelectorCounter = 0;
         this->modelSelectorPressStart = 0;
@@ -281,7 +221,7 @@ bool CentralMode::runModelSelector() {
 }
 
 Peripheral* CentralMode::getPeripheral(uint8_t peripheralId) {
-    if (peripheralId < 32) {
+    if (peripheralId < this->connectedPeripherals) {
         return this->peripherals[peripheralId];
     }
     return nullptr; // Return nullptr if the peripheralId is out of bounds
@@ -313,7 +253,6 @@ void CentralMode::startConfigurationBLE() {
 void CentralMode::subscribeNotify(BLERemoteCharacteristic* pChar , Peripheral* peripheral) {
     CentralMode::notifyMap[pChar] = peripheral;
     pChar->registerForNotify(CentralMode::notifyCallback);
-    Serial.println("Subscribed to notifications for characteristic: ");
 }
 
 void CentralMode::notifyCallback(
@@ -326,7 +265,14 @@ void CentralMode::notifyCallback(
     }
 }
 
+// runs in the BLE task: hand the event to the main loop through the queue
 void CentralMode::handleNotify(Peripheral* peripheral) {
-    Serial.println("Handling notification from peripheral"); 
-    this->peripheralQueue.push(peripheral);
+    PodEvent event{peripheral->getId(), peripheral->lastResult, (uint32_t)millis()};
+    if (xQueueSend(this->eventQueue, &event, 0) != pdTRUE) {
+        Serial.println("Event queue full, notification dropped");
+    }
+}
+
+bool CentralMode::pollEvent(PodEvent& event) {
+    return xQueueReceive(this->eventQueue, &event, 0) == pdTRUE;
 }

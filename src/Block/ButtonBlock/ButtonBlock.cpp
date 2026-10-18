@@ -1,78 +1,71 @@
 #include "ButtonBlock.h"
+#include "Block/JsonUtil.h"
+#include "Block/RandomUtil.h"
 
-ButtonBlockParameter DEFAULT_BUTTON_PARAMETERS = ButtonBlockParameter{
-    .shortPressLimit = 1000UL,
-    .longPressMinimum = 2000UL,
-    .minTimeout = 0,
-    .maxTimeout = 0,
-    .randomizeTimeout = false
-};
-
-ButtonBlock::ButtonBlock(ButtonBlockConfiguration* blockConfiguration) {
-    this->genericBlockConfiguration = blockConfiguration;
-    this->blockConfiguration = blockConfiguration;
-    this->blockConfiguration->parentBlock = this; // Set the parent block reference
-    this->currentState = ButtonState::NO_PRESS;
-    this->timestamp = 0;
+const char* ButtonBlock::portName(uint8_t port) const {
+    static const char* const NAMES[PORT_COUNT] = {"next", "short", "long", "pressed", "timeout"};
+    return port < PORT_COUNT ? NAMES[port] : nullptr;
 }
 
-ButtonBlock::~ButtonBlock() {
-    // Destructor implementation
+bool ButtonBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
+    if(!this->shortMs.parse(json["shortMs"], ctx.vars)) {
+        return ctx.fail("invalid 'shortMs'");
+    }
+
+    if(!json["timeoutMs"].isNull()) {
+        if(!this->minTimeoutMs.parse(json["timeoutMs"], ctx.vars)) {
+            return ctx.fail("invalid 'timeoutMs'");
+        }
+        this->maxTimeoutMs = this->minTimeoutMs;
+    } else if(!this->minTimeoutMs.parse(json["minTimeoutMs"], ctx.vars)
+            || !this->maxTimeoutMs.parse(json["maxTimeoutMs"], ctx.vars)
+            || this->minTimeoutMs.isSet() != this->maxTimeoutMs.isSet()) {
+        return ctx.fail("random timeout needs 'minTimeoutMs' and 'maxTimeoutMs'");
+    }
+
+    JsonUtil::getString(json["record"], this->recordMetric);
+    const char* storeAs = json["storeAs"];
+    if(storeAs != nullptr) {
+        this->storeVar = ctx.vars.resolve(storeAs);
+    }
+    return true;
 }
 
-block_err_t ButtonBlock::enterBlock() {
-    this->reset();
+void ButtonBlock::enter(BlockContext& ctx) {
+    this->enterTime = millis();
+    this->pressCountAtEnter = ctx.button.pressCount();
+    this->pressed = false;
+    this->timeout = 0;
+    if(this->minTimeoutMs.isSet()) {
+        this->timeout = (uint32_t)RandomUtil::between(this->minTimeoutMs.get(ctx.vars), this->maxTimeoutMs.get(ctx.vars));
+    }
+}
 
-    //check if timeout is specified
-    if(this->blockConfiguration->nextBlockNameTimeout != nullptr) {        
-        //check if timeout is randomized. If so, calcualte it here
-        if(this->blockConfiguration->parameters->randomizeTimeout == true)
-        {
-            this->timeout = (uint64_t)random(this->blockConfiguration->parameters->minTimeout , this->blockConfiguration->parameters->maxTimeout);
-        } else {
-            this->timeout = this->blockConfiguration->parameters->minTimeout;
+BlockStatus ButtonBlock::execute(BlockContext& ctx) {
+    if(!this->pressed) {
+        if(ctx.button.pressCount() == this->pressCountAtEnter) {
+            if(this->timeout > 0 && millis() - this->enterTime >= this->timeout) {
+                return BlockStatus::done(TIMEOUT);
+            }
+            return BlockStatus::running();
+        }
+
+        this->pressed = true;
+        int32_t reaction = (int32_t)(ctx.button.lastPressTime() - this->enterTime);
+        if(!this->recordMetric.empty()) {
+            ctx.results.record(this->recordMetric.c_str(), ctx.centralPodId, reaction);
+        }
+        if(this->storeVar >= 0) {
+            ctx.vars.set(this->storeVar, reaction);
+        }
+        if(this->isConnected(PRESSED)) {
+            return BlockStatus::done(PRESSED);
         }
     }
 
-
-    return 0;
-}
-
-block_err_t ButtonBlock::executeBlock() {
-    uint8_t buttonState = digitalRead(PIN_BUTTON_PRESS);
-    uint64_t currentTimestamp = millis();
-
-    if(buttonState == LOW && this->currentState == ButtonState::NO_PRESS) { // Assuming LOW means pressed
-        ESP_LOGI("BUTTONBLOCK", "Button pressed");    
-        this->currentState = ButtonState::PRESSED;
-        this->timestamp = currentTimestamp;
-    } 
-
-
-    if(buttonState == HIGH && this->currentState == ButtonState::PRESSED) {
-        //button was released. Check if it was a short press or a long press
-        if(this->timestamp + this->blockConfiguration->parameters->shortPressLimit >= currentTimestamp) {
-            ESP_LOGI("BUTTONBLOCK", "Short press detected");
-            this->currentState = ButtonState::SHORT_PRESS;
-        } else if(this->timestamp + this->blockConfiguration->parameters->longPressMinimum <= currentTimestamp) {
-            ESP_LOGI("BUTTONBLOCK", "Long press detected");
-            this->currentState = ButtonState::LONG_PRESS;
-        }
+    // pressed, wait for the release to classify short / long
+    if(ctx.button.isDown()) {
+        return BlockStatus::running();
     }
-
-    if(this->blockConfiguration->nextBlockNameTimeout != nullptr && buttonState == HIGH && (this->timestamp + this->timeout < currentTimestamp)){
-            ESP_LOGI("BUTTONBLOCK", "Timeout detected");
-            this->currentState = ButtonState::TIMEOUT;
-        }
-
-    return 0;
-}
-
-ButtonState ButtonBlock::getState() {
-    return this->currentState;
-}
-
-void ButtonBlock::reset() {
-    this->currentState = ButtonState::NO_PRESS;
-    this->timestamp = millis();
+    return BlockStatus::done(ctx.button.lastHeldMs() < this->shortMs.get(ctx.vars) ? SHORT : LONG);
 }

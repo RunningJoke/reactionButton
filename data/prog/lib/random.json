@@ -1,0 +1,15 @@
+{
+  "description": "Random: each round lights one random pod (central included), never the same pod twice in a row. The central has pod id REQUIRED_PERIPHERALS. Needs lib/loop.json.",
+  "variables": {
+    "SELECTED_BUZZER": 0
+  },
+  "blocks": [
+    { "name": "EnterProgram", "type": "delay", "ms": 10, "next": "SelectPod" },
+    { "name": "SelectPod",    "type": "setVariable", "var": "SELECTED_BUZZER", "op": "randomOther", "value": "NODE_COUNT", "next": "IsCentral" },
+    { "name": "IsCentral",    "type": "if", "left": "SELECTED_BUZZER", "op": "==", "right": "REQUIRED_PERIPHERALS", "true": "CentralOn", "false": "RemoteTarget" },
+    { "name": "CentralOn",    "type": "led", "color": "green", "next": "CentralPress" },
+    { "name": "CentralPress", "type": "button", "pressed": "CentralOff", "record": "reaction" },
+    { "name": "CentralOff",   "type": "led", "color": "off", "next": "EndLoop" },
+    { "name": "RemoteTarget", "type": "remotePress", "pod": "SELECTED_BUZZER", "record": "reaction", "next": "EndLoop" }
+  ]
+}

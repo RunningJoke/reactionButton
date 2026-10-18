@@ -2,45 +2,31 @@
 #define IFBLOCK_H
 
 #include <Arduino.h>
-#include "Block/VBlock.h"
-#include "Block/IBlockConfiguration.h"
-#include "VariableManager/VariableManager.h"
+#include "Block/Block.h"
+#include "Block/Value.h"
 
+/**
+ * Compares two values and branches.
+ *
+ *   { "type": "if", "left": "RUNS", "op": ">=", "right": "MAX_LOOPS",
+ *     "true": "StartReset", "false": "StartLoop" }
+ *
+ * op: "==", "!=", ">", "<", ">=", "<=". left/right: number or variable name.
+ */
+class IfBlock : public Block {
+    public:
+        bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
+        BlockStatus execute(BlockContext& ctx) override;
 
-struct IfBlockConfiguration : public IBlockConfiguration {
-    const char* leftSideVariable;
-    const char* rightSideVariable;
-    const char* nextBlockNameTrue;
-    const char* nextBlockNameFalse;
-
-    bool conditionResult = false;
-    char conditionType; // 'E' for equal, 'N' for not equal,
-
-    IfBlockConfiguration(const char* blockName, char type , const char* leftSideVariable , const char* rightSideVariable, const char* nextBlockNameTrue, const char* nextBlockNameFalse)
-        : IBlockConfiguration(blockName, BlockType::IF, nullptr) {
-            this->leftSideVariable = leftSideVariable;
-            this->rightSideVariable = rightSideVariable;
-            this->nextBlockNameTrue = nextBlockNameTrue;
-            this->nextBlockNameFalse = nextBlockNameFalse;
-            this->conditionType = type;
-        }
-
-    virtual const char* getNextBlockName() {
-        return this->conditionResult ? this->nextBlockNameTrue : this->nextBlockNameFalse;
-    }
-};
-
-class IfBlock : public VBlock {
+        uint8_t portCount() const override { return 2; }
+        const char* portName(uint8_t port) const override { return port == 0 ? "true" : "false"; }
 
     protected:
-        IfBlockConfiguration* blockConfiguration;
+        enum class Op : uint8_t { EQ, NE, GT, LT, GE, LE };
 
-    public:
-        IfBlock(IfBlockConfiguration* blockConfiguration);
-        ~IfBlock();
-
-        block_err_t executeBlock() override;
-
+        Value left;
+        Value right;
+        Op op = Op::EQ;
 };
 
 #endif

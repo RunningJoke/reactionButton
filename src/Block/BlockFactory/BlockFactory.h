@@ -2,30 +2,17 @@
 #define BLOCKFACTORY_H
 
 #include <Arduino.h>
-#include "Block/VBlock.h"
-#include "Block/IBlockConfiguration.h"
+#include "Block/Block.h"
 
-#include "Block/LEDBlock/LEDBlock.h"
-#include "Block/DelayBlock/DelayBlock.h"
-#include "Block/ButtonBlock/ButtonBlock.h"
-#include "Block/RemotePressBlock/RemotePressBlock.h"
-#include "Block/RemoteMultiplePressBlock/RemoteMultiplePressBlock.h"
-#include "Block/RemoteResetAllBlocks/RemoteResetAllBlocks.h"
-#include "Block/IfBlock/IfBlock.h"
-#include "Block/SetVariableBlock/SetVariableBlock.h"
-
-
-
+/**
+ * Creates blocks by their JSON "type" name. The list of known types lives in
+ * BlockFactory.cpp; adding a block type means adding one line there.
+ */
 class BlockFactory
-{   
-    private:
-    /* data */    
-    static BlockFactory* factory;
-    BlockFactory();
+{
     public:
-        static BlockFactory* getFactory();
-        VBlock* createBlock(IBlockConfiguration* blockConfiguration);
-
+        // Returns nullptr for unknown types
+        static Block* create(const char* type);
 };
 
 

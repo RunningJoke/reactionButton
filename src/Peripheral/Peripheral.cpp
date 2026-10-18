@@ -3,9 +3,6 @@
 
 Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralId, IBuzzerMode* mode)
 {
-    // Initialize the peripheral with the advertised device and ID
-    // This could include setting up characteristics, services, etc.
-    // For now, we will just store the advertised device and ID
     this->advertisedDevice = advertisedDevice;
     this->peripheralId = peripheralId;
     this->mode = mode;
@@ -13,35 +10,57 @@ Peripheral::Peripheral(BLEAdvertisedDevice advertisedDevice, uint8_t peripheralI
     //register the peripheral
     this->pClient = BLEDevice::createClient();
 
-    if (this->pClient->connect(&advertisedDevice)) {
+    if (!this->pClient->connect(&advertisedDevice)) {
+        Serial.println("Peripheral: connect failed");
+        return;
+    }
 
-        this->remoteService = this->pClient->getService(SERVICE_UUID);
-        
-        this->teamIdCharacteristic = this->remoteService->getCharacteristic(CHAR_TEAM_ID_UUID);
-        if (this->remoteService) {
-            // Write unique team ID
-            if (this->teamIdCharacteristic && this->teamIdCharacteristic->canWrite()) {
-                std::string teamId = "TEAM123";
-                this->teamIdCharacteristic->writeValue(teamId);
-            }
+    this->remoteService = this->pClient->getService(SERVICE_UUID);
+    if (this->remoteService == nullptr) {
+        Serial.println("Peripheral: service not found");
+        return;
+    }
 
-            this->ledColorCharacteristic = this->remoteService->getCharacteristic(CHAR_LED_COLOR_UUID);
-            this->actionModeCharacteristic = this->remoteService->getCharacteristic(CHAR_ACTION_MODE_UUID);
-            this->notifyCharacteristic = this->remoteService->getCharacteristic(CHAR_NOTIFY_UUID);
-            this->resetCharacteristic = this->remoteService->getCharacteristic(CHAR_RESET_UUID);
+    this->teamIdCharacteristic = this->remoteService->getCharacteristic(CHAR_TEAM_ID_UUID);
+    this->ledColorCharacteristic = this->remoteService->getCharacteristic(CHAR_LED_COLOR_UUID);
+    this->actionModeCharacteristic = this->remoteService->getCharacteristic(CHAR_ACTION_MODE_UUID);
+    this->notifyCharacteristic = this->remoteService->getCharacteristic(CHAR_NOTIFY_UUID);
+    this->resetCharacteristic = this->remoteService->getCharacteristic(CHAR_RESET_UUID);
 
-            this->mode->subscribeNotify(this->notifyCharacteristic , this);
-        }
-    } 
+    if (!this->isValid()) {
+        Serial.println("Peripheral: characteristics missing, not a ReactPod peripheral");
+        return;
+    }
 
+    // Write unique team ID
+    if (this->teamIdCharacteristic->canWrite()) {
+        std::string teamId = "TEAM123";
+        this->teamIdCharacteristic->writeValue(teamId);
+    }
+
+    this->mode->subscribeNotify(this->notifyCharacteristic , this);
+}
+
+bool Peripheral::isValid() {
+    return this->pClient != nullptr && this->pClient->isConnected()
+        && this->teamIdCharacteristic != nullptr
+        && this->ledColorCharacteristic != nullptr
+        && this->actionModeCharacteristic != nullptr
+        && this->notifyCharacteristic != nullptr
+        && this->resetCharacteristic != nullptr;
 }
 
 bool Peripheral::isConnected() {
     return this->pClient->isConnected();
 }
 
+void Peripheral::disconnect() {
+    if (this->pClient != nullptr && this->pClient->isConnected()) {
+        this->pClient->disconnect();
+    }
+}
+
 void Peripheral::resetPeripheral() {
-    Serial.println("Peripheral reset");
     this->resetCharacteristic->writeValue('1', false);
 }
 
@@ -50,55 +69,36 @@ void Peripheral::activate()
     this->setActionMode(PeripheralActionMode::HIT);
 }
 
-// Set the LED color characteristic value
-void Peripheral::setLedColor(const std::string& color)
-{
-
-}
-
 PeripheralActionMode Peripheral::getActionMode() {
     return this->actionMode;
 }
 
+void Peripheral::arm(PeripheralActionMode mode, uint8_t colorActive, uint8_t colorAfter)
+{
+    this->actionMode = mode;
+    uint8_t ledColor[3] = {colorActive, colorAfter, 255};
+    // colour first, the action mode write starts the peripheral's timer
+    this->ledColorCharacteristic->writeValue(ledColor, 3, false);
+    this->actionModeCharacteristic->writeValue((uint8_t)mode, false);
+}
+
 // Set the action mode characteristic value
 void Peripheral::setActionMode(PeripheralActionMode mode)
-{   
-    this->actionMode = mode;
+{
     switch (mode)
     {
-        case PeripheralActionMode::HIT:
-        {
-                // Activate the peripheral, which could mean setting up characteristics or starting notifications
-                // This is a placeholder for now
-                uint8_t ledColor[3] = {1, 255, 255}; // Example:  color
-
-                this->ledColorCharacteristic->writeValue(ledColor , 3 , false); // Example: Set initial LED color
-                this->actionModeCharacteristic->writeValue('1', false);
-            break;
-        }
         case PeripheralActionMode::AVOID:
-        {
-             uint8_t ledColor[3] = {0, 255, 255}; // Example:  color
-
-                this->ledColorCharacteristic->writeValue(ledColor , 3 , false); // Example: Set initial LED color
-            this->actionModeCharacteristic->writeValue('2', false);
+            this->arm(mode, RemoteColor::RED, RemoteColor::OFF);
             break;
-        }
         case PeripheralActionMode::COUNTER:
-        {
-            this->actionModeCharacteristic->writeValue('3', false);
-            break;
-        }
         case PeripheralActionMode::COUNTDOWN:
-        {
-            this->actionModeCharacteristic->writeValue('4', false);
+            this->actionMode = mode;
+            this->actionModeCharacteristic->writeValue((uint8_t)mode, false);
             break;
-        }
+        case PeripheralActionMode::HIT:
         default:
-        {
-            this->actionModeCharacteristic->writeValue('1', false);
+            this->arm(PeripheralActionMode::HIT, RemoteColor::GREEN, RemoteColor::OFF);
             break;
-        }
     }
 }
 
@@ -106,10 +106,12 @@ void Peripheral::handleNotify(
     BLERemoteCharacteristic* pChar,
     uint8_t* pData, size_t length, bool isNotify
 ) {
-    Serial.println("Notification received from characteristic: ");
-    // Handle notifications from the peripheral
-    this->peripheralTimer = atoi((char*)pData);
-    // Process the notification data as needed
-    // This could include updating the LED color or action mode based on the notification
+    // payload is an ASCII number without terminator
+    char buffer[16];
+    size_t n = length < sizeof(buffer) - 1 ? length : sizeof(buffer) - 1;
+    memcpy(buffer, pData, n);
+    buffer[n] = '\0';
+
+    this->lastResult = (int32_t)strtol(buffer, nullptr, 10);
     this->mode->handleNotify(this);
 }

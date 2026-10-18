@@ -1,0 +1,14 @@
+{
+  "description": "Star: central and a random peripheral alternate. Needs lib/loop.json.",
+  "variables": {
+    "SELECTED_BUZZER": 0
+  },
+  "blocks": [
+    { "name": "EnterProgram", "type": "delay", "ms": 10, "next": "CentralOn" },
+    { "name": "CentralOn",    "type": "led", "color": "green", "next": "CentralPress" },
+    { "name": "CentralPress", "type": "button", "pressed": "CentralOff", "record": "reaction" },
+    { "name": "CentralOff",   "type": "led", "color": "off", "next": "SelectPod" },
+    { "name": "SelectPod",    "type": "setVariable", "var": "SELECTED_BUZZER", "op": "random", "value": "REQUIRED_PERIPHERALS", "next": "RemoteTarget" },
+    { "name": "RemoteTarget", "type": "remotePress", "pod": "SELECTED_BUZZER", "record": "reaction", "next": "EndLoop" }
+  ]
+}

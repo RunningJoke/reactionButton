@@ -1,0 +1,12 @@
+{
+  "programs": [
+    "/prog/solo.json",
+    "/prog/weiche.json",
+    "/prog/dreieck.json",
+    "/prog/quadrat.json",
+    "/prog/stern.json",
+    "/prog/dreizack.json",
+    "/prog/run.json",
+    "/prog/run5.json"
+  ]
+}

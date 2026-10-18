@@ -5,7 +5,6 @@
 #include "BlockManager/BlockManager.h"
 #include "BLEManager/BLEManager.h"
 #include "VariableManager/VariableManager.h"
-#include "BlockConfigs.h"
 
 
 #include "esp_task_wdt.h"

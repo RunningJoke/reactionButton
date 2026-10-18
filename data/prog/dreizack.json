@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Dreizack",
+  "peripherals": 3,
+  "menu": [ { "leds": [8, 10, 12], "color": "blue" }, { "leds": [6], "color": "yellow" } ],
+  "variables": { "MAX_LOOPS": 18 },
+  "include": ["/prog/lib/loop.json", "/prog/lib/star.json"],
+  "start": "StartLoop"
+}

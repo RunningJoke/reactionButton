@@ -54,6 +54,7 @@ public:
     void handleNotify(class Peripheral* peripheral) override {};
 
     Peripheral* getPeripheral(uint8_t peripheralId) override { return nullptr; }
+    uint8_t getPeripheralCount() override { return 0; }
 };
 
 
