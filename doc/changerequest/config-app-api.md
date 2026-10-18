@@ -12,12 +12,48 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 
 | ID | Priority | Title | Status |
 |---|---|---|---|
+| CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | open |
 | CR-1 | High | Tell sets apart in the BLE advertisement | open |
 | CR-2 | Medium | Program format revision in `info` | open |
 | CR-3 | Medium | Document engine details the simulator must copy | open |
 | CR-4 | Medium | `validate` with inline content (dry run) | open |
 | CR-5 | Low | Program metadata in `list` | open |
 | CR-6 | Low | Optional PIN for write operations | open |
+| CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | open |
+
+---
+
+## CR-0 – BLE responses are dropped when the client subscribes for notifications (Blocker)
+
+Added 2026-10-18 (P2 of the app).
+
+**Reason.** The Response characteristic offers `INDICATE | NOTIFY`
+(`src/Roles/Central/PhoneConfig.cpp`, `createCharacteristic(CHAR_RESPONSE_UUID, …)`), and
+`PhoneConfig::sendLine` always calls `indicate()`. The Arduino BLE library drops an indication
+when the client enabled only notifications in the CCCD (`BLECharacteristic::notify`, the
+`!p2902->getIndications()` check, framework-arduinoespressif32 `libraries/BLE/src/BLECharacteristic.cpp`).
+
+Clients pick notifications when a characteristic offers both:
+- **Web Bluetooth (Chrome / Edge)**: `startNotifications()` writes "notifications on" if the
+  characteristic has `NOTIFY`, indications only otherwise. There is no way to choose.
+- **Android** (and the Capacitor BLE plugin) and most bleak back ends do the same.
+
+So the app (and likely `tools/reactpod_config.py`) connects and writes requests, but never
+gets a response. The app cannot work around this.
+
+**Description.** Pick one (option A is preferred):
+- **A.** Remove `PROPERTY_NOTIFY` from the Response characteristic. Then every client must use
+  indications, which keeps the flow control `sendLine` relies on. Update §2 of config-api.md
+  ("Indicate, CCCD").
+- **B.** Keep both and send with whatever the client enabled: in `sendLine`, read the BLE2902
+  descriptor; `getIndications()` → `indicate()`, else `getNotifications()` → `notify()`. Notifications
+  have no confirmation, so pace them (e.g. wait for the BLE stack's congestion event or a few ms
+  per packet) to avoid losing data.
+
+**Acceptance.** In desktop Chrome, `navigator.bluetooth` → connect → `startNotifications()` on
+Response → write `{"op":"info"}
+` to Command → the `info` response arrives. The same works with
+`tools/reactpod_config.py info`. App acceptance test AT-B1 passes.
 
 ---
 
@@ -136,3 +172,22 @@ ops stay open. Set / clear the PIN over USB serial only, so a lost PIN can be re
 
 **Acceptance.** With a PIN set, `put` without `auth` returns a new error code `auth_required`.
 Over USB serial the PIN can be cleared.
+
+---
+
+## CR-7 – Report the BLE MTU in `info` (Medium)
+
+Added 2026-10-18 (P2 of the app).
+
+**Reason.** config-api.md §5 shows `"mtu":247` in the `info` response, but `ConfigApi::opInfo`
+does not send it. Web Bluetooth does not tell the page the negotiated MTU. Without it the app
+has to write requests in 20-byte pieces (default MTU 23), which makes uploads slow: about 100
+writes per 2 KB chunk.
+
+**Description.** Add `mtu` to `info` and `status`: the current `peerMtu` of the BLE connection
+(`PhoneConfig.cpp`), and leave it out (or `null`) on USB serial. A small getter on PhoneConfig
+that ConfigApi can call (only the "ble" transport instance) is enough.
+
+**Acceptance.** `info` over BLE from desktop Chrome reports the MTU Chrome negotiated (usually
+517 or 247). Over USB serial the field is absent. The app then writes MTU − 3 bytes per write.
+
