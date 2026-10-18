@@ -18,7 +18,7 @@ void CentralMode::runMode() {
     // 1. Waiting for the model to be selected
     // 2. Waiting for the required number of peripherals to be connected
     // 3. Confirm
-    // 4. Run the block manager 
+    // 4. Run the block manager
 
     switch(this->centralState) {
         case BLECentralState::WAITING_FOR_MODEL_SELECTION:
@@ -39,18 +39,18 @@ void CentralMode::runMode() {
         }
         case BLECentralState::WAITING_FOR_PERIPHERALS:
             {
-                
+
                 BLEDevice::init("ReactPod Running");
                 LEDManager* led = LEDManager::getManager();
                 led->turnOff();
-                
+
                 //set LEDs for progress bar
                 for(uint8_t i = 0; i < this->requiredPeripherals; i++) {
-                    led->setLEDColors(2*i, BLUE);    
+                    led->setLEDColors(2*i, BLUE);
                     if(i < this->connectedPeripherals) {
-                        led->setLEDColors(2*i+1, BLUE); 
+                        led->setLEDColors(2*i+1, BLUE);
                     } else {
-                        led->setLEDColors(2*i+1, BLACK); 
+                        led->setLEDColors(2*i+1, BLACK);
                     }
                 }
                 // In this state, the central is waiting for the required number of peripherals to be connected
@@ -149,16 +149,16 @@ bool CentralMode::runModelSelector() {
     if(buttonPressed) {
         if(this->modelSelectorCounter == 0) {
             this->modelSelectorPressStart = millis();
-            this->modelSelectorCounter++;  
+            this->modelSelectorCounter++;
         } else {
             //check if the button has been pressed for more than 2 seconds
             if(this->modelSelectorPressStart + this->modelSelectorCounter*10 < millis()) {
-                this->modelSelectorCounter++;   
+                this->modelSelectorCounter++;
 
                 this->modelSelectorColor->red = this->modelSelectorCounter;
                 this->modelSelectorColor->green = this->modelSelectorCounter;
                 this->modelSelectorColor->blue = this->modelSelectorCounter;
-                
+
                 //increase brightness of selection LED
                 LEDManager::getManager()->setLEDColors(16 , this->modelSelectorColor);
                 LEDManager::getManager()->setLEDColors(17 , this->modelSelectorColor);

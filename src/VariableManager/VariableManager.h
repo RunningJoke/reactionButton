@@ -7,7 +7,6 @@
 
 class VariableManager {
     protected:
-
         static VariableManager* manager;
         VariableManager();
 

@@ -1,5 +1,5 @@
 #ifndef CENTRALMODE_H
-#define CENTRALMODE_H    
+#define CENTRALMODE_H
 
 #include "../BLEManager.h"
 #include "../IBuzzerMode.h"
@@ -67,7 +67,7 @@ public:
         CentralMode();
 
         void runMode() override;
-        
+
         Peripheral* getPeripheral(uint8_t peripheralId) override;
 
         static void notifyCallback(

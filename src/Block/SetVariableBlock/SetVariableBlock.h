@@ -1,5 +1,6 @@
 #ifndef SETVARIABLEBLOCK_H
 #define SETVARIABLEBLOCK_H
+
 #include <Arduino.h>
 #include "Block/VBlock.h"
 #include "Block/IBlockConfiguration.h"

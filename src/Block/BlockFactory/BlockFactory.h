@@ -1,5 +1,5 @@
 #ifndef BLOCKFACTORY_H
-#define BLOCKFACTORY_H  
+#define BLOCKFACTORY_H
 
 #include <Arduino.h>
 #include "Block/VBlock.h"

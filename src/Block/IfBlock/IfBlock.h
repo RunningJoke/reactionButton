@@ -1,5 +1,6 @@
 #ifndef IFBLOCK_H
 #define IFBLOCK_H
+
 #include <Arduino.h>
 #include "Block/VBlock.h"
 #include "Block/IBlockConfiguration.h"

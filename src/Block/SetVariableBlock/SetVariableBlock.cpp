@@ -52,4 +52,3 @@ block_err_t SetVariableBlock::executeBlock() {
     }
     return 0;
 }
-

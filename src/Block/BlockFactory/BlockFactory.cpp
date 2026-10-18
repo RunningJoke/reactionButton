@@ -54,4 +54,3 @@ VBlock* BlockFactory::createBlock(IBlockConfiguration* blockConfiguration) {
     return nullptr;
 }
 
-

@@ -23,4 +23,3 @@ block_err_t DelayBlock::executeBlock() {
     vTaskDelay(delayTime / portTICK_PERIOD_MS);
     return 0;
 }
-

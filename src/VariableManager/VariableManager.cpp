@@ -13,7 +13,7 @@ VariableManager* VariableManager::getManager() {
 
 VariableManager::VariableManager()
 {
-    
+
 }
 
 
