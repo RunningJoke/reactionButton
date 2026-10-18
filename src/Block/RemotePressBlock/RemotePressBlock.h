@@ -5,8 +5,7 @@
 #include <string>
 #include "Block/Block.h"
 #include "Block/Value.h"
-
-class Peripheral;
+#include "Link/Protocol.h"
 
 /**
  * Lights one peripheral and waits until it is pressed.
@@ -21,6 +20,8 @@ class Peripheral;
  *     "storeAs": "LAST_REACTION",  also write it into a variable
  *     "next": "...",               pressed
  *     "timeout": "..." }           not pressed in time (or pod not available)
+ *
+ * Only the press that belongs to this activation counts (matched by command sequence).
  */
 class RemotePressBlock : public Block {
     public:
@@ -36,14 +37,15 @@ class RemotePressBlock : public Block {
     protected:
         Value pod;
         bool avoid = false;
-        uint8_t colorActive = 1;
-        uint8_t colorAfter = 255;
+        uint8_t colorActive = Protocol::Color::GREEN;
+        uint8_t colorAfter = Protocol::Color::OFF;
         Value timeoutMs;
         std::string recordMetric;
         VarId storeVar = -1;
 
-        Peripheral* peripheral = nullptr;
+        bool armed = false;
         uint8_t podId = 0;
+        uint8_t cmdSeq = 0;
         uint32_t enterTime = 0;
 };
 

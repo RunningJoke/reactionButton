@@ -2,24 +2,17 @@
 #include <SPIFFS.h>
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
-#include "BlockManager/BlockManager.h"
-#include "BLEManager/BLEManager.h"
-#include "VariableManager/VariableManager.h"
-
-
-#include "esp_task_wdt.h"
-
-#include "BLEManager/BootupAnimation.h"
+#include "LEDManager/BootupAnimation.h"
+#include "Roles/RoleManager.h"
 
 uint64_t timestamp = 0;
-BLEMode bootMode = BLEMode::PERIPHERAL;
 
 
 void setup() {
   initArduino();
   Serial.begin(115200);
   SPIFFS.begin(true);
-  
+
 
   pinMode(PIN_BUTTON_PRESS , INPUT);
 
@@ -28,7 +21,7 @@ void setup() {
   randomSeed(analogRead(0));
 
 
-  Serial.println("Starting ReactPod Bootup...");
+  Serial.printf("Starting ReactPod Bootup (firmware %d.%d)...\n", FW_VERSION_MAJOR, FW_VERSION_MINOR);
 
 
 
@@ -43,14 +36,11 @@ void setup() {
  LEDManager::getManager()->turnOff();
 
   if(digitalRead(PIN_BUTTON_PRESS) == LOW) {
-    bootMode = BLEMode::CENTRAL;
     //a button press during bootup makes the system boot in central mode
-    BLEManager::getManager()->bootMode(BLEMode::CENTRAL);
+    RoleManager::getManager()->boot(Role::CENTRAL);
   } else {
-    bootMode = BLEMode::PERIPHERAL;
     //no button press during bootup makes the system boot in peripheral mode
-    BLEManager::getManager()->bootMode(BLEMode::PERIPHERAL);
-
+    RoleManager::getManager()->boot(Role::PERIPHERAL);
   }
 
 
@@ -61,7 +51,7 @@ void setup() {
 
 void loop() {
 
-  BLEManager::getManager()->runCurrentMode();
+  RoleManager::getManager()->run();
 
 
 }

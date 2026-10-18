@@ -6,7 +6,7 @@
  * Debounced push button with edge counters and timestamps.
  *
  * An edge is accepted immediately (no delay for reaction timing). Further changes are
- * ignored for LOCKOUT_MS to filter contact bounce.
+ * ignored for LOCKOUT_US to filter contact bounce.
  *
  * Consumers detect new presses by comparing pressCount() with a value they stored
  * earlier. A press that started before a block was entered therefore never counts for
@@ -21,21 +21,27 @@ class Button {
 
         bool isDown() const { return this->down; }
         uint32_t pressCount() const { return this->presses; }
-        uint32_t lastPressTime() const { return this->pressTime; }
-        uint32_t lastReleaseTime() const { return this->releaseTime; }
+
+        // esp_timer time (µs) of the last press / release edge
+        int64_t lastPressTimeUs() const { return this->pressTimeUs; }
+        int64_t lastReleaseTimeUs() const { return this->releaseTimeUs; }
+
+        // Same in ms, on the millis() time base
+        uint32_t lastPressTime() const { return (uint32_t)(this->pressTimeUs / 1000); }
+        uint32_t lastReleaseTime() const { return (uint32_t)(this->releaseTimeUs / 1000); }
 
         // Duration of the most recent completed press
-        uint32_t lastHeldMs() const { return this->releaseTime - this->pressTime; }
+        uint32_t lastHeldMs() const { return (uint32_t)((this->releaseTimeUs - this->pressTimeUs) / 1000); }
 
     private:
-        static const uint32_t LOCKOUT_MS = 20;
+        static const int64_t LOCKOUT_US = 20000;
 
         Button(uint8_t pin);
 
         uint8_t pin;
         bool down = false;
-        uint32_t lastEdge = 0;
+        int64_t lastEdgeUs = 0;
         uint32_t presses = 0;
-        uint32_t pressTime = 0;
-        uint32_t releaseTime = 0;
+        int64_t pressTimeUs = 0;
+        int64_t releaseTimeUs = 0;
 };

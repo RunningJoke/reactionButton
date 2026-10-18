@@ -6,16 +6,19 @@
 #include "Block/Block.h"
 #include "Block/Value.h"
 #include "ColorSet/ColorSet.h"
+#include "Link/Protocol.h"
 
 /**
- * Lights several pods at once. "avoid" random pods are red and must not be pressed;
- * all others are green and must be pressed.
+ * Lights several pods at the same moment. "avoid" random pods are red and must not be
+ * pressed; all others are green and must be pressed.
  *
  *   { "type": "remoteMultiPress",
  *     "pods": "REQUIRED_PERIPHERALS",  number of peripherals to use (default: all connected)
  *     "avoid": "AVOID_COUNT",          number of red pods (default 0, at least one pod stays green)
  *     "includeCentral": true,          the central takes part as one more pod
  *     "hitColor": "green", "avoidColor": "red",
+ *     "syncStartMs": 20,               lead time: all pods light together this long after the
+ *                                      block starts (time for the commands to arrive)
  *     "timeoutMs": 10000,              optional
  *     "record": "reaction",            record the reaction time of every green pod
  *     "next": "...",                   all green pods pressed
@@ -40,18 +43,23 @@ class RemoteMultiplePressBlock : public Block {
 
         Value pods;
         Value avoid = Value(0);
+        Value syncStartMs = Value(20);
         bool includeCentral = true;
-        uint8_t remoteHitColor = 1;
-        uint8_t remoteAvoidColor = 0;
+        uint8_t remoteHitColor = Protocol::Color::GREEN;
+        uint8_t remoteAvoidColor = Protocol::Color::RED;
         ColorSet localHitColor = {0, 255, 0};
         ColorSet localAvoidColor = {255, 0, 0};
         Value timeoutMs;
         std::string recordMetric;
 
         uint8_t podCount = 0;
+        uint8_t cmdSeqs[MAX_PODS];
         uint32_t avoidMask = 0;
         uint32_t remainingMask = 0;
-        uint32_t pressCountAtEnter = 0;
+        int64_t startAtUs = 0;          // network time when all pods light up
+        bool centralLit = false;
+        int64_t centralLitUs = 0;
+        uint32_t pressCountAtLight = 0;
         uint32_t enterTime = 0;
 };
 

@@ -6,7 +6,7 @@
 #include "Input/Button.h"
 #include "Results/Results.h"
 
-class IBuzzerMode;
+class IPodNetwork;
 
 /**
  * Everything a block may use at runtime. Passed into enter/execute/exit so blocks do not
@@ -17,7 +17,7 @@ struct BlockContext {
     LEDManager& leds;
     Button& button;
     Results& results;
-    IBuzzerMode* remote;    // connected peripherals, nullptr if none
+    IPodNetwork* network;   // peripherals of the set, nullptr if none
 
     // Pod id of the central itself. Peripherals are 0 .. centralPodId-1.
     uint8_t centralPodId;

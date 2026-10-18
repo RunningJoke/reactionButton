@@ -1,7 +1,7 @@
 #include "BlockManager.h"
 #include <SPIFFS.h>
 #include "Block/BlockFactory/BlockFactory.h"
-#include "BLEManager/IBuzzerMode.h"
+#include "Link/IPodNetwork.h"
 
 static const char* TAG = "BLOCKMANAGER";
 
@@ -182,19 +182,19 @@ int16_t BlockManager::findIndex(const std::string& name) const {
     return -1;
 }
 
-bool BlockManager::start(IBuzzerMode* remote) {
+bool BlockManager::start(IPodNetwork* network) {
     if(this->startIndex < 0) {
         return this->fail("no program loaded");
     }
 
-    uint8_t peripheralCount = remote != nullptr ? remote->getPeripheralCount() : 0;
+    uint8_t peripheralCount = network != nullptr ? network->podCount() : 0;
     delete this->context;
     this->context = new BlockContext{
         *VariableManager::getManager(),
         *LEDManager::getManager(),
         Button::get(),
         Results::get(),
-        remote,
+        network,
         peripheralCount
     };
 
@@ -209,7 +209,6 @@ void BlockManager::run() {
         return;
     }
     BlockContext& ctx = *this->context;
-    ctx.button.update();
 
     for(uint8_t step = 0; step < MAX_STEPS_PER_PASS; step++) {
         Block* block = this->blocks[this->currentIndex];
@@ -236,3 +235,13 @@ void BlockManager::run() {
         this->blocks[next]->enter(ctx);
     }
 }
+
+void BlockManager::restartCurrentBlock() {
+    if(!this->running) {
+        return;
+    }
+    Block* block = this->blocks[this->currentIndex];
+    block->exit(*this->context);
+    block->enter(*this->context);
+}
+

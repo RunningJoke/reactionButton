@@ -4,7 +4,7 @@
     "SELECTED_BUZZER": 0
   },
   "blocks": [
-    { "name": "EnterProgram", "type": "delay", "ms": 10, "next": "CentralOn" },
+    { "name": "EnterProgram", "type": "delay", "ms": 0,  "next": "CentralOn" },
     { "name": "CentralOn",    "type": "led", "color": "green", "next": "CentralPress" },
     { "name": "CentralPress", "type": "button", "pressed": "CentralOff", "record": "reaction" },
     { "name": "CentralOff",   "type": "led", "color": "off", "next": "SelectPod" },

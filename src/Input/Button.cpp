@@ -10,23 +10,26 @@ Button::Button(uint8_t pin) {
     this->pin = pin;
     // treat a button held at construction as "already pressed" so it never counts as a new press
     this->down = digitalRead(pin) == LOW;
-    this->lastEdge = millis();
+    this->lastEdgeUs = esp_timer_get_time();
+    this->pressTimeUs = this->lastEdgeUs;
+    this->releaseTimeUs = this->lastEdgeUs;
 }
 
 void Button::update() {
-    uint32_t now = millis();
+    int64_t now = esp_timer_get_time();
     bool raw = digitalRead(this->pin) == LOW; // active LOW
 
-    if(raw == this->down || now - this->lastEdge < LOCKOUT_MS) {
+    if(raw == this->down || now - this->lastEdgeUs < LOCKOUT_US) {
         return;
     }
 
     this->down = raw;
-    this->lastEdge = now;
+    this->lastEdgeUs = now;
     if(raw) {
         this->presses++;
-        this->pressTime = now;
+        this->pressTimeUs = now;
     } else {
-        this->releaseTime = now;
+        this->releaseTimeUs = now;
     }
 }
+

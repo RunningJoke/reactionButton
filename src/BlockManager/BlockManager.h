@@ -8,7 +8,7 @@
 #include "Block/Block.h"
 #include "Block/BlockContext.h"
 
-class IBuzzerMode;
+class IPodNetwork;
 
 /**
  * Loads a program (JSON) into blocks and runs it.
@@ -41,9 +41,12 @@ class BlockManager {
         bool loadProgram(const char* path);
 
         // Starts the loaded program from its start block
-        bool start(IBuzzerMode* remote);
+        bool start(IPodNetwork* network);
 
         void run();
+
+        // Leaves and re-enters the current block, e.g. to re-arm pods after a pause
+        void restartCurrentBlock();
 
         bool isRunning() const { return this->running; }
         const String& getLastError() const { return this->lastError; }

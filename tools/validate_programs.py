@@ -30,7 +30,7 @@ BLOCK_TYPES = {
     "if":               (["true", "false"], ["left", "right"], ["left", "right"], [], []),
     "setVariable":      (["next"], ["var", "value"], ["value"], [], []),
     "remotePress":      (["next", "timeout"], ["pod"], ["pod", "timeoutMs"], [], ["color", "colorAfter"]),
-    "remoteMultiPress": (["next", "avoidHit", "timeout"], [], ["pods", "avoid", "timeoutMs"], [],
+    "remoteMultiPress": (["next", "avoidHit", "timeout"], [], ["pods", "avoid", "timeoutMs", "syncStartMs"], [],
                          ["hitColor", "avoidColor"]),
     "remoteResetAll":   (["next"], [], ["pods"], [], []),
     "summary":          (["next"], ["metric"], [], [], []),

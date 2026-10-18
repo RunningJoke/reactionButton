@@ -1,6 +1,5 @@
 #include "RemoteResetAllBlock.h"
-#include "BLEManager/IBuzzerMode.h"
-#include "Peripheral/Peripheral.h"
+#include "Link/IPodNetwork.h"
 
 bool RemoteResetAllBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
     if(!this->pods.parse(json["pods"], ctx.vars)) {
@@ -11,15 +10,12 @@ bool RemoteResetAllBlock::configure(JsonObjectConst json, BlockLoadContext& ctx)
 }
 
 BlockStatus RemoteResetAllBlock::execute(BlockContext& ctx) {
-    if(ctx.remote != nullptr) {
-        int64_t connected = ctx.remote->getPeripheralCount();
+    if(ctx.network != nullptr) {
+        int64_t connected = ctx.network->podCount();
         int64_t count = this->pods.isSet() ? constrain(this->pods.get(ctx.vars), (int64_t)0, connected) : connected;
 
         for(uint8_t i = 0; i < count; i++) {
-            Peripheral* peripheral = ctx.remote->getPeripheral(i);
-            if(peripheral != nullptr) {
-                peripheral->resetPeripheral();
-            }
+            ctx.network->reset(i);
         }
     }
 

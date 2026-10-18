@@ -1,8 +1,7 @@
 #include "RemoteMultiplePressBlock.h"
 #include "Block/JsonUtil.h"
 #include "Block/RandomUtil.h"
-#include "BLEManager/IBuzzerMode.h"
-#include "Peripheral/Peripheral.h"
+#include "Link/IPodNetwork.h"
 
 static const char* TAG = "MULTIPRESS";
 
@@ -13,8 +12,8 @@ const char* RemoteMultiplePressBlock::portName(uint8_t port) const {
 
 bool RemoteMultiplePressBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
     if(!this->pods.parse(json["pods"], ctx.vars) || !this->avoid.parse(json["avoid"], ctx.vars)
-        || !this->timeoutMs.parse(json["timeoutMs"], ctx.vars)) {
-        return ctx.fail("invalid 'pods', 'avoid' or 'timeoutMs'");
+        || !this->timeoutMs.parse(json["timeoutMs"], ctx.vars) || !this->syncStartMs.parse(json["syncStartMs"], ctx.vars)) {
+        return ctx.fail("invalid 'pods', 'avoid', 'syncStartMs' or 'timeoutMs'");
     }
     this->includeCentral = json["includeCentral"] | true;
 
@@ -37,11 +36,11 @@ bool RemoteMultiplePressBlock::configure(JsonObjectConst json, BlockLoadContext&
 
 void RemoteMultiplePressBlock::enter(BlockContext& ctx) {
     this->enterTime = millis();
-    this->pressCountAtEnter = ctx.button.pressCount();
     this->avoidMask = 0;
     this->remainingMask = 0;
+    this->centralLit = false;
 
-    uint8_t connected = ctx.remote != nullptr ? ctx.remote->getPeripheralCount() : 0;
+    uint8_t connected = ctx.network != nullptr ? ctx.network->podCount() : 0;
     int64_t wanted = this->pods.isSet() ? this->pods.get(ctx.vars) : connected;
     this->podCount = (uint8_t)constrain(wanted, (int64_t)0, (int64_t)(connected < MAX_PODS ? connected : (uint8_t)MAX_PODS));
 
@@ -60,57 +59,63 @@ void RemoteMultiplePressBlock::enter(BlockContext& ctx) {
         }
     }
 
+    // all pods (and the central) light up at the same network time
+    int64_t lead = this->syncStartMs.get(ctx.vars);
+    this->startAtUs = (ctx.network != nullptr ? ctx.network->nowUs() : esp_timer_get_time()) + lead * 1000;
+
     for(uint8_t i = 0; i < this->podCount; i++) {
-        Peripheral* peripheral = ctx.remote->getPeripheral(i);
-        if(peripheral == nullptr) {
-            continue;
-        }
+        ArmCommand command;
+        command.startAtUs = lead > 0 ? this->startAtUs : 0;
         if(this->avoidMask & (1UL << i)) {
-            peripheral->arm(PeripheralActionMode::AVOID, this->remoteAvoidColor, RemoteColor::OFF);
+            command.mode = Protocol::PodMode::AVOID;
+            command.colorActive = this->remoteAvoidColor;
         } else {
-            peripheral->arm(PeripheralActionMode::HIT, this->remoteHitColor, RemoteColor::OFF);
+            command.mode = Protocol::PodMode::HIT;
+            command.colorActive = this->remoteHitColor;
             this->remainingMask |= 1UL << i;
         }
+        this->cmdSeqs[i] = ctx.network->arm(i, command);
     }
 
-    if(this->includeCentral) {
-        uint32_t centralBit = 1UL << this->podCount;
-        if(this->avoidMask & centralBit) {
-            ctx.leds.setLEDColors(&this->localAvoidColor);
-        } else {
-            ctx.leds.setLEDColors(&this->localHitColor);
-            this->remainingMask |= centralBit;
-        }
+    if(this->includeCentral && (this->avoidMask & (1UL << this->podCount)) == 0) {
+        this->remainingMask |= 1UL << this->podCount;
     }
 }
 
 BlockStatus RemoteMultiplePressBlock::execute(BlockContext& ctx) {
+    uint32_t centralBit = 1UL << this->podCount;
+
+    if(this->includeCentral && !this->centralLit && esp_timer_get_time() >= this->startAtUs) {
+        ctx.leds.setLEDColors((this->avoidMask & centralBit) ? &this->localAvoidColor : &this->localHitColor);
+        this->centralLit = true;
+        this->centralLitUs = esp_timer_get_time();
+        this->pressCountAtLight = ctx.button.pressCount();
+    }
+
     PodEvent event;
-    while(ctx.remote != nullptr && ctx.remote->pollEvent(event)) {
-        if(event.podId >= this->podCount) {
-            continue;
+    while(ctx.network != nullptr && ctx.network->pollEvent(event)) {
+        if(event.podId >= this->podCount || event.cmdSeq != this->cmdSeqs[event.podId]) {
+            continue;   // not part of this round
         }
         uint32_t bit = 1UL << event.podId;
-        Peripheral* peripheral = ctx.remote->getPeripheral(event.podId);
 
-        if(this->avoidMask & bit) {
+        if(event.result == Protocol::PressResult::AVOID_HIT || (this->avoidMask & bit)) {
             ESP_LOGI(TAG, "avoid pod %u was pressed", event.podId);
-            if(peripheral != nullptr) peripheral->resetPeripheral();
+            ctx.network->reset(event.podId);
             return BlockStatus::done(AVOID_HIT);
         }
         if(this->remainingMask & bit) {
             this->remainingMask &= ~bit;
-            if(peripheral != nullptr) peripheral->resetPeripheral();
-            if(!this->recordMetric.empty() && event.value >= 0) {
-                ctx.results.record(this->recordMetric.c_str(), event.podId, event.value);
+            ctx.network->reset(event.podId);
+            if(!this->recordMetric.empty()) {
+                ctx.results.record(this->recordMetric.c_str(), event.podId, event.reactionMs());
             }
         }
     }
 
-    if(this->includeCentral && ctx.button.pressCount() != this->pressCountAtEnter) {
+    if(this->centralLit && ctx.button.pressCount() != this->pressCountAtLight) {
         // count each central press only once
-        this->pressCountAtEnter = ctx.button.pressCount();
-        uint32_t centralBit = 1UL << this->podCount;
+        this->pressCountAtLight = ctx.button.pressCount();
 
         if(this->avoidMask & centralBit) {
             return BlockStatus::done(AVOID_HIT);
@@ -119,8 +124,8 @@ BlockStatus RemoteMultiplePressBlock::execute(BlockContext& ctx) {
             this->remainingMask &= ~centralBit;
             ctx.leds.turnOff();
             if(!this->recordMetric.empty()) {
-                ctx.results.record(this->recordMetric.c_str(), ctx.centralPodId,
-                                   (int32_t)(ctx.button.lastPressTime() - this->enterTime));
+                int32_t reactionMs = (int32_t)((ctx.button.lastPressTimeUs() - this->centralLitUs + 500) / 1000);
+                ctx.results.record(this->recordMetric.c_str(), ctx.centralPodId, reactionMs);
             }
         }
     }
