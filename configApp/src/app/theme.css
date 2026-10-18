@@ -1,0 +1,107 @@
+/* Design tokens. One accent colour; LED colours only where they mean LED colours. */
+:root {
+  color-scheme: light dark;
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+
+  --touch: 44px;
+  --header-h: 52px;
+  --tabbar-h: 60px;
+  --rail-w: 84px;
+
+  --bg: #f5f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --border: #dde2e8;
+  --text: #15191e;
+  --text-muted: #5d6874;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --accent-soft: #dbe6fd;
+  --ok: #15803d;
+  --warn: #b45309;
+  --error: #b91c1c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.06);
+
+  /* LED colours (named colours of the firmware) */
+  --led-off: #3a424e;
+  --led-red: #ef4444;
+  --led-green: #22c55e;
+  --led-blue: #3b82f6;
+  --led-yellow: #eab308;
+  --led-magenta: #d946ef;
+  --led-cyan: #06b6d4;
+  --led-white: #f8fafc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101418;
+    --surface: #181d23;
+    --surface-2: #222830;
+    --border: #2c333c;
+    --text: #e8ecf0;
+    --text-muted: #96a1ad;
+    --accent: #60a5fa;
+    --accent-contrast: #0b1220;
+    --accent-soft: #1d2b42;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --error: #f87171;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.45;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.2;
+}

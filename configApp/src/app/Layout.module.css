@@ -1,0 +1,126 @@
+/* Phone: header on top, tab bar at the bottom. Wide screens: side rail, no tab bar. */
+.shell {
+  display: grid;
+  grid-template-rows: calc(var(--header-h) + env(safe-area-inset-top)) 1fr calc(
+      var(--tabbar-h) + env(safe-area-inset-bottom)
+    );
+  grid-template-areas: "header" "main" "tabbar";
+  height: 100dvh;
+}
+
+.rail {
+  display: none;
+}
+
+.header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: env(safe-area-inset-top) var(--space-2) 0 var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerButton {
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  height: var(--touch);
+  border-radius: var(--radius-m);
+  color: var(--text-muted);
+}
+
+.headerButton:global(.active) {
+  color: var(--accent);
+}
+
+.main {
+  grid-area: main;
+  overflow: auto;
+  min-width: 0;
+}
+
+.tabbar {
+  grid-area: tabbar;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.navItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--touch);
+  padding: var(--space-1);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--radius-m);
+}
+
+.navItem span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navItem svg {
+  padding: 2px 12px;
+  box-sizing: content-box;
+  border-radius: 999px;
+}
+
+.navItem:global(.active) {
+  color: var(--accent);
+}
+
+.navItem:global(.active) svg {
+  background: var(--accent-soft);
+}
+
+@media (min-width: 900px) {
+  .shell {
+    grid-template-columns: var(--rail-w) 1fr;
+    grid-template-rows: var(--header-h) 1fr;
+    grid-template-areas: "rail header" "rail main";
+  }
+
+  .rail {
+    grid-area: rail;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-1);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  /* Settings sits at the bottom of the rail */
+  .rail > :last-child {
+    margin-top: auto;
+  }
+
+  .tabbar,
+  .headerButton {
+    display: none;
+  }
+}

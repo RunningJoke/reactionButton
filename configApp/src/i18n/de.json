@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "ReactPod Config"
+  },
+  "nav": {
+    "pod": "Pod",
+    "programs": "Programme",
+    "editor": "Editor",
+    "simulate": "Simulation",
+    "menu": "Menü",
+    "settings": "Einstellungen",
+    "main": "Hauptnavigation"
+  },
+  "connection": {
+    "disconnected": "Nicht verbunden",
+    "connecting": "Verbinde…",
+    "connected": "Verbunden"
+  },
+  "placeholder": {
+    "comingIn": "Kommt in Phase {{phase}}"
+  },
+  "pod": {
+    "title": "Pod",
+    "intro": "Mit einer Zentrale im Programmmenü über Bluetooth oder USB verbinden.",
+    "bluetooth": "Bluetooth",
+    "usb": "USB",
+    "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
+    "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",
+    "serialUnsupported": "USB braucht Chrome oder Edge auf einem Computer."
+  },
+  "programs": {
+    "title": "Programme",
+    "intro": "Deine Programme, die Programme auf dem Pod und die Bibliothek."
+  },
+  "editor": {
+    "title": "Editor",
+    "intro": "Programme durch Verbinden von Blöcken bauen."
+  },
+  "simulate": {
+    "title": "Simulation",
+    "intro": "Ein Programm auf virtuellen Pods ausführen, Schritt für Schritt."
+  },
+  "menu": {
+    "title": "Menü",
+    "intro": "Reihenfolge der Programme auf dem Pod und ihr LED-Muster."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "languageSystem": "System",
+    "about": "Über",
+    "version": "Version {{version}}"
+  },
+  "update": {
+    "available": "Eine neue Version ist verfügbar.",
+    "reload": "Aktualisieren",
+    "offlineReady": "Offline einsatzbereit.",
+    "dismiss": "Schließen"
+  }
+}
