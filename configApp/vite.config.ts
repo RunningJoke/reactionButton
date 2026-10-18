@@ -36,7 +36,11 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    // the shipped programs in ../data are bundled (src/defaults)
+    fs: { allow: [".", "../data"] },
+  },
   test: {
-    environment: "jsdom",
+    environment: "node", // React tests opt in with "@vitest-environment jsdom"
   },
 });

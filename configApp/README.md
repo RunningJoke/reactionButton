@@ -93,21 +93,25 @@ configApp/
 ├── src/
 │   ├── app/                     shell, routing, navigation, theme
 │   ├── i18n/                    de.json, en.json, setup
-│   ├── model/                   program format: types, block type definitions, parse / serialise
+│   ├── model/                   program format: types, block type definitions, checks, formatting
 │   │   ├── blockTypes.ts        ports, fields, defaults per block type (app-owned copy)
-│   │   ├── program.ts           Program, Block, Fragment, Menu types
-│   │   └── validate.ts          port of tools/validate_programs.py
+│   │   ├── program.ts           ProgramFile, FragmentFile, Block, ProgramIndex types
+│   │   ├── colors.ts, limits.ts colours, store limits, path rules, name → path
+│   │   ├── validate.ts          port of tools/validate_programs.py (+ warnings), issue codes
+│   │   └── format.ts            writes files in the style of data/ (one block per line)
 │   ├── pod/                     everything about talking to a pod
-│   │   ├── transport/           Transport interface + BLE, Web Serial, simulated pod
-│   │   ├── framing.ts           JSON line framing, MTU chunking
-│   │   ├── client.ts            PodClient: one request at a time, ids, timeouts, retries
-│   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC-32
-│   │   └── sync.ts              compare local vs pod, push plan, push execution
+│   │   ├── transport/           Transport interface (BLE and Web Serial adapters follow in P2)
+│   │   ├── simulated/           SimulatedPod (config API in memory) + SimulatedTransport
+│   │   ├── utf8.ts, crc32.ts    byte counting, UTF-8 safe splitting, line decoder, CRC-32
+│   │   ├── protocol.ts          request / response types, PodError
+│   │   ├── client.ts            PodClient: one request at a time, ids, timeouts, resend on "overflow"
+│   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC check both ways
+│   │   └── sync.ts              compare local vs pod, push plan, push execution (P5)
 │   ├── store/                   local persistence (Storage interface + IndexedDB adapter)
 │   ├── editor/                  graph view, node components, inspector, palette, layout
 │   ├── simulator/               engine (TS port of the block semantics), pod views, controls
 │   ├── menu/                    menu order + LED ring picker
-│   └── defaults/                shipped programs, copied from ../data at build time
+│   └── defaults/                shipped programs, bundled from ../data at build time (raw text)
 └── docs/
     └── acceptance-tests.md      acceptance criteria and test procedures on real pods
 ```
@@ -421,15 +425,15 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 
 ## 13. Phases
 
-| Phase | Content | Done when |
-|---|---|---|
-| P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works |
-| P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod |
-| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware |
-| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly |
-| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop |
-| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware |
-| P6 | Simulator | AT-M* pass, stepped run matches pod trace |
+| Phase | Content | Done when | Status |
+|---|---|---|---|
+| P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
+| P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
+| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | open |
+| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | open |
+| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | open |
+| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |
+| P6 | Simulator | AT-M* pass, stepped run matches pod trace | open |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](docs/acceptance-tests.md).
 Requested firmware / API changes: [../doc/changerequest/config-app-api.md](../doc/changerequest/config-app-api.md).
