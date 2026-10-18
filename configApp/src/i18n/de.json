@@ -66,7 +66,13 @@
       "library": "Bibliothek ({{count}})"
     },
     "emptyMenu": "Das Menü ist leer.",
-    "missingFile": "fehlt"
+    "missingFile": "fehlt",
+    "dialog": {
+      "title": "Pod-Verbindung",
+      "close": "Schließen"
+    },
+    "notConnected": "Kein Pod verbunden",
+    "connectButton": "Verbinden"
   },
   "programs": {
     "onPod": "Auf dem Pod",

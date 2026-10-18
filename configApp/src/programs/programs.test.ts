@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../defaults";
-import { layoutGraph } from "../editor/layout";
+import { columnLayout } from "../editor/columnLayout";
 import { blockSummary } from "../editor/summary";
 import { buildGraph } from "../model/graph";
 import { resolveProgram } from "../model/validate";
@@ -61,22 +61,46 @@ describe("graph", () => {
   });
 });
 
-describe("layout", () => {
-  it("places every node without overlaps", () => {
-    for (const path of ["/prog/solo.json", "/prog/duo.json", "/prog/run5.json", "/prog/lib/star.json"]) {
+describe("column layout", () => {
+  const all = Object.keys(DEFAULT_FILES).filter((p) => p.startsWith("/prog/"));
+
+  it("stacks every block once, start first, and draws every connection that does not just continue", () => {
+    for (const path of all) {
       const graph = graphOf(path);
-      const layout = layoutGraph(graph, () => 80);
-      const boxes = graph.nodes.map((n) => layout.nodes.get(n.id)!);
-      expect(boxes.every((b) => Number.isFinite(b.x) && Number.isFinite(b.y)), path).toBe(true);
-      for (let i = 0; i < boxes.length; i++) {
-        for (let j = i + 1; j < boxes.length; j++) {
-          const a = boxes[i]!;
-          const b = boxes[j]!;
-          const overlap = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-          expect(overlap, `${path}: ${graph.nodes[i]!.id} / ${graph.nodes[j]!.id}`).toBe(false);
-        }
+      const layout = columnLayout(graph);
+      expect([...layout.order].sort(), path).toEqual(graph.nodes.map((n) => n.id).sort());
+      if (graph.start) expect(layout.order[0], path).toBe(graph.start);
+      const drawn = new Set(layout.arrows.map((a) => a.edge.id));
+      for (const edge of graph.edges) {
+        const i = layout.order.indexOf(edge.source);
+        const continues = layout.joined.has(edge.source) && layout.order[i + 1] === edge.target;
+        expect(continues !== drawn.has(edge.id), `${path}: ${edge.id}`).toBe(true);
+        const arrow = layout.arrows.find((a) => a.edge.id === edge.id);
+        if (arrow) expect(arrow.side, `${path}: ${edge.id}`).toBe(layout.order.indexOf(edge.target) > i ? "right" : "left");
       }
-      expect(layout.edges.size).toBe(graph.edges.length);
+    }
+  });
+
+  it("keeps a short branch between its fork and the join (Duo)", () => {
+    const { order, joined, arrows } = columnLayout(graphOf("/prog/duo.json"));
+    const at = (id: string) => order.indexOf(id);
+    expect(at("CentralPress")).toBeLessThan(at("CentralMiss"));
+    expect(at("CentralMiss") + 1).toBe(at("CentralOff"));
+    expect(joined.has("CentralMiss")).toBe(true);
+    // a choice: both ports of the button are arrows, even the one to a block below
+    expect(arrows.filter((a) => a.edge.source === "CentralPress").map((a) => a.edge.port).sort()).toEqual(["pressed", "timeout"]);
+  });
+
+  it("puts overlapping trunks in different lanes and shares a lane for one target", () => {
+    for (const path of all) {
+      const layout = columnLayout(graphOf(path));
+      const lane = new Map<string, number>();
+      for (const a of layout.arrows) {
+        const key = `${a.side}>${a.edge.target}`;
+        expect(lane.get(key) ?? a.lane, `${path}: ${key}`).toBe(a.lane);
+        lane.set(key, a.lane);
+        expect(a.lane, path).toBeLessThan(layout.lanes[a.side]);
+      }
     }
   });
 });

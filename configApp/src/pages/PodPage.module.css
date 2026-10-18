@@ -1,55 +1,3 @@
-.intro {
-  margin: var(--space-2) 0 var(--space-4);
-  color: var(--text-muted);
-}
-
-.options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-3);
-}
-
-.option {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: "icon title" "icon text";
-  align-items: center;
-  column-gap: var(--space-3);
-  row-gap: 2px;
-  min-height: 72px;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--surface);
-  text-align: left;
-  cursor: pointer;
-}
-
-.option svg {
-  grid-area: icon;
-  color: var(--accent);
-}
-
-.option:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.option:not(:disabled):hover {
-  border-color: var(--accent);
-}
-
-.optionTitle {
-  grid-area: title;
-  font-weight: 600;
-}
-
-.optionText {
-  grid-area: text;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 .hint {
   display: flex;
   align-items: flex-start;
@@ -72,31 +20,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.banner {
-  display: flex;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-4);
-  border-radius: var(--radius-m);
-  background: color-mix(in srgb, var(--error) 12%, var(--surface));
-  color: var(--error);
-}
-
-.banner svg {
-  flex: none;
-  margin-top: 2px;
-}
-
-.banner p {
-  margin: 2px 0 0;
-}
-
-.detail {
-  font-size: 13px;
-  color: var(--text-muted);
-  word-break: break-word;
 }
 
 .podHeader {

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowLeft, ArrowRight, CircleAlert, Info, Lock, Users, X } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { blockIcon, blockCategory } from "../editor/blockStyle";
-import { ProgramGraphView } from "../editor/ProgramGraphView";
+import { ProgramColumnView } from "../editor/ProgramColumnView";
 import { blockType } from "../model/blockTypes";
 import { buildGraph, type GraphNode } from "../model/graph";
 import { isLibraryPath } from "../model/limits";
@@ -98,7 +98,7 @@ export function ProgramViewPage() {
       {panel === "issues" && <IssuesPanel issues={resolved.issues} onSelect={(b) => setSelected(b)} />}
 
       <div className={styles.graph}>
-        <ProgramGraphView graph={graph} selected={selected} onSelect={setSelected} />
+        <ProgramColumnView graph={graph} selected={selected} onSelect={setSelected} />
         {selectedNode && <BlockSheet node={selectedNode} graph={graph.nodes} onSelect={setSelected} />}
       </div>
     </div>

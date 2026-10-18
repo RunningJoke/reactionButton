@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Settings } from "lucide-react";
 import { NAV_ITEMS } from "./navigation";
 import { ConnectionChip } from "./ConnectionChip";
+import { ConnectDialog } from "./ConnectDialog";
 import { UpdatePrompt } from "./UpdatePrompt";
 import styles from "./Layout.module.css";
 
@@ -43,6 +44,7 @@ export function Layout() {
         ))}
       </nav>
 
+      <ConnectDialog />
       <UpdatePrompt />
     </div>
   );

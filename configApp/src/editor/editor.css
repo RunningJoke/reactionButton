@@ -1,4 +1,4 @@
-/* Block graph. Category colours mark the kind of block; LED colours appear only as swatches. */
+/* Block graph (one column). Category colours mark the kind of block; LED colours appear only as swatches. */
 :root {
   --cat-light: #d97706;
   --cat-wait: #7c3aed;
@@ -21,87 +21,134 @@
   }
 }
 
-.rp-graph {
+.rp-column-scroll {
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* room to scroll the last blocks above the block sheet on phones */
+.rp-column-scroll[data-sheet] {
+  padding-bottom: 55vh;
+}
+
+@media (min-width: 900px) {
+  .rp-column-scroll[data-sheet] {
+    padding-bottom: 0;
+    padding-right: 356px;
+  }
+}
+
+.rp-column {
   position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-6);
+}
+
+.rp-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rp-card-slot {
+  margin-bottom: 12px;
+}
+
+/* continues straight into the block below: no arrow, just a small gap */
+.rp-card-slot[data-joined] {
+  margin-bottom: 3px;
+}
+
+.rp-arrows {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 320px;
+  overflow: visible;
+  pointer-events: none;
 }
 
-.rp-graph .react-flow {
-  --xy-background-color: var(--bg);
-  --xy-edge-stroke: var(--text-muted);
-  --xy-controls-button-background-color: var(--surface);
-  --xy-controls-button-color: var(--text);
-  --xy-controls-button-border-color: var(--border);
-  --xy-controls-button-background-color-hover: var(--surface-2);
-  --xy-attribution-background-color: transparent;
+.rp-arrow {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
 }
 
-.rp-node {
+.rp-arrow[data-lit] {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.rp-arrowhead-plain {
+  fill: var(--text-muted);
+}
+
+.rp-arrowhead-lit {
+  fill: var(--accent);
+}
+
+.rp-card {
   --cat: var(--cat-unknown);
-  position: relative;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  padding: 0;
   border: 1px solid var(--border);
-  border-top: 3px solid var(--cat);
+  border-left: 4px solid var(--cat);
   border-radius: var(--radius-s);
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow);
+  text-align: left;
   font-size: 12px;
   cursor: pointer;
 }
 
-.rp-node[data-category="light"] { --cat: var(--cat-light); }
-.rp-node[data-category="wait"] { --cat: var(--cat-wait); }
-.rp-node[data-category="input"] { --cat: var(--cat-input); }
-.rp-node[data-category="logic"] { --cat: var(--cat-logic); }
-.rp-node[data-category="remote"] { --cat: var(--cat-remote); }
-.rp-node[data-category="stats"] { --cat: var(--cat-stats); }
+.rp-card[data-category="light"] { --cat: var(--cat-light); }
+.rp-card[data-category="wait"] { --cat: var(--cat-wait); }
+.rp-card[data-category="input"] { --cat: var(--cat-input); }
+.rp-card[data-category="logic"] { --cat: var(--cat-logic); }
+.rp-card[data-category="remote"] { --cat: var(--cat-remote); }
+.rp-card[data-category="stats"] { --cat: var(--cat-stats); }
 
-.rp-node[data-category="external"] {
+.rp-card[data-category="external"] {
   --cat: var(--cat-external);
   border-style: dashed;
   background: var(--surface-2);
-  box-shadow: none;
 }
 
 /* blocks from included files (presets): locked and quieter */
-.rp-node:not([data-own]) {
+.rp-card:not([data-own]) {
   background: var(--surface-2);
-  box-shadow: none;
 }
 
-.rp-node[data-unreachable] {
+.rp-card[data-unreachable] {
   opacity: 0.5;
 }
 
-.rp-node[data-selected] {
+.rp-card[data-selected] {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-.rp-node[data-active] {
+.rp-card[data-active] {
   outline: 3px solid var(--cat);
   outline-offset: 2px;
   box-shadow: 0 0 0 6px color-mix(in srgb, var(--cat) 25%, transparent);
 }
 
-.rp-node-header {
+.rp-card-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 31px;
+  min-height: 30px;
   padding: 0 10px;
-  border-bottom: 1px solid var(--border);
   color: var(--cat);
 }
 
-.rp-node-name {
-  flex: 1;
+.rp-card-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -111,24 +158,39 @@
   color: var(--text);
 }
 
-.rp-flag {
-  color: var(--ok);
-}
-
-.rp-node-body {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 10px 8px;
-  line-height: 18px;
+.rp-card-type {
+  flex: 1;
   min-width: 0;
-}
-
-.rp-node-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
   color: var(--text-muted);
   font-size: 11px;
 }
 
-.rp-node-line {
+.rp-flag {
+  flex: none;
+  color: var(--ok);
+}
+
+.rp-end {
+  flex: none;
+  color: var(--error);
+}
+
+/* key parameters on one wrapping line */
+.rp-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  padding: 0 10px 6px 32px;
+  margin-top: -4px;
+  line-height: 18px;
+  min-width: 0;
+}
+
+.rp-card-line {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -139,8 +201,8 @@
   font-size: 12px;
 }
 
-.rp-node-hint,
-.rp-node-muted {
+.rp-card-hint {
+  flex-basis: 100%;
   color: var(--text-muted);
   font-size: 11px;
   font-style: italic;
@@ -157,45 +219,40 @@
   border: 1px solid var(--border);
 }
 
-.rp-end {
-  position: absolute;
-  bottom: -9px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--error);
+/* one row per outgoing arrow, on the side the arrow leaves */
+.rp-card-ports {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px dashed var(--border);
+  padding: 2px 0;
 }
 
-.rp-handle.react-flow__handle {
-  width: 8px;
-  height: 8px;
-  min-width: 0;
-  min-height: 0;
-  border: 2px solid var(--surface);
-  background: var(--text-muted);
+.rp-port-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
-.rp-edge.react-flow__edge-path {
-  stroke-width: 1.5;
+.rp-port-row[data-side="right"] {
+  justify-content: flex-end;
 }
 
-.rp-edge[data-active] {
-  stroke: var(--accent);
-  stroke-width: 3;
-}
-
-.rp-edge-label {
-  position: absolute;
-  padding: 1px 6px;
+.rp-port {
+  padding: 0 6px;
+  border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 11px;
-  pointer-events: none;
+  color: var(--text);
+  line-height: 15px;
+}
+
+.rp-port-target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
 }

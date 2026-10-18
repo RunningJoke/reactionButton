@@ -22,7 +22,7 @@ Program format and block semantics: [doc/programs.md](../doc/programs.md).
 | F1 | Connect to a central over **BLE** (Web Bluetooth) or **USB serial** (Web Serial) |
 | F2 | Read the pod: `info`, `list`, `get` of all program files and the menu |
 | F3 | Show the **block types** (palette) and the **library** (`/prog/lib/*`, read-only) |
-| F4 | Show existing programs as a **block graph** with automatic layout |
+| F4 | Show existing programs as a **block graph** (one column, automatic order) |
 | F5 | **Visual editor**: create and edit programs (blocks, ports, parameters, variables, menu LEDs) |
 | F6 | Live **validation** while editing (TypeScript port of `tools/validate_programs.py`) |
 | F7 | **Simulator**: all pods of the program on screen, current block highlighted, run / pause / step |
@@ -70,8 +70,7 @@ decided later and are not part of version 1. Development runs on `localhost`.
 | Native shell (later) | Capacitor | same web code becomes the Android / iOS app |
 | BLE | `@capacitor-community/bluetooth-le` | one API: Web Bluetooth in the browser, native BLE in the app |
 | USB serial | Web Serial API (own small adapter) | desktop testing |
-| Graph editor | React Flow (`@xyflow/react`) | nodes + typed handles map 1:1 to blocks + ports, touch support |
-| Auto layout | `dagre` | layered layout of the block graph, deterministic |
+| Block graph | own column view (HTML cards + SVG arrows) | compact on phones, native scrolling, no canvas library needed |
 | State | Zustand | small, no boilerplate |
 | Local store | IndexedDB via `idb` | offline, large enough, behind an interface |
 | i18n | `i18next` + `react-i18next` | standard, lazy language files |
@@ -109,7 +108,7 @@ configApp/
 │   │   ├── session.ts           connection state for the UI: connect, info / status / list, read-only role, log
 │   │   └── sync.ts              compare local vs pod, push plan, push execution (P5)
 │   ├── store/                   local persistence (Storage interface + IndexedDB adapter)
-│   ├── editor/                  graph view, node components, inspector, palette, layout
+│   ├── editor/                  column view (cards + side arrows), column layout, inspector, palette
 │   ├── simulator/               engine (TS port of the block semantics), pod views, controls
 │   ├── menu/                    menu order + LED ring picker
 │   └── defaults/                shipped programs, bundled from ../data at build time (raw text)
@@ -171,7 +170,7 @@ label below.
 
 | Tab | Icon | Content |
 |---|---|---|
-| **Pod** | bluetooth / usb | connect (BLE / USB), set id, firmware, free space, generation; file list with sync state; push, restore defaults |
+| **Pod** | bluetooth / usb | set id, firmware, free space, generation; file list with sync state; push, restore defaults. Not connected: a Connect button that opens the connection dialog |
 | **Programs** | list | local programs + programs read from the pod + library (read-only); create, duplicate, import, export |
 | **Editor** | workflow | graph of one program (§7) |
 | **Simulate** | play | pods + graph + controls (§8) |
@@ -183,7 +182,8 @@ UX rules:
 - Every editing action works **without drag and drop** too (bottom sheets with selects),
   because drawing wires on a small screen is error prone.
 - State shown by colour + icon + text (never colour alone).
-- The connection state is always visible (small status chip in the header).
+- The connection state is always visible (small status chip in the header). Tapping the chip opens the
+  **connection dialog**: connect (Bluetooth / USB / demo pod) or, when connected, the pod and **Disconnect**.
 - When the BLE connection is not possible, the app explains how to get the central
   into the program menu (hold button during the blue boot animation).
 
@@ -207,10 +207,8 @@ type SyncState = {            // per pod set (setId), remembered after each sync
 };
 ```
 
-- **Layout is not stored on the pod** (keeps files small). The graph is laid out
-  automatically (dagre) every time it is opened. Proposal: the editor may keep manual
-  node positions **locally only** (in IndexedDB, keyed by program id + block name);
-  "re-layout" resets them. See §12.
+- **Layout is not stored on the pod** (keeps files small). The block order of the column view
+  is computed every time a program is opened (§7.1), so there are no node positions to keep.
 - Paths: generated from the program name. Slug ≤ 20 characters so that
   `/prog/<slug>.json` stays ≤ 31 characters. Allowed characters as in config-api §4.
 - Import / export: a single program `.json`, or a whole set as a `.zip`
@@ -222,16 +220,22 @@ type SyncState = {            // per pod set (setId), remembered after each sync
 
 ### 7.1 Graph
 
-- One **node per block**. Header: icon + type colour + block name. Body: 1–2 key
-  parameters (e.g. `3000 ms`, `RUNS >= MAX_LOOPS`).
-- One **output handle per port** (`next`, `pressed`, `short`, `long`, `timeout`, `true`,
-  `false`, `avoidHit`), labelled. One input handle.
+- All blocks in **one column**, one card per block. Header: icon + type colour + block name + type.
+  Body: the key parameters on one wrapping line (e.g. `3000 ms`, `RUNS >= MAX_LOOPS`).
+- **Order:** flow order from the start block. Loops are ignored for the order, the rest is placed
+  topologically, first port first: the main path reads straight down and a short branch sits between
+  its fork and the block where it rejoins.
+- A block with **one** connection to the block directly below just continues downwards (no arrow).
+- Every other connection is an **arrow beside the column**: it leaves from a port row of the card
+  (`timeout → CentralMiss`) and enters the header of the target. Arrows going down run on the
+  **right**, loops back up on the **left**. A block with a choice (several ports) has all its ports
+  as arrows, also the one to the block below. Arrows into the same target share a lane.
 - The fallback rule of the firmware is visible: if a port is unconnected and the block
-  has `next`, a dashed "→ next" hint is shown on that port.
+  has `next`, a "→ next" hint is shown on the card.
 - The **start block** has a flag icon. Blocks without any target (program ends) get an end marker.
 - Blocks unreachable from `start` are dimmed.
-- Targets that no loaded file defines (a library part viewed on its own) are dashed "external" nodes.
-- The view opens at the top: the whole graph if it fits at a readable zoom (≥ 0.55), otherwise fitted to the width and scrolled vertically. Wheel / drag pans, pinch / Ctrl+wheel zooms.
+- Targets that no loaded file defines (a library part viewed on its own) are dashed "external" cards.
+- The view scrolls natively; tapping a card selects it, its arrows are highlighted, and the block sheet shows its details.
 
 ### 7.2 Library: presets and templates (decision 4c)
 
@@ -252,9 +256,9 @@ On push, preset fragments the pod does not have are uploaded too (from the bundl
 
 | Action | Touch | Desktop |
 |---|---|---|
-| Add block | floating button → palette sheet (grouped: Light, Wait, Input, Logic, Remote, Stats) | palette sidebar, drag onto canvas |
+| Add block | floating button → palette sheet (grouped: Light, Wait, Input, Logic, Remote, Stats) | palette sidebar, inserts below the selected block |
 | Edit parameters | tap node → inspector bottom sheet | inspector side panel |
-| Connect port | inspector: per port a "go to" select with all block names (+ "new block…") | drag from handle |
+| Connect port | inspector: per port a "go to" select with all block names (+ "new block…") | same as touch |
 | Delete / duplicate / rename | inspector actions | keyboard + context menu |
 | Set start block | inspector | inspector |
 | Undo / redo | header buttons | Ctrl+Z / Ctrl+Y |
@@ -413,14 +417,14 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 
 | # | Topic | Decision |
 |---|---|---|
-| O1 | Manual node positions | stored locally only (IndexedDB), never on the pod. "Re-layout" resets them |
+| O1 | Manual node positions | none: the column view computes the block order (§7.1) |
 | O2 | Hosting | only prepare the PWA. Hosting and domain later, not in v1 |
 | O3 | Languages | English (primary, fallback) and German |
 | O4 | Long press in the simulator | press and hold = held button, release = release (`shortMs` decides) |
 | O5 | Number of peripherals | the editor prevents more than 7. No other warning |
 | O6 | Write target | only a central. Peripherals are read-only in the app |
 | 4 | Library | `/prog/lib/*` read-only, used as preset (include) or template (copy) |
-| 5 | Layout on the pod | none, automatic layout |
+| 5 | Layout on the pod | none, automatic order in one column |
 | 7 | Block type definitions | app keeps its own copy, separate from the firmware |
 | 8 | Push | update only, never delete unless the user asks |
 | 9 | Conflicts | simple choice "keep pod" / "keep mine", no diff |

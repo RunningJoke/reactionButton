@@ -1,25 +1,10 @@
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  BookLock,
-  Bluetooth,
-  FileJson,
-  Info,
-  ListOrdered,
-  Loader,
-  Lock,
-  MonitorSmartphone,
-  RefreshCw,
-  Unplug,
-  Usb,
-  type LucideIcon,
-} from "lucide-react";
+import { AlertTriangle, BookLock, FileJson, Info, ListOrdered, Loader, Lock, Plug, RefreshCw, Unplug } from "lucide-react";
+import { ErrorBanner } from "../app/ConnectDialog";
+import { useConnectDialog } from "../app/connectDialogStore";
 import { INDEX_PATH, isLibraryPath } from "../model/limits";
 import type { FileEntry, ListResponse } from "../pod/protocol";
 import { firmwareSupported, isReadOnly, usePodSession } from "../pod/session";
-import { isWebBluetoothAvailable } from "../pod/transport/BleTransport";
-import type { TransportKind } from "../pod/transport/Transport";
-import { isWebSerialAvailable } from "../pod/transport/WebSerialTransport";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
 
@@ -28,66 +13,30 @@ export function PodPage() {
   return (
     <div className={page.page}>
       <ErrorBanner />
-      {state === "connected" ? <Connected /> : <ConnectOptions busy={state === "connecting"} />}
+      {state === "connected" ? <Connected /> : <NotConnected busy={state === "connecting"} />}
     </div>
   );
 }
 
-function ErrorBanner() {
+function NotConnected({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
-  const error = usePodSession((s) => s.error);
-  if (!error) return null;
-  const known = ["timeout", "disconnected", "openFailed", "notAllowed", "busy", "overflow"];
+  const show = useConnectDialog((s) => s.show);
   return (
-    <div className={styles.banner} role="alert">
-      <AlertTriangle size={20} aria-hidden />
-      <div>
-        <strong>{t(`pod.errors.${known.includes(error.code) ? error.code : "unknown"}`)}</strong>
-        <p className={styles.detail}>{error.message}</p>
-      </div>
-    </div>
-  );
-}
-
-function ConnectOptions({ busy }: { busy: boolean }) {
-  const { t } = useTranslation();
-  const connect = usePodSession((s) => s.connect);
-  const kind = usePodSession((s) => s.kind);
-
-  const options: { kind: TransportKind; icon: LucideIcon; available: boolean; unavailable?: string }[] = [
-    { kind: "ble", icon: Bluetooth, available: isWebBluetoothAvailable(), unavailable: t("pod.bleUnsupported") },
-    { kind: "serial", icon: Usb, available: isWebSerialAvailable(), unavailable: t("pod.serialUnsupported") },
-    { kind: "simulated", icon: MonitorSmartphone, available: true },
-  ];
-
-  return (
-    <>
-      <p className={styles.intro}>{t("pod.intro")}</p>
-      <div className={styles.options}>
-        {options.map((option) => (
-          <button
-            key={option.kind}
-            className={styles.option}
-            disabled={busy || !option.available}
-            onClick={() => void connect(option.kind)}
-          >
-            {busy && kind === option.kind ? (
-              <Loader size={28} aria-hidden className={styles.spin} />
-            ) : (
-              <option.icon size={28} aria-hidden />
-            )}
-            <span className={styles.optionTitle}>{t(`pod.connect.${option.kind}`)}</span>
-            <span className={styles.optionText}>
-              {option.available ? t(`pod.connect.${option.kind}Hint`) : option.unavailable}
-            </span>
-          </button>
-        ))}
-      </div>
-      {busy && <p className={styles.hint}>{t("pod.chooseDevice")}</p>}
+    <div className={page.empty}>
+      <Unplug size={40} aria-hidden className={page.emptyIcon} />
+      <p>
+        <strong>{t("pod.notConnected")}</strong>
+        <br />
+        {t("pod.intro")}
+      </p>
+      <button className={`${page.bigButton} ${page.primary}`} onClick={show} disabled={busy}>
+        {busy ? <Loader size={20} aria-hidden className={styles.spin} /> : <Plug size={20} aria-hidden />}
+        {busy ? t("connection.connecting") : t("pod.connectButton")}
+      </button>
       <p className={styles.hint}>
         <Info size={16} aria-hidden /> {t("pod.menuHint")}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -112,9 +61,6 @@ function Connected() {
           <div className={styles.actions}>
             <button className={styles.iconButton} onClick={() => void session.refresh()} aria-label={t("pod.refresh")} title={t("pod.refresh")}>
               <RefreshCw size={20} aria-hidden />
-            </button>
-            <button className={styles.iconButton} onClick={() => void session.disconnect()} aria-label={t("pod.disconnect")} title={t("pod.disconnect")}>
-              <Unplug size={20} aria-hidden />
             </button>
           </div>
         </div>

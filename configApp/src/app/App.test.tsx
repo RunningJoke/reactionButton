@@ -29,7 +29,7 @@ describe("App shell", () => {
   it("shows the navigation and the connection state", () => {
     render(<App />);
     expect(screen.getAllByRole("navigation", { name: "Main navigation" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("status").textContent).toContain("Not connected");
+    expect(screen.getByRole("button", { name: "Not connected" }).getAttribute("aria-haspopup")).toBe("dialog");
   });
 
   it("switches to German", async () => {

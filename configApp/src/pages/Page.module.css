@@ -51,6 +51,12 @@
   cursor: pointer;
 }
 
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 .bigButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
