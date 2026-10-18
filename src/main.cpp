@@ -33,7 +33,7 @@ void setup() {
 
 
   LEDManager::getManager()->turnOff();
-  
+
   timestamp = millis();
   while(millis() - timestamp < 2000) {
     LEDManager::getManager()->setLEDColors(&bootupPattern);
