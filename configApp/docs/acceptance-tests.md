@@ -25,6 +25,8 @@ generation and store hash.
 
 ## B – BLE (Android Chrome, desktop Chrome)
 
+Needs firmware with change request CR-0 (`doc/changerequest/config-app-api.md` on the firmware branch). Without it the app connects, then reports "The pod did not answer" (timeout).
+
 | ID | Steps | Expected |
 |---|---|---|
 | AT-B1 | App → Pod → Bluetooth | chooser lists "ReactPod Config", connecting works, `info` shown |

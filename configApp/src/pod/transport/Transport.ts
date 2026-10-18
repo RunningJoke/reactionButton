@@ -1,4 +1,4 @@
-import type { TransportKind } from "../../app/connection";
+export type TransportKind = "ble" | "serial" | "simulated";
 
 export type Unsubscribe = () => void;
 

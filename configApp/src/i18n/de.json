@@ -20,13 +20,53 @@
     "comingIn": "Kommt in Phase {{phase}}"
   },
   "pod": {
-    "title": "Pod",
-    "intro": "Mit einer Zentrale im Programmmenü über Bluetooth oder USB verbinden.",
-    "bluetooth": "Bluetooth",
-    "usb": "USB",
+    "intro": "Mit einer Zentrale im Programmmenü verbinden.",
     "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
     "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",
-    "serialUnsupported": "USB braucht Chrome oder Edge auf einem Computer."
+    "serialUnsupported": "USB braucht Chrome oder Edge auf einem Computer.",
+    "connect": {
+      "ble": "Bluetooth",
+      "bleHint": "Handy oder Computer, Zentrale im Programmmenü",
+      "serial": "USB-Kabel",
+      "serialHint": "Computer mit Chrome oder Edge, jeder Pod",
+      "simulated": "Demo-Pod",
+      "simulatedHint": "Die App ohne Pod ausprobieren"
+    },
+    "chooseDevice": "Den Pod im Browser-Dialog auswählen.",
+    "errors": {
+      "timeout": "Der Pod hat nicht geantwortet. Ist er im Programmmenü? Bluetooth braucht eine Firmware mit Änderung CR-0.",
+      "disconnected": "Die Verbindung wurde getrennt.",
+      "openFailed": "Der Anschluss ließ sich nicht öffnen. Nutzt ihn ein anderes Programm (z. B. ein serieller Monitor)?",
+      "notAllowed": "Der Browser hat den Zugriff nicht erlaubt.",
+      "busy": "Der Pod ist beschäftigt (Spiel oder Abgleich läuft). Zurück ins Programmmenü.",
+      "overflow": "Der Pod kam nicht hinterher. Bitte noch einmal versuchen.",
+      "unknown": "Etwas ist schiefgegangen."
+    },
+    "kind": {
+      "ble": "Bluetooth-Pod",
+      "serial": "USB-Pod",
+      "simulated": "Demo-Pod"
+    },
+    "role": {
+      "central": "Zentrale",
+      "peripheral": "Peripherie · nur lesen",
+      "booting": "Startet · nur lesen"
+    },
+    "refresh": "Aktualisieren",
+    "disconnect": "Trennen",
+    "firmware": "Firmware",
+    "setId": "Set",
+    "generation": "Speicherstand",
+    "free": "Frei",
+    "firmwareUnsupported": "Diese App ist für Firmware 2.x gemacht. Der Pod hat {{version}}; manches funktioniert evtl. nicht.",
+    "readOnly": "Programme können nur auf einer Zentrale geändert werden. Dieser Pod wird nur angezeigt.",
+    "groups": {
+      "menu": "Menü ({{count}})",
+      "other": "Weitere Programme ({{count}})",
+      "library": "Bibliothek ({{count}})"
+    },
+    "emptyMenu": "Das Menü ist leer.",
+    "missingFile": "fehlt"
   },
   "programs": {
     "title": "Programme",
@@ -49,7 +89,12 @@
     "language": "Sprache",
     "languageSystem": "System",
     "about": "Über",
-    "version": "Version {{version}}"
+    "version": "Version {{version}}",
+    "advanced": "Erweitert",
+    "console": "Debug-Konsole",
+    "consoleHint": "Firmware-Log und Ereignisse der USB-Verbindung.",
+    "consoleEmpty": "Noch keine Ausgabe.",
+    "clear": "Leeren"
   },
   "update": {
     "available": "Eine neue Version ist verfügbar.",

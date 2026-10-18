@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import styles from "./UpdatePrompt.module.css";
@@ -10,6 +11,13 @@ export function UpdatePrompt() {
     offlineReady: [offlineReady, setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW();
+
+  // "ready offline" is only news once; an available update waits for the user
+  useEffect(() => {
+    if (!offlineReady || needRefresh) return;
+    const timer = setTimeout(() => setOfflineReady(false), 4000);
+    return () => clearTimeout(timer);
+  }, [offlineReady, needRefresh, setOfflineReady]);
 
   if (!needRefresh && !offlineReady) return null;
 

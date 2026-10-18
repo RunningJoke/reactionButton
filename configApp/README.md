@@ -100,12 +100,13 @@ configApp/
 │   │   ├── validate.ts          port of tools/validate_programs.py (+ warnings), issue codes
 │   │   └── format.ts            writes files in the style of data/ (one block per line)
 │   ├── pod/                     everything about talking to a pod
-│   │   ├── transport/           Transport interface (BLE and Web Serial adapters follow in P2)
+│   │   ├── transport/           Transport interface, BleTransport (capacitor BLE plugin), WebSerialTransport
 │   │   ├── simulated/           SimulatedPod (config API in memory) + SimulatedTransport
 │   │   ├── utf8.ts, crc32.ts    byte counting, UTF-8 safe splitting, line decoder, CRC-32
 │   │   ├── protocol.ts          request / response types, PodError
 │   │   ├── client.ts            PodClient: one request at a time, ids, timeouts, resend on "overflow"
 │   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC check both ways
+│   │   ├── session.ts           connection state for the UI: connect, info / status / list, read-only role, log
 │   │   └── sync.ts              compare local vs pod, push plan, push execution (P5)
 │   ├── store/                   local persistence (Storage interface + IndexedDB adapter)
 │   ├── editor/                  graph view, node components, inspector, palette, layout
@@ -401,6 +402,7 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 | R2 | Several centrals in range all advertise "ReactPod Config", so the user can't pick the right set | change request CR-1 |
 | R3 | Simulator semantics drift from the firmware | engine unit tests use the shipped programs; acceptance test compares a stepped run with the pod's `trace` |
 | R4 | Browser-negotiated BLE MTU is small (23) → slow upload | chunking works with any MTU, show progress; measure in AT-B3 |
+| R6 | Firmware indicates on the Response characteristic, browsers / Android subscribe for notifications → BLE responses never arrive | firmware change request CR-0 (blocker); USB and demo pod work meanwhile |
 | R5 | Two pods of a set edited separately → only one store survives (config-api §6) | show `setId` + generation, hint after push to let the set sync |
 
 ---
@@ -429,7 +431,7 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 |---|---|---|---|
 | P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
 | P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
-| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | open |
+| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | built, hardware tests open (BLE needs firmware CR-0) |
 | P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | open |
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | open |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |
@@ -450,6 +452,8 @@ npm test           # unit tests (Vitest)
 npm run build      # type check + production build with service worker → dist/
 npm run preview    # serve dist/ on http://localhost:4173, e.g. to test offline mode
 npm run icons      # redraw public/icons/* (scripts/make-icons.mjs)
+node scripts/screenshots.mjs <dir>   # screenshots of the preview build (local Chrome, playwright-core)
+node scripts/offline-check.mjs       # AT-U1 before hosting: preview build loads offline
 ```
 
 Routing uses the URL hash (`#/programs`), so the build runs from any path, offline and later

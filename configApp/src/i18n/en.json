@@ -20,13 +20,53 @@
     "comingIn": "Coming in phase {{phase}}"
   },
   "pod": {
-    "title": "Pod",
-    "intro": "Connect to a central in the program menu over Bluetooth or USB.",
-    "bluetooth": "Bluetooth",
-    "usb": "USB",
+    "intro": "Connect to a central in the program menu.",
     "menuHint": "To open the program menu, switch the pod on and hold the button during the blue boot animation.",
     "bleUnsupported": "This browser has no Bluetooth access. Use Chrome or Edge, on iPhone the app later.",
-    "serialUnsupported": "USB needs Chrome or Edge on a computer."
+    "serialUnsupported": "USB needs Chrome or Edge on a computer.",
+    "connect": {
+      "ble": "Bluetooth",
+      "bleHint": "Phone or computer, central in the program menu",
+      "serial": "USB cable",
+      "serialHint": "Computer with Chrome or Edge, any pod",
+      "simulated": "Demo pod",
+      "simulatedHint": "Try the app without a pod"
+    },
+    "chooseDevice": "Choose the pod in the browser dialog.",
+    "errors": {
+      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware with change request CR-0.",
+      "disconnected": "The connection was lost.",
+      "openFailed": "The port could not be opened. Is another program (e.g. a serial monitor) using it?",
+      "notAllowed": "The browser did not allow access.",
+      "busy": "The pod is busy (game or sync running). Return to the program menu.",
+      "overflow": "The pod could not keep up. Please try again.",
+      "unknown": "Something went wrong."
+    },
+    "kind": {
+      "ble": "Bluetooth pod",
+      "serial": "USB pod",
+      "simulated": "Demo pod"
+    },
+    "role": {
+      "central": "Central",
+      "peripheral": "Peripheral · read only",
+      "booting": "Starting · read only"
+    },
+    "refresh": "Refresh",
+    "disconnect": "Disconnect",
+    "firmware": "Firmware",
+    "setId": "Set",
+    "generation": "Store version",
+    "free": "Free space",
+    "firmwareUnsupported": "This app is made for firmware 2.x. The pod runs {{version}}; some things may not work.",
+    "readOnly": "Programs can only be changed on a central. This pod is shown read only.",
+    "groups": {
+      "menu": "Menu ({{count}})",
+      "other": "Other programs ({{count}})",
+      "library": "Library ({{count}})"
+    },
+    "emptyMenu": "The menu is empty.",
+    "missingFile": "missing"
   },
   "programs": {
     "title": "Programs",
@@ -49,7 +89,12 @@
     "language": "Language",
     "languageSystem": "System",
     "about": "About",
-    "version": "Version {{version}}"
+    "version": "Version {{version}}",
+    "advanced": "Advanced",
+    "console": "Debug console",
+    "consoleHint": "Firmware log and events of the USB connection.",
+    "consoleEmpty": "No output yet.",
+    "clear": "Clear"
   },
   "update": {
     "available": "A new version is available.",

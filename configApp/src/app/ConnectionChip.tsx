@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Bluetooth, Usb, Unplug, Loader, MonitorSmartphone } from "lucide-react";
-import { useConnection } from "./connection";
+import { usePodSession } from "../pod/session";
 import styles from "./ConnectionChip.module.css";
 
 export function ConnectionChip() {
   const { t } = useTranslation();
-  const { state, transport } = useConnection();
+  const state = usePodSession((s) => s.state);
+  const transport = usePodSession((s) => s.kind);
   const Icon =
     state === "connecting"
       ? Loader
