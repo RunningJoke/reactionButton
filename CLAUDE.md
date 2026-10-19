@@ -1,88 +1,46 @@
 # ReactPod – guide for agents
 
-ReactPods are reaction buzzers: an ESP32-C3 pod with an 18-LED ring and one big button.
-Several pods form a **set**. One pod is the **central** (runs the game program), the others
-are **peripherals**. The central is configured over BLE or USB serial.
+ESP32-C3 reaction buzzers (18-LED ring, one button). A **set** = one **central** (runs the
+game program, configured over BLE or USB) + **peripherals** (ESP-NOW). Firmware, app and tools
+are versioned together; one branch may touch all of them. Overview: [README.md](README.md),
+workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The repository has three parts. They are versioned together, so a change can touch both
-firmware and app in one branch.
+## Map – read the spec before changing a part
 
-| Part | Where | What |
+| Folder | What | Spec |
 |---|---|---|
-| Firmware | `firmware/` | PlatformIO, `framework = arduino, espidf`. Game programs are JSON files in `firmware/data/` (SPIFFS) |
-| Config App | `app/` | React + TypeScript PWA to build, simulate and upload programs. Published on GitHub Pages: https://runningjoke.github.io/reactionButton/ |
-| Tools | `tools/` | Python reference clients: `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` |
+| `firmware/` | PlatformIO, `arduino, espidf`; programs in `firmware/data/` (SPIFFS) | [architecture](docs/firmware/architecture.md), [programs](docs/firmware/programs.md) (§6 format revisions, §7 engine), [config-api](docs/firmware/config-api.md), [link-protocol](docs/firmware/link-protocol.md), [testing](docs/firmware/testing.md) |
+| `app/` | React + TS PWA on Pages: https://runningjoke.github.io/reactionButton/ | [spec](docs/app/spec.md) (§4 layout, §13 phases), [acceptance tests](docs/app/acceptance-tests.md) |
+| `tools/` | `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` | config-api |
+| `hardware/` | KiCad PCB, FreeCAD casing | – |
+| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform | – |
+| `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
-The documentation is the spec. Read the relevant file before you change anything:
-
-| Topic | File |
-|---|---|
-| Firmware overview, modules, boot, state machines | [docs/firmware/README.md](docs/firmware/README.md), [docs/firmware/architecture.md](docs/firmware/architecture.md) |
-| Program JSON format, block types, **engine semantics (§7)**, format revisions (§6) | [docs/firmware/programs.md](docs/firmware/programs.md) |
-| Configuration API (BLE + USB serial), the contract between firmware and app | [docs/firmware/config-api.md](docs/firmware/config-api.md) |
-| Pod-to-pod link (ESP-NOW), store sync | [docs/firmware/link-protocol.md](docs/firmware/link-protocol.md) |
-| Flashing and testing over USB | [docs/firmware/testing.md](docs/firmware/testing.md) |
-| Config App spec, phases, decisions, risks | [docs/app/spec.md](docs/app/spec.md) |
-| App acceptance tests on real pods, and their results | [docs/app/acceptance-tests.md](docs/app/acceptance-tests.md) |
-
-## Workflow
-
-- **Branches and PRs.** Work on `feature/<topic>` branches and open a PR to `main`. Merge PRs with
-  merge commits (`gh pr merge <n> --merge`). When a phase builds on an unmerged branch, stack
-  the PR on that branch, then retarget it to `main` after the first PR is merged.
-- **App phases** (P0 … P6 in docs/app/spec.md §13). The user approves a phase before the next
-  one starts. Record the status in the phase table, and acceptance results in
-  acceptance-tests.md. Write "pass" there only for tests the user reported as passed.
-- **Firmware changes the app needs** are requested as **GitHub issues** with the label
-  `firmware`. Write what is missing, why the app needs it, a proposed API and the acceptance
-  test. The app must keep working without the change: check `info`, and treat a missing field
-  as the old behaviour. `docs/archive/changerequest/` is an archive (CR-0 … CR-7, all done); do not add
-  requests there.
-- **Bugs you find** in the other part: open an issue (label `bug`) instead of fixing them on
-  the side, unless the user asks for the fix.
-- **Commits** end with the attribution line from the session instructions. Commit and push only
-  when the user asks.
-
-### When you change the firmware API or block semantics
-
-1. Update [docs/firmware/config-api.md](docs/firmware/config-api.md) and/or [docs/firmware/programs.md](docs/firmware/programs.md).
-2. Bump `FW_VERSION_MINOR` in `firmware/src/_Definitions.h` (reported as `info.firmware`).
-3. For new block fields, ports or semantics: increase `BlockFactory::PROGRAM_FORMAT`
-   (`firmware/src/Block/BlockFactory/BlockFactory.h`) **and** `PROGRAM_FORMAT` in
-   `tools/validate_programs.py`, and add a row to programs.md §6.
-4. Report a new optional feature in `info.features`, so clients can detect it.
-5. Update the reference clients in `tools/` if they are affected.
-6. Mirror the change in the app: `app/src/pod/protocol.ts` (types),
-   `src/pod/simulated/SimulatedPod.ts` (demo pod = firmware behaviour),
-   `src/model/blockTypes.ts` + `src/model/validate.ts` (block types), `src/simulator/engine.ts`
-   (semantics), and `PROGRAM_FORMAT` in `src/model/limits.ts`.
-
-## Firmware
+## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)
 
 ```sh
-pio run -d firmware -e NewBoard                         # build (≈ 4 min clean); pio is in ~/.platformio/penv/Scripts/
-pio run -d firmware -e NewBoard -t upload --upload-port COM4     # flash
-pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # write firmware/data/ (programs) to SPIFFS
-python tools/validate_programs.py           # check firmware/data/
-python tools/reactpod_serial.py --port COM4 monitor  # log + JSON API over USB
+pio run -d firmware -e NewBoard                                  # build (≈4 min clean); firmware.bin ≈ 82 % of the 2 MB app slot
+pio run -d firmware -e NewBoard -t upload   --upload-port COM4
+pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # programs
+python tools/validate_programs.py
+python tools/reactpod_serial.py --port COM4 monitor              # log + JSON API over USB
+cd app && npm test && npx tsc                                    # before every app commit
 ```
 
-Modules in `firmware/src/`:
+## Flows
 
-| Folder | Role |
-|---|---|
-| `Roles/` | `RoleManager`, `Central/CentralRole` (menu → discovery → confirm → run), `Central/PhoneConfig` (BLE GATT server, menu only), `Central/PodNetwork`, `Peripheral/PeripheralRole` |
-| `BlockManager/`, `Block/*` | Block engine: loads a program with its includes, runs ≤ 32 blocks per loop pass. One folder per block type; register new types in `Block/BlockFactory` |
-| `Config/` | `ConfigApi` (JSON request handler, shared by BLE and USB), `SerialConsole`, `Console` (own HWCDC object) |
-| `Store/` | `ProgramStore` (SPIFFS files, generation, CRC, list metadata cache), `StoreSync` (pod-to-pod sync) |
-| `Link/` | ESP-NOW link, protocol frames, clock sync |
-| `Settings/` | NVS: set id, set name, PIN, boot role |
-| `Results/`, `VariableManager/`, `LEDManager/`, `Input/`, `Diagnostics/`, `Program/` | measurements, variables, LEDs and animations, button, reset diagnostics, menu catalog |
+- **Work:** issue (form, `type:` + `area:` labels) → branch `feat|fix|chore|docs/<topic>` →
+  PR with "Closes #n" → CI green → `gh pr merge <n> --squash`. Commit and push only when the
+  user asks. Stacked branches: PR against the parent branch, retarget after it is merged.
+- **Firmware API or block semantics change:** skill `/fw-api-change`.
+- **The app needs a firmware change:** skill `/fw-request`. The app must work without it:
+  check `info`, a missing field means the old behaviour.
+- **Bug in the other part:** open an issue (`type: bug`); fix it only if the user asks.
+- **Release:** skill `/release` (tags `fw-v*` / `app-v*`; workflows build and publish).
+- **App phases** (spec §13): the user approves each phase. Mark acceptance tests "pass" only
+  when the user reported them as passed.
 
-Notes:
-- Do not set `ARDUINO_USB_CDC_ON_BOOT` / `ARDUINO_USB_MODE` in `platformio.ini` (see the comment there).
-- Over USB, do not toggle DTR/RTS: it resets the ESP32-C3, possibly into download mode.
-- Flash is about 80 % full. Check the size line of the build output after adding code.
+## Rules
 
 ## Config App
 
