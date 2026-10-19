@@ -5,9 +5,9 @@
  * Only the program's own blocks are changed. Blocks of included files (presets) are read-only;
  * `flattenIncludes` turns them into own blocks.
  */
-import { blockType, type BlockTypeDef } from "../model/blockTypes";
-import { isObject, type Block } from "../model/program";
-import type { ResolvedProgram } from "../model/validate";
+import { blockType, type BlockTypeDef } from "@reactpod/program-model";
+import { isObject, type Block } from "@reactpod/program-model";
+import type { ResolvedProgram } from "@reactpod/program-model";
 
 export type ProgramJson = Record<string, unknown>;
 

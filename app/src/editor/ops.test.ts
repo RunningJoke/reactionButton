@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../defaults";
-import { formatProgram } from "../model/format";
-import { resolveProgram, validateProgram } from "../model/validate";
+import { formatProgram } from "@reactpod/program-model";
+import { resolveProgram, validateProgram } from "@reactpod/program-model";
 import {
   addBlock,
   changeBlockType,

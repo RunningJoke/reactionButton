@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../defaults";
-import { validateProgram } from "../model/validate";
+import { validateProgram } from "@reactpod/program-model";
 import { MAX_STEPS_PER_PASS, Simulator } from "./engine";
 
 function load(path: string, seed = 1) {

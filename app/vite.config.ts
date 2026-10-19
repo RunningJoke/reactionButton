@@ -37,8 +37,8 @@ export default defineConfig({
     }),
   ],
   server: {
-    // the shipped programs in ../firmware/data are bundled (src/defaults)
-    fs: { allow: [".", "../firmware/data"] },
+    // the shipped programs in ../firmware/data are bundled (src/defaults); the program model is in ../packages
+    fs: { allow: [".", "../firmware/data", "../packages"] },
   },
   test: {
     environment: "node", // React tests opt in with "@vitest-environment jsdom"

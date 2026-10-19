@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { BookLock, Plus } from "lucide-react";
 import { Sheet } from "../components/Sheet";
-import { BLOCK_TYPES, type BlockCategory } from "../model/blockTypes";
+import { BLOCK_TYPES, type BlockCategory } from "@reactpod/program-model";
 import { blockIcon } from "./blockStyle";
 import styles from "./Inspector.module.css";
 

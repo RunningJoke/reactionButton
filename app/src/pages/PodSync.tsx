@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowDownToLine, CircleAlert, CircleCheck, Loader, RotateCcw, Upload } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
-import { INDEX_PATH } from "../model/limits";
+import { INDEX_PATH } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
 import { needsPin, usePodSession } from "../pod/session";
 import { planPush, planRestore, type FileSync, type PodIssue, type PushPlan, type PushResult, type PushStep, type SyncStatus } from "../pod/sync";

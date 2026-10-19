@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, 
 import { useTranslation } from "react-i18next";
 import { Flag, Lock, OctagonX, Unlink } from "lucide-react";
 import "./editor.css";
-import { colorToRgb } from "../model/colors";
+import { colorToRgb } from "@reactpod/program-model";
 import type { GraphNode, ProgramGraph } from "../model/graph";
 import { blockCategory, blockIcon } from "./blockStyle";
 import { columnLayout, type Side, type SideArrow } from "./columnLayout";

@@ -1,6 +1,6 @@
 /** Short text for a block's main parameters, shown on the graph node. */
-import type { Block } from "../model/program";
-import { namedColor } from "../model/colors";
+import type { Block } from "@reactpod/program-model";
+import { namedColor } from "@reactpod/program-model";
 
 export type SummaryPart =
   | { kind: "text"; text: string }

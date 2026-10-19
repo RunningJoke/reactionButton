@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../defaults";
-import { formatProgram } from "../model/format";
-import { INDEX_PATH } from "../model/limits";
+import { formatProgram } from "@reactpod/program-model";
+import { INDEX_PATH } from "@reactpod/program-model";
 import { collectSet, unzipSet, zipSet } from "../programs/setArchive";
 import type { ProgramDoc, SyncBase } from "../store/programStore";
 import { PodClient } from "./client";

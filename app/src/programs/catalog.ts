@@ -1,7 +1,7 @@
 /** Overview of the programs and library fragments in a set of files (pod or shipped). */
-import { INDEX_PATH, isLibraryPath } from "../model/limits";
-import { isObject, isProgramFile, type MenuGroup } from "../model/program";
-import { resolveProgram, validateProgram, type FileSource, type Issue, type ValidateOptions } from "../model/validate";
+import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
+import { isObject, isProgramFile, type MenuGroup } from "@reactpod/program-model";
+import { resolveProgram, validateProgram, type FileSource, type Issue, type ValidateOptions } from "@reactpod/program-model";
 import { byteLength } from "../pod/utf8";
 
 export type CatalogEntry = {

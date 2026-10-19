@@ -15,7 +15,7 @@ import {
   PROGRAM_FORMAT_VERSION,
 } from "./limits";
 import { BUILTIN_VARIABLES, isObject, type Block } from "./program";
-import { byteLength } from "../pod/utf8";
+import { byteLength } from "./utf8";
 
 export const ISSUE_CODES = [
   // files

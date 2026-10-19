@@ -1,6 +1,6 @@
 /** A Simulator driven in real time (speed ×0.25 … ×4) for the Simulate page. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ResolvedProgram } from "../model/validate";
+import type { ResolvedProgram } from "@reactpod/program-model";
 import { Simulator, type Snapshot, type StopReason } from "./engine";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4] as const;

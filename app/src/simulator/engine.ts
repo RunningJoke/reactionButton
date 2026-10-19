@@ -6,11 +6,11 @@
  * Pod ids as on the pod (programs.md §1.3): peripherals 0 … n−1, the central n.
  * Radio timing is not modelled: commands and presses arrive at once.
  */
-import { blockType } from "../model/blockTypes";
-import { colorToRgb } from "../model/colors";
-import { LED_COUNT } from "../model/limits";
-import { isObject } from "../model/program";
-import type { ResolvedProgram } from "../model/validate";
+import { blockType } from "@reactpod/program-model";
+import { colorToRgb } from "@reactpod/program-model";
+import { LED_COUNT } from "@reactpod/program-model";
+import { isObject } from "@reactpod/program-model";
+import type { ResolvedProgram } from "@reactpod/program-model";
 import { createRandom, type Random } from "./random";
 
 export const MAX_STEPS_PER_PASS = 32;

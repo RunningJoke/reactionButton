@@ -3,10 +3,10 @@
  * the push plan and the push itself. Plain functions on top of PodClient; the Pod tab drives them.
  */
 import { DEFAULT_FILES } from "../defaults";
-import { formatProgram } from "../model/format";
-import { INDEX_PATH, isLibraryPath } from "../model/limits";
-import { isObject } from "../model/program";
-import { resolveProgram, validateProgram, validateStore, type Issue } from "../model/validate";
+import { formatProgram } from "@reactpod/program-model";
+import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
+import { isObject } from "@reactpod/program-model";
+import { resolveProgram, validateProgram, validateStore, type Issue } from "@reactpod/program-model";
 import type { ProgramDoc, SyncBase } from "../store/programStore";
 import type { PodClient } from "./client";
 import { crcHex } from "./crc32";

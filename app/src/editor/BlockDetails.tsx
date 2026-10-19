@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowRight, CircleAlert, Lock } from "lucide-react";
 import { Sheet } from "../components/Sheet";
-import { blockType } from "../model/blockTypes";
+import { blockType } from "@reactpod/program-model";
 import type { GraphNode } from "../model/graph";
-import type { Issue } from "../model/validate";
+import type { Issue } from "@reactpod/program-model";
 import { blockCategory, blockIcon } from "./blockStyle";
 import styles from "./Inspector.module.css";
 

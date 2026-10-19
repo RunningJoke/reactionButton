@@ -1,7 +1,7 @@
 /** Chunked file transfer (config-api.md §5 get / put). */
 import type { PodClient } from "./client";
 import { crcHex } from "./crc32";
-import { MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_REQUEST } from "../model/limits";
+import { MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_REQUEST } from "@reactpod/program-model";
 import { PodError, type PutResponse } from "./protocol";
 import { byteLength, splitUtf8 } from "./utf8";
 
