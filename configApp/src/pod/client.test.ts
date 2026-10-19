@@ -46,6 +46,15 @@ describe("PodClient", () => {
     await expect(client.info()).resolves.toMatchObject({ ok: true });
   });
 
+  it("sends validate with inline data, auth and setName", async () => {
+    const { pod, client } = await connect(new SimulatedPod({ files: DEFAULT_FILES, pin: "1234" }));
+    await expect(client.validate("/prog/x.json", DEFAULT_FILES["/prog/solo.json"])).resolves.toMatchObject({ ok: true, path: "/prog/x.json" });
+    await expect(client.setName("Halle 2")).rejects.toMatchObject({ code: "auth_required", op: "setName" });
+    await expect(client.auth("1234")).resolves.toMatchObject({ ok: true });
+    await expect(client.setName("Halle 2")).resolves.toMatchObject({ setName: "Halle 2" });
+    expect(pod.setName).toBe("Halle 2");
+  });
+
   it("resends a request after overflow", async () => {
     const { pod, client } = await connect();
     pod.overflowNext = 2;

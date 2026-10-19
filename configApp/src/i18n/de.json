@@ -34,13 +34,15 @@
     },
     "chooseDevice": "Den Pod im Browser-Dialog auswählen.",
     "errors": {
-      "timeout": "Der Pod hat nicht geantwortet. Ist er im Programmmenü? Bluetooth braucht eine Firmware mit Änderung CR-0.",
+      "timeout": "Der Pod hat nicht geantwortet. Ist er im Programmmenü? Bluetooth braucht Firmware 2.1 oder neuer.",
       "disconnected": "Die Verbindung wurde getrennt.",
       "openFailed": "Der Anschluss ließ sich nicht öffnen. Nutzt ihn ein anderes Programm (z. B. ein serieller Monitor)?",
       "notAllowed": "Der Browser hat den Zugriff nicht erlaubt.",
       "busy": "Der Pod ist beschäftigt (Spiel oder Abgleich läuft). Zurück ins Programmmenü.",
       "overflow": "Der Pod kam nicht hinterher. Bitte noch einmal versuchen.",
-      "unknown": "Etwas ist schiefgegangen."
+      "unknown": "Etwas ist schiefgegangen.",
+      "auth_required": "Dieser Pod ist mit einer PIN geschützt. Gib sie ein, um etwas zu ändern.",
+      "auth_failed": "Falsche PIN. Warte 3 Sekunden, bevor du es noch einmal versuchst."
     },
     "kind": {
       "ble": "Bluetooth-Pod",
@@ -72,7 +74,17 @@
       "close": "Schließen"
     },
     "notConnected": "Kein Pod verbunden",
-    "connectButton": "Verbinden"
+    "connectButton": "Verbinden",
+    "setName": "Set-Name",
+    "rename": "Set umbenennen",
+    "renameHint": "Erscheint in der Bluetooth-Liste als „ReactPod <Name>“. Leer lassen für die letzten 4 Ziffern der Set-ID.",
+    "renameLater": "Der neue Name erscheint, nachdem diese Verbindung beendet ist.",
+    "nameTooLong": "Höchstens {{max}} Bytes (Umlaute zählen doppelt).",
+    "save": "Speichern",
+    "pin": "PIN",
+    "pinProtected": "PIN-geschützt",
+    "pinHint": "Dieser Pod ist mit einer PIN geschützt. Der Besitzer kann sie über USB ändern oder löschen.",
+    "programFormatNewer": "Der Pod kennt neuere Block-Felder (Format {{pod}}, App {{app}}). Aktualisiere die App, bevor du Programme änderst."
   },
   "programs": {
     "onPod": "Auf dem Pod",

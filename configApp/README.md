@@ -354,11 +354,24 @@ not pod measurements.
 
 ### 9.1 Connect
 
-1. User picks BLE or USB. BLE: device chooser filtered by the service UUID.
-2. Subscribe to Response, request MTU 517 (native) / use what the browser negotiates.
+1. User picks BLE or USB. BLE: device chooser filtered by the service UUID. The pod
+   advertises as `ReactPod <set name>` or `ReactPod <last 4 digits of setId>` (firmware ≥ 2.2).
+2. Subscribe to Response (indications, firmware ≥ 2.1), request MTU 517 (native) / use what the browser negotiates.
 3. `info` → check `firmware`, `linkProtocol`, `blockTypes`, limits (`maxRequest`, `maxGetChunk`).
-4. `list` → files with size + CRC, menu, generation.
+   BLE: write `info.mtu − 3` bytes per write (firmware ≥ 2.7, else 20).
+4. `status` → role. `list` → files with size + CRC, menu, generation.
 5. Files whose CRC differs from the local copy are read with chunked `get`.
+
+Optional `info` fields (missing = older firmware, the app keeps the old behaviour):
+
+| Field | Firmware | Use in the app |
+|---|---|---|
+| `setName` | 2.2 | shown as the set's name; Pod tab → rename (`setName`) |
+| `programFormat` | 2.3 | warning if the pod is newer than the app's block types (`PROGRAM_FORMAT`) |
+| `features: validateInline` | 2.4 | `PodClient.validate(path, data)` dry run, for push (P5) |
+| `features: listMeta` | 2.5 | program names in the Pod tab file list |
+| `pinRequired` | 2.6 | PIN asked before the first write (`auth`), once per connection |
+| `mtu` | 2.7 | BLE write size |
 
 **Writes only go to a central.** The app reads `status.role` after connecting. Over USB a
 peripheral can be connected and inspected (read-only), but push, restore and delete are
@@ -424,10 +437,10 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 | # | Risk | Mitigation |
 |---|---|---|
 | R1 | Opening the port with Web Serial may set DTR/RTS and reset the ESP32-C3 (config-api "Serial specifics") | test early on hardware (AT-S1), if needed set signals explicitly after open, document in acceptance tests |
-| R2 | Several centrals in range all advertise "ReactPod Config", so the user can't pick the right set | change request CR-1 |
+| R2 | Several centrals in range all advertise "ReactPod Config", so the user can't pick the right set | solved by CR-1 (firmware 2.2): `ReactPod <xxxx>` / set name |
 | R3 | Simulator semantics drift from the firmware | engine unit tests use the shipped programs; acceptance test compares a stepped run with the pod's `trace` |
 | R4 | Browser-negotiated BLE MTU is small (23) → slow upload | chunking works with any MTU, show progress; measure in AT-B3 |
-| R6 | Firmware indicates on the Response characteristic, browsers / Android subscribe for notifications → BLE responses never arrive | firmware change request CR-0 (blocker); USB and demo pod work meanwhile |
+| R6 | Firmware indicates on the Response characteristic, browsers / Android subscribe for notifications → BLE responses never arrive | solved by CR-0 (firmware 2.1): indications only. Firmware 2.0 still times out over BLE |
 | R5 | Two pods of a set edited separately → only one store survives (config-api §6) | show `setId` + generation, hint after push to let the set sync |
 
 ---
@@ -459,7 +472,7 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 |---|---|---|---|
 | P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
 | P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
-| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE waits for firmware CR-0 |
+| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE ready for test with firmware 2.7 (AT-B*) |
 | P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | done |
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | built, review open |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |

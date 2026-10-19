@@ -32,6 +32,7 @@ export class SimulatedTransport implements Transport {
   }
 
   async connect() {
+    this.pod.newSession();
     this.isConnected = true;
   }
 

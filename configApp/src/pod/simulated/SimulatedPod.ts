@@ -4,7 +4,7 @@
  * demos without hardware. Radio, sync and games are not simulated.
  */
 import { BLOCK_TYPES } from "../../model/blockTypes";
-import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_REQUEST } from "../../model/limits";
+import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_REQUEST, MAX_SET_NAME, PROGRAM_FORMAT } from "../../model/limits";
 import { validateProgram, type Issue } from "../../model/validate";
 import { crc32, crcHex, hex32 } from "../crc32";
 import type { ApiErrorCode, PodRole } from "../protocol";
@@ -20,6 +20,9 @@ export type SimulatedPodOptions = {
   firmware?: string;
   blockTypes?: string[];
   freeBytes?: number;
+  setName?: string;
+  /** a PIN makes put / delete / setName need `auth` (like BLE, firmware ≥ 2.6) */
+  pin?: string;
 };
 
 type Json = Record<string, unknown>;
@@ -43,19 +46,30 @@ export class SimulatedPod {
   firmware: string;
   blockTypes: string[];
   freeBytes: number;
+  setName: string;
+  pin: string;
   /** answers the next n requests with `overflow`, like a BLE receive buffer overrun */
   overflowNext = 0;
 
   private upload: { path: string; data: string; bytes: number } | null = null;
+  private authenticated = false;
 
   constructor(options: SimulatedPodOptions = {}) {
     for (const [path, text] of Object.entries(options.files ?? {})) this.files.set(path, text);
     this.role = options.role ?? "central";
     this.setId = options.setId ?? "5f3a91c2";
     this.generation = options.generation ?? 1;
-    this.firmware = options.firmware ?? "2.0";
+    this.firmware = options.firmware ?? "2.7";
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
+    this.setName = options.setName ?? "";
+    this.pin = options.pin ?? "";
+  }
+
+  /** A new client connected: it has to authenticate again, an unfinished upload is dropped. */
+  newSession() {
+    this.authenticated = false;
+    this.upload = null;
   }
 
   /** Handles one request line, returns the response line (without "\n"). */
@@ -109,7 +123,7 @@ export class SimulatedPod {
   private dispatch(op: string, req: Json): Json {
     switch (op) {
       case "help":
-        return { ops: ["help", "status", "info", "list", "get", "put", "delete", "validate"], transport: "simulated" };
+        return { ops: ["help", "status", "info", "list", "get", "put", "delete", "validate", "setName", "auth"], transport: "simulated" };
       case "info":
         return this.info();
       case "status":
@@ -124,6 +138,12 @@ export class SimulatedPod {
         return this.remove(req);
       case "validate":
         return this.validate(req);
+      case "auth":
+        return this.auth(req);
+      case "setName":
+        return this.storeSetName(req);
+      case "setPin":
+        throw new ApiFailure("bad_request", "the PIN can only be set or cleared over USB serial");
       default:
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
     }
@@ -134,6 +154,8 @@ export class SimulatedPod {
       firmware: this.firmware,
       linkProtocol: 1,
       setId: this.setId,
+      setName: this.setName,
+      pinRequired: this.pin !== "",
       generation: this.generation,
       storeHash: this.storeHash,
       freeBytes: this.freeBytes,
@@ -142,6 +164,8 @@ export class SimulatedPod {
       maxRequest: MAX_REQUEST,
       maxGetChunk: MAX_GET_CHUNK,
       transport: "simulated",
+      programFormat: PROGRAM_FORMAT,
+      features: ["validateInline", "listMeta"],
       blockTypes: this.blockTypes,
     };
   }
@@ -165,7 +189,52 @@ export class SimulatedPod {
     } catch {
       // no or broken index: empty menu, like the firmware
     }
-    return { generation: this.generation, storeHash: this.storeHash, files: this.fileList(), menu };
+    const files = this.fileList().map((entry) => (entry.path === INDEX_PATH ? entry : { ...entry, ...this.meta(entry.path) }));
+    return { generation: this.generation, storeHash: this.storeHash, files, menu };
+  }
+
+  /** Program metadata in `list` (listMeta), like ProgramStore::programMeta. */
+  private meta(path: string): Json {
+    let doc: unknown;
+    try {
+      doc = JSON.parse(this.files.get(path)!);
+    } catch {
+      return {};
+    }
+    if (typeof doc !== "object" || doc === null || Array.isArray(doc)) return {};
+    const d = doc as Json;
+    if (typeof d.name !== "string") return { fragment: true };
+    const meta: Json = { name: d.name };
+    if (d.peripherals !== undefined && d.peripherals !== null) meta.peripherals = d.peripherals;
+    if (d.menu !== undefined && d.menu !== null) meta.menu = d.menu;
+    return meta;
+  }
+
+  private requireWriteAccess() {
+    if (this.pin !== "" && !this.authenticated) {
+      throw new ApiFailure("auth_required", 'a PIN is set: send {"op":"auth","pin":"..."} first');
+    }
+  }
+
+  private auth(req: Json): Json {
+    if (this.pin !== "" && req.pin !== this.pin) {
+      this.authenticated = false;
+      throw new ApiFailure("auth_failed", "wrong PIN");
+    }
+    this.authenticated = true;
+    return {};
+  }
+
+  private storeSetName(req: Json): Json {
+    this.requireWriteAccess();
+    if (req.name !== undefined && req.name !== null && typeof req.name !== "string") {
+      throw new ApiFailure("bad_request", "'name' must be a string");
+    }
+    const name = (typeof req.name === "string" ? req.name : "").trim();
+    if (byteLength(name) > MAX_SET_NAME) throw new ApiFailure("bad_request", `name longer than ${MAX_SET_NAME} bytes`);
+    if (hasControlCharacter(name)) throw new ApiFailure("bad_request", "name contains control characters");
+    this.setName = name;
+    return { setName: name };
   }
 
   private requirePath(req: Json): string {
@@ -201,6 +270,7 @@ export class SimulatedPod {
   }
 
   private put(req: Json): Json {
+    this.requireWriteAccess();
     if (this.role === "booting") throw new ApiFailure("busy", "pod is starting");
     this.requireEditable();
     const path = this.requirePath(req);
@@ -242,6 +312,7 @@ export class SimulatedPod {
   }
 
   private remove(req: Json): Json {
+    this.requireWriteAccess();
     this.requireEditable();
     const path = this.requirePath(req);
     if (!this.files.delete(path)) throw new ApiFailure("not_found", `${path} does not exist`);
@@ -254,12 +325,28 @@ export class SimulatedPod {
       throw new ApiFailure("busy", "a program is selected or running; validate in the program menu");
     }
     const path = req.path;
-    if (!isValidPath(path) || !this.files.has(path)) throw new ApiFailure("not_found", "program file not found");
-    const resolved = validateProgram(path, (p) => this.files.get(p), { supportedTypes: this.blockTypes });
+    const data = req.data;
+    if (data !== undefined && data !== null) {
+      // dry run (validateInline): the program text comes with the request, nothing is stored
+      if (typeof data !== "string") throw new ApiFailure("bad_request", "'data' must be a string");
+      if (!isValidPath(path)) throw new ApiFailure("bad_path", BAD_PATH_MESSAGE);
+    } else if (!isValidPath(path) || !this.files.has(path)) {
+      throw new ApiFailure("not_found", "program file not found");
+    }
+    const source = (p: string) => (p === path && typeof data === "string" ? data : this.files.get(p));
+    const resolved = validateProgram(path, source, { supportedTypes: this.blockTypes });
     const error = resolved.issues.find((issue) => issue.severity === "error");
     if (error) throw new ApiFailure("invalid_program", describe(error));
     return { path, blocks: resolved.blocks.length };
   }
+}
+
+function hasControlCharacter(text: string): boolean {
+  for (const c of text) {
+    const code = c.codePointAt(0)!;
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
 }
 
 /** Roughly the firmware's loader message, e.g. "/prog/x.json: block 'Hit': unknownType type=buton". */

@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, FileJson, Info, ListOrdered, Loader, Lock, Plug, RefreshCw, Unplug } from "lucide-react";
+import { AlertTriangle, BookLock, FileJson, Info, KeyRound, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
-import { INDEX_PATH, isLibraryPath } from "../model/limits";
-import type { FileEntry, ListResponse } from "../pod/protocol";
-import { firmwareSupported, isReadOnly, usePodSession } from "../pod/session";
+import { Modal, modalStyles } from "../components/Modal";
+import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "../model/limits";
+import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
+import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
+import { byteLength } from "../pod/utf8";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
 
@@ -44,6 +47,7 @@ function Connected() {
   const { t, i18n } = useTranslation();
   const session = usePodSession();
   const { info, list, role, kind } = session;
+  const [renaming, setRenaming] = useState(false);
   if (!info || !list) return null;
   const readOnly = isReadOnly(session);
 
@@ -52,13 +56,18 @@ function Connected() {
       <section className={page.section}>
         <div className={styles.podHeader}>
           <div className={styles.podTitle}>
-            <h2 className={styles.podName}>{session.deviceName ?? t(`pod.kind.${kind}`)}</h2>
+            <h2 className={styles.podName}>{setLabel(session) ?? t(`pod.kind.${kind}`)}</h2>
             <span className={styles.badge} data-role={role}>
               {readOnly && <Lock size={14} aria-hidden />}
               {t(`pod.role.${role ?? "booting"}`)}
             </span>
           </div>
           <div className={styles.actions}>
+            {!readOnly && (
+              <button className={styles.iconButton} onClick={() => setRenaming(true)} aria-label={t("pod.rename")} title={t("pod.rename")}>
+                <Pencil size={20} aria-hidden />
+              </button>
+            )}
             <button className={styles.iconButton} onClick={() => void session.refresh()} aria-label={t("pod.refresh")} title={t("pod.refresh")}>
               <RefreshCw size={20} aria-hidden />
             </button>
@@ -71,11 +80,108 @@ function Connected() {
           <Fact label={t("pod.free")} value={formatBytes(info.freeBytes, i18n.language)} />
         </dl>
         {!firmwareSupported(info) && <p className={styles.warn}>{t("pod.firmwareUnsupported", { version: info.firmware })}</p>}
+        {programFormatNewer(info) && (
+          <p className={styles.warn}>{t("pod.programFormatNewer", { pod: info.programFormat, app: PROGRAM_FORMAT })}</p>
+        )}
         {readOnly && <p className={styles.note}>{t("pod.readOnly")}</p>}
+        {!readOnly && info.pinRequired && (
+          <p className={styles.note}>
+            <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
+          </p>
+        )}
       </section>
 
       <FileGroups list={list} />
+      <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />
     </>
+  );
+}
+
+/** Set name (firmware ≥ 2.2), with the PIN first if the pod needs one (firmware ≥ 2.6). */
+function RenameSetModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const session = usePodSession();
+  const [name, setName] = useState<string | null>(null);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const askPin = needsPin(session);
+  const value = name ?? session.info?.setName ?? "";
+  const tooLong = byteLength(value.trim()) > MAX_SET_NAME;
+
+  const close = () => {
+    setName(null);
+    setPin("");
+    setError(null);
+    onClose();
+  };
+
+  const save = async () => {
+    if (tooLong || busy || (askPin && !pin)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (askPin) await session.authenticate(pin);
+      await session.renameSet(value.trim());
+      close();
+    } catch (e) {
+      const code = e instanceof PodError ? e.code : "unknown";
+      setError(code === "auth_failed" || code === "auth_required" ? t(`pod.errors.${code}`) : e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={t("pod.rename")}
+      onClose={close}
+      actions={
+        <>
+          <button className={modalStyles.button} onClick={close}>
+            {t("common.cancel")}
+          </button>
+          <button
+            className={`${modalStyles.button} ${modalStyles.primary}`}
+            disabled={tooLong || busy || (askPin && !pin)}
+            onClick={() => void save()}
+          >
+            {t("pod.save")}
+          </button>
+        </>
+      }
+    >
+      <label htmlFor="set-name">{t("pod.setName")}</label>
+      <input
+        id="set-name"
+        className={modalStyles.input}
+        value={value}
+        placeholder={session.info ? `ReactPod ${session.info.setId.slice(-4)}` : undefined}
+        autoFocus
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && void save()}
+      />
+      {tooLong && <p className={modalStyles.error}>{t("pod.nameTooLong", { max: MAX_SET_NAME })}</p>}
+      <p className={styles.note}>{t("pod.renameHint")}</p>
+      {askPin && (
+        <>
+          <label htmlFor="set-pin">{t("pod.pin")}</label>
+          <input
+            id="set-pin"
+            className={modalStyles.input}
+            value={pin}
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={6}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && void save()}
+          />
+        </>
+      )}
+      {error && <p className={modalStyles.error}>{error}</p>}
+      <p className={styles.note}>{t("pod.renameLater")}</p>
+    </Modal>
   );
 }
 
@@ -144,7 +250,10 @@ function FileRow({ path, file }: { path: string; file?: FileEntry }) {
   const { i18n, t } = useTranslation();
   return (
     <li className={styles.file}>
-      <span className={styles.path}>{path}</span>
+      <span className={styles.path}>
+        {file?.name !== undefined && <span className={styles.programName}>{file.name}</span>}
+        {path}
+      </span>
       {file ? (
         <span className={styles.size}>{formatBytes(file.size, i18n.language)}</span>
       ) : (

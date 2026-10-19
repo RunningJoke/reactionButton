@@ -34,13 +34,15 @@
     },
     "chooseDevice": "Choose the pod in the browser dialog.",
     "errors": {
-      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware with change request CR-0.",
+      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware 2.1 or newer.",
       "disconnected": "The connection was lost.",
       "openFailed": "The port could not be opened. Is another program (e.g. a serial monitor) using it?",
       "notAllowed": "The browser did not allow access.",
       "busy": "The pod is busy (game or sync running). Return to the program menu.",
       "overflow": "The pod could not keep up. Please try again.",
-      "unknown": "Something went wrong."
+      "unknown": "Something went wrong.",
+      "auth_required": "This pod is protected with a PIN. Enter it to make changes.",
+      "auth_failed": "Wrong PIN. Wait 3 seconds before you try again."
     },
     "kind": {
       "ble": "Bluetooth pod",
@@ -72,7 +74,17 @@
       "close": "Close"
     },
     "notConnected": "No pod connected",
-    "connectButton": "Connect"
+    "connectButton": "Connect",
+    "setName": "Set name",
+    "rename": "Rename set",
+    "renameHint": "Shown in the Bluetooth list as “ReactPod <name>”. Leave empty to use the last 4 digits of the set id.",
+    "renameLater": "The new name is shown after this connection ends.",
+    "nameTooLong": "At most {{max}} bytes (umlauts count as 2).",
+    "save": "Save",
+    "pin": "PIN",
+    "pinProtected": "PIN protected",
+    "pinHint": "This pod is protected with a PIN. The owner can change or clear it over USB.",
+    "programFormatNewer": "The pod knows newer block fields (format {{pod}}, app {{app}}). Update the app before you change programs."
   },
   "programs": {
     "onPod": "On the pod",

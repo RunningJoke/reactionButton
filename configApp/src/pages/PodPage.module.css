@@ -183,3 +183,9 @@ ol.files .file::before {
   color: var(--warn);
   white-space: nowrap;
 }
+
+.programName {
+  margin-right: var(--space-2);
+  font-family: var(--font);
+  font-weight: 600;
+}
