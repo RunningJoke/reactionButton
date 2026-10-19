@@ -4,7 +4,7 @@ import { DEFAULT_PATH } from "./navigation";
 import { PodPage } from "../pages/PodPage";
 import { EditorPage } from "../pages/EditorPage";
 import { MenuPage } from "../pages/MenuPage";
-import { SimulatePage } from "../pages/SimplePages";
+import { SimulatePage } from "../pages/SimulatePage";
 import { ProgramsPage } from "../pages/ProgramsPage";
 import { ProgramViewPage } from "../pages/ProgramViewPage";
 import { SettingsPage } from "../pages/SettingsPage";

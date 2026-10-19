@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, Lock, MoreVertical, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow } from "lucide-react";
+import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, Lock, MoreVertical, Play, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
 import { Sheet } from "../components/Sheet";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
@@ -24,6 +24,7 @@ import { useProgramSource } from "../programs/sources";
 import { usePodSession } from "../pod/session";
 import type { ProgramDoc } from "../store/programStore";
 import { useWorkspace } from "../store/workspace";
+import { simulateUrl } from "../programs/sources";
 import page from "./Page.module.css";
 import styles from "./EditorPage.module.css";
 
@@ -214,6 +215,9 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
         <button className={styles.icon} onClick={redo} disabled={future.length === 0} aria-label={t("editor.redo")} title={t("editor.redo")}>
           <Redo2 size={20} aria-hidden />
         </button>
+        <Link className={styles.icon} to={simulateUrl({ id: doc.id })} aria-label={t("simulate.open")} title={t("simulate.open")}>
+          <Play size={20} aria-hidden />
+        </Link>
         <button
           className={styles.icon}
           data-level={errors ? "error" : warnings ? "warn" : "ok"}

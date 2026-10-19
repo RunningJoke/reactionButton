@@ -50,6 +50,13 @@ export function useLocalMenu(): { menu: string[]; saved: boolean } {
   }, [saved, podMenu]);
 }
 
+/** The simulator with a local program (`id`) or a program of a source. */
+export function simulateUrl(target: { id: string } | { source: SourceId; path: string }): string {
+  return "id" in target
+    ? `/simulate?id=${encodeURIComponent(target.id)}`
+    : `/simulate?source=${target.source}&path=${encodeURIComponent(target.path)}`;
+}
+
 export function viewUrl(source: SourceId, path: string): string {
   return `/programs/view?source=${source}&path=${encodeURIComponent(path)}`;
 }

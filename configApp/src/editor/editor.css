@@ -260,3 +260,32 @@
 .rp-port-row[data-side="down"] {
   justify-content: center;
 }
+
+/* simulator: breakpoint dot, the arrow just taken */
+.rp-breakpoint {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--error);
+}
+
+.rp-arrow[data-taken] {
+  stroke-dasharray: 6 4;
+  animation: rp-taken 0.6s linear;
+}
+
+@keyframes rp-taken {
+  from {
+    stroke-dashoffset: 40;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-arrow[data-taken] {
+    animation: none;
+  }
+}

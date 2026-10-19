@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowLeft, CircleAlert, Info, Lock, Pencil, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CircleAlert, Info, Lock, Pencil, Play, Users } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
@@ -11,7 +11,7 @@ import { isObject } from "../model/program";
 import { resolveProgram, validateProgram } from "../model/validate";
 import { useEditCopy } from "../programs/actions";
 import { fileName } from "../programs/catalog";
-import { useProgramSource, viewUrl, type SourceId } from "../programs/sources";
+import { simulateUrl, useProgramSource, viewUrl, type SourceId } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import styles from "./ProgramViewPage.module.css";
 
@@ -95,6 +95,11 @@ export function ProgramViewPage() {
         <button className={styles.icon} onClick={() => setPanel(panel === "info" ? null : "info")} aria-label={t("view.details")} aria-pressed={panel === "info"}>
           <Info size={20} aria-hidden />
         </button>
+        {isProgram && (
+          <Link className={styles.icon} to={simulateUrl({ source: sourceId, path })} aria-label={t("simulate.open")} title={t("simulate.open")}>
+            <Play size={20} aria-hidden />
+          </Link>
+        )}
         {isProgram && (
           <button className={styles.edit} onClick={() => void editCopy(path, source.read(path)!, sourceId === "pod" ? "pod" : "default")}>
             <Pencil size={18} aria-hidden /> {localCopy ? t("view.openCopy") : t("view.edit")}

@@ -19,6 +19,10 @@ type Props = {
   selected?: string | null;
   /** block that is running (simulator) */
   active?: string | null;
+  /** block the simulator came from: the arrow previous → active is animated */
+  previous?: string | null;
+  /** blocks with a breakpoint (simulator) */
+  breakpoints?: ReadonlySet<string>;
   onSelect?: (id: string | null) => void;
 };
 
@@ -37,7 +41,7 @@ const gutter = (lanes: number) => (lanes === 0 ? EDGE_GUTTER : LANE_OFFSET + (la
  * Read-only block graph as one column of cards. Blocks that simply continue to the block below
  * are stacked without an arrow; choices and jumps are arrows beside the column (see columnLayout).
  */
-export function ProgramColumnView({ graph, selected, active, onSelect }: Props) {
+export function ProgramColumnView({ graph, selected, active, previous, breakpoints, onSelect }: Props) {
   const layout = useMemo(() => columnLayout(graph), [graph]);
   const byId = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph]);
   const arrowsBySource = useMemo(() => {
@@ -82,6 +86,20 @@ export function ProgramColumnView({ graph, selected, active, onSelect }: Props) 
     card?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }, [selected]);
 
+  // follow the running block (simulator), only inside a panel marked data-scroll-follow, never the page
+  useEffect(() => {
+    if (!active) return;
+    const card = content.current?.querySelector<HTMLElement>(`[data-card="${CSS.escape(active)}"]`);
+    const panel = card?.closest<HTMLElement>("[data-scroll-follow]");
+    if (!card || !panel) return;
+    const box = [card.closest<HTMLElement>(".rp-column-scroll"), panel].find((el) => el && el.scrollHeight > el.clientHeight);
+    if (!box) return;
+    const c = card.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    if (c.top < b.top) box.scrollTop -= b.top - c.top + 8;
+    else if (c.bottom > b.bottom) box.scrollTop += c.bottom - b.bottom + 8;
+  }, [active]);
+
   return (
     <div className="rp-column-scroll" data-sheet={selected ? true : undefined} onClick={() => onSelect?.(null)}>
       <div
@@ -98,18 +116,31 @@ export function ProgramColumnView({ graph, selected, active, onSelect }: Props) 
                 joinedPort={layout.joined.has(id) ? byId.get(id)!.ports[0] : undefined}
                 selected={id === selected}
                 active={id === active}
+                breakpoint={breakpoints?.has(id) ?? false}
                 onSelect={onSelect}
               />
             </li>
           ))}
         </ol>
-        {geometry && <Arrows arrows={layout.arrows} geometry={geometry} selected={selected} active={active} />}
+        {geometry && <Arrows arrows={layout.arrows} geometry={geometry} selected={selected} active={active} previous={previous} />}
       </div>
     </div>
   );
 }
 
-function Arrows({ arrows, geometry, selected, active }: { arrows: SideArrow[]; geometry: Geometry; selected?: string | null; active?: string | null }) {
+function Arrows({
+  arrows,
+  geometry,
+  selected,
+  active,
+  previous,
+}: {
+  arrows: SideArrow[];
+  geometry: Geometry;
+  selected?: string | null;
+  active?: string | null;
+  previous?: string | null;
+}) {
   const id = useId().replace(/:/g, "");
   // highlighted arrows are drawn last, on top
   const sorted = [...arrows].sort((a, b) => Number(isLit(a, selected, active)) - Number(isLit(b, selected, active)));
@@ -133,6 +164,7 @@ function Arrows({ arrows, geometry, selected, active }: { arrows: SideArrow[]; g
             d={arrowPath(arrow.side, arrow.lane, exit, entry, geometry)}
             className="rp-arrow"
             data-lit={lit || undefined}
+            data-taken={(previous && arrow.edge.source === previous && arrow.edge.target === active) || undefined}
             markerEnd={`url(#${id}-${lit ? "lit" : "plain"})`}
           />
         );
@@ -187,11 +219,12 @@ type CardProps = {
   joinedPort?: string;
   selected: boolean;
   active: boolean;
+  breakpoint?: boolean;
   onSelect?: (id: string | null) => void;
 };
 
 /** One block: header with icon, name and type, key parameters, one row per outgoing arrow. */
-const BlockCard = memo(function BlockCard({ node, arrows, joinedPort, selected, active, onSelect }: CardProps) {
+const BlockCard = memo(function BlockCard({ node, arrows, joinedPort, selected, active, breakpoint, onSelect }: CardProps) {
   const { t } = useTranslation();
   const block = node.block;
   const Icon = node.external ? Unlink : blockIcon(block?.type);
@@ -207,6 +240,7 @@ const BlockCard = memo(function BlockCard({ node, arrows, joinedPort, selected, 
       data-unreachable={node.unreachable || undefined}
       data-selected={selected || undefined}
       data-active={active || undefined}
+      data-breakpoint={breakpoint || undefined}
       aria-pressed={selected}
       onClick={(e) => {
         e.stopPropagation();
@@ -216,6 +250,7 @@ const BlockCard = memo(function BlockCard({ node, arrows, joinedPort, selected, 
       <span className="rp-card-header" data-entry={node.id}>
         <Icon size={16} aria-hidden />
         <span className="rp-card-name">{node.id}</span>
+        {breakpoint && <span className="rp-breakpoint" role="img" aria-label={t("graph.breakpoint")} />}
         {node.start && <Flag size={14} aria-label={t("graph.start")} className="rp-flag" />}
         {!node.own && !node.external && <Lock size={12} aria-label={t("graph.locked")} />}
         {node.ends && !node.external && <OctagonX size={14} aria-label={t("graph.ends")} className="rp-end" />}
