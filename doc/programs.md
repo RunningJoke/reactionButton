@@ -229,3 +229,20 @@ singletons directly.
 During the program menu the central offers a BLE characteristic `MaxLoop`. A number
 > 0 written there replaces `MAX_LOOPS` of the program that is selected next. After the
 selection BLE is switched off, so the value cannot be changed during a game.
+
+## 6. Program format revisions
+
+The config API reports the revision of the program format a firmware understands as
+`programFormat` in `info` ([config-api.md](config-api.md) §5). It is increased whenever a
+block type gets new fields, ports or semantics, so configuration software can tell whether a
+pod supports a program before it uploads it. The firmware constant is
+`BlockFactory::PROGRAM_FORMAT` ([BlockFactory.h](../src/Block/BlockFactory/BlockFactory.h)),
+the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../tools/validate_programs.py).
+
+`"version": 1` in a program file is the file layout (§1.2), not this revision.
+
+| `programFormat` | Firmware | Changes |
+|---|---|---|
+| 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
+
+Firmware before 2.3 does not report `programFormat`; treat a missing field as revision 1.

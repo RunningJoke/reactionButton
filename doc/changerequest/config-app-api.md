@@ -14,7 +14,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 |---|---|---|---|
 | CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | done (firmware 2.1, branch `feature/cr-0-ble-indicate-only`) |
 | CR-1 | High | Tell sets apart in the BLE advertisement | done (firmware 2.2, branch `feature/cr-1-ble-set-name`) |
-| CR-2 | Medium | Program format revision in `info` | open |
+| CR-2 | Medium | Program format revision in `info` | done (firmware 2.3, branch `feature/cr-2-program-format`) |
 | CR-3 | Medium | Document engine details the simulator must copy | open |
 | CR-4 | Medium | `validate` with inline content (dry run) | open |
 | CR-5 | Low | Program metadata in `list` | open |
@@ -95,6 +95,9 @@ chooser. The suffix matches the `setId` in `info`.
 ---
 
 ## CR-2 – Program format revision in `info` (Medium)
+
+**Status: done** (firmware 2.3). `info.programFormat` = `BlockFactory::PROGRAM_FORMAT` (1).
+Changelog table in programs.md §6. Missing field = revision 1.
 
 **Reason.** `info.blockTypes` lists the type names only. If a firmware update adds a field
 or a port to an existing type (e.g. a new port on `button`), the app cannot tell whether the

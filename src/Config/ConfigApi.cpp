@@ -158,6 +158,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["maxRequest"] = (uint32_t)MAX_REQUEST;
     response["maxGetChunk"] = (uint32_t)MAX_GET_CHUNK;
     response["transport"] = this->transport;
+    response["programFormat"] = (uint32_t)BlockFactory::PROGRAM_FORMAT;
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

@@ -111,14 +111,16 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.2","linkProtocol":1,"setId":"5f3a91c2","setName":"",
+← {"op":"info","ok":true,"firmware":"2.3","linkProtocol":1,"setId":"5f3a91c2","setName":"",
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
                  "remoteMultiPress","remoteResetAll","summary"]}
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2).
-`blockTypes` lists what this firmware can run. A program that uses another type fails `validate`.
+`blockTypes` lists what this firmware can run. `programFormat` is the revision of the
+block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
+[programs.md](programs.md) §6. A program that uses another type fails `validate`.
 
 ### `list`
 ```json

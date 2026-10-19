@@ -8,7 +8,8 @@ Checks the ReactPod program files in data/ before they are uploaded with
 It mirrors the rules of the firmware loader (src/BlockManager/BlockManager.cpp):
 known block types, required fields, unique names, all port targets exist,
 start block exists, colours valid, SPIFFS file name length.
-Keep BLOCK_TYPES in sync with src/Block/BlockFactory/BlockFactory.cpp.
+Keep BLOCK_TYPES in sync with src/Block/BlockFactory/BlockFactory.cpp, and
+PROGRAM_FORMAT with BlockFactory::PROGRAM_FORMAT (changelog: doc/programs.md §6).
 """
 import json
 import re
@@ -18,6 +19,8 @@ from pathlib import Path
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
+
+PROGRAM_FORMAT = 1   # revision of the block types below
 
 NAMED_COLORS = {"off", "black", "red", "green", "blue", "yellow", "magenta", "cyan", "white"}
 
