@@ -159,6 +159,8 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["maxGetChunk"] = (uint32_t)MAX_GET_CHUNK;
     response["transport"] = this->transport;
     response["programFormat"] = (uint32_t)BlockFactory::PROGRAM_FORMAT;
+    JsonArray features = response["features"].to<JsonArray>();
+    features.add("validateInline");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));
@@ -401,12 +403,23 @@ void ConfigApi::opValidate(JsonObjectConst request, JsonDocument& response) {
         return;
     }
     const char* path = request["path"];
-    if(!ProgramStore::isValidPath(path) || !ProgramStore::get().exists(path)) {
+    JsonVariantConst data = request["data"];
+    if(!data.isNull()) {
+        // dry run: the program text comes with the request, nothing is stored
+        if(!data.is<const char*>()) {
+            setError(response, "bad_request", "'data' must be a string");
+            return;
+        }
+        if(!ProgramStore::isValidPath(path)) {
+            setError(response, "bad_path", BAD_PATH_MESSAGE);
+            return;
+        }
+    } else if(!ProgramStore::isValidPath(path) || !ProgramStore::get().exists(path)) {
         setError(response, "not_found", "program file not found");
         return;
     }
     BlockManager* bm = BlockManager::getManager();
-    if(!bm->loadProgram(path)) {
+    if(!bm->loadProgram(path, data.as<const char*>())) {
         setError(response, "invalid_program", bm->getLastError());
         return;
     }

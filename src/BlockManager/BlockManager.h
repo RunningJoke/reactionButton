@@ -38,7 +38,9 @@ class BlockManager {
 
         // Replaces the current program. On failure the old program is gone and
         // getLastError() describes the problem.
-        bool loadProgram(const char* path);
+        // text: content of the program file instead of the stored file at path (dry run of
+        // the config API "validate"); includes are still read from the store.
+        bool loadProgram(const char* path, const char* text = nullptr);
 
         // Starts the loaded program from its start block
         bool start(IPodNetwork* network);
@@ -70,7 +72,7 @@ class BlockManager {
         BlockManager();
         static BlockManager* manager;
 
-        bool loadFile(const char* path, uint8_t depth, std::string& startName);
+        bool loadFile(const char* path, uint8_t depth, std::string& startName, const char* text = nullptr);
         bool loadBlocks(JsonArrayConst blocks, const char* path);
         bool resolveLinks();
         int16_t findIndex(const std::string& name) const;

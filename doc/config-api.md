@@ -111,16 +111,17 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.3","linkProtocol":1,"setId":"5f3a91c2","setName":"",
+← {"op":"info","ok":true,"firmware":"2.4","linkProtocol":1,"setId":"5f3a91c2","setName":"",
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
                  "remoteMultiPress","remoteResetAll","summary"]}
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2).
 `blockTypes` lists what this firmware can run. `programFormat` is the revision of the
 block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
-[programs.md](programs.md) §6. A program that uses another type fails `validate`.
+[programs.md](programs.md) §6. `features` lists optional API features (firmware ≥ 2.4; missing
+= none): `validateInline` = `validate` accepts `data` (dry run). A program that uses another type fails `validate`.
 
 ### `list`
 ```json
@@ -218,6 +219,20 @@ Measurements are printed as text lines `RESULT,<millis>,<metric>,<pod>,<ms>` and
 ```
 Loads the program with all includes, exactly as the game would, without starting it.
 Run it after uploading all files of a program.
+
+**Dry run** (`features` contains `validateInline`, firmware ≥ 2.4):
+```json
+→ {"op":"validate","path":"/prog/mygame.json","data":"{ \"version\": 1, ... }"}
+← {"op":"validate","ok":true,"path":"/prog/mygame.json","blocks":14}
+```
+- With `data`, the program text is taken from the request instead of the file at `path`.
+  `path` must be a valid path (§4) and is used in messages, but the file need not exist.
+- Includes are still read from the store, so upload changed includes first, or validate a
+  program whose includes are unchanged.
+- Nothing is written, the generation does not change.
+- The whole request must fit into `maxRequest` (12288 bytes, after JSON escaping). Validate
+  larger programs after the upload, as above.
+- Errors as above (`invalid_program` with file and block name); `bad_path` for an invalid path.
 
 ## 6. Synchronisation between pods
 

@@ -16,7 +16,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | CR-1 | High | Tell sets apart in the BLE advertisement | done (firmware 2.2, branch `feature/cr-1-ble-set-name`) |
 | CR-2 | Medium | Program format revision in `info` | done (firmware 2.3, branch `feature/cr-2-program-format`) |
 | CR-3 | Medium | Document engine details the simulator must copy | done (docs only, branch `feature/cr-3-engine-semantics`) |
-| CR-4 | Medium | `validate` with inline content (dry run) | open |
+| CR-4 | Medium | `validate` with inline content (dry run) | done (firmware 2.4, branch `feature/cr-4-validate-inline`) |
 | CR-5 | Low | Program metadata in `list` | open |
 | CR-6 | Low | Optional PIN for write operations | open |
 | CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | open |
@@ -143,6 +143,10 @@ the pod drift apart.
 ---
 
 ## CR-4 – `validate` with inline content (Medium)
+
+**Status: done** (firmware 2.4). `validate` accepts `data`; `BlockManager::loadProgram(path, text)`
+parses the text instead of the file, includes come from the store, nothing is written.
+`info.features` = `["validateInline"]`. Reference client: `reactpod_config.py validate <path> --file <local>`.
 
 **Reason.** Today a program can only be validated by the firmware after it has been stored
 on the pod. The app validates locally first, but its validator is a copy of the rules. A

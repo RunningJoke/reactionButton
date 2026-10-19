@@ -11,6 +11,7 @@ is selected). Requires: pip install bleak
     python tools/reactpod_config.py put my_game.json /prog/mygame.json
     python tools/reactpod_config.py delete /prog/mygame.json
     python tools/reactpod_config.py validate /prog/mygame.json
+    python tools/reactpod_config.py validate /prog/mygame.json --file my_game.json   # dry run, nothing stored
     python tools/reactpod_config.py push data          # upload all program files from data/
     python tools/reactpod_config.py pull backup        # download all program files
     python tools/reactpod_config.py set-name "Halle 2" # advertise as "ReactPod Halle 2" ("" = default)
@@ -135,6 +136,7 @@ async def main():
     p = sub.add_parser("put"); p.add_argument("local"); p.add_argument("path")
     p = sub.add_parser("delete"); p.add_argument("path")
     p = sub.add_parser("validate"); p.add_argument("path")
+    p.add_argument("--file", help="validate this local file as <path> without storing it (firmware >= 2.4)")
     p = sub.add_parser("push"); p.add_argument("directory")
     p = sub.add_parser("pull"); p.add_argument("directory")
     p = sub.add_parser("set-name"); p.add_argument("set_name")
@@ -162,6 +164,9 @@ async def main():
             print(f"stored {r['path']}: {r['size']} bytes, crc {r['crc']}, generation {r['generation']}")
         elif args.command == "set-name":
             print(json.dumps(await pod.request("setName", name=args.set_name), indent=2, ensure_ascii=False))
+        elif args.command == "validate" and args.file:
+            data = Path(args.file).read_text(encoding="utf-8")
+            print(json.dumps(await pod.request("validate", path=args.path, data=data), indent=2, ensure_ascii=False))
         elif args.command in ("delete", "validate"):
             print(json.dumps(await pod.request(args.command, path=args.path), indent=2))
         elif args.command == "push":
