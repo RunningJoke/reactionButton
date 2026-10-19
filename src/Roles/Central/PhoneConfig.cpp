@@ -59,8 +59,10 @@ void PhoneConfig::start() {
     );
     this->commandCharacteristic->setCallbacks(new CommandCallbacks());
 
+    // indicate only: with NOTIFY offered too, Web Bluetooth / Android / bleak subscribe for
+    // notifications, and the BLE library then drops every indication sent by sendLine
     this->responseCharacteristic = pService->createCharacteristic(
-        CHAR_RESPONSE_UUID, BLECharacteristic::PROPERTY_INDICATE | BLECharacteristic::PROPERTY_NOTIFY
+        CHAR_RESPONSE_UUID, BLECharacteristic::PROPERTY_INDICATE
     );
     this->responseCharacteristic->addDescriptor(new BLE2902());
 

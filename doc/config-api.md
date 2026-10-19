@@ -30,8 +30,14 @@ reloaded. The new programs then spread to all pods of the set automatically (§6
 | Characteristic | UUID | Properties | Use |
 |---|---|---|---|
 | Command | `12345678-1234-1234-1234-1234567890b1` | Write, Write without response | requests: client → pod |
-| Response | `12345678-1234-1234-1234-1234567890b2` | Indicate (+ Notify), CCCD | responses: pod → client |
+| Response | `12345678-1234-1234-1234-1234567890b2` | Indicate, CCCD | responses: pod → client |
 | MaxLoop | `12345678-1234-1234-1234-1234567890a7` | Write, Read | ASCII number > 0 overrides `MAX_LOOPS` of the next selected program |
+
+The Response characteristic offers **indications only** (no notify), so every client
+subscribes for indications: Web Bluetooth `startNotifications()`, Android and bleak
+`start_notify()` pick indications automatically. The pod waits for each indication to be
+confirmed, which is the flow control of the responses. (Firmware 2.0 also offered notify;
+clients then subscribed for notifications and the pod's responses were dropped.)
 
 The pod requests an MTU of 517. Use the largest MTU your platform allows. The API also
 works with the default MTU of 23, just slower.
@@ -88,7 +94,7 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.0","linkProtocol":1,"setId":"5f3a91c2",
+← {"op":"info","ok":true,"firmware":"2.1","linkProtocol":1,"setId":"5f3a91c2",
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
    "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,
    "blockTypes":["led","delay","button","if","setVariable","remotePress",

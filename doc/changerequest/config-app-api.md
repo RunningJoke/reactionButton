@@ -12,7 +12,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 
 | ID | Priority | Title | Status |
 |---|---|---|---|
-| CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | open |
+| CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | done (firmware 2.1, branch `feature/cr-0-ble-indicate-only`) |
 | CR-1 | High | Tell sets apart in the BLE advertisement | open |
 | CR-2 | Medium | Program format revision in `info` | open |
 | CR-3 | Medium | Document engine details the simulator must copy | open |
@@ -24,6 +24,10 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 ---
 
 ## CR-0 – BLE responses are dropped when the client subscribes for notifications (Blocker)
+
+**Status: done** (firmware 2.1). Option A: the Response characteristic offers `INDICATE` only.
+config-api.md §2 updated. `tools/reactpod_config.py` needs no change (bleak subscribes for
+indications when notify is not offered).
 
 Added 2026-10-18 (P2 of the app).
 
