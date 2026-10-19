@@ -40,6 +40,10 @@ namespace Settings {
     // Increased (in RAM) on every setSetName, so the BLE advertisement can pick up the change
     uint32_t setNameRevision();
 
+    // PIN for write operations over BLE (4-6 digits, empty = none). Set over USB serial only.
+    String getPin();
+    void setPin(const String& pin);
+
     // Role for the next boot only, set via the serial/BLE "reboot" command
     // (0 = none: decide by the button, 1 = central, 2 = peripheral)
     void setBootRole(uint8_t role);

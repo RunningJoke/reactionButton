@@ -10,6 +10,7 @@
 static StreamBufferHandle_t rxBuffer = nullptr;
 static volatile bool rxOverflow = false;
 static volatile uint16_t peerMtu = 23;
+static volatile uint32_t connectionCount = 0;
 
 namespace {
     class CommandCallbacks : public BLECharacteristicCallbacks {
@@ -27,6 +28,7 @@ namespace {
     class ServerCallbacks : public BLEServerCallbacks {
         void onConnect(BLEServer* server) override {
             peerMtu = 23;
+            connectionCount++;
         }
         void onDisconnect(BLEServer* server) override {
             // let the configuration software reconnect
@@ -158,6 +160,12 @@ void PhoneConfig::sendLine(const std::string& text) {
 void PhoneConfig::service() {
     if(!this->running || rxBuffer == nullptr) {
         return;
+    }
+
+    if(this->sessionConnection != connectionCount) {
+        // a new client: it has to authenticate again (PIN)
+        this->sessionConnection = connectionCount;
+        this->api.newSession();
     }
 
     if(this->advertisedRevision != Settings::setNameRevision()) {

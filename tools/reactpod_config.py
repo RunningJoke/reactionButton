@@ -18,7 +18,8 @@ is selected). Requires: pip install bleak
     python tools/reactpod_config.py scan               # list the sets in range
 
 Options: --address <BLE address>, or --name <advertised name, e.g. "ReactPod 91c2">
-(otherwise the first ReactPod found is used)
+(otherwise the first ReactPod found is used); --pin <PIN> if the set has a PIN
+(info shows "pinRequired"; put, delete and set-name need it)
 """
 import argparse
 import asyncio
@@ -129,6 +130,7 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--address")
     parser.add_argument("--name", help='advertised name, e.g. "ReactPod 91c2"')
+    parser.add_argument("--pin", help="PIN for write operations, if the set has one")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("info")
     sub.add_parser("list")
@@ -150,6 +152,8 @@ async def main():
     async with BleakClient(await find_device(args.address, args.name)) as client:
         pod = ReactPodConfig(client)
         await pod.start()
+        if args.pin:
+            await pod.request("auth", pin=args.pin)
 
         if args.command in ("info", "list"):
             print(json.dumps(await pod.request(args.command), indent=2))

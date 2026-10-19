@@ -18,7 +18,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | CR-3 | Medium | Document engine details the simulator must copy | done (docs only, branch `feature/cr-3-engine-semantics`) |
 | CR-4 | Medium | `validate` with inline content (dry run) | done (firmware 2.4, branch `feature/cr-4-validate-inline`) |
 | CR-5 | Low | Program metadata in `list` | done (firmware 2.5, branch `feature/cr-5-list-metadata`) |
-| CR-6 | Low | Optional PIN for write operations | open |
+| CR-6 | Low | Optional PIN for write operations | done (firmware 2.6, branch `feature/cr-6-write-pin`) |
 | CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | open |
 
 ---
@@ -190,6 +190,11 @@ on every `list`.
 ---
 
 ## CR-6 – Optional PIN for write operations (Low, later)
+
+**Status: done** (firmware 2.6). `setPin` (USB serial only), `auth`, error codes `auth_required`
+/ `auth_failed`, `info.pinRequired`. USB serial never needs the PIN. A wrong PIN blocks `auth`
+for 3 s. Reference clients: `reactpod_config.py --pin`, `reactpod_serial.py set-pin`.
+See config-api.md §8.
 
 **Reason.** config-api §8: anyone in BLE range can change programs while a central is in the
 menu. That is fine for now. When customers use the pods in public places (schools, clubs),

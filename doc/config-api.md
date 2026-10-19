@@ -88,6 +88,8 @@ Error: `{"op": "...", "id": ..., "ok": false, "error": "<code>", "message": "<te
 | `invalid_program` | `validate`: the program cannot be loaded. `message` names file + block |
 | `storage` | flash write failed (full?) |
 | `overflow` | data arrived faster than the pod could process it. Resend the request |
+| `auth_required` | a PIN is set: `put`, `delete`, `setName` over BLE need `auth` first (§8) |
+| `auth_failed` | `auth`: wrong PIN, or a retry within 3 s after a wrong PIN |
 
 ## 4. Files and paths
 
@@ -111,13 +113,14 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.5","linkProtocol":1,"setId":"5f3a91c2","setName":"",
+← {"op":"info","ok":true,"firmware":"2.6","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
    "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline","listMeta"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
                  "remoteMultiPress","remoteResetAll","summary"]}
 ```
-`setName` is the stored set name (`""` = none, firmware ≥ 2.2).
+`setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
+is true if a PIN is set and this transport needs it (BLE), see §8.
 `blockTypes` lists what this firmware can run. `programFormat` is the revision of the
 block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
 [programs.md](programs.md) §6. `features` lists optional API features (firmware ≥ 2.4; missing
@@ -192,6 +195,8 @@ switched off when a program is selected.
 | `results` | any | `reset` (bool) | statistics per metric since the last summary |
 | `trace` | any | `on` (bool) | serial only: emits `{"event":"block","name":...}` whenever a block is entered |
 | `reboot` | any | `role`: `central` / `peripheral` / `auto` | restarts; the role applies to the next start only (`auto` = button decides) |
+| `auth` | any | `pin`: string | unlocks `put`, `delete`, `setName` for this BLE connection (§8). `ok` without a PIN set |
+| `setPin` | any, **serial only** | `pin`: 4–6 digits as a string; `""` or missing clears it | stores the PIN in NVS. Response: `pinSet`. Serial text form: `setPin 1234` |
 | `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2` |
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
@@ -270,6 +275,7 @@ Details of the pod-to-pod part: [link-protocol.md](link-protocol.md) §5.2.
 ```
 connect "ReactPod <xxxx>", subscribe to Response, (request MTU 517)
 info                              → check firmware / blockTypes
+auth (if info.pinRequired)        → ask the user for the PIN
 for each program file and include:
     put (chunks of ≤ 2048 characters, crc on the final chunk)
 put /programs.json                → new menu, pod reloads it
@@ -282,6 +288,19 @@ to the whole set (about 0.5 s per pod for a typical program set; estimate).
 
 ## 8. Security
 
-There is no pairing or PIN. Anyone in BLE range can change programs while a central is
-in the program menu. This is acceptable for a training device. A PIN could be added
-later as an extra characteristic.
+There is no BLE pairing. Without a PIN, anyone in BLE range can change programs while a
+central is in the program menu. This is acceptable for a training device.
+
+**Optional PIN** (firmware ≥ 2.6) for public places:
+- Set it over USB serial: `{"op":"setPin","pin":"1234"}` (4–6 digits, stored in NVS on that
+  pod). Clear it with `{"op":"setPin","pin":""}`. `setPin` is refused over BLE, so a lost PIN
+  can always be cleared by the owner with a USB cable.
+- With a PIN set, `info` over BLE reports `"pinRequired": true`. `put`, `delete` and `setName`
+  over BLE then return `auth_required` until the client sent `{"op":"auth","pin":"1234"}` on
+  the **same connection**. The authentication ends with the connection.
+- Read ops (`info`, `list`, `get`, `validate`, …) stay open. USB serial never needs the PIN.
+- After a wrong PIN, `auth` is refused for 3 s (`auth_failed`), which makes guessing a
+  4-digit PIN take hours.
+- The PIN is stored per pod, not synced. Set it on every pod that may become the central.
+- Not covered: the control ops (`select`, `start`, `stop`, `reboot`, …) and the MaxLoop
+  characteristic stay open. The PIN travels in clear text (no BLE encryption).

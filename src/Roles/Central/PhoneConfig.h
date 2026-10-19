@@ -54,4 +54,5 @@ class PhoneConfig {
         std::string line;
         bool discarding = false;
         uint32_t advertisedRevision = 0;
+        uint32_t sessionConnection = 0;
 };

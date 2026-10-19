@@ -46,6 +46,8 @@ namespace {
     }
 }
 
+uint32_t ConfigApi::authLockedUntil = 0;
+
 ConfigApi::ConfigApi(const char* transport, uint8_t uploadSlot, Sink sink)
     : transport(transport), uploadSlot(uploadSlot), sink(sink) {}
 
@@ -64,6 +66,24 @@ void ConfigApi::send(JsonDocument& response) {
 
 void ConfigApi::abortUpload() {
     this->uploadActive = false;
+}
+
+void ConfigApi::newSession() {
+    this->authenticated = false;
+    this->abortUpload();
+}
+
+bool ConfigApi::isSerial() const {
+    return strcmp(this->transport, "serial") == 0;
+}
+
+bool ConfigApi::checkWriteAccess(JsonDocument& response) {
+    // USB serial needs physical access, like clearing the PIN: no PIN needed there
+    if(this->authenticated || this->isSerial() || Settings::getPin().isEmpty()) {
+        return true;
+    }
+    setError(response, "auth_required", "a PIN is set: send {\"op\":\"auth\",\"pin\":\"...\"} first");
+    return false;
 }
 
 void ConfigApi::handleRequest(const std::string& text) {
@@ -97,6 +117,8 @@ void ConfigApi::handleRequest(const std::string& text) {
     else if(strcmp(op, "results") == 0) this->opResults(req, response);
     else if(strcmp(op, "trace") == 0) this->opTrace(req, response);
     else if(strcmp(op, "setName") == 0) this->opSetName(req, response);
+    else if(strcmp(op, "auth") == 0) this->opAuth(req, response);
+    else if(strcmp(op, "setPin") == 0) this->opSetPin(req, response);
     else if(strcmp(op, "reboot") == 0) {
         this->opReboot(req, response);
         return;     // response already sent, the pod restarts
@@ -113,8 +135,11 @@ void ConfigApi::opHelp(JsonDocument& response) {
     response["ok"] = true;
     JsonArray ops = response["ops"].to<JsonArray>();
     const char* common[] = {"help", "status", "info", "list", "get", "put", "delete", "validate",
-                            "results", "trace", "reboot", "setName"};
+                            "results", "trace", "reboot", "setName", "auth"};
     for(const char* op : common) ops.add(op);
+    if(this->isSerial()) {
+        ops.add("setPin");
+    }
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
         const char* central[] = {"programs", "select", "start", "press", "stop"};
@@ -150,6 +175,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["linkProtocol"] = (uint32_t)Protocol::VERSION;
     response["setId"] = hex32(Settings::getSetId());
     response["setName"] = Settings::getSetName();
+    response["pinRequired"] = !Settings::getPin().isEmpty() && !this->isSerial();
     response["generation"] = store.generation();
     response["storeHash"] = hex32(store.hash());
     response["freeBytes"] = store.freeBytes();
@@ -203,6 +229,9 @@ void ConfigApi::opReboot(JsonObjectConst request, JsonDocument& response) {
 }
 
 void ConfigApi::opSetName(JsonObjectConst request, JsonDocument& response) {
+    if(!this->checkWriteAccess(response)) {
+        return;
+    }
     JsonVariantConst value = request["name"];
     if(!value.isNull() && !value.is<const char*>()) {
         setError(response, "bad_request", "'name' must be a string");
@@ -223,6 +252,52 @@ void ConfigApi::opSetName(JsonObjectConst request, JsonDocument& response) {
     Settings::setSetName(name);
     response["ok"] = true;
     response["setName"] = name;
+}
+
+void ConfigApi::opAuth(JsonObjectConst request, JsonDocument& response) {
+    String pin = Settings::getPin();
+    if(pin.isEmpty()) {
+        this->authenticated = true;     // nothing to check
+        response["ok"] = true;
+        return;
+    }
+    if(authLockedUntil != 0 && (int32_t)(millis() - authLockedUntil) < 0) {
+        setError(response, "auth_failed", "too many attempts, wait " + String(AUTH_LOCKOUT_MS / 1000) + " s");
+        return;
+    }
+    const char* given = request["pin"];
+    if(given == nullptr || pin != given) {
+        this->authenticated = false;
+        authLockedUntil = millis() + AUTH_LOCKOUT_MS;   // slows down guessing
+        setError(response, "auth_failed", "wrong PIN");
+        return;
+    }
+    this->authenticated = true;
+    response["ok"] = true;
+}
+
+void ConfigApi::opSetPin(JsonObjectConst request, JsonDocument& response) {
+    if(!this->isSerial()) {
+        setError(response, "bad_request", "the PIN can only be set or cleared over USB serial");
+        return;
+    }
+    JsonVariantConst value = request["pin"];
+    if(!value.isNull() && !value.is<const char*>()) {
+        setError(response, "bad_request", "'pin' must be a string of 4-6 digits");
+        return;
+    }
+    String pin = value | "";
+    bool digits = true;
+    for(size_t i = 0; i < pin.length(); i++) {
+        digits = digits && isdigit((unsigned char)pin[i]);
+    }
+    if(!pin.isEmpty() && (pin.length() < 4 || pin.length() > 6 || !digits)) {
+        setError(response, "bad_request", "'pin' must be 4-6 digits (\"\" clears it)");
+        return;
+    }
+    Settings::setPin(pin);
+    response["ok"] = true;
+    response["pinSet"] = !pin.isEmpty();
 }
 
 // ---------------------------------------------------------------- program files
@@ -313,6 +388,9 @@ void ConfigApi::opGet(JsonObjectConst request, JsonDocument& response) {
 }
 
 void ConfigApi::opPut(JsonObjectConst request, JsonDocument& response) {
+    if(!this->checkWriteAccess(response)) {
+        return;
+    }
     ProgramStore& store = ProgramStore::get();
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && !role->storeEditable()) {
@@ -392,6 +470,9 @@ void ConfigApi::opPut(JsonObjectConst request, JsonDocument& response) {
 }
 
 void ConfigApi::opDelete(JsonObjectConst request, JsonDocument& response) {
+    if(!this->checkWriteAccess(response)) {
+        return;
+    }
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && !role->storeEditable()) {
         setError(response, "busy", "program files cannot be changed now (game or sync running)");

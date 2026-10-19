@@ -87,10 +87,11 @@ std::string SerialConsole::textToJson(const std::string& text) {
         else if(op == "reboot") field = "role";
         else if(op == "trace") field = "on";
         else if(op == "setName") field = "name";
+        else if(op == "auth" || op == "setPin") field = "pin";
 
         bool numeric = arg.find_first_not_of("0123456789") == std::string::npos;
-        if(op == "setName") {
-            doc[field] = arg;   // always text, also "2"
+        if(op == "setName" || op == "auth" || op == "setPin") {
+            doc[field] = arg;   // always text, also "2" / "0123"
         } else if(op == "trace") {
             doc[field] = (arg == "on" || arg == "1" || arg == "true");
         } else if(numeric) {

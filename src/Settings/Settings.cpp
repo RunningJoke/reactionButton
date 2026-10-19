@@ -8,6 +8,7 @@ static const char* KEY_SEEN_GEN = "seenGen";
 static const char* KEY_BOOT_ROLE = "bootRole";
 static const char* KEY_STORE_HASH = "storeHash";
 static const char* KEY_SET_NAME = "setName";
+static const char* KEY_PIN = "pin";
 
 static uint32_t nameRevision = 0;
 
@@ -123,4 +124,23 @@ void Settings::setSetName(const String& name) {
 
 uint32_t Settings::setNameRevision() {
     return nameRevision;
+}
+
+String Settings::getPin() {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, true);
+    String pin = prefs.isKey(KEY_PIN) ? prefs.getString(KEY_PIN, "") : String();
+    prefs.end();
+    return pin;
+}
+
+void Settings::setPin(const String& pin) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    if(pin.isEmpty()) {
+        prefs.remove(KEY_PIN);
+    } else {
+        prefs.putString(KEY_PIN, pin);
+    }
+    prefs.end();
 }
