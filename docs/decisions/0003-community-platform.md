@@ -26,3 +26,9 @@ shares.
 5. Licence of shared content (e.g. CC BY 4.0) and moderation / reporting.
 6. Offline: does the app cache community programs like its own workspace?
 7. Privacy (GDPR): what is stored about users, where (EU hosting?).
+8. Athlete profiles and results (epic #37, #48): who creates and owns an athlete profile (coach,
+   club, the athlete), who may see the results, and how an athlete is linked to an account.
+9. Consent for athlete data, including minors (parental consent), and how it is recorded.
+10. Retention and deletion of results; export of an athlete's data (GDPR access / portability).
+11. Results are performance data about people: EU hosting and data processing agreements
+    for the chosen backend.
