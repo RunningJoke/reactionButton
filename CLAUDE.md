@@ -87,7 +87,8 @@ Rules:
 ```sh
 cd platform
 npm install
-npm run dev        # http://localhost:8787 (/v1/meta, /v1/openapi.json, /mcp); Postgres optional: docker compose -f compose.dev.yaml up -d
+npm run dev        # http://localhost:8787 (/v1/meta, /v1/openapi.json, /mcp); embedded PGlite in .data/dev, sign-in codes in the log
+                   # real Postgres: docker compose -f compose.dev.yaml up -d and DATABASE_URL=postgres://reactpod:reactpod@localhost:5432/reactpod
 npm test           # Vitest: REST, MCP and OpenAPI against the same use cases
 npx tsc
 npm run openapi    # regenerate spec/platform-api.yaml after changing a use case (CI checks it)
@@ -99,7 +100,11 @@ Rules:
   `src/core/registry.ts`. Never write REST routes or MCP tools by hand; both are generated.
 - Use cases talk to the outside only through `ctx.ports` (`src/core/ports.ts`).
 - Set `agent` deliberately: `deny` for anything an AI client must not do, `draft` for writes (spec §7.3).
-- Tables per module in `schema.ts`, migrations with `npm run db:generate` (Drizzle), never edited after merge.
+- Tables per module in `schema.ts` (exported in `src/db/schema.ts`); after a change run
+  `npm run db:generate` (Drizzle) and commit the migration. Merged migrations are never edited.
+- Rights: `requireMember(tx, ctx, orgId, minRole)` from `modules/orgs/policies.ts`; non-members get 404.
+  Every write calls `recordAudit` (ids only, no names or e-mails).
+- Tests run on PGlite (`test/helpers.ts` → `testEnv()`: fresh database, captured mails, controllable clock).
 
 ## Environment
 

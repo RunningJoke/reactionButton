@@ -21,6 +21,10 @@ The deploy job is skipped until the secrets below exist.
    ```
 6. **Configuration**: `/opt/reactpod/.env` from [.env.example](.env.example) with a long random
    `POSTGRES_PASSWORD` (`openssl rand -base64 32`) and your `API_DOMAIN`. `chmod 600 .env`.
+   **Mail**: sign-in codes and invitations go out by SMTP (`MAIL_URL`, `MAIL_FROM`). Pick a
+   provider with EU processing and a data processing agreement, and set up SPF/DKIM for the
+   sender domain. Without `MAIL_URL` the mails only appear in `docker compose logs api`
+   (fine for a first staging test, not for real users).
 7. **Registry access**: while the package is private, log in once as `deploy`:
    `echo <PAT with read:packages> | docker login ghcr.io -u <github-user> --password-stdin`
    (or make the package public under GitHub → Packages → reactpod-platform → settings).

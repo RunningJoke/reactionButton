@@ -1,6 +1,6 @@
 # ReactPod Platform – Specification
 
-Status: **draft** (2026-10-19), PL0 implemented · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
+Status: **draft** (2026-10-19), PL0 implemented, PL1 implemented (API) · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
 [ADR 0004](../decisions/0004-platform-architecture.md)
 
 The ReactPod platform is the online part of ReactPod: accounts, clubs and teams, sharing of
@@ -87,8 +87,15 @@ switched on per team.
 
 ### 3.1 Accounts and login
 
-- **Sign up / sign in by magic link**: email → one-time link (15 min, single use) → session.
-- **Passkeys** (WebAuthn) can be added after the first login; then login without email.
+- **Sign up / sign in by email**: one mail with a 6-digit code and a link into the app
+  (`#/login?token=…`); both work once and for 15 minutes, a code for 5 attempts. The code helps
+  when the link opens in another browser than the installed app. Always answers 202, also for
+  unknown addresses. Rate limits: 5 requests per address and 20 per IP per hour.
+- **Session tokens**: opaque bearer tokens (30 days), stored hashed, sent as
+  `Authorization: Bearer …`. No cookies: the app runs on another origin than the API.
+- **Passkeys** (WebAuthn): postponed until the app's own domain is decided (decision P13); a
+  passkey is bound to the domain, so registering them on `runningjoke.github.io` would break
+  with a move.
   Several passkeys per user (phone, laptop).
 - Sessions: list of signed-in devices, sign out one or all.
 - Profile: display name, avatar (optional), language (en / de), units.
@@ -365,11 +372,14 @@ flowchart TB
 
 | Area | Endpoints | Scope |
 |---|---|---|
-| Auth | `POST /auth/magic-link`, `POST /auth/magic-link/verify`, `POST /auth/passkey/options`, `POST /auth/passkey/verify`, `POST /auth/logout`, OAuth: `/oauth/authorize`, `/oauth/token`, `/oauth/register`, `/.well-known/oauth-authorization-server` | – |
-| Me | `GET/PATCH /me`, `GET /me/sessions`, `GET /me/export`, `DELETE /me` | `profile` |
-| Clubs | `GET/POST /orgs`, `GET/PATCH/DELETE /orgs/{org}`, `GET/POST /orgs/{org}/invites`, `POST /invites/{code}/accept`, `GET/PATCH/DELETE /orgs/{org}/members/{user}` | `org:read`, `org:write` |
-| Teams | `GET/POST /orgs/{org}/teams`, `PATCH/DELETE /teams/{team}` | `org:*` |
-| Athletes | `GET/POST /orgs/{org}/athletes`, `PATCH/DELETE /athletes/{id}`, `POST /athletes/{id}/claim` | `athletes:*` |
+| Auth | `POST /auth/login` (202), `POST /auth/verify` (token or email + code → session token), `POST /auth/logout`; later OAuth: `/oauth/authorize`, `/oauth/token`, `/oauth/register`, `/.well-known/oauth-authorization-server` | – |
+| Me | `GET/PATCH/DELETE /me`, `GET /me/sessions`, `DELETE /me/sessions/{sessionId}`, `GET /me/export` | `profile` |
+| Clubs | `GET/POST /orgs`, `GET/PATCH/DELETE /orgs/{orgId}`, `POST /orgs/{orgId}/leave`, `POST /orgs/{orgId}/transfer` | `org:read`, `org:write` |
+| Members | `GET /orgs/{orgId}/members`, `PATCH/DELETE /orgs/{orgId}/members/{userId}` | `org:*` |
+| Invitations | `GET/POST /orgs/{orgId}/invites`, `DELETE /orgs/{orgId}/invites/{inviteId}`, `POST /invites/accept` (also claims an athlete profile) | `org:*` |
+| Teams | `GET/POST /orgs/{orgId}/teams`, `PATCH/DELETE /orgs/{orgId}/teams/{teamId}` | `org:*` |
+| Athletes | `GET/POST /orgs/{orgId}/athletes` (`?teamId=`), `PATCH/DELETE /orgs/{orgId}/athletes/{athleteId}` | `athletes:*` |
+| Audit | `GET /orgs/{orgId}/audit?cursor=&limit=` (admins) | `audit:read` |
 | Programs | `GET /programs?q=&tags=&pods=`, `POST /programs`, `GET/PATCH /programs/{id}`, `GET/POST /programs/{id}/revisions`, `POST /programs/{id}/revisions/{n}/publish`, `POST /programs/{id}/fork`, `POST /programs/validate`, `PUT /programs/{id}/rating` | `programs:*` |
 | Presets | `GET/POST /presets`, `GET/PATCH/DELETE /presets/{id}`, `GET /presets/{id}/program` (rendered program JSON) | `presets:*` |
 | Sets | `GET/POST /sets`, `GET/PATCH/DELETE /sets/{id}`, `GET /sets/{id}/archive` (.zip) | `sets:*` |
@@ -453,7 +463,7 @@ connector), so there is only one AI integration to build and secure.
 | Minors | managed by the club; the club confirms it has consent (terms). Not visible outside the club, pseudonymised for agents |
 | Export / delete | self-service (§3.1); club admins can export / delete their athletes |
 | Retention | results kept until deleted; inactive accounts reminded after 24 months, then deleted |
-| Tokens | stored hashed, short-lived access + refresh tokens, revocable; magic links single use |
+| Tokens | opaque, stored as SHA-256, revocable, 30-day sessions; sign-in links and codes single use, 15 min |
 | Transport | HTTPS only, HSTS, CORS restricted (§6) |
 | Abuse | rate limits, reports, platform admin moderation, audit log |
 | Legal | imprint, privacy policy, data processing agreement for clubs (before PL3 goes live) |
@@ -470,7 +480,9 @@ connector), so there is only one AI integration to build and secure.
 | MCP | `@modelcontextprotocol/sdk` (Streamable HTTP) | reference implementation |
 | Database | Postgres 17. Staging: container on the VPS (below). Production: same, or managed EU Postgres via `DATABASE_URL` | relational data, RLS, JSONB for program JSON |
 | ORM / migrations | Drizzle | typed, SQL-near, plain migration files |
-| Auth | own module: magic links + SimpleWebAuthn + OAuth 2.1 server | full control over scopes and agent tokens |
+| Auth | own module: email code + link, opaque bearer tokens; later SimpleWebAuthn (passkeys) and an OAuth 2.1 server | full control over scopes and agent tokens |
+| Mail | nodemailer over SMTP (`MAIL_URL`); printed to the log when unset | any EU provider |
+| Database in tests / dev | PGlite (embedded Postgres, `DATABASE_URL=pglite:…`) | no database server needed, real Postgres SQL |
 | Storage | S3-compatible object storage (EU) | avatars, set archives |
 | Mail | transactional provider with EU processing | magic links, invitations |
 | Bundle | esbuild → one `dist/main.js` (+ `dist-migrate/migrate.js`), no `node_modules` in the image | small image, fast start |
@@ -535,6 +547,10 @@ spec/
 | P10 | Tenancy | every resource has one owner organisation; personal space = organisation of one |
 | P11 | Hosting (staging) | Hetzner VPS in the EU, Docker Compose (API, Postgres, Caddy), deployed by CI over SSH |
 | P12 | Shared model | `packages/program-model` as TypeScript source via `file:` dependency, no root workspace; JSON Schema in PL2 |
+| P13 | Passkeys | postponed until the own domain is decided; email code + link only |
+| P14 | Sessions | opaque bearer tokens, hashed in the database, 30 days; no cookies, no JWT (instant revocation) |
+| P15 | Test database | PGlite in memory per test file; production Postgres 17 |
+| P16 | Privacy defaults | non-members get 404 for a club; e-mail addresses only for admins, never for AI clients; athletes pseudonymised for AI clients unless the club allows real names; audit details hold ids, not names |
 
 ---
 
@@ -556,7 +572,7 @@ Like the app phases: the user approves each phase.
 | Phase | Content | Done when | Status |
 |---|---|---|---|
 | PL0 | Skeleton: `platform/`, CI, `packages/program-model` extracted from the app (app tests still green), use-case helper, OpenAPI + MCP generation, deploy pipeline to a staging host | `GET /v1/meta` deployed; app builds against the package | implemented; staging deploy waits for the server + secrets ([deploy](../../platform/deploy/README.md)) |
-| PL1 | Accounts (magic link, passkeys), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app | – |
+| PL1 | Accounts (email code + link; passkeys later, P13), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app | API implemented and tested (REST + MCP); app screens later; user test pending |
 | PL2 | Programs, revisions, forks, presets, sets, search, `spec/program.schema.json`; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone | – |
 | PL3 | Training sessions and results, offline queue, stats, team leaderboards (+ firmware request for results) | a session on real pods appears in the athlete's stats | – |
 | PL4 | OAuth for third-party / AI clients, agent tokens, guard rails (the MCP door exists since PL0) | Claude connects, writes a valid program draft and analyses a team's sessions | – |
