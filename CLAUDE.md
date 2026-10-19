@@ -19,7 +19,7 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)
 
 ```sh
-pio run -d firmware -e NewBoard                                  # build (≈4 min clean); check the "Flash:" line (≈80 %)
+pio run -d firmware -e NewBoard                                  # build (≈4 min clean); firmware.bin ≈ 82 % of the 2 MB app slot
 pio run -d firmware -e NewBoard -t upload   --upload-port COM4
 pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # programs
 python tools/validate_programs.py
@@ -43,7 +43,7 @@ cd app && npm test && npx tsc                                    # before every 
 ## Rules
 
 - Firmware: never set `ARDUINO_USB_CDC_ON_BOOT` / `ARDUINO_USB_MODE`; never toggle DTR/RTS
-  over USB (resets the C3, maybe into download mode); check flash usage after adding code.
+  over USB (resets the C3, maybe into download mode); check the firmware.bin size after adding code (CI reports it).
 - App: mobile first (≥ 44 px targets, nothing drag-only, works at 360 px); colours from
   `app/src/app/theme.css`; every UI text in `en.json` and `de.json`; check UI changes in a
   real browser (`npm run build && npm run preview`, then `app/scripts/screenshots.mjs`).

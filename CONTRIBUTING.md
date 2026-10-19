@@ -62,6 +62,6 @@ Release the app: bump `version` in `app/package.json` on a PR, merge it, then ta
 
 ```sh
 cd app && npm test && npx tsc          # app
-pio run -d firmware -e NewBoard        # firmware; watch the "Flash:" line
+pio run -d firmware -e NewBoard        # firmware; CI reports firmware.bin vs. the app slot
 python tools/validate_programs.py      # shipped programs
 ```

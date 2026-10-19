@@ -27,7 +27,7 @@ The docs are the contract. Work through every step; say explicitly when a step d
    - The app must still work with older firmware: feature-detect via `info`.
 7. **Verify.**
    ```sh
-   pio run -d firmware -e NewBoard        # note the Flash: line (≈80 % budget)
+   pio run -d firmware -e NewBoard        # firmware.bin size vs. the app slot (CI reports it)
    python tools/validate_programs.py
    cd app && npm test && npx tsc
    ```
