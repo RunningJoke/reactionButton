@@ -17,7 +17,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | CR-2 | Medium | Program format revision in `info` | done (firmware 2.3, branch `feature/cr-2-program-format`) |
 | CR-3 | Medium | Document engine details the simulator must copy | done (docs only, branch `feature/cr-3-engine-semantics`) |
 | CR-4 | Medium | `validate` with inline content (dry run) | done (firmware 2.4, branch `feature/cr-4-validate-inline`) |
-| CR-5 | Low | Program metadata in `list` | open |
+| CR-5 | Low | Program metadata in `list` | done (firmware 2.5, branch `feature/cr-5-list-metadata`) |
 | CR-6 | Low | Optional PIN for write operations | open |
 | CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | open |
 
@@ -170,6 +170,11 @@ name, and `list` shows no changes afterwards.
 ---
 
 ## CR-5 – Program metadata in `list` (Low)
+
+**Status: done** (firmware 2.5). `list` adds `name`, `peripherals`, `menu` for programs and
+`fragment: true` for fragments. There was no cached manifest (`ProgramStore::list` reads every
+file for its CRC), so the metadata is cached in `ProgramStore` by path + CRC and a file is only
+parsed again after it changed. `info.features` contains `listMeta`.
 
 **Reason.** To show the program overview (name, number of pods, menu pattern) the app
 has to `get` every file. Over BLE with a small MTU this takes several seconds. The app

@@ -111,9 +111,9 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.4","linkProtocol":1,"setId":"5f3a91c2","setName":"",
+← {"op":"info","ok":true,"firmware":"2.5","linkProtocol":1,"setId":"5f3a91c2","setName":"",
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline"],
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline","listMeta"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
                  "remoteMultiPress","remoteResetAll","summary"]}
 ```
@@ -121,15 +121,25 @@ Rules:
 `blockTypes` lists what this firmware can run. `programFormat` is the revision of the
 block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
 [programs.md](programs.md) §6. `features` lists optional API features (firmware ≥ 2.4; missing
-= none): `validateInline` = `validate` accepts `data` (dry run). A program that uses another type fails `validate`.
+= none): `validateInline` = `validate` accepts `data` (dry run); `listMeta` = `list` reports
+program metadata. A program that uses another type fails `validate`.
 
 ### `list`
 ```json
 → {"op":"list"}
 ← {"op":"list","ok":true,"generation":7,"storeHash":"0a1b2c3d",
-   "files":[{"path":"/programs.json","size":231,"crc":"8c1d0e2f"}, ...],
+   "files":[{"path":"/programs.json","size":231,"crc":"8c1d0e2f"},
+            {"path":"/prog/duo.json","size":1450,"crc":"1f2e3d4c","name":"Duo","peripherals":1,
+             "menu":[{"leds":[8,10],"color":"blue"}]},
+            {"path":"/prog/lib/loop.json","size":610,"crc":"5a4b3c2d","fragment":true}, ...],
    "menu":["/prog/solo.json","/prog/weiche.json", ...]}
 ```
+Program metadata (firmware ≥ 2.5, `features` contains `listMeta`):
+- A file under `/prog/` with a string `name` is a program: `name`, and `peripherals` and
+  `menu` exactly as in the file (left out if the file has none).
+- A file that is a JSON object without `name` is an include fragment: `"fragment": true`.
+- `/programs.json` and files that do not parse get neither.
+- The pod caches the metadata by path and CRC, so `list` parses a file only after it changed.
 
 ### `get` – read a file (chunked)
 ```json

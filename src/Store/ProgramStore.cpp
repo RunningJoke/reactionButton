@@ -137,6 +137,54 @@ bool ProgramStore::read(const char* path, uint32_t offset, uint8_t* buffer, size
     return true;
 }
 
+const ProgramStore::ProgramMeta& ProgramStore::programMeta(const FileInfo& file) const {
+    auto cached = this->metaCache.find(file.path);
+    if(cached != this->metaCache.end() && cached->second.crc == file.crc) {
+        return cached->second.meta;
+    }
+
+    CachedMeta& entry = this->metaCache[file.path];
+    entry.crc = file.crc;
+    entry.meta = ProgramMeta();
+
+    File f = SPIFFS.open(file.path.c_str(), "r");
+    if(!f) {
+        return entry.meta;
+    }
+    // only the metadata, not the blocks
+    JsonDocument filter;
+    filter["name"] = true;
+    filter["peripherals"] = true;
+    filter["menu"] = true;
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, f, DeserializationOption::Filter(filter));
+    f.close();
+    if(error || !doc.is<JsonObject>()) {
+        return entry.meta;
+    }
+
+    ProgramMeta& meta = entry.meta;
+    meta.parsed = true;
+    meta.program = doc["name"].is<const char*>();
+    if(meta.program) {
+        meta.name = doc["name"].as<const char*>();
+        if(!doc["peripherals"].isNull()) {
+            serializeJson(doc["peripherals"], meta.peripherals);
+        }
+        if(!doc["menu"].isNull()) {
+            serializeJson(doc["menu"], meta.menu);
+        }
+    }
+    return meta;
+}
+
+void ProgramStore::pruneMeta(const std::vector<FileInfo>& files) const {
+    for(auto it = this->metaCache.begin(); it != this->metaCache.end(); ) {
+        bool listed = std::any_of(files.begin(), files.end(), [&](const FileInfo& f) { return f.path == it->first; });
+        it = listed ? std::next(it) : this->metaCache.erase(it);
+    }
+}
+
 std::string ProgramStore::manifest() const {
     std::string out;
     char line[64];

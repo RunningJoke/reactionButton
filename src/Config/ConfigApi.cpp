@@ -161,6 +161,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["programFormat"] = (uint32_t)BlockFactory::PROGRAM_FORMAT;
     JsonArray features = response["features"].to<JsonArray>();
     features.add("validateInline");
+    features.add("listMeta");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));
@@ -233,11 +234,25 @@ void ConfigApi::opList(JsonDocument& response) {
     response["storeHash"] = hex32(store.hash());
 
     JsonArray files = response["files"].to<JsonArray>();
-    for(const ProgramStore::FileInfo& f : store.list()) {
+    std::vector<ProgramStore::FileInfo> listed = store.list();
+    store.pruneMeta(listed);
+    for(const ProgramStore::FileInfo& f : listed) {
         JsonObject entry = files.add<JsonObject>();
         entry["path"] = f.path;
         entry["size"] = f.size;
         entry["crc"] = hex32(f.crc);
+        if(f.path == "/programs.json") {
+            continue;   // the menu, neither program nor fragment
+        }
+        // program metadata, cached by CRC: files are only parsed again after a change
+        const ProgramStore::ProgramMeta& meta = store.programMeta(f);
+        if(meta.program) {
+            entry["name"] = meta.name;
+            if(!meta.peripherals.empty()) entry["peripherals"] = serialized(meta.peripherals);
+            if(!meta.menu.empty()) entry["menu"] = serialized(meta.menu);
+        } else if(meta.parsed) {
+            entry["fragment"] = true;
+        }
     }
 
     // the menu order as configured in /programs.json
