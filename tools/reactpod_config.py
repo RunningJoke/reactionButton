@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reference client for the ReactPod configuration API (BLE, see doc/config-api.md).
+Reference client for the ReactPod configuration API (BLE, see docs/firmware/config-api.md).
 
 The central must be in the program menu (booted with the button held, before a program
 is selected). Requires: pip install bleak
@@ -12,7 +12,7 @@ is selected). Requires: pip install bleak
     python tools/reactpod_config.py delete /prog/mygame.json
     python tools/reactpod_config.py validate /prog/mygame.json
     python tools/reactpod_config.py validate /prog/mygame.json --file my_game.json   # dry run, nothing stored
-    python tools/reactpod_config.py push data          # upload all program files from data/
+    python tools/reactpod_config.py push firmware/data          # upload all program files from firmware/data/
     python tools/reactpod_config.py pull backup        # download all program files
     python tools/reactpod_config.py set-name "Halle 2" # advertise as "ReactPod Halle 2" ("" = default)
     python tools/reactpod_config.py scan               # list the sets in range

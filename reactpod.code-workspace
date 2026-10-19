@@ -1,0 +1,11 @@
+{
+  // Open this file in VS Code: PlatformIO finds the project in firmware/.
+  "folders": [
+    { "name": "repo", "path": "." },
+    { "name": "firmware", "path": "firmware" },
+    { "name": "app", "path": "app" }
+  ],
+  "settings": {
+    "files.exclude": { "**/node_modules": true, "**/.pio": true }
+  }
+}

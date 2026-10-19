@@ -1,0 +1,11 @@
+# Release notes generated from PR titles, grouped by label.
+changelog:
+  exclude:
+    labels: ["type: chore"]
+  categories:
+    - title: Features
+      labels: ["type: feature", "type: fw-request"]
+    - title: Fixes
+      labels: ["type: bug"]
+    - title: Other
+      labels: ["*"]

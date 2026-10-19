@@ -9,34 +9,34 @@ firmware and app in one branch.
 
 | Part | Where | What |
 |---|---|---|
-| Firmware | `src/`, `platformio.ini`, `data/` | PlatformIO, `framework = arduino, espidf`. Game programs are JSON files in `data/` (SPIFFS) |
-| Config App | `configApp/` | React + TypeScript PWA to build, simulate and upload programs. Published on GitHub Pages: https://runningjoke.github.io/reactionButton/ |
+| Firmware | `firmware/` | PlatformIO, `framework = arduino, espidf`. Game programs are JSON files in `firmware/data/` (SPIFFS) |
+| Config App | `app/` | React + TypeScript PWA to build, simulate and upload programs. Published on GitHub Pages: https://runningjoke.github.io/reactionButton/ |
 | Tools | `tools/` | Python reference clients: `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` |
 
 The documentation is the spec. Read the relevant file before you change anything:
 
 | Topic | File |
 |---|---|
-| Firmware overview, modules, boot, state machines | [doc/README.md](doc/README.md), [doc/architecture.md](doc/architecture.md) |
-| Program JSON format, block types, **engine semantics (§7)**, format revisions (§6) | [doc/programs.md](doc/programs.md) |
-| Configuration API (BLE + USB serial), the contract between firmware and app | [doc/config-api.md](doc/config-api.md) |
-| Pod-to-pod link (ESP-NOW), store sync | [doc/link-protocol.md](doc/link-protocol.md) |
-| Flashing and testing over USB | [doc/testing.md](doc/testing.md) |
-| Config App spec, phases, decisions, risks | [configApp/README.md](configApp/README.md) |
-| App acceptance tests on real pods, and their results | [configApp/docs/acceptance-tests.md](configApp/docs/acceptance-tests.md) |
+| Firmware overview, modules, boot, state machines | [docs/firmware/README.md](docs/firmware/README.md), [docs/firmware/architecture.md](docs/firmware/architecture.md) |
+| Program JSON format, block types, **engine semantics (§7)**, format revisions (§6) | [docs/firmware/programs.md](docs/firmware/programs.md) |
+| Configuration API (BLE + USB serial), the contract between firmware and app | [docs/firmware/config-api.md](docs/firmware/config-api.md) |
+| Pod-to-pod link (ESP-NOW), store sync | [docs/firmware/link-protocol.md](docs/firmware/link-protocol.md) |
+| Flashing and testing over USB | [docs/firmware/testing.md](docs/firmware/testing.md) |
+| Config App spec, phases, decisions, risks | [docs/app/spec.md](docs/app/spec.md) |
+| App acceptance tests on real pods, and their results | [docs/app/acceptance-tests.md](docs/app/acceptance-tests.md) |
 
 ## Workflow
 
 - **Branches and PRs.** Work on `feature/<topic>` branches and open a PR to `main`. Merge PRs with
   merge commits (`gh pr merge <n> --merge`). When a phase builds on an unmerged branch, stack
   the PR on that branch, then retarget it to `main` after the first PR is merged.
-- **App phases** (P0 … P6 in configApp/README.md §13). The user approves a phase before the next
+- **App phases** (P0 … P6 in docs/app/spec.md §13). The user approves a phase before the next
   one starts. Record the status in the phase table, and acceptance results in
   acceptance-tests.md. Write "pass" there only for tests the user reported as passed.
 - **Firmware changes the app needs** are requested as **GitHub issues** with the label
   `firmware`. Write what is missing, why the app needs it, a proposed API and the acceptance
   test. The app must keep working without the change: check `info`, and treat a missing field
-  as the old behaviour. `doc/changerequest/` is an archive (CR-0 … CR-7, all done); do not add
+  as the old behaviour. `docs/archive/changerequest/` is an archive (CR-0 … CR-7, all done); do not add
   requests there.
 - **Bugs you find** in the other part: open an issue (label `bug`) instead of fixing them on
   the side, unless the user asks for the fix.
@@ -45,14 +45,14 @@ The documentation is the spec. Read the relevant file before you change anything
 
 ### When you change the firmware API or block semantics
 
-1. Update [doc/config-api.md](doc/config-api.md) and/or [doc/programs.md](doc/programs.md).
-2. Bump `FW_VERSION_MINOR` in `src/_Definitions.h` (reported as `info.firmware`).
+1. Update [docs/firmware/config-api.md](docs/firmware/config-api.md) and/or [docs/firmware/programs.md](docs/firmware/programs.md).
+2. Bump `FW_VERSION_MINOR` in `firmware/src/_Definitions.h` (reported as `info.firmware`).
 3. For new block fields, ports or semantics: increase `BlockFactory::PROGRAM_FORMAT`
-   (`src/Block/BlockFactory/BlockFactory.h`) **and** `PROGRAM_FORMAT` in
+   (`firmware/src/Block/BlockFactory/BlockFactory.h`) **and** `PROGRAM_FORMAT` in
    `tools/validate_programs.py`, and add a row to programs.md §6.
 4. Report a new optional feature in `info.features`, so clients can detect it.
 5. Update the reference clients in `tools/` if they are affected.
-6. Mirror the change in the app: `configApp/src/pod/protocol.ts` (types),
+6. Mirror the change in the app: `app/src/pod/protocol.ts` (types),
    `src/pod/simulated/SimulatedPod.ts` (demo pod = firmware behaviour),
    `src/model/blockTypes.ts` + `src/model/validate.ts` (block types), `src/simulator/engine.ts`
    (semantics), and `PROGRAM_FORMAT` in `src/model/limits.ts`.
@@ -60,14 +60,14 @@ The documentation is the spec. Read the relevant file before you change anything
 ## Firmware
 
 ```sh
-pio run -e NewBoard                         # build (≈ 4 min clean); pio is in ~/.platformio/penv/Scripts/
-pio run -e NewBoard -t upload --upload-port COM4     # flash
-pio run -e NewBoard -t uploadfs --upload-port COM4   # write data/ (programs) to SPIFFS
-python tools/validate_programs.py           # check data/
+pio run -d firmware -e NewBoard                         # build (≈ 4 min clean); pio is in ~/.platformio/penv/Scripts/
+pio run -d firmware -e NewBoard -t upload --upload-port COM4     # flash
+pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # write firmware/data/ (programs) to SPIFFS
+python tools/validate_programs.py           # check firmware/data/
 python tools/reactpod_serial.py --port COM4 monitor  # log + JSON API over USB
 ```
 
-Modules in `src/`:
+Modules in `firmware/src/`:
 
 | Folder | Role |
 |---|---|
@@ -87,7 +87,7 @@ Notes:
 ## Config App
 
 ```sh
-cd configApp
+cd app
 npm install
 npm run dev        # http://localhost:5173
 npm test           # Vitest unit tests (run before every commit)
@@ -96,7 +96,7 @@ npm run build      # production build → dist/
 npm run preview    # serve dist/ on http://localhost:4173
 ```
 
-Layout of `configApp/src/`:
+Layout of `app/src/`:
 
 | Folder | Content |
 |---|---|
@@ -107,7 +107,7 @@ Layout of `configApp/src/`:
 | `store/` | IndexedDB storage (local programs, menu, sync state per set), file cache |
 | `programs/` | Catalog, sources (pod / shipped / local), program actions, set .zip import / export |
 | `pages/` | One component per tab: Pod, Programs, program view, Editor, Simulate, Menu, Settings |
-| `defaults/` | The shipped programs, bundled from `../data` at build time |
+| `defaults/` | The shipped programs, bundled from `../firmware/data` at build time |
 | `i18n/` | `en.json` (primary) and `de.json`. Every UI text goes into both files; a test checks that the keys and placeholders match |
 
 Rules:
@@ -116,14 +116,14 @@ Rules:
 - The demo pod and the simulator must behave like the firmware. When you change one side, change the other.
 - Check a UI change in a real browser: `npm run build`, `npm run preview`, then a playwright-core
   script with the local Chrome (`scripts/screenshots.mjs` shows how). Look at the screenshots.
-- Deployment: every push to `main` that touches `configApp/` or `data/` runs
-  `.github/workflows/config-app-pages.yml` (test, build, publish on GitHub Pages).
+- Deployment: every push to `main` that touches `app/` or `firmware/data/` runs
+  `.github/workflows/app.yml` (test, build, publish on GitHub Pages).
 
 ## Environment
 
 - Windows with Git Bash and PowerShell. `git` has `core.autocrlf` on: the working copy has CRLF,
   the repository LF. Files written by tools with LF show a warning on `git add`; that is fine.
-- `data/` is uploaded to the pods from the Windows working copy (CRLF), while the Pages build
+- `firmware/data/` is uploaded to the pods from the Windows working copy (CRLF), while the Pages build
   bundles the LF files. The app compares programs by JSON content, so this only affects CRCs
   (for example, "restore defaults" re-uploads shipped files whose line endings differ).
 - `gh` is logged in for `RunningJoke/reactionButton`.

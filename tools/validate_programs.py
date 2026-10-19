@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Checks the ReactPod program files in data/ before they are uploaded with
+Checks the ReactPod program files in firmware/data/ before they are uploaded with
 `pio run -t uploadfs`. Run from the repository root:
 
     python tools/validate_programs.py
@@ -9,14 +9,14 @@ It mirrors the rules of the firmware loader (src/BlockManager/BlockManager.cpp):
 known block types, required fields, unique names, all port targets exist,
 start block exists, colours valid, SPIFFS file name length.
 Keep BLOCK_TYPES in sync with src/Block/BlockFactory/BlockFactory.cpp, and
-PROGRAM_FORMAT with BlockFactory::PROGRAM_FORMAT (changelog: doc/programs.md §6).
+PROGRAM_FORMAT with BlockFactory::PROGRAM_FORMAT (changelog: docs/firmware/programs.md §6).
 """
 import json
 import re
 import sys
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "firmware" / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
 
@@ -61,7 +61,7 @@ class Validator:
             self.error(where, f"path '{fs_path}' longer than {SPIFFS_MAX_PATH} characters (SPIFFS limit)")
         file = DATA_DIR / fs_path.lstrip("/")
         if not file.is_file():
-            self.error(where, f"file '{fs_path}' not found in data/")
+            self.error(where, f"file '{fs_path}' not found in firmware/data/")
             return None
         try:
             return json.loads(file.read_text(encoding="utf-8"))

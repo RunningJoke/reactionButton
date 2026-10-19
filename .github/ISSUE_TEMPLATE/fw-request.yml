@@ -1,0 +1,32 @@
+name: Firmware request
+description: A firmware / API change the app or the tools need
+labels: ["type: fw-request", "area: firmware"]
+body:
+  - type: textarea
+    id: missing
+    attributes:
+      label: What is missing
+    validations: { required: true }
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the app (or tool) needs it
+    validations: { required: true }
+  - type: textarea
+    id: api
+    attributes:
+      label: Proposed API
+      description: Request / response JSON, `info.features` flag, block fields – as it would appear in docs/firmware/config-api.md or programs.md
+      render: json
+    validations: { required: true }
+  - type: textarea
+    id: fallback
+    attributes:
+      label: Fallback without the change
+      description: The app must keep working with older firmware. How does it detect the feature and what does it do without it?
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance test
+    validations: { required: true }

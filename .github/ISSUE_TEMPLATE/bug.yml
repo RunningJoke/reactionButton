@@ -1,0 +1,33 @@
+name: Bug
+description: Something does not work as specified
+labels: ["type: bug"]
+body:
+  - type: dropdown
+    id: part
+    attributes:
+      label: Part
+      options: [Firmware, Config App, Tools, Hardware, Docs]
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      description: Firmware (`info.firmware`), app version, program format – whatever applies
+      placeholder: "firmware 2.7, app 1.0.0"
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+      description: Name the spec section (docs/…) that defines the expected behaviour, if there is one
+    validations: { required: true }
+  - type: textarea
+    id: log
+    attributes:
+      label: Log / screenshots
+      render: text

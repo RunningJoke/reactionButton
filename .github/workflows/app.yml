@@ -1,0 +1,64 @@
+# Tests the Config App (app/) on every PR. On main: builds it and publishes it on GitHub Pages,
+# together with the binaries of the latest firmware release (dist/firmware/, for OTA).
+# https://runningjoke.github.io/reactionButton/
+name: App
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", "firmware/data/**", "spec/**", ".github/workflows/app.yml"]
+  pull_request:
+    paths: ["app/**", "firmware/data/**", "spec/**", ".github/workflows/app.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Add the latest firmware release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release list --limit 50 --json tagName --jq '[.[].tagName | select(startswith("fw-v"))][0] // empty')
+          if [ -n "$tag" ]; then
+            mkdir -p dist/firmware
+            gh release download "$tag" --dir dist/firmware --pattern '*.bin' --pattern 'ota-manifest.json'
+            echo "Firmware $tag added" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
