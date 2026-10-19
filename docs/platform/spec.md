@@ -189,20 +189,35 @@ flowchart LR
     COACH["Coach / athlete / AI client"] -- "stats, leaderboards" --> API
 ```
 
-- **Session**: who (one athlete, or a team with an athlete per round), what (program revision or
-  preset), where (pod set), when, notes.
-- **Attempts**: per reaction `{ t, metric, pod, ms, hit }`; plus the summary per metric
-  (count, avg, best, worst) as the firmware reports it.
-- The app collects results and keeps them in an **offline queue** (IndexedDB); upload is
-  idempotent so a retry never duplicates a session.
-- **Statistics**: personal best, average and trend per program / preset, comparison over weeks,
-  team leaderboards (only inside the club, switchable per team).
-- Corrections: a coach can delete an attempt or a whole session (audit logged).
-- **Firmware dependency**: today `results` (config-api, control ops) returns statistics per
-  metric since the last summary, and per-attempt `RESULT,…` lines appear only on USB serial. BLE
-  is off while a program runs. Reading results over BLE after a game (or keeping a result log on
-  the pod) needs a firmware change → requested with `/fw-request`. Until then: summary only, or
-  USB serial. The platform API accepts both (attempts are optional).
+The pod side is epic [#37](https://github.com/RunningJoke/reactionButton/issues/37): BLE stays on
+during the game, and a `communicate` block sends a **report** with everything recorded since the
+last one ([#41](https://github.com/RunningJoke/reactionButton/issues/41)), tagged with the
+athlete the app set ([#42](https://github.com/RunningJoke/reactionButton/issues/42)). The app
+stores reports per athlete ([#47](https://github.com/RunningJoke/reactionButton/issues/47)) and
+uploads them ([#48](https://github.com/RunningJoke/reactionButton/issues/48)).
+
+- **Training session**: one athlete on one pod set running one program, from the moment the app
+  assigns the athlete until it changes the athlete or the program. It holds the athlete, the pod
+  set id (`setId`), the program's pod path, and optionally the platform revision / preset it came
+  from (the app knows them from its install cache) with the content hash, start time and notes.
+- **Report** (the upload unit, P21): one per `communicate` block, as the firmware sends it:
+  pod report id, cycle, `startMs` / `endMs`, single values `{ t, metric, pod, ms }`, the firmware's
+  stats per metric and the reported variables. Reports followed by a `repeat` are marked
+  `discarded`: they are kept, but not counted.
+- **Offline queue**: the app keeps reports in IndexedDB and uploads when online. Each session
+  and report carries an id the app generates (UUID); a repeated upload stores nothing twice
+  (P22). The pod's report id is not unique: it starts again after a reboot.
+- **Statistics** from the single values (discarded reports excluded): count, best, average,
+  worst per metric, and a weekly trend, per athlete and program / preset. **Team leaderboards**:
+  best value per athlete of a team, only inside the club and only when the team has them
+  switched on.
+- **Who sees results**: coaches and above see the results of the athletes they see (team-limited
+  coaches: their teams). An athlete sees the results of their own (claimed) profile, viewers see
+  none. Leaderboards are visible to every member of the team.
+- Corrections: a coach can delete a report or a whole session (audit logged). Deleting an athlete
+  deletes their results (P24).
+- **Firmware dependency**: without the `reports` feature (#41) there are no live results; the
+  API needs no change for it, it only receives fewer reports.
 
 ### 3.8 Training plans (later)
 
@@ -237,8 +252,9 @@ erDiagram
     ORGANIZATION ||--o{ POD_SET : owns
     TRAINING_SESSION }o--|| ATHLETE : "for"
     TRAINING_SESSION }o--o| PRESET : uses
-    TRAINING_SESSION }o--|| PROGRAM_REVISION : runs
-    TRAINING_SESSION ||--o{ ATTEMPT : has
+    TRAINING_SESSION }o--o| PROGRAM_REVISION : runs
+    TRAINING_SESSION ||--o{ REPORT : has
+    REPORT ||--o{ REPORT_VALUE : has
     USER ||--o{ ACCESS_TOKEN : has
     ACCESS_TOKEN }o--o| API_CLIENT : "issued to"
 ```
@@ -250,14 +266,15 @@ erDiagram
 | Organization | id, name, kind `personal \| club`, country | personal = space of one user |
 | Membership | orgId, userId, role, teamIds? | §2.2 |
 | Team | id, orgId, name, leaderboard (bool) | |
-| Athlete | id, orgId, userId?, name, birthYear?, teamIds | managed when userId is null |
+| Athlete | id, orgId, userId?, name, birthYear?, teamIds, consentAt, consentBy | managed when userId is null; consent confirmed by the coach who adds the profile (P23) |
 | Program | id, orgId, title, visibility, forkOf (revision id), licence | |
 | ProgramRevision | id, programId, n, json, programFormat, sha256, createdBy, status `draft \| published` | immutable once published |
 | Preset | id, orgId, revisionId, name, variables, target, visibility | |
 | Set / SetItem | id, orgId, name, visibility / setId, index, revisionId \| presetId, menuLeds | |
 | PodSet | id, orgId, setId, name, firmware, lastSeenAt | |
-| TrainingSession | id, orgId, athleteId \| teamId, revisionId, presetId?, podSetId?, startedAt, summary | |
-| Attempt | sessionId, t, metric, pod, ms, hit | many rows; partitioned by month if large |
+| TrainingSession | id, orgId, clientId, athleteId, setId?, programPath, revisionId?, presetId?, contentSha256?, startedAt, notes | `clientId` = the app's UUID, unique per club |
+| Report | id, sessionId, clientId, podReportId?, cycle?, startMs?, endMs?, recordedAt, stats, vars, discarded | one per `communicate` block (#41) |
+| ReportValue | reportId, t, metric, pod, ms | many rows; partitioned by month if large |
 | AccessToken | id, userId, clientId?, scopes, kind `session \| pat \| oauth \| agent`, expiresAt | stored hashed |
 | ApiClient | id, name, redirectUris, kind `first-party \| third-party \| ai` | OAuth clients, incl. MCP dynamic registration |
 | AuditLog | at, actor (user + token kind), action, resource, orgId | every write; every agent call |
@@ -398,8 +415,8 @@ flowchart TB
 | Presets | `GET/POST /presets` (`?programId=&orgId=`), `GET/PATCH/DELETE /presets/{presetId}`, `GET /presets/{presetId}/program` (rendered file) | `programs:*` |
 | Sets | `GET/POST /sets`, `GET/PATCH/DELETE /sets/{setId}`, `GET /sets/{setId}/files` (pod files as JSON) | `programs:*` |
 | Pod sets | `GET/POST /orgs/{org}/pod-sets`, `PATCH /pod-sets/{id}` | `devices:*` |
-| Training | `POST /sessions` (with attempts, `Idempotency-Key`), `GET /sessions?athlete=&team=&from=`, `GET/DELETE /sessions/{id}` | `sessions:*` |
-| Stats | `GET /stats/athletes/{id}?program=&preset=`, `GET /stats/teams/{id}/leaderboard?preset=` | `sessions:read` |
+| Training | `POST /orgs/{orgId}/training/upload` (sessions with reports, idempotent by the app's ids), `GET /orgs/{orgId}/training/sessions?athleteId=&teamId=&from=&to=&cursor=`, `GET/DELETE /orgs/{orgId}/training/sessions/{sessionId}`, `PATCH/DELETE /orgs/{orgId}/training/reports/{reportId}` | `results:*` |
+| Stats | `GET /orgs/{orgId}/athletes/{athleteId}/stats?programPath=&revisionId=&presetId=&from=&to=`, `GET /orgs/{orgId}/teams/{teamId}/leaderboard?metric=&programPath=&presetId=&from=` | `results:read` |
 | Moderation | `POST /reports`; admin `GET/PATCH /reports/{id}` later (PL5) | `programs:read` |
 | Tokens | `GET/POST/DELETE /tokens` (personal access tokens) | `tokens` |
 | Meta | `GET /meta` (version, features, limits) | – |
@@ -436,9 +453,9 @@ Conventions:
 | `create_program`, `save_revision`, `fork_program` | save drafts (never published, never public) | `programs:write` |
 | `list_presets`, `get_preset`, `render_preset`, `create_preset` (draft) | presets | `programs:*` |
 | `list_sets`, `get_set`, `export_set`, `create_set` (draft) | sets | `programs:*` |
-| `list_sessions` | sessions of an athlete / team in a time range | `sessions:read` |
-| `get_athlete_stats` | bests, averages, trend | `sessions:read` |
-| `get_team_leaderboard` | ranking for a preset | `sessions:read` |
+| `list_training_sessions`, `get_training_session` | sessions of an athlete / team in a time range, with reports | `results:read` |
+| `get_athlete_stats` | bests, averages, trend | `results:read` |
+| `get_team_leaderboard` | ranking for a metric and program / preset | `results:read` |
 | `list_teams`, `list_athletes` | club structure | `org:read` |
 
 Resources: `reactpod://spec/program.schema.json` (the JSON Schema) and
@@ -474,8 +491,9 @@ connector), so there is only one AI integration to build and secure.
 |---|---|
 | Hosting | EU only (database, storage, backups, mail provider with EU processing) |
 | Data minimisation | email, display name; athletes: name or nickname, optional birth year. No addresses, no health data beyond reaction times |
-| Minors | managed by the club; the club confirms it has consent (terms). Not visible outside the club, pseudonymised for agents |
-| Export / delete | self-service (§3.1); club admins can export / delete their athletes |
+| Minors | managed by the club; the coach who adds a profile confirms the consent (of the parents for minors), recorded with date and user (P23). Not visible outside the club, pseudonymised for agents |
+| Athlete data | the club owns managed profiles and their results; a claimed profile is still the club's, the athlete can see and export it. Deleting a profile deletes its results (P24) |
+| Export / delete | self-service (§3.1), the export includes the results of claimed profiles; coaches can delete their athletes with all results |
 | Retention | results kept until deleted; inactive accounts reminded after 24 months, then deleted |
 | Tokens | opaque, stored as SHA-256, revocable, 30-day sessions; sign-in links and codes single use, 15 min |
 | Transport | HTTPS only, HSTS, CORS restricted (§6) |
@@ -574,12 +592,17 @@ spec/
 | P19 | Set export | JSON map of pod files (`/programs.json` + programs + library parts); the app zips |
 | P20 | Scopes | `programs:read` / `programs:write` cover programs, presets and sets; session tokens always carry all scopes |
 | P16 | Privacy defaults | non-members get 404 for a club; e-mail addresses only for admins, never for AI clients; athletes pseudonymised for AI clients unless the club allows real names; audit details hold ids, not names |
+| P21 | Results | the upload unit is the firmware's report (#41), grouped into training sessions; statistics come from the single values |
+| P22 | Idempotency | sessions and reports carry a UUID made by the app, unique per club; a repeated upload stores nothing twice (the pod's report id restarts after a reboot). Re-uploading may only change `discarded` |
+| P23 | Consent | adding an athlete requires `consent: true`; the platform records when and by whom |
+| P24 | Deletion | deleting an athlete or a club deletes its sessions, reports and values |
+| P25 | Scopes | `results:read` / `results:write` for training sessions, reports and statistics; AI clients may read (pseudonymised) but not upload or delete |
 
 ---
 
 ## 13. Open questions
 
-1. Result granularity from the firmware: per attempt over BLE, or a result log file on the pod?
+1. ~~Result granularity from the firmware~~ → reports over BLE during the game (#37, #41), P21.
 2. Public leaderboards across clubs (opt-in) – wanted at all?
 3. ~~Includes on publish~~ → P17.
 4. Domain name for app + API (same site helps cookies and passkeys).
@@ -597,6 +620,6 @@ Like the app phases: the user approves each phase.
 | PL0 | Skeleton: `platform/`, CI, `packages/program-model` extracted from the app (app tests still green), use-case helper, OpenAPI + MCP generation, deploy pipeline to a staging host | `GET /v1/meta` deployed; app builds against the package | implemented; staging deploy waits for the server + secrets ([deploy](../../platform/deploy/README.md)) |
 | PL1 | Accounts (email code + link; passkeys later, P13), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app | API implemented and tested (REST + MCP); app screens later; user test pending |
 | PL2 | Programs, revisions, forks, presets, sets, search, ratings, reports, `spec/program.schema.json`; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone | API implemented and tested (REST + MCP, Postgres 17); app integration later; user test pending |
-| PL3 | Training sessions and results, offline queue, stats, team leaderboards (+ firmware request for results) | a session on real pods appears in the athlete's stats | – |
+| PL3 | Training sessions and reports (upload from the app's offline queue), stats, team leaderboards; pod side: epic #37 | a session on real pods appears in the athlete's stats | API in progress; real pods wait for #38 → #41 / #42 → #45–#47 |
 | PL4 | OAuth for third-party / AI clients, agent tokens, guard rails (the MCP door exists since PL0) | Claude connects, writes a valid program draft and analyses a team's sessions | – |
 | PL5 | Training plans, webhooks, moderation tooling, data export polish | – | – |

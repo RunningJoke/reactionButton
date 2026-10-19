@@ -36,3 +36,16 @@ Answers so far are in the [platform spec](../platform/spec.md) and [ADR 0004](00
    offline-first; installed content is cached, results queue offline (spec §5.4).
 7. Privacy (GDPR): what is stored about users, where (EU hosting?). → EU only, minimal data,
    minors club-managed (spec §8).
+8. Athlete profiles and results (epic #37, #48): who creates and owns an athlete profile (coach,
+   club, the athlete), who may see the results, and how an athlete is linked to an account.
+   → the club owns profiles and results; coaches add them; coaches see their teams' results,
+   the athlete their own; a profile is linked by an invitation the athlete accepts (spec §3.2,
+   §3.7).
+9. Consent for athlete data, including minors (parental consent), and how it is recorded.
+   → the coach confirms it when adding the profile; date and user are stored (spec §8, P23).
+10. Retention and deletion of results; export of an athlete's data (GDPR access / portability).
+    → kept until deleted; deleting a profile deletes its results; a claimed profile's results are
+    in the athlete's data export (spec §8, P24).
+11. Results are performance data about people: EU hosting and data processing agreements
+    for the chosen backend. → EU only (Hetzner, managed EU Postgres, EU mail provider), data
+    processing agreement for clubs before PL3 goes live (spec §8).
