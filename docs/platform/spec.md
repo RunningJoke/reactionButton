@@ -1,6 +1,6 @@
 # ReactPod Platform – Specification
 
-Status: **draft** (2026-10-19), PL0 implemented, PL1 implemented (API) · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
+Status: **draft** (2026-10-19), PL0 implemented, PL1 and PL2 implemented (API) · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
 [ADR 0004](../decisions/0004-platform-architecture.md)
 
 The ReactPod platform is the online part of ReactPod: accounts, clubs and teams, sharing of
@@ -119,12 +119,19 @@ switched on per team.
   plus title, description, tags, number of pods, difficulty, language, licence.
 - The platform **validates** with the same rules and issue codes as the app (shared package,
   §5.3). Invalid programs cannot be published, only saved as draft.
-- **Revisions**: every publish creates an immutable revision (`sha256` of the JSON). Clients
-  refer to a revision, so a preset or set never changes under its user.
+- **Revisions**: every save creates a numbered revision with the file text exactly as on the pod
+  (`sha256` of the text). Revisions are never changed; publishing marks one draft as the
+  published version readers get. Presets and sets point to a revision, so they never change under
+  their users. Readers see published revisions, editors also drafts.
 - **Fork**: copy into the own space with a link to the source revision (attribution shown).
-- Includes: a program that uses `include` is stored together with the library parts it needs,
-  or flattened on publish (decision in phase PL2).
-- **Search and browse**: text, tags, pod count, difficulty, sort by new / popular / rating.
+- **Includes**: only the shipped library parts (`/prog/lib/*`) may be included; the platform serves
+  them itself. Other includes are flattened in the app first ("convert to editable copy"), the
+  API answers `include_not_shipped` (decision P17).
+- **Who edits**: coaches and above of the owning club (team-limited coaches: team items of their
+  teams); private items only their author. Deleting hides a program; its revisions stay for the
+  presets and sets that use them.
+- **Search and browse**: text (title, description), tags (any of), pod count, club; sort by new,
+  rating or title; offset paging. Anonymous callers find public published programs only.
 - **Rating** (1–5) and **report** (abuse, broken, licence). Reported content can be hidden by
   platform admins.
 - Licence: **CC BY 4.0** by default for public content; the author can choose CC0.
@@ -143,9 +150,11 @@ a preset overrides some of them.
   "notes": "Warm-up, 2 rounds" }
 ```
 
-- Only variables that exist in the program can be overridden (validated).
-- Applying a preset in the app produces a program file with the changed `variables` that is
-  pushed like any local program (app spec §9). No firmware change needed.
+- Only variables that exist in the program (with its library includes) can be overridden.
+- `GET /presets/{id}/program` renders the program file with the changed `variables`, named after the
+  preset; the app pushes it like any local program (app spec §9). No firmware change needed.
+- Presets made by AI clients are **drafts** (visible to their creator only) until a person sets
+  `status: ready`. Draft presets cannot go into sets.
 - Presets belong to a user or a club and have a visibility like programs.
 - **Naming**: the app spec (§7.2) uses "preset" for a library include. To avoid two meanings,
   that app term is renamed to **"library part"** when the app integrates the platform (PL2).
@@ -157,6 +166,10 @@ layout as the `.zip` export of the app and `firmware/data/`. On the platform a s
 a program revision or a preset.
 
 - Publish the app's local menu as a set; install a set into the app's workspace, then push.
+- `GET /sets/{id}/files` returns the pod files: `/programs.json`, every program (presets applied,
+  under a path made from the preset name), and the library parts they include. JSON, not a .zip:
+  the app zips it with its existing set export. Entries the caller can no longer read are
+  skipped and listed.
 - Club sets: "Hall A standard set" shared with all coaches of the club.
 
 ### 3.6 Pod sets (devices)
@@ -344,9 +357,10 @@ The program types, block definitions, limits, formatting and the validator (port
 `tools/validate_programs.py`) live in `packages/program-model/` (`@reactpod/program-model`,
 TypeScript source, no build step). The app and the platform depend on it with
 `"file:../packages/program-model"`; Vite and esbuild compile it. The platform rejects the same
-programs as the app, with the same issue codes. `spec/program.schema.json` (JSON Schema, versioned
-with `PROGRAM_FORMAT`) for other languages ([ADR 0003](../decisions/0003-community-platform.md))
-follows in PL2.
+programs as the app, with the same issue codes. `spec/program.schema.json` (JSON Schema 2020-12,
+generated from the block definitions, `x-programFormat` = `PROGRAM_FORMAT`) describes the structure
+for other languages and editors ([ADR 0003](../decisions/0003-community-platform.md)); the
+validator stays the authority for references, reachability and pod limits.
 
 ### 5.4 App integration
 
@@ -380,13 +394,13 @@ flowchart TB
 | Teams | `GET/POST /orgs/{orgId}/teams`, `PATCH/DELETE /orgs/{orgId}/teams/{teamId}` | `org:*` |
 | Athletes | `GET/POST /orgs/{orgId}/athletes` (`?teamId=`), `PATCH/DELETE /orgs/{orgId}/athletes/{athleteId}` | `athletes:*` |
 | Audit | `GET /orgs/{orgId}/audit?cursor=&limit=` (admins) | `audit:read` |
-| Programs | `GET /programs?q=&tags=&pods=`, `POST /programs`, `GET/PATCH /programs/{id}`, `GET/POST /programs/{id}/revisions`, `POST /programs/{id}/revisions/{n}/publish`, `POST /programs/{id}/fork`, `POST /programs/validate`, `PUT /programs/{id}/rating` | `programs:*` |
-| Presets | `GET/POST /presets`, `GET/PATCH/DELETE /presets/{id}`, `GET /presets/{id}/program` (rendered program JSON) | `presets:*` |
-| Sets | `GET/POST /sets`, `GET/PATCH/DELETE /sets/{id}`, `GET /sets/{id}/archive` (.zip) | `sets:*` |
+| Programs | `GET /programs?q=&tags=&pods=&orgId=&sort=&offset=&limit=`, `POST /programs` (draft), `GET/PATCH/DELETE /programs/{programId}` (`?revision=n`), `GET/POST /programs/{programId}/revisions`, `POST /programs/{programId}/revisions/{n}/publish`, `POST /programs/{programId}/fork`, `PUT /programs/{programId}/rating`, `POST /programs/validate` | `programs:*` |
+| Presets | `GET/POST /presets` (`?programId=&orgId=`), `GET/PATCH/DELETE /presets/{presetId}`, `GET /presets/{presetId}/program` (rendered file) | `programs:*` |
+| Sets | `GET/POST /sets`, `GET/PATCH/DELETE /sets/{setId}`, `GET /sets/{setId}/files` (pod files as JSON) | `programs:*` |
 | Pod sets | `GET/POST /orgs/{org}/pod-sets`, `PATCH /pod-sets/{id}` | `devices:*` |
 | Training | `POST /sessions` (with attempts, `Idempotency-Key`), `GET /sessions?athlete=&team=&from=`, `GET/DELETE /sessions/{id}` | `sessions:*` |
 | Stats | `GET /stats/athletes/{id}?program=&preset=`, `GET /stats/teams/{id}/leaderboard?preset=` | `sessions:read` |
-| Moderation | `POST /reports`, admin: `GET/PATCH /reports/{id}` | `reports:write` |
+| Moderation | `POST /reports`; admin `GET/PATCH /reports/{id}` later (PL5) | `programs:read` |
 | Tokens | `GET/POST/DELETE /tokens` (personal access tokens) | `tokens` |
 | Meta | `GET /meta` (version, features, limits) | – |
 
@@ -417,19 +431,19 @@ Conventions:
 
 | Tool | Use case | Scope |
 |---|---|---|
-| `search_programs` | find programs by text, tags, pods | `programs:read` |
-| `get_program` | program JSON + metadata of a revision | `programs:read` |
+| `search_programs`, `get_program`, `list_revisions` | find and read programs | `programs:read` (public without) |
 | `validate_program` | run the shared validator, return issues | – |
-| `create_program_draft` | save a program as draft in the user's space | `programs:write` |
-| `create_preset` | preset as draft | `presets:write` |
+| `create_program`, `save_revision`, `fork_program` | save drafts (never published, never public) | `programs:write` |
+| `list_presets`, `get_preset`, `render_preset`, `create_preset` (draft) | presets | `programs:*` |
+| `list_sets`, `get_set`, `export_set`, `create_set` (draft) | sets | `programs:*` |
 | `list_sessions` | sessions of an athlete / team in a time range | `sessions:read` |
 | `get_athlete_stats` | bests, averages, trend | `sessions:read` |
 | `get_team_leaderboard` | ranking for a preset | `sessions:read` |
 | `list_teams`, `list_athletes` | club structure | `org:read` |
 
-Resources: `reactpod://docs/programs` (programs.md: block types, ports, semantics),
-`reactpod://docs/block-types` (machine-readable block definitions from the shared package),
-`reactpod://programs/{id}`. With these an AI can write a valid program from a description,
+Resources: `reactpod://spec/program.schema.json` (the JSON Schema) and
+`reactpod://spec/block-types.json` (block definitions, ports, defaults, issue codes from the shared
+package). Not exposed: `publish_revision`, `update_*`, `delete_*`, ratings, reports. With these an AI can write a valid program from a description,
 validate it and leave it as a draft for the coach.
 
 Prompts (MCP prompts, optional): "design a warm-up for N pods", "analyse the last 4 weeks of
@@ -501,7 +515,11 @@ platform/
 │   ├── core/              useCase.ts (defineUseCase, execute), context.ts (Ctx, Actor), ports.ts,
 │   │                      errors.ts (AppError → problem+json), registry.ts (all use cases)
 │   ├── modules/           one folder per module: useCases.ts, later policies.ts, schema.ts (tables)
-│   │   └── meta/          get_meta, validate_program (PL0)
+│   │   ├── meta/          get_meta, validate_program (PL0)
+│   │   ├── identity/      sign-in, sessions, profile, export, deletion (PL1)
+│   │   ├── orgs/          clubs, members, teams, invitations, athletes, policies (PL1)
+│   │   ├── audit/         audit log (PL1)
+│   │   └── catalog/       programs, revisions, presets, sets, ratings, reports, access rules (PL2)
 │   ├── adapters/          db.ts (postgres.js + Drizzle), migrate.ts, library.ts (shipped /prog/lib)
 │   ├── http/app.ts        REST front door generated from the registry, /mcp, /healthz, /readyz, /v1/openapi.json
 │   ├── mcp/server.ts      MCP front door: one tool per use case with agent ≠ deny
@@ -515,7 +533,8 @@ platform/
 packages/
 └── program-model/         program types, block definitions, limits, validator, formatting
 spec/
-└── platform-api.yaml      generated, checked in (CI fails if out of date)
+├── platform-api.yaml      generated by platform (npm run openapi), checked in
+└── program.schema.json    generated by packages/program-model (npm run schema), checked in
 ```
 
 ## 11. Risks
@@ -550,6 +569,10 @@ spec/
 | P13 | Passkeys | postponed until the own domain is decided; email code + link only |
 | P14 | Sessions | opaque bearer tokens, hashed in the database, 30 days; no cookies, no JWT (instant revocation) |
 | P15 | Test database | PGlite in memory per test file; production Postgres 17 |
+| P17 | Includes | only shipped library parts; other includes are flattened in the app before saving |
+| P18 | AI writes | programs: draft revisions (publishing is `deny`); presets and sets: `status: draft`, visible to the creator until a person sets `ready`; AI clients cannot set `public` |
+| P19 | Set export | JSON map of pod files (`/programs.json` + programs + library parts); the app zips |
+| P20 | Scopes | `programs:read` / `programs:write` cover programs, presets and sets; session tokens always carry all scopes |
 | P16 | Privacy defaults | non-members get 404 for a club; e-mail addresses only for admins, never for AI clients; athletes pseudonymised for AI clients unless the club allows real names; audit details hold ids, not names |
 
 ---
@@ -558,7 +581,7 @@ spec/
 
 1. Result granularity from the firmware: per attempt over BLE, or a result log file on the pod?
 2. Public leaderboards across clubs (opt-in) – wanted at all?
-3. Includes on publish: store library parts with the program, or always flatten?
+3. ~~Includes on publish~~ → P17.
 4. Domain name for app + API (same site helps cookies and passkeys).
 5. Who moderates public content, and is public publishing open from the start?
 6. Paid tiers later (e.g. large clubs)? Influences quotas in `GET /meta`.
@@ -573,7 +596,7 @@ Like the app phases: the user approves each phase.
 |---|---|---|---|
 | PL0 | Skeleton: `platform/`, CI, `packages/program-model` extracted from the app (app tests still green), use-case helper, OpenAPI + MCP generation, deploy pipeline to a staging host | `GET /v1/meta` deployed; app builds against the package | implemented; staging deploy waits for the server + secrets ([deploy](../../platform/deploy/README.md)) |
 | PL1 | Accounts (email code + link; passkeys later, P13), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app | API implemented and tested (REST + MCP); app screens later; user test pending |
-| PL2 | Programs, revisions, forks, presets, sets, search, `spec/program.schema.json`; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone | – |
+| PL2 | Programs, revisions, forks, presets, sets, search, ratings, reports, `spec/program.schema.json`; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone | API implemented and tested (REST + MCP, Postgres 17); app integration later; user test pending |
 | PL3 | Training sessions and results, offline queue, stats, team leaderboards (+ firmware request for results) | a session on real pods appears in the athlete's stats | – |
 | PL4 | OAuth for third-party / AI clients, agent tokens, guard rails (the MCP door exists since PL0) | Claude connects, writes a valid program draft and analyses a team's sessions | – |
 | PL5 | Training plans, webhooks, moderation tooling, data export polish | – | – |

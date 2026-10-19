@@ -37,7 +37,8 @@ The docs are the contract between firmware, app and tools.
 5. Update the clients in `tools/`.
 6. Mirror it in the app: `pod/protocol.ts`, `pod/simulated/SimulatedPod.ts`,
    `simulator/engine.ts`; block types and checks in `packages/program-model/src/blockTypes.ts` +
-   `validate.ts` (shared with the platform: run its tests too).
+   `validate.ts` (shared with the platform: run its tests too), then `npm run schema` there to
+   regenerate `spec/program.schema.json`.
 
 The app must keep working with older firmware: check `info`, treat a missing field as the old
 behaviour.
@@ -64,7 +65,7 @@ Release the app: bump `version` in `app/package.json` on a PR, merge it, then ta
 
 ```sh
 cd app && npm test && npx tsc          # app
-cd packages/program-model && npm test && npx tsc   # shared program model (app + platform)
+cd packages/program-model && npm test && npx tsc && npm run schema:check   # shared program model (app + platform)
 cd platform && npm test && npx tsc && npm run openapi:check   # platform
 pio run -d firmware -e NewBoard        # firmware; CI reports firmware.bin vs. the app slot
 python tools/validate_programs.py      # shipped programs

@@ -22,7 +22,8 @@ The docs are the contract. Work through every step; say explicitly when a step d
 6. **App mirror.**
    - `app/src/pod/protocol.ts` – types
    - `app/src/pod/simulated/SimulatedPod.ts` – demo pod behaves like the firmware
-   - `packages/program-model/src/blockTypes.ts` + `validate.ts` – block types (shared by app and platform; run both test suites)
+   - `packages/program-model/src/blockTypes.ts` + `validate.ts` – block types (shared by app and platform; run both test suites),
+     then `cd packages/program-model && npm run schema` (regenerates `spec/program.schema.json`)
    - `app/src/simulator/engine.ts` – semantics
    - The app must still work with older firmware: feature-detect via `info`.
 7. **Verify.**

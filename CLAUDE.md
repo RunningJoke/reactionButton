@@ -15,7 +15,7 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 | `hardware/` | KiCad PCB, FreeCAD casing | – |
 | `platform/` | Community platform (Hono + Postgres): accounts, clubs, sharing, results; REST + MCP from one use-case list | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases), [deploy](platform/deploy/README.md) |
 | `packages/program-model/` | Program types, block definitions, limits, validator – shared by app and platform | programs |
-| `spec/` | Generated contracts: `platform-api.yaml` (OpenAPI) | – |
+| `spec/` | Generated contracts: `platform-api.yaml` (OpenAPI, `cd platform && npm run openapi`), `program.schema.json` (`cd packages/program-model && npm run schema`) | – |
 | `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform, platform architecture | – |
 | `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
@@ -28,7 +28,7 @@ pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # programs
 python tools/validate_programs.py
 python tools/reactpod_serial.py --port COM4 monitor              # log + JSON API over USB
 cd app && npm test && npx tsc                                    # before every app commit
-cd packages/program-model && npm test && npx tsc                  # program model (also run app + platform tests)
+cd packages/program-model && npm test && npx tsc && npm run schema:check   # program model (also run app + platform tests)
 cd platform && npm test && npx tsc && npm run openapi:check       # before every platform commit
 ```
 
