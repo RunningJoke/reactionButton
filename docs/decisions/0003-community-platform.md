@@ -19,10 +19,20 @@ shares.
 
 ## Open questions
 
+Answers so far are in the [platform spec](../platform/spec.md) and [ADR 0004](0004-platform-architecture.md).
+
 1. Hosting and backend: managed (Supabase / Firebase / Cloudflare D1+Workers) or own server?
+   → own TypeScript service on managed EU Postgres (0004).
 2. Accounts: email login, GitHub / Google login, or anonymous publishing with edit links?
+   → email magic link + passkeys, no passwords (spec §3.1).
 3. What is shared: single programs, whole sets (.zip), includes/libraries, LED designs?
-4. Forking and versions of shared programs; attribution.
-5. Licence of shared content (e.g. CC BY 4.0) and moderation / reporting.
-6. Offline: does the app cache community programs like its own workspace?
-7. Privacy (GDPR): what is stored about users, where (EU hosting?).
+   → programs (with revisions), presets, sets; plus training results inside clubs (spec §3).
+   LED designs later.
+4. Forking and versions of shared programs; attribution. → immutable revisions, fork links the
+   source revision (spec §3.3).
+5. Licence of shared content (e.g. CC BY 4.0) and moderation / reporting. → CC BY 4.0 default,
+   CC0 optional, reports + admin hide (spec §3.3). Who moderates is still open.
+6. Offline: does the app cache community programs like its own workspace? → yes, the app stays
+   offline-first; installed content is cached, results queue offline (spec §5.4).
+7. Privacy (GDPR): what is stored about users, where (EU hosting?). → EU only, minimal data,
+   minors club-managed (spec §8).

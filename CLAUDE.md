@@ -13,7 +13,8 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 | `app/` | React + TS PWA on Pages: https://runningjoke.github.io/reactionButton/ | [spec](docs/app/spec.md) (§4 layout, §13 phases), [acceptance tests](docs/app/acceptance-tests.md) |
 | `tools/` | `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` | config-api |
 | `hardware/` | KiCad PCB, FreeCAD casing | – |
-| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform | – |
+| `platform/` (planned) | Community platform: accounts, clubs, sharing, results; REST + MCP | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases) |
+| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform, platform architecture | – |
 | `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)
