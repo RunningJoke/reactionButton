@@ -25,7 +25,7 @@ generation and store hash.
 
 ## B – BLE (Android Chrome, desktop Chrome)
 
-Needs firmware ≥ 2.1 (change request CR-0, `doc/changerequest/config-app-api.md`). With firmware 2.0 the app connects, then reports "The pod did not answer" (timeout). AT-B5…B7 need firmware ≥ 2.6.
+Needs firmware ≥ 2.1 (change request CR-0, archived in `doc/changerequest/config-app-api.md`). With firmware 2.0 the app connects, then reports "The pod did not answer" (timeout). AT-B5…B7 need firmware ≥ 2.6.
 
 | ID | Steps | Expected |
 |---|---|---|

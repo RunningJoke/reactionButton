@@ -55,9 +55,11 @@ hall. The UI must be usable with one hand and must not lose data by accident.
 | iPhone / iPad Safari (PWA) | ✅ (offline only) | ❌ no Web Bluetooth | ❌ |
 | Native app (later, Capacitor) | ✅ | ✅ native | – |
 
-Web Bluetooth and Web Serial need **HTTPS** (or `localhost`). Version 1 is **prepared** as
-a PWA (manifest, service worker, offline cache, relative base path). Hosting and domain are
-decided later and are not part of version 1. Development runs on `localhost`.
+Web Bluetooth and Web Serial need **HTTPS** (or `localhost`). The app is a PWA (manifest,
+service worker, offline cache, relative base path). It is published on **GitHub Pages**:
+https://runningjoke.github.io/reactionButton/ , built and deployed by
+[.github/workflows/config-app-pages.yml](../.github/workflows/config-app-pages.yml) on every push
+to `main` that touches `configApp/` or `data/`. Development runs on `localhost`.
 
 ---
 
@@ -494,7 +496,7 @@ Implementation notes (`src/pod/sync.ts`):
 | # | Topic | Decision |
 |---|---|---|
 | O1 | Manual node positions | none: the column view computes the block order (§7.1) |
-| O2 | Hosting | only prepare the PWA. Hosting and domain later, not in v1 |
+| O2 | Hosting | GitHub Pages (`runningjoke.github.io/reactionButton`), deployed from `main` by GitHub Actions. Own domain later |
 | O3 | Languages | English (primary, fallback) and German |
 | O4 | Long press in the simulator | press and hold = held button, release = release (`shortMs` decides) |
 | O5 | Number of peripherals | the editor prevents more than 7. No other warning |
@@ -523,7 +525,11 @@ Implementation notes (`src/pod/sync.ts`):
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](docs/acceptance-tests.md).
-Requested firmware / API changes: [../doc/changerequest/config-app-api.md](../doc/changerequest/config-app-api.md).
+**Firmware / API changes the app needs** are requested as **GitHub issues** in this repository
+(label `firmware`): what is missing, why the app needs it, a proposed API, acceptance. The app
+must keep working without the change (check `info`, missing field → old behaviour). The earlier
+change requests CR-0 … CR-7 are all done and archived in
+[../doc/changerequest/config-app-api.md](../doc/changerequest/config-app-api.md).
 
 ---
 
@@ -538,8 +544,11 @@ npm run build      # type check + production build with service worker → dist/
 npm run preview    # serve dist/ on http://localhost:4173, e.g. to test offline mode
 npm run icons      # redraw public/icons/* (scripts/make-icons.mjs)
 node scripts/screenshots.mjs <dir>   # screenshots of the preview build (local Chrome, playwright-core)
-node scripts/offline-check.mjs       # AT-U1 before hosting: preview build loads offline
+node scripts/offline-check.mjs       # AT-U1: preview build loads offline
 ```
+
+Deployment: merging to `main` runs the Pages workflow (`npm ci`, `npm test`, `npm run build`,
+upload `dist/`). It can also be started by hand (Actions → "Config app (GitHub Pages)" → Run).
 
 Routing uses the URL hash (`#/programs`), so the build runs from any path, offline and later
 inside the Capacitor webview. A new app version is only activated after the user confirms
