@@ -14,7 +14,7 @@ The docs are the contract. Work through every step; say explicitly when a step d
 3. **Program format** (new block fields, ports or semantics only): increase
    - `BlockFactory::PROGRAM_FORMAT` in `firmware/src/Block/BlockFactory/BlockFactory.h`
    - `PROGRAM_FORMAT` in `tools/validate_programs.py`
-   - `PROGRAM_FORMAT` in `app/src/model/limits.ts`
+   - `PROGRAM_FORMAT` in `packages/program-model/src/limits.ts`
    - add a row to programs.md §6.
 4. **Feature flag.** Report a new optional feature in `info.features` so clients can detect it.
 5. **Tools.** Update `tools/reactpod_config.py` / `reactpod_serial.py` / `validate_programs.py`
@@ -22,7 +22,7 @@ The docs are the contract. Work through every step; say explicitly when a step d
 6. **App mirror.**
    - `app/src/pod/protocol.ts` – types
    - `app/src/pod/simulated/SimulatedPod.ts` – demo pod behaves like the firmware
-   - `app/src/model/blockTypes.ts` + `app/src/model/validate.ts` – block types
+   - `packages/program-model/src/blockTypes.ts` + `validate.ts` – block types (shared by app and platform; run both test suites)
    - `app/src/simulator/engine.ts` – semantics
    - The app must still work with older firmware: feature-detect via `info`.
 7. **Verify.**

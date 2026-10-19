@@ -1,6 +1,6 @@
 # ReactPod Platform – Specification
 
-Status: **draft** (2026-10-19) · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
+Status: **draft** (2026-10-19), PL0 implemented · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
 [ADR 0004](../decisions/0004-platform-architecture.md)
 
 The ReactPod platform is the online part of ReactPod: accounts, clubs and teams, sharing of
@@ -333,11 +333,13 @@ same validation and the same authorization. This is what keeps attaching AI clie
 
 ### 5.3 Shared program model
 
-The program types and the validator (`app/src/model/`, port of `tools/validate_programs.py`)
-move into a workspace package `packages/program-model/`, used by the app and the platform.
-`spec/program.schema.json` (JSON Schema, versioned with `PROGRAM_FORMAT`) is generated from it
-for other languages ([ADR 0003](../decisions/0003-community-platform.md)). The platform rejects
-the same programs as the app, with the same issue codes.
+The program types, block definitions, limits, formatting and the validator (port of
+`tools/validate_programs.py`) live in `packages/program-model/` (`@reactpod/program-model`,
+TypeScript source, no build step). The app and the platform depend on it with
+`"file:../packages/program-model"`; Vite and esbuild compile it. The platform rejects the same
+programs as the app, with the same issue codes. `spec/program.schema.json` (JSON Schema, versioned
+with `PROGRAM_FORMAT`) for other languages ([ADR 0003](../decisions/0003-community-platform.md))
+follows in PL2.
 
 ### 5.4 App integration
 
@@ -466,13 +468,14 @@ connector), so there is only one AI integration to build and secure.
 | HTTP | Hono | small, typed, runs on Node and edge if needed |
 | Schemas | zod + OpenAPI generation | one definition for validation, REST, MCP and client |
 | MCP | `@modelcontextprotocol/sdk` (Streamable HTTP) | reference implementation |
-| Database | Postgres (managed, EU region, e.g. Neon or Supabase-DB used as plain Postgres) | relational data, RLS, JSONB for program JSON |
+| Database | Postgres 17. Staging: container on the VPS (below). Production: same, or managed EU Postgres via `DATABASE_URL` | relational data, RLS, JSONB for program JSON |
 | ORM / migrations | Drizzle | typed, SQL-near, plain migration files |
 | Auth | own module: magic links + SimpleWebAuthn + OAuth 2.1 server | full control over scopes and agent tokens |
 | Storage | S3-compatible object storage (EU) | avatars, set archives |
 | Mail | transactional provider with EU processing | magic links, invitations |
-| Deploy | container on an EU host (e.g. Fly.io EU, Hetzner, Scaleway) | portable, no lock-in |
-| CI / release | `.github/workflows/platform.yml`; tags `platform-vX.Y.Z` | like firmware and app ([ADR 0002](../decisions/0002-versions-and-firmware-delivery.md)) |
+| Bundle | esbuild → one `dist/main.js` (+ `dist-migrate/migrate.js`), no `node_modules` in the image | small image, fast start |
+| Deploy | Hetzner VPS (EU): Docker Compose with API, Postgres and Caddy (HTTPS), deployed by CI over SSH ([platform/deploy](../../platform/deploy/README.md)) | cheap, EU, no lock-in |
+| CI / release | `.github/workflows/platform.yml`: tests, image `ghcr.io/runningjoke/reactpod-platform`, staging deploy; tags `platform-vX.Y.Z` | like firmware and app ([ADR 0002](../decisions/0002-versions-and-firmware-delivery.md)) |
 
 ---
 
@@ -481,23 +484,27 @@ connector), so there is only one AI integration to build and secure.
 ```
 platform/
 ├── src/
-│   ├── core/            use-case helper, policies, errors
-│   ├── modules/         identity, orgs, catalog, training, devices, moderation
-│   │   └── <module>/    useCases.ts, policies.ts, repo.ts (port), schema.ts (tables)
-│   ├── adapters/        postgres, storage, mailer, webauthn, clock
-│   ├── http/            REST front door (Hono routes generated from use cases)
-│   ├── mcp/             MCP front door (tools/resources generated from use cases)
-│   └── main.ts
-├── migrations/
-└── test/                use-case tests against Postgres (testcontainers), REST + MCP contract tests
+│   ├── main.ts            node entry: config → ports → HTTP server
+│   ├── config.ts          environment (PORT, PUBLIC_URL, DATABASE_URL, CORS_ORIGINS, SHIPPED_DATA_DIR)
+│   ├── core/              useCase.ts (defineUseCase, execute), context.ts (Ctx, Actor), ports.ts,
+│   │                      errors.ts (AppError → problem+json), registry.ts (all use cases)
+│   ├── modules/           one folder per module: useCases.ts, later policies.ts, schema.ts (tables)
+│   │   └── meta/          get_meta, validate_program (PL0)
+│   ├── adapters/          db.ts (postgres.js + Drizzle), migrate.ts, library.ts (shipped /prog/lib)
+│   ├── http/app.ts        REST front door generated from the registry, /mcp, /healthz, /readyz, /v1/openapi.json
+│   ├── mcp/server.ts      MCP front door: one tool per use case with agent ≠ deny
+│   └── openapi.ts         OpenAPI 3.1 from the registry
+├── scripts/gen-openapi.ts writes spec/platform-api.yaml (--check in CI)
+├── test/                  REST, MCP (real /mcp route with the SDK client), OpenAPI
+├── migrations/            Drizzle (first tables in PL1)
+├── deploy/                compose.yaml, Caddyfile, .env.example, README (Hetzner)
+├── compose.dev.yaml       local Postgres
+└── Dockerfile             built from the repo root
 packages/
-└── program-model/       program types, block definitions, validator (from app/src/model)
+└── program-model/         program types, block definitions, limits, validator, formatting
 spec/
-├── program.schema.json  generated, checked in
-└── platform-api.yaml    generated, checked in (CI fails if out of date)
+└── platform-api.yaml      generated, checked in (CI fails if out of date)
 ```
-
----
 
 ## 11. Risks
 
@@ -526,6 +533,8 @@ spec/
 | P8 | Preset | named variable overrides of a program revision; app's "preset" (include) becomes "library part" |
 | P9 | Licence | CC BY 4.0 default for public content, CC0 optional |
 | P10 | Tenancy | every resource has one owner organisation; personal space = organisation of one |
+| P11 | Hosting (staging) | Hetzner VPS in the EU, Docker Compose (API, Postgres, Caddy), deployed by CI over SSH |
+| P12 | Shared model | `packages/program-model` as TypeScript source via `file:` dependency, no root workspace; JSON Schema in PL2 |
 
 ---
 
@@ -544,11 +553,11 @@ spec/
 
 Like the app phases: the user approves each phase.
 
-| Phase | Content | Done when |
-|---|---|---|
-| PL0 | Skeleton: `platform/`, CI, `packages/program-model` extracted from the app (app tests still green), use-case helper, OpenAPI + MCP generation, deploy pipeline to a staging host | `GET /v1/meta` deployed; app builds against the package |
-| PL1 | Accounts (magic link, passkeys), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app |
-| PL2 | Programs, revisions, forks, presets, sets, search; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone |
-| PL3 | Training sessions and results, offline queue, stats, team leaderboards (+ firmware request for results) | a session on real pods appears in the athlete's stats |
-| PL4 | MCP server, OAuth for third-party / AI clients, agent tokens, guard rails | Claude connects, writes a valid program draft and analyses a team's sessions |
-| PL5 | Training plans, webhooks, moderation tooling, data export polish | – |
+| Phase | Content | Done when | Status |
+|---|---|---|---|
+| PL0 | Skeleton: `platform/`, CI, `packages/program-model` extracted from the app (app tests still green), use-case helper, OpenAPI + MCP generation, deploy pipeline to a staging host | `GET /v1/meta` deployed; app builds against the package | implemented; staging deploy waits for the server + secrets ([deploy](../../platform/deploy/README.md)) |
+| PL1 | Accounts (magic link, passkeys), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app | – |
+| PL2 | Programs, revisions, forks, presets, sets, search, `spec/program.schema.json`; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone | – |
+| PL3 | Training sessions and results, offline queue, stats, team leaderboards (+ firmware request for results) | a session on real pods appears in the athlete's stats | – |
+| PL4 | OAuth for third-party / AI clients, agent tokens, guard rails (the MCP door exists since PL0) | Claude connects, writes a valid program draft and analyses a team's sessions | – |
+| PL5 | Training plans, webhooks, moderation tooling, data export polish | – | – |
