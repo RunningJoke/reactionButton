@@ -28,9 +28,12 @@ jobs:
           key: pio-${{ hashFiles('firmware/platformio.ini', 'firmware/sdkconfig.NewBoard') }}
       - run: pip install platformio
       - run: python tools/validate_programs.py
-      - run: pio run -d firmware -e NewBoard | tee build.log
+      - run: pio run -d firmware -e NewBoard
       - name: Flash usage
-        run: grep -E "^(RAM|Flash):" build.log >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          bin=$(stat -c %s firmware/.pio/build/NewBoard/firmware.bin)
+          slot=$(awk -F, '$3 ~ /ota_0|factory/ {gsub(/ /,"",$5); print strtonum($5); exit}' firmware/partitions.csv)
+          echo "firmware.bin: $bin bytes of $slot ($((100 * bin / slot)) % of the app slot)" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: pio run -d firmware -e NewBoard -t buildfs
       - uses: actions/upload-artifact@v4
         with:
