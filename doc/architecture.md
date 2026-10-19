@@ -114,7 +114,7 @@ flowchart TD
     A[Power on] --> B[setup: Serial, SPIFFS, pins]
     B --> C[Boot animation 2 s<br/>blue dot runs around ring]
     C --> D{Button held<br/>at end of animation?}
-    D -- yes --> E[CentralRole<br/>BLE 'ReactPod Config' for the phone]
+    D -- yes --> E[CentralRole<br/>BLE 'ReactPod xxxx' for the phone]
     D -- no --> F[PeripheralRole<br/>ESP-NOW, HELLO broadcasts]
     E --> G[loop: CentralRole::run]
     F --> H[loop: PeripheralRole::run]

@@ -14,7 +14,9 @@ transports with the same JSON messages:
 The API runs on the **central** while it shows the **program menu**:
 
 1. Switch the pod on and hold the button during the blue boot animation → central.
-2. The pod advertises as **"ReactPod Config"** with service `12345678-1234-1234-1234-1234567890ab`.
+2. The pod advertises as **"ReactPod <xxxx>"** with service `12345678-1234-1234-1234-1234567890ab`
+   (see §2.1). `<xxxx>` are the last 4 hex digits of the `setId`, so several sets in one hall
+   can be told apart.
 3. Connect, use the API.
 4. When a program is selected on the pod (long press), BLE is switched off and the game
    starts (ESP-NOW). The connection drops.
@@ -41,6 +43,21 @@ clients then subscribed for notifications and the pod's responses were dropped.)
 
 The pod requests an MTU of 517. Use the largest MTU your platform allows. The API also
 works with the default MTU of 23, just slower.
+
+### 2.1 Advertisement
+
+| Where | Content |
+|---|---|
+| Advertisement | flags, complete 128-bit service UUID, manufacturer data: company id `0xFFFF` + `setId` (4 bytes, big endian, same digits as `setId` in `info`) |
+| Scan response | complete local name, preferred connection interval (if it fits) |
+
+- Name: `ReactPod <last 4 hex digits of setId>`, e.g. `ReactPod 91c2`.
+- If a set name was stored with `setName` (§5), the name is `ReactPod <set name>`, e.g.
+  `ReactPod Halle 2`. The `ReactPod` prefix stays, so a client can filter by the service UUID
+  and the name prefix `ReactPod` (Web Bluetooth: `{services: [...], namePrefix: "ReactPod"}`).
+- The name is at most 25 bytes (`ReactPod ` + 16), so it always fits into the scan response.
+- The set name is stored on the pod that is central, not synced to the other pods of the set.
+  A new name is advertised after the current connection ends.
 
 ## 3. Message framing
 
@@ -71,6 +88,8 @@ Error: `{"op": "...", "id": ..., "ok": false, "error": "<code>", "message": "<te
 | `invalid_program` | `validate`: the program cannot be loaded. `message` names file + block |
 | `storage` | flash write failed (full?) |
 | `overflow` | data arrived faster than the pod could process it. Resend the request |
+| `auth_required` | a PIN is set: `put`, `delete`, `setName` over BLE need `auth` first (§8) |
+| `auth_failed` | `auth`: wrong PIN, or a retry within 3 s after a wrong PIN |
 
 ## 4. Files and paths
 
@@ -94,21 +113,39 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.1","linkProtocol":1,"setId":"5f3a91c2",
+← {"op":"info","ok":true,"firmware":"2.7","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline","listMeta"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
                  "remoteMultiPress","remoteResetAll","summary"]}
 ```
-`blockTypes` lists what this firmware can run. A program that uses another type fails `validate`.
+`setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
+is true if a PIN is set and this transport needs it (BLE), see §8.
+`mtu` (firmware ≥ 2.7, BLE only) is the ATT MTU negotiated for this connection (23 until the
+client exchanges the MTU). Write at most `mtu − 3` bytes per BLE write. Over USB serial the
+field is absent. Web Bluetooth does not tell the page the MTU, so read it here.
+`blockTypes` lists what this firmware can run. `programFormat` is the revision of the
+block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
+[programs.md](programs.md) §6. `features` lists optional API features (firmware ≥ 2.4; missing
+= none): `validateInline` = `validate` accepts `data` (dry run); `listMeta` = `list` reports
+program metadata. A program that uses another type fails `validate`.
 
 ### `list`
 ```json
 → {"op":"list"}
 ← {"op":"list","ok":true,"generation":7,"storeHash":"0a1b2c3d",
-   "files":[{"path":"/programs.json","size":231,"crc":"8c1d0e2f"}, ...],
+   "files":[{"path":"/programs.json","size":231,"crc":"8c1d0e2f"},
+            {"path":"/prog/duo.json","size":1450,"crc":"1f2e3d4c","name":"Duo","peripherals":1,
+             "menu":[{"leds":[8,10],"color":"blue"}]},
+            {"path":"/prog/lib/loop.json","size":610,"crc":"5a4b3c2d","fragment":true}, ...],
    "menu":["/prog/solo.json","/prog/weiche.json", ...]}
 ```
+Program metadata (firmware ≥ 2.5, `features` contains `listMeta`):
+- A file under `/prog/` with a string `name` is a program: `name`, and `peripherals` and
+  `menu` exactly as in the file (left out if the file has none).
+- A file that is a JSON object without `name` is an include fragment: `"fragment": true`.
+- `/programs.json` and files that do not parse get neither.
+- The pod caches the metadata by path and CRC, so `list` parses a file only after it changed.
 
 ### `get` – read a file (chunked)
 ```json
@@ -152,7 +189,7 @@ switched off when a program is selected.
 | op | Role | Request fields | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | menu: `programs[] {index, name, path, peripherals}`, `selected` |
 | `select` | central, menu | `program`: index, path or name | loads the program, BLE off, radio on, searching for peripherals |
 | `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing |
@@ -161,6 +198,9 @@ switched off when a program is selected.
 | `results` | any | `reset` (bool) | statistics per metric since the last summary |
 | `trace` | any | `on` (bool) | serial only: emits `{"event":"block","name":...}` whenever a block is entered |
 | `reboot` | any | `role`: `central` / `peripheral` / `auto` | restarts; the role applies to the next start only (`auto` = button decides) |
+| `auth` | any | `pin`: string | unlocks `put`, `delete`, `setName` for this BLE connection (§8). `ok` without a PIN set |
+| `setPin` | any, **serial only** | `pin`: 4–6 digits as a string; `""` or missing clears it | stores the PIN in NVS. Response: `pinSet`. Serial text form: `setPin 1234` |
+| `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2` |
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
 changes during a game or a sync), `not_ready`.
@@ -198,6 +238,20 @@ Measurements are printed as text lines `RESULT,<millis>,<metric>,<pod>,<ms>` and
 Loads the program with all includes, exactly as the game would, without starting it.
 Run it after uploading all files of a program.
 
+**Dry run** (`features` contains `validateInline`, firmware ≥ 2.4):
+```json
+→ {"op":"validate","path":"/prog/mygame.json","data":"{ \"version\": 1, ... }"}
+← {"op":"validate","ok":true,"path":"/prog/mygame.json","blocks":14}
+```
+- With `data`, the program text is taken from the request instead of the file at `path`.
+  `path` must be a valid path (§4) and is used in messages, but the file need not exist.
+- Includes are still read from the store, so upload changed includes first, or validate a
+  program whose includes are unchanged.
+- Nothing is written, the generation does not change.
+- The whole request must fit into `maxRequest` (12288 bytes, after JSON escaping). Validate
+  larger programs after the upload, as above.
+- Errors as above (`invalid_program` with file and block name); `bad_path` for an invalid path.
+
 ## 6. Synchronisation between pods
 
 Any pod can be the central, so every pod keeps a full copy of the program store.
@@ -222,8 +276,9 @@ Details of the pod-to-pod part: [link-protocol.md](link-protocol.md) §5.2.
 ## 7. Typical handover from configuration software
 
 ```
-connect "ReactPod Config", subscribe to Response, (request MTU 517)
+connect "ReactPod <xxxx>", subscribe to Response, (request MTU 517)
 info                              → check firmware / blockTypes
+auth (if info.pinRequired)        → ask the user for the PIN
 for each program file and include:
     put (chunks of ≤ 2048 characters, crc on the final chunk)
 put /programs.json                → new menu, pod reloads it
@@ -236,6 +291,19 @@ to the whole set (about 0.5 s per pod for a typical program set; estimate).
 
 ## 8. Security
 
-There is no pairing or PIN. Anyone in BLE range can change programs while a central is
-in the program menu. This is acceptable for a training device. A PIN could be added
-later as an extra characteristic.
+There is no BLE pairing. Without a PIN, anyone in BLE range can change programs while a
+central is in the program menu. This is acceptable for a training device.
+
+**Optional PIN** (firmware ≥ 2.6) for public places:
+- Set it over USB serial: `{"op":"setPin","pin":"1234"}` (4–6 digits, stored in NVS on that
+  pod). Clear it with `{"op":"setPin","pin":""}`. `setPin` is refused over BLE, so a lost PIN
+  can always be cleared by the owner with a USB cable.
+- With a PIN set, `info` over BLE reports `"pinRequired": true`. `put`, `delete` and `setName`
+  over BLE then return `auth_required` until the client sent `{"op":"auth","pin":"1234"}` on
+  the **same connection**. The authentication ends with the connection.
+- Read ops (`info`, `list`, `get`, `validate`, …) stay open. USB serial never needs the PIN.
+- After a wrong PIN, `auth` is refused for 3 s (`auth_failed`), which makes guessing a
+  4-digit PIN take hours.
+- The PIN is stored per pod, not synced. Set it on every pod that may become the central.
+- Not covered: the control ops (`select`, `start`, `stop`, `reboot`, …) and the MaxLoop
+  characteristic stay open. The PIN travels in clear text (no BLE encryption).

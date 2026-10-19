@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,15 @@ class ProgramStore {
             uint32_t crc;
         };
 
+        // Metadata of a program file (config API "list")
+        struct ProgramMeta {
+            bool parsed = false;        // file is a JSON object
+            bool program = false;       // has a "name": a program, otherwise a fragment
+            std::string name;
+            std::string peripherals;    // JSON text of "peripherals" ("" = not in the file)
+            std::string menu;           // JSON text of "menu" ("" = not in the file)
+        };
+
         static const uint32_t MAX_FILE_SIZE = 16384;
         static const uint8_t MAX_PATH = 31;     // SPIFFS object name limit (32 incl. terminator)
 
@@ -40,6 +50,12 @@ class ProgramStore {
 
         // Reads up to maxLen bytes at offset. total = file size.
         bool read(const char* path, uint32_t offset, uint8_t* buffer, size_t maxLen, size_t& len, uint32_t& total) const;
+
+        // Metadata of a file from list(). Cached by path and CRC, so a file is only
+        // parsed again after it changed.
+        const ProgramMeta& programMeta(const FileInfo& file) const;
+        // Drops cached metadata of files that are not in this list any more
+        void pruneMeta(const std::vector<FileInfo>& files) const;
 
         // "path\tsize\tcrc-hex\n" for every file, sorted by path
         std::string manifest() const;
@@ -78,6 +94,12 @@ class ProgramStore {
         ProgramStore() {}
         void updateHash();
         static std::string tempPath(uint8_t slot);
+
+        struct CachedMeta {
+            uint32_t crc;
+            ProgramMeta meta;
+        };
+        mutable std::map<std::string, CachedMeta> metaCache;
 
         uint32_t gen = 0;
         uint32_t seenGen = 0;

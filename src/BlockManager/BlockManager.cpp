@@ -37,14 +37,14 @@ bool BlockManager::fail(const String& message) {
     return false;
 }
 
-bool BlockManager::loadProgram(const char* path) {
+bool BlockManager::loadProgram(const char* path, const char* text) {
     this->clear();
 
     VariableManager* vars = VariableManager::getManager();
     vars->clear();
 
     std::string startName;
-    if(!this->loadFile(path, 0, startName) || !this->resolveLinks()) {
+    if(!this->loadFile(path, 0, startName, text) || !this->resolveLinks()) {
         this->clear();
         return false;
     }
@@ -65,18 +65,23 @@ bool BlockManager::loadProgram(const char* path) {
     return true;
 }
 
-bool BlockManager::loadFile(const char* path, uint8_t depth, std::string& startName) {
+bool BlockManager::loadFile(const char* path, uint8_t depth, std::string& startName, const char* text) {
     if(depth > MAX_INCLUDE_DEPTH) {
         return this->fail(String(path) + ": includes nested too deep");
     }
 
-    File file = SPIFFS.open(path, "r");
-    if(!file) {
-        return this->fail(String("cannot open ") + path);
-    }
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, file);
-    file.close();
+    DeserializationError error;
+    if(text != nullptr) {
+        error = deserializeJson(doc, text);
+    } else {
+        File file = SPIFFS.open(path, "r");
+        if(!file) {
+            return this->fail(String("cannot open ") + path);
+        }
+        error = deserializeJson(doc, file);
+        file.close();
+    }
     if(error) {
         return this->fail(String(path) + ": " + error.c_str());
     }

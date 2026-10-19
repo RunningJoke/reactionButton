@@ -13,13 +13,13 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | ID | Priority | Title | Status |
 |---|---|---|---|
 | CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | done (firmware 2.1, branch `feature/cr-0-ble-indicate-only`) |
-| CR-1 | High | Tell sets apart in the BLE advertisement | open |
-| CR-2 | Medium | Program format revision in `info` | open |
-| CR-3 | Medium | Document engine details the simulator must copy | open |
-| CR-4 | Medium | `validate` with inline content (dry run) | open |
-| CR-5 | Low | Program metadata in `list` | open |
-| CR-6 | Low | Optional PIN for write operations | open |
-| CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | open |
+| CR-1 | High | Tell sets apart in the BLE advertisement | done (firmware 2.2, branch `feature/cr-1-ble-set-name`) |
+| CR-2 | Medium | Program format revision in `info` | done (firmware 2.3, branch `feature/cr-2-program-format`) |
+| CR-3 | Medium | Document engine details the simulator must copy | done (docs only, branch `feature/cr-3-engine-semantics`) |
+| CR-4 | Medium | `validate` with inline content (dry run) | done (firmware 2.4, branch `feature/cr-4-validate-inline`) |
+| CR-5 | Low | Program metadata in `list` | done (firmware 2.5, branch `feature/cr-5-list-metadata`) |
+| CR-6 | Low | Optional PIN for write operations | done (firmware 2.6, branch `feature/cr-6-write-pin`) |
+| CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | done (firmware 2.7, branch `feature/cr-7-mtu-in-info`) |
 
 ---
 
@@ -63,6 +63,15 @@ Response → write `{"op":"info"}
 
 ## CR-1 – Tell sets apart in the BLE advertisement (High)
 
+**Status: done** (firmware 2.2), including both optional parts:
+- Name `ReactPod <last 4 hex digits of setId>`. The central creates its `setId` when the menu
+  starts, so the name is stable from the first boot.
+- Manufacturer data: company id `0xFFFF` + `setId` (4 bytes, big endian).
+- `{"op":"setName","name":"Halle 2"}` stores a set name (≤ 16 bytes) in NVS; it is advertised as
+  `ReactPod Halle 2` (the prefix stays so `namePrefix: "ReactPod"` filters still match) and
+  reported in `info.setName`. Per pod, not synced.
+- Reference clients: `reactpod_config.py --name`, `scan`, `set-name`; `reactpod_serial.py set-name`.
+
 **Reason.** Every central advertises the same name, "ReactPod Config"
 (`src/Roles/Central/PhoneConfig.cpp:46`). Coaches often have several sets in one hall.
 The Web Bluetooth chooser (and most native pickers) only shows the name, so the user cannot
@@ -87,6 +96,9 @@ chooser. The suffix matches the `setId` in `info`.
 
 ## CR-2 – Program format revision in `info` (Medium)
 
+**Status: done** (firmware 2.3). `info.programFormat` = `BlockFactory::PROGRAM_FORMAT` (1).
+Changelog table in programs.md §6. Missing field = revision 1.
+
 **Reason.** `info.blockTypes` lists the type names only. If a firmware update adds a field
 or a port to an existing type (e.g. a new port on `button`), the app cannot tell whether the
 connected pod supports it. Programs using the new field would then pass the app's
@@ -101,6 +113,11 @@ fields, ports or semantics. Keep a short changelog table in [../programs.md](../
 ---
 
 ## CR-3 – Document engine details the simulator must copy (Medium, docs only)
+
+**Status: done**: [programs.md](../programs.md) §7 "Engine semantics" answers every point
+below with code references. Firmware unchanged (docs only). Notable details found: a
+`timeoutMs` of 0 means *no timeout* for `button` but *immediate timeout* for `remotePress` /
+`remoteMultiPress`; a press of exactly `shortMs` is `long`.
 
 **Reason.** The app simulates programs in the browser. To behave like the pod it has to
 copy details that are only in the code today. If they change silently, the simulator and
@@ -127,6 +144,10 @@ the pod drift apart.
 
 ## CR-4 – `validate` with inline content (Medium)
 
+**Status: done** (firmware 2.4). `validate` accepts `data`; `BlockManager::loadProgram(path, text)`
+parses the text instead of the file, includes come from the store, nothing is written.
+`info.features` = `["validateInline"]`. Reference client: `reactpod_config.py validate <path> --file <local>`.
+
 **Reason.** Today a program can only be validated by the firmware after it has been stored
 on the pod. The app validates locally first, but its validator is a copy of the rules. A
 dry run lets the app check a program against the real loader **before** anything changes
@@ -150,6 +171,11 @@ name, and `list` shows no changes afterwards.
 
 ## CR-5 – Program metadata in `list` (Low)
 
+**Status: done** (firmware 2.5). `list` adds `name`, `peripherals`, `menu` for programs and
+`fragment: true` for fragments. There was no cached manifest (`ProgramStore::list` reads every
+file for its CRC), so the metadata is cached in `ProgramStore` by path + CRC and a file is only
+parsed again after it changed. `info.features` contains `listMeta`.
+
 **Reason.** To show the program overview (name, number of pods, menu pattern) the app
 has to `get` every file. Over BLE with a small MTU this takes several seconds. The app
 caches the files by CRC, so this only matters for the first connection to a set.
@@ -164,6 +190,11 @@ on every `list`.
 ---
 
 ## CR-6 – Optional PIN for write operations (Low, later)
+
+**Status: done** (firmware 2.6). `setPin` (USB serial only), `auth`, error codes `auth_required`
+/ `auth_failed`, `info.pinRequired`. USB serial never needs the PIN. A wrong PIN blocks `auth`
+for 3 s. Reference clients: `reactpod_config.py --pin`, `reactpod_serial.py set-pin`.
+See config-api.md §8.
 
 **Reason.** config-api §8: anyone in BLE range can change programs while a central is in the
 menu. That is fine for now. When customers use the pods in public places (schools, clubs),
@@ -180,6 +211,10 @@ Over USB serial the PIN can be cleared.
 ---
 
 ## CR-7 – Report the BLE MTU in `info` (Medium)
+
+**Status: done** (firmware 2.7). `info` and `status` over BLE report `mtu` (the connection's
+`peerMtu`, via `ConfigApi::setMtuSource` set by PhoneConfig). Absent over USB serial.
+`reactpod_config.py` uses it for the write size.
 
 Added 2026-10-18 (P2 of the app).
 

@@ -19,7 +19,10 @@ class BLECharacteristic;
  *   Response  (CHAR_RESPONSE_UUID)  indicate JSON responses, each terminated by '\n'
  *
  * Requests and responses may be split over several BLE writes / indications; the
- * receiver collects bytes until '\n'. The operations are those of ConfigApi
+ * receiver collects bytes until '\n'.
+ *
+ * Advertised name: "ReactPod <last 4 hex digits of the set id>", or "ReactPod <set name>"
+ * if a set name was stored with the setName op. The manufacturer data carries the set id. The operations are those of ConfigApi
  * (see doc/config-api.md); the same API is available on the USB serial port.
  */
 class PhoneConfig {
@@ -39,6 +42,8 @@ class PhoneConfig {
         static const uint8_t UPLOAD_SLOT = 0;
 
         void sendLine(const std::string& text);
+        void configureAdvertising(uint32_t setId, const std::string& name);
+        static std::string advertisedName();
 
         ConfigApi api;
         BLECharacteristic* maxLoopCharacteristic = nullptr;
@@ -48,4 +53,6 @@ class PhoneConfig {
 
         std::string line;
         bool discarding = false;
+        uint32_t advertisedRevision = 0;
+        uint32_t sessionConnection = 0;
 };
