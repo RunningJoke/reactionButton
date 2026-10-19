@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Stern",
+  "peripherals": 4,
+  "menu": [ { "leds": [5, 7, 11, 13], "color": "blue" }, { "leds": [9], "color": "yellow" } ],
+  "variables": { "MAX_LOOPS": 12 },
+  "include": ["/prog/lib/loop.json", "/prog/lib/star.json"],
+  "start": "StartLoop"
+}

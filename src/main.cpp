@@ -1,94 +1,67 @@
 #include <Arduino.h>
+#include "Config/Console.h"
 #include <SPIFFS.h>
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
-#include "PodModes/ParentPod/ParentPod.h"
-#include "PodModes/ChildPod/ChildPod.h"
+#include "LEDManager/BootupAnimation.h"
+#include "Roles/RoleManager.h"
+#include "Store/ProgramStore.h"
+#include "Settings/Settings.h"
+#include "Diagnostics/Diag.h"
 
-#include "Modes/ReactionMode/ReactionMode.h"
+uint64_t timestamp = 0;
 
-#include "BLEDataField/BLEColorDataField.h"
-#include "BLEDataField/BLELongDataField.h"
-#include <BLEDevice.h>
-
-#include "esp_task_wdt.h"
-
-uint64_t startTime = 0;
-uint64_t waitTime = 0;
-uint64_t reactionTimerStart = 0;
-uint64_t reactionTimerEnd = 0;
-
-uint8_t currentModeState = 0;
-
-LEDManager* ledManager = nullptr;
-
-VMode* currentMode = nullptr;
-ReactionMode* reactionMode = nullptr;
-
-BLELongDataField *pStopWatchField = nullptr;
-BLELongDataField *pModeField = nullptr;
-
-VPod* currentPodMode = nullptr;
-
-uint8_t mainStateSwitch = 0;
 
 void setup() {
-  Serial.begin(9600);
-
-  SPIFFS.begin(false);
-  
-
-  pinMode(PIN_BUTTON_PRESS , INPUT_PULLUP);
-
-  ledManager = new LEDManager(19);
+  initArduino();
+  Diag::begin();
+  consoleBegin();
+  SPIFFS.begin(true);
+  ProgramStore::get().begin();
 
 
-  currentPodMode = new ChildPod(ledManager);
+  pinMode(PIN_BUTTON_PRESS , INPUT);
 
-  ledManager->turnOff();
+  pinMode(PIN_BATTERY_LEVEL , INPUT);
 
   randomSeed(analogRead(0));
 
 
-  
+  Console.printf("Starting ReactPod Bootup (firmware %d.%d)...\n", FW_VERSION_MAJOR, FW_VERSION_MINOR);
 
-    
 
-  currentPodMode->start();
+
+  LEDManager::getManager()->turnOff();
+
+  timestamp = millis();
+  while(millis() - timestamp < 2000) {
+    LEDManager::getManager()->setLEDColors(&bootupPattern);
+    delay(10);
+  }
+
+ LEDManager::getManager()->turnOff();
+
+  // a role requested via the "reboot" command wins (used once), otherwise the button decides
+  uint8_t bootRole = Settings::takeBootRole();
+  bool central = bootRole == 1 || (bootRole == 0 && digitalRead(PIN_BUTTON_PRESS) == LOW);
+
+  if(central) {
+    //a button press during bootup makes the system boot in central mode
+    RoleManager::getManager()->boot(Role::CENTRAL);
+  } else {
+    //no button press during bootup makes the system boot in peripheral mode
+    RoleManager::getManager()->boot(Role::PERIPHERAL);
+  }
+
+
+  timestamp = millis();
+
 
 }
 
 void loop() {
 
-  uint64_t timestamp = millis();
-
-  switch(mainStateSwitch) {
-    case 0: 
-      if(currentPodMode->update(timestamp) == 2) {
-        //no parent found, become the parent
-        mainStateSwitch = 1; 
-      }
-      break;
-    case 1: 
-      currentPodMode->stop();
-      currentPodMode = new ParentPod(ledManager);
-      currentPodMode->start();
-      mainStateSwitch = 2;
-      break;
-    case 2:
-      currentPodMode->update(timestamp);
-      break;
-  }
-
-  vTaskDelay(1/portTICK_PERIOD_MS);
-  esp_task_wdt_reset();
-  
-
- 
-
-  
-
-
+  RoleManager::getManager()->run();
 
 
 }

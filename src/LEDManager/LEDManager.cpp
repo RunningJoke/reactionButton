@@ -1,12 +1,14 @@
 #include "LEDManager.h"
 
-ColorSet* LEDManager::RED = new ColorSet{255,0,0};
-ColorSet* LEDManager::GREEN = new ColorSet{0,255,0};
-ColorSet* LEDManager::BLUE = new ColorSet{0,0,255};
-ColorSet* LEDManager::YELLOW = new ColorSet{255,255,0};
-ColorSet* LEDManager::MAGENTA = new ColorSet{255,0,255};
-ColorSet* LEDManager::CYAN = new ColorSet{0,255,255};
-ColorSet* LEDManager::WHITE = new ColorSet{255,255,255};
+LEDManager* LEDManager::manager = nullptr;
+
+LEDManager* LEDManager::getManager() {
+    if(LEDManager::manager == nullptr) {
+        ESP_LOGI("LEDMANAGER", "Initializing LED manager");
+        LEDManager::manager = new LEDManager(LED_PIN);
+    }
+    return LEDManager::manager;
+}
 
 LEDManager::LEDManager(uint8_t neoPixelPin)
 {
@@ -20,13 +22,14 @@ LEDManager::LEDManager(uint8_t neoPixelPin)
 void LEDManager::setLEDColors(uint8_t colorId)
 {
     switch(colorId) {
-        case 0: this->setLEDColors(LEDManager::RED); break;
-        case 1: this->setLEDColors(LEDManager::GREEN); break;
-        case 2: this->setLEDColors(LEDManager::BLUE); break;
-        case 3: this->setLEDColors(LEDManager::YELLOW); break;
-        case 4: this->setLEDColors(LEDManager::MAGENTA); break;
-        case 5: this->setLEDColors(LEDManager::CYAN); break;
-        case 6: this->setLEDColors(LEDManager::WHITE); break;
+        case 0: this->setLEDColors(RED); break;
+        case 1: this->setLEDColors(GREEN); break;
+        case 2: this->setLEDColors(BLUE); break;
+        case 3: this->setLEDColors(YELLOW); break;
+        case 4: this->setLEDColors(MAGENTA); break;
+        case 5: this->setLEDColors(CYAN); break;
+        case 6: this->setLEDColors(WHITE); break;
+        case 255: this->setLEDColors(BLACK); break;
     }
 }
 
@@ -59,6 +62,26 @@ void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
                     );
         this->pixelManager->show();
     }
+}
+
+void LEDManager::setLEDColors(LEDPattern* pattern)
+{
+    this->pixelManager->clear();
+    if(pattern->animation != nullptr) {
+        pattern->animation->animate(millis());
+    }
+
+    for(int i=0; i<NEOPIXEL_SIZE; i++) {
+        uint8_t paletteId = pattern->ids->getPaletteID(i);
+
+         this->pixelManager->setPixelColor(i, 
+                    this->pixelManager->Color(
+                        pattern->palette[paletteId]->red,
+                        pattern->palette[paletteId]->green,
+                        pattern->palette[paletteId]->blue)
+                    );
+    }
+    this->pixelManager->show();
 }
 
 void LEDManager::turnOff()

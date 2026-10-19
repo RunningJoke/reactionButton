@@ -1,0 +1,17 @@
+{
+  "description": "Round counter shared by most programs. Programs start at StartLoop, put their round logic at EnterProgram and finish each round at EndLoop. After MAX_LOOPS rounds a summary of the 'reaction' metric is printed, the ring shows blue for 3 s and the next cycle starts.",
+  "variables": {
+    "RUNS": 0,
+    "MAX_LOOPS": 12
+  },
+  "blocks": [
+    { "name": "StartLoop",  "type": "setVariable", "var": "RUNS", "op": "+", "value": 1, "next": "EnterProgram" },
+    { "name": "EndLoop",    "type": "if", "left": "RUNS", "op": ">=", "right": "MAX_LOOPS", "true": "StartReset", "false": "StartLoop" },
+
+    { "name": "StartReset", "type": "led", "color": "blue", "next": "Summary" },
+    { "name": "Summary",    "type": "summary", "metric": "reaction", "storeAverage": "AVG_REACTION", "storeBest": "BEST_REACTION", "next": "ResetDelay" },
+    { "name": "ResetDelay", "type": "delay", "ms": 3000, "next": "ClearLED" },
+    { "name": "ClearLED",   "type": "led", "color": "off", "next": "ResetRuns" },
+    { "name": "ResetRuns",  "type": "setVariable", "var": "RUNS", "op": "=", "value": 0, "next": "StartLoop" }
+  ]
+}

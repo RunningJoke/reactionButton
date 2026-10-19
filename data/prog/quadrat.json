@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Quadrat",
+  "peripherals": 3,
+  "menu": [ { "leds": [6, 8, 10, 12], "color": "blue" } ],
+  "variables": { "MAX_LOOPS": 12 },
+  "include": ["/prog/lib/loop.json", "/prog/lib/random.json"],
+  "start": "StartLoop"
+}

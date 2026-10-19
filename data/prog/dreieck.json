@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Dreieck",
+  "peripherals": 2,
+  "menu": [ { "leds": [7, 9, 11], "color": "blue" } ],
+  "variables": { "MAX_LOOPS": 12 },
+  "include": ["/prog/lib/loop.json", "/prog/lib/random.json"],
+  "start": "StartLoop"
+}

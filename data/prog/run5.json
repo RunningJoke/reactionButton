@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Run5",
+  "peripherals": 4,
+  "menu": [ { "leds": [5, 9, 13], "color": "cyan" }, { "leds": [7, 11], "color": "red" } ],
+  "variables": { "MAX_LOOPS": 12, "AVOID_COUNT": 2 },
+  "include": ["/prog/lib/loop.json", "/prog/lib/multi.json"],
+  "start": "StartLoop"
+}
