@@ -44,9 +44,11 @@ class ReactPodConfig:
         self.buffer = bytearray()
         self.responses: asyncio.Queue = asyncio.Queue()
         self.next_id = 1
+        self.mtu = None     # from info (firmware >= 2.7), else bleak's value
 
     async def start(self):
         await self.client.start_notify(RESPONSE_UUID, self._on_data)
+        self.mtu = (await self.request("info")).get("mtu")
 
     def _on_data(self, _sender, data: bytearray):
         self.buffer.extend(data)
@@ -62,7 +64,7 @@ class ReactPodConfig:
         message = json.dumps({"op": op, "id": request_id, **fields}, ensure_ascii=False) + "\n"
         payload = message.encode("utf-8")
 
-        chunk = max(20, (self.client.mtu_size or 23) - 3)
+        chunk = max(20, (self.mtu or self.client.mtu_size or 23) - 3)
         for pos in range(0, len(payload), chunk):
             await self.client.write_gatt_char(COMMAND_UUID, payload[pos:pos + chunk], response=True)
 
