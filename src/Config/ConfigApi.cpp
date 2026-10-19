@@ -96,6 +96,7 @@ void ConfigApi::handleRequest(const std::string& text) {
     else if(strcmp(op, "validate") == 0) this->opValidate(req, response);
     else if(strcmp(op, "results") == 0) this->opResults(req, response);
     else if(strcmp(op, "trace") == 0) this->opTrace(req, response);
+    else if(strcmp(op, "setName") == 0) this->opSetName(req, response);
     else if(strcmp(op, "reboot") == 0) {
         this->opReboot(req, response);
         return;     // response already sent, the pod restarts
@@ -112,7 +113,7 @@ void ConfigApi::opHelp(JsonDocument& response) {
     response["ok"] = true;
     JsonArray ops = response["ops"].to<JsonArray>();
     const char* common[] = {"help", "status", "info", "list", "get", "put", "delete", "validate",
-                            "results", "trace", "reboot"};
+                            "results", "trace", "reboot", "setName"};
     for(const char* op : common) ops.add(op);
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
@@ -148,6 +149,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["firmware"] = String(FW_VERSION_MAJOR) + "." + String(FW_VERSION_MINOR);
     response["linkProtocol"] = (uint32_t)Protocol::VERSION;
     response["setId"] = hex32(Settings::getSetId());
+    response["setName"] = Settings::getSetName();
     response["generation"] = store.generation();
     response["storeHash"] = hex32(store.hash());
     response["freeBytes"] = store.freeBytes();
@@ -194,6 +196,29 @@ void ConfigApi::opReboot(JsonObjectConst request, JsonDocument& response) {
     Console.flush();
     delay(200);
     esp_restart();
+}
+
+void ConfigApi::opSetName(JsonObjectConst request, JsonDocument& response) {
+    JsonVariantConst value = request["name"];
+    if(!value.isNull() && !value.is<const char*>()) {
+        setError(response, "bad_request", "'name' must be a string");
+        return;
+    }
+    String name = value | "";
+    name.trim();
+    if(name.length() > Settings::MAX_SET_NAME) {
+        setError(response, "bad_request", "name longer than " + String((uint32_t)Settings::MAX_SET_NAME) + " bytes");
+        return;
+    }
+    for(size_t i = 0; i < name.length(); i++) {
+        if((uint8_t)name[i] < 0x20 || name[i] == 0x7F) {
+            setError(response, "bad_request", "name contains control characters");
+            return;
+        }
+    }
+    Settings::setSetName(name);
+    response["ok"] = true;
+    response["setName"] = name;
 }
 
 // ---------------------------------------------------------------- program files

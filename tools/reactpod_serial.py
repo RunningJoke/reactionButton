@@ -10,6 +10,7 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py reboot central
     python tools/reactpod_serial.py select /prog/duo.json
     python tools/reactpod_serial.py start
+    python tools/reactpod_serial.py set-name "Halle 2"    # BLE name "ReactPod Halle 2" ("" = default)
     python tools/reactpod_serial.py push data
     python tools/reactpod_serial.py test --program /prog/duo.json
 
@@ -635,6 +636,7 @@ def main():
     p = sub.add_parser("reboot"); p.add_argument("role", nargs="?", default="auto", choices=["auto", "central", "peripheral"])
     sub.add_parser("stop", help="end the program, back to the menu (the pod restarts)")
     p = sub.add_parser("trace"); p.add_argument("state", choices=["on", "off"])
+    p = sub.add_parser("set-name", help="set the set name advertised over BLE (\"\" = default)"); p.add_argument("name")
     p = sub.add_parser("cmd", help="send one raw command (JSON or text form)"); p.add_argument("text")
     p = sub.add_parser("push", help="upload program files"); p.add_argument("directory")
     p = sub.add_parser("pull", help="download program files"); p.add_argument("directory")
@@ -691,6 +693,8 @@ def main():
             say(json.dumps(pod.request("select", timeout=10, check=False, program=program), indent=2, ensure_ascii=False))
         elif args.command == "trace":
             say(json.dumps(pod.request("trace", on=args.state == "on"), indent=2))
+        elif args.command == "set-name":
+            say(json.dumps(pod.request("setName", check=False, name=args.name), indent=2, ensure_ascii=False))
         elif args.command == "reboot":
             status = pod.reboot(args.role)
             if status:

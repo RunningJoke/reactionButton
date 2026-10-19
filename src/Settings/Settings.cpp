@@ -7,6 +7,9 @@ static const char* KEY_STORE_GEN = "storeGen";
 static const char* KEY_SEEN_GEN = "seenGen";
 static const char* KEY_BOOT_ROLE = "bootRole";
 static const char* KEY_STORE_HASH = "storeHash";
+static const char* KEY_SET_NAME = "setName";
+
+static uint32_t nameRevision = 0;
 
 uint32_t Settings::getSetId() {
     Preferences prefs;
@@ -96,4 +99,28 @@ void Settings::setStoreHash(uint32_t hash) {
     prefs.begin(NAMESPACE, false);
     prefs.putUInt(KEY_STORE_HASH, hash);
     prefs.end();
+}
+
+String Settings::getSetName() {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, true);
+    String name = prefs.isKey(KEY_SET_NAME) ? prefs.getString(KEY_SET_NAME, "") : String();
+    prefs.end();
+    return name;
+}
+
+void Settings::setSetName(const String& name) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    if(name.isEmpty()) {
+        prefs.remove(KEY_SET_NAME);
+    } else {
+        prefs.putString(KEY_SET_NAME, name);
+    }
+    prefs.end();
+    nameRevision++;
+}
+
+uint32_t Settings::setNameRevision() {
+    return nameRevision;
 }

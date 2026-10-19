@@ -13,7 +13,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | ID | Priority | Title | Status |
 |---|---|---|---|
 | CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | done (firmware 2.1, branch `feature/cr-0-ble-indicate-only`) |
-| CR-1 | High | Tell sets apart in the BLE advertisement | open |
+| CR-1 | High | Tell sets apart in the BLE advertisement | done (firmware 2.2, branch `feature/cr-1-ble-set-name`) |
 | CR-2 | Medium | Program format revision in `info` | open |
 | CR-3 | Medium | Document engine details the simulator must copy | open |
 | CR-4 | Medium | `validate` with inline content (dry run) | open |
@@ -62,6 +62,15 @@ Response → write `{"op":"info"}
 ---
 
 ## CR-1 – Tell sets apart in the BLE advertisement (High)
+
+**Status: done** (firmware 2.2), including both optional parts:
+- Name `ReactPod <last 4 hex digits of setId>`. The central creates its `setId` when the menu
+  starts, so the name is stable from the first boot.
+- Manufacturer data: company id `0xFFFF` + `setId` (4 bytes, big endian).
+- `{"op":"setName","name":"Halle 2"}` stores a set name (≤ 16 bytes) in NVS; it is advertised as
+  `ReactPod Halle 2` (the prefix stays so `namePrefix: "ReactPod"` filters still match) and
+  reported in `info.setName`. Per pod, not synced.
+- Reference clients: `reactpod_config.py --name`, `scan`, `set-name`; `reactpod_serial.py set-name`.
 
 **Reason.** Every central advertises the same name, "ReactPod Config"
 (`src/Roles/Central/PhoneConfig.cpp:46`). Coaches often have several sets in one hall.

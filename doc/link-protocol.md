@@ -174,7 +174,8 @@ upload/download API is described in [config-api.md](config-api.md).
 | Command | `12345678-1234-1234-1234-1234567890b1` | W, W-NR | config API requests (JSON lines) |
 | Response | `12345678-1234-1234-1234-1234567890b2` | Indicate | config API responses (JSON lines) |
 
-Device name: "ReactPod Config". Service UUID `12345678-1234-1234-1234-1234567890ab`.
+Device name: "ReactPod <last 4 hex digits of setId>" or "ReactPod <set name>" (see
+[config-api.md](config-api.md) §2.1). Service UUID `12345678-1234-1234-1234-1234567890ab`.
 
 ## 7. Compatibility
 

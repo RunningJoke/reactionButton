@@ -32,6 +32,14 @@ namespace Settings {
     uint32_t getStoreHash();
     void setStoreHash(uint32_t hash);
 
+    // User-defined name of the set (max MAX_SET_NAME bytes, empty = none), advertised over BLE
+    // instead of the default "ReactPod <setId>". Stored per pod, not synced.
+    static const size_t MAX_SET_NAME = 16;
+    String getSetName();
+    void setSetName(const String& name);
+    // Increased (in RAM) on every setSetName, so the BLE advertisement can pick up the change
+    uint32_t setNameRevision();
+
     // Role for the next boot only, set via the serial/BLE "reboot" command
     // (0 = none: decide by the button, 1 = central, 2 = peripheral)
     void setBootRole(uint8_t role);

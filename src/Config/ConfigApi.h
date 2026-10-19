@@ -13,7 +13,7 @@
  * object with "op", "id" (echoed) and "ok"; errors carry "error" (code) and "message".
  *
  * Common operations: help, status, info, list, get, put, delete, validate, results,
- * trace, reboot. Everything else is passed to the active role (IRole::control), e.g.
+ * trace, reboot, setName. Everything else is passed to the active role (IRole::control), e.g.
  * programs, select, start, press on the central. See doc/config-api.md.
  */
 class ConfigApi {
@@ -47,6 +47,7 @@ class ConfigApi {
         void opResults(JsonObjectConst request, JsonDocument& response);
         void opTrace(JsonObjectConst request, JsonDocument& response);
         void opReboot(JsonObjectConst request, JsonDocument& response);
+        void opSetName(JsonObjectConst request, JsonDocument& response);
 
         const char* transport;
         uint8_t uploadSlot;
