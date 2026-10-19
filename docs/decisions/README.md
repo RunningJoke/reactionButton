@@ -1,0 +1,12 @@
+# Decisions (ADRs)
+
+Short records of decisions that shape the repo. One file per decision, numbered, never
+rewritten: a changed decision gets a new ADR that supersedes the old one.
+
+| # | Decision | Status |
+|---|---|---|
+| [0001](0001-repo-layout-and-workflow.md) | Monorepo layout, labels, squash merges | accepted |
+| [0002](0002-versions-and-firmware-delivery.md) | Separate version streams; firmware binaries published next to the app for OTA | accepted |
+| [0003](0003-community-platform.md) | Community platform in `platform/`, program schema in `spec/` | proposed |
+
+Template: Context · Decision · Consequences.
