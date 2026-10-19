@@ -1,5 +1,8 @@
 # Change requests from the Config App
 
+> **Archived.** All entries below are done (firmware 2.7). New firmware / API requests from the
+> Config App are opened as **GitHub issues** with the label `firmware`, not in this file.
+
 Requested by: Config App (`configApp/`, branch `feature/config-app`) · Date: 2026-10-18
 
 These are changes to the firmware and the configuration API ([../config-api.md](../config-api.md))
