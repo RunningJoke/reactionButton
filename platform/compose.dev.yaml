@@ -1,0 +1,13 @@
+# Local Postgres for development: docker compose -f compose.dev.yaml up -d
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: reactpod
+      POSTGRES_PASSWORD: reactpod
+      POSTGRES_DB: reactpod
+    ports: ["5432:5432"]
+    volumes:
+      - db:/var/lib/postgresql/data
+volumes:
+  db:
