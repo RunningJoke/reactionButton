@@ -196,100 +196,18 @@
   min-height: 0;
 }
 
-/* block details: bottom sheet on phones, side panel on wide screens */
-.sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  max-height: 55%;
-  overflow: auto;
-  padding: var(--space-2) var(--space-4) var(--space-4);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-radius: var(--radius-l) var(--radius-l) 0 0;
-  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.15);
-  font-size: 14px;
-}
-
-@media (min-width: 900px) {
-  .sheet {
-    left: auto;
-    top: var(--space-3);
-    right: var(--space-3);
-    bottom: var(--space-3);
-    width: 340px;
-    max-height: none;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-m);
-  }
-}
-
-.sheetHeader {
-  display: flex;
+.edit {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-}
-
-.help {
-  margin: var(--space-1) 0 var(--space-3);
-  color: var(--text-muted);
-}
-
-.fields {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-3);
-}
-
-.fields > div {
-  display: contents;
-}
-
-.fields dt {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.fields dd {
-  margin: 0;
-  min-width: 0;
-  word-break: break-word;
-}
-
-.fields code {
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.ports {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.ports li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.port {
-  min-width: 72px;
-  padding: 1px 8px;
+  gap: var(--space-1);
+  min-height: 36px;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-3);
+  border: 0;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  font-size: 12px;
-  text-align: center;
-}
-
-.muted {
-  color: var(--text-muted);
-  font-style: italic;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
 }

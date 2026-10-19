@@ -1,17 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowLeft, ArrowRight, CircleAlert, Info, Lock, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CircleAlert, Info, Lock, Pencil, Users } from "lucide-react";
 import { LedRing } from "../components/LedRing";
-import { blockIcon, blockCategory } from "../editor/blockStyle";
+import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
-import { blockType } from "../model/blockTypes";
-import { buildGraph, type GraphNode } from "../model/graph";
+import { buildGraph } from "../model/graph";
 import { isLibraryPath } from "../model/limits";
 import { isObject } from "../model/program";
-import { resolveProgram, validateProgram, type Issue } from "../model/validate";
+import { resolveProgram, validateProgram } from "../model/validate";
+import { useEditCopy } from "../programs/actions";
 import { fileName } from "../programs/catalog";
 import { useProgramSource, viewUrl, type SourceId } from "../programs/sources";
+import { useWorkspace } from "../store/workspace";
 import styles from "./ProgramViewPage.module.css";
 
 export function ProgramViewPage() {
@@ -23,9 +24,11 @@ export function ProgramViewPage() {
   const source = useProgramSource(sourceId);
   const [selected, setSelected] = useState<string | null>(null);
   const [panel, setPanel] = useState<"info" | "issues" | null>(null);
+  const editCopy = useEditCopy();
+  const localCopy = useWorkspace((s) => s.programs.some((p) => p.path === path));
 
   const view = useMemo(() => {
-    const read = (p: string) => source.files[p];
+    const read = source.read;
     const text = read(path);
     if (text === undefined) return null;
     let doc: unknown = null;
@@ -39,7 +42,7 @@ export function ProgramViewPage() {
       ? validateProgram(path, read, { supportedTypes: source.supportedTypes })
       : resolveProgram(path, read);
     return { resolved, isProgram, graph: buildGraph(resolved) };
-  }, [path, source.files, source.supportedTypes]);
+  }, [path, source.read, source.supportedTypes]);
 
   if (!view) {
     return (
@@ -92,14 +95,23 @@ export function ProgramViewPage() {
         <button className={styles.icon} onClick={() => setPanel(panel === "info" ? null : "info")} aria-label={t("view.details")} aria-pressed={panel === "info"}>
           <Info size={20} aria-hidden />
         </button>
+        {isProgram && (
+          <button className={styles.edit} onClick={() => void editCopy(path, source.read(path)!, sourceId === "pod" ? "pod" : "default")}>
+            <Pencil size={18} aria-hidden /> {localCopy ? t("view.openCopy") : t("view.edit")}
+          </button>
+        )}
       </div>
 
       {panel === "info" && <InfoPanel doc={doc} isProgram={isProgram} sourceId={sourceId} variables={resolved.variables} />}
-      {panel === "issues" && <IssuesPanel issues={resolved.issues} onSelect={(b) => setSelected(b)} />}
+      {panel === "issues" && (
+        <section className={styles.panel}>
+          <IssueList issues={resolved.issues} onSelect={(b) => setSelected(b)} />
+        </section>
+      )}
 
       <div className={styles.graph}>
         <ProgramColumnView graph={graph} selected={selected} onSelect={setSelected} />
-        {selectedNode && <BlockSheet node={selectedNode} graph={graph.nodes} onSelect={setSelected} />}
+        {selectedNode && <BlockDetailsSheet node={selectedNode} known={new Set(graph.nodes.map((n) => n.id))} onSelect={setSelected} />}
       </div>
     </div>
   );
@@ -147,104 +159,5 @@ function InfoPanel({ doc, isProgram, sourceId, variables }: { doc: Record<string
         )}
       </div>
     </section>
-  );
-}
-
-function IssuesPanel({ issues, onSelect }: { issues: Issue[]; onSelect: (block: string) => void }) {
-  const { t } = useTranslation();
-  return (
-    <section className={styles.panel}>
-      <ul className={styles.issues}>
-        {issues.map((issue, i) => (
-          <li key={i} data-level={issue.severity}>
-            {issue.severity === "error" ? <CircleAlert size={16} aria-hidden /> : <AlertTriangle size={16} aria-hidden />}
-            <span>
-              {issue.block ? (
-                <button className={styles.link} onClick={() => onSelect(issue.block!)}>
-                  {issue.block}
-                </button>
-              ) : null}
-              {issue.block ? ": " : ""}
-              {t(`issues.${issue.code}`, issue.params ?? {})}
-              {issue.field && <code className={styles.field}>{issue.field}</code>}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function BlockSheet({ node, graph, onSelect }: { node: GraphNode; graph: GraphNode[]; onSelect: (id: string | null) => void }) {
-  const { t } = useTranslation();
-  const Icon = blockIcon(node.block?.type);
-  const def = blockType(node.block?.type);
-  const block: Record<string, unknown> = node.block ?? {};
-  const known = new Set(graph.map((n) => n.id));
-  const fields = Object.entries(block).filter(([k]) => k !== "name" && k !== "type" && !def?.ports.includes(k));
-
-  return (
-    <aside className={styles.sheet} data-category={blockCategory(node.block?.type)} aria-label={node.id}>
-      <div className={styles.sheetHeader}>
-        <Icon size={18} aria-hidden />
-        <div className={styles.title}>
-          <h3>{node.id}</h3>
-          <span className={styles.sub}>
-            {node.external ? t("graph.external") : t(`blocks.${String(block.type)}.name`, { defaultValue: String(block.type) })}
-            {!node.own && !node.external && (
-              <>
-                {" · "}
-                <Lock size={12} aria-hidden /> {node.file}
-              </>
-            )}
-          </span>
-        </div>
-        <button className={styles.icon} onClick={() => onSelect(null)} aria-label={t("view.close")}>
-          <X size={20} aria-hidden />
-        </button>
-      </div>
-      {!node.external && (
-        <>
-          {def && <p className={styles.help}>{t(`blocks.${def.type}.help`)}</p>}
-          {fields.length > 0 && (
-            <dl className={styles.fields}>
-              {fields.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>
-                    <code>{JSON.stringify(v)}</code>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          <ul className={styles.ports}>
-            {(def?.ports ?? []).map((port) => {
-              const target = block[port];
-              const fallback = node.fallbackPorts.includes(port);
-              if (typeof target !== "string" && !fallback) return null;
-              return (
-                <li key={port}>
-                  <span className={styles.port}>{t(`ports.${port}`)}</span>
-                  <ArrowRight size={14} aria-hidden />
-                  {typeof target === "string" ? (
-                    known.has(target) ? (
-                      <button className={styles.link} onClick={() => onSelect(target)}>
-                        {target}
-                      </button>
-                    ) : (
-                      <code>{target}</code>
-                    )
-                  ) : (
-                    <span className={styles.muted}>{t("view.fallbackToNext")}</span>
-                  )}
-                </li>
-              );
-            })}
-            {node.ends && <li className={styles.muted}>{t("graph.ends")}</li>}
-          </ul>
-        </>
-      )}
-    </aside>
   );
 }

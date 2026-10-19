@@ -1,10 +1,12 @@
-import { useMemo } from "react";
-import { Link } from "react-router";
+import { useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, ChevronRight, CircleAlert, CircleCheck, Loader, Package, Radio, Users } from "lucide-react";
+import { AlertTriangle, BookLock, ChevronRight, CircleAlert, CircleCheck, FileUp, FolderHeart, Loader, Package, Plus, Radio, Users } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { buildCatalog, type CatalogEntry } from "../programs/catalog";
-import { useProgramSource, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
+import { NewProgramModal, useTakenPaths } from "../programs/actions";
+import { editorUrl, useProgramSource, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
+import { parseProgramText, useWorkspace } from "../store/workspace";
 import { usePodSession } from "../pod/session";
 import page from "./Page.module.css";
 import styles from "./ProgramsPage.module.css";
@@ -17,10 +19,37 @@ export function ProgramsPage() {
   const podCatalog = useCatalog(pod);
   const shippedCatalog = useCatalog(shipped);
   // the library is the same on every pod of a set; prefer the pod's copy when connected
+  const local = useProgramSource("local");
+  const localCatalog = useCatalog(local);
+  const docs = useWorkspace((s) => s.programs);
+  const idByPath = useMemo(() => new Map(docs.map((d) => [d.path, d])), [docs]);
+  const [creating, setCreating] = useState(false);
   const library = pod.available && podCatalog.library.length > 0 ? { entries: podCatalog.library, source: "pod" as const } : { entries: shippedCatalog.library, source: "shipped" as const };
 
   return (
-    <div className={page.page}>
+    <div className={`${page.page} ${styles.withFab}`}>
+      <section className={page.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.heading}>
+            <FolderHeart size={16} aria-hidden /> {t("programs.mine")}
+          </h2>
+          <ImportButton />
+        </div>
+        {localCatalog.programs.length === 0 ? (
+          <p className={page.muted}>{t("programs.mineEmpty")}</p>
+        ) : (
+          <EntryList
+            entries={localCatalog.programs}
+            source="local"
+            href={(e) => editorUrl(idByPath.get(e.path)!.id)}
+            tag={(e) => {
+              const origin = idByPath.get(e.path)?.origin;
+              return origin === "pod" ? t("programs.fromPod") : origin === "default" ? t("programs.fromShipped") : null;
+            }}
+          />
+        )}
+      </section>
+
       {pod.available ? (
         <section className={page.section}>
           <h2 className={styles.heading}>
@@ -58,14 +87,60 @@ export function ProgramsPage() {
         <p className={page.muted}>{t("programs.libraryHint")}</p>
         <EntryList entries={library.entries} source={library.source} />
       </section>
+
+      <button className={styles.fab} onClick={() => setCreating(true)} aria-label={t("programs.new")} title={t("programs.new")}>
+        <Plus size={26} aria-hidden />
+      </button>
+      <NewProgramModal open={creating} onClose={() => setCreating(false)} />
     </div>
+  );
+}
+
+/** Imports a program file (.json) as a new local program. */
+function ImportButton() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const input = useRef<HTMLInputElement>(null);
+  const add = useWorkspace((s) => s.add);
+  const taken = useTakenPaths();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <button className={styles.textButton} onClick={() => input.current?.click()}>
+        <FileUp size={16} aria-hidden /> {t("programs.import")}
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            const json = parseProgramText(await file.text());
+            const doc = await add(json, "local", { taken });
+            setError(null);
+            navigate(editorUrl(doc.id));
+          } catch {
+            setError(t("programs.importFailed", { file: file.name }));
+          }
+        }}
+      />
+      {error && (
+        <p className={styles.importError} role="alert">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 
 function useCatalog(source: ProgramSource) {
   return useMemo(
-    () => buildCatalog(Object.keys(source.files), (p) => source.files[p], { supportedTypes: source.supportedTypes }),
-    [source.files, source.supportedTypes],
+    () => buildCatalog(Object.keys(source.files), source.read, { supportedTypes: source.supportedTypes }),
+    [source.files, source.read, source.supportedTypes],
   );
 }
 
@@ -75,16 +150,19 @@ type ListProps = {
   /** for pod entries: shipped files, to mark unchanged defaults */
   shipped?: Readonly<Record<string, string>>;
   files?: Readonly<Record<string, string>>;
+  /** link target (default: the read-only view) */
+  href?: (entry: CatalogEntry) => string;
+  tag?: (entry: CatalogEntry) => string | null;
 };
 
-function EntryList({ entries, source, shipped, files }: ListProps) {
+function EntryList({ entries, source, shipped, files, href, tag }: ListProps) {
   const { t } = useTranslation();
   if (entries.length === 0) return <p className={page.muted}>{t("programs.none")}</p>;
   return (
     <ul className={styles.list}>
       {entries.map((entry) => (
         <li key={entry.path}>
-          <Link to={viewUrl(source, entry.path)} className={styles.entry}>
+          <Link to={href ? href(entry) : viewUrl(source, entry.path)} className={styles.entry}>
             {entry.kind === "program" ? (
               <LedRing groups={entry.menu} size={40} label={t("programs.menuPattern")} />
             ) : (
@@ -95,6 +173,7 @@ function EntryList({ entries, source, shipped, files }: ListProps) {
             <span className={styles.text}>
               <span className={styles.name}>
                 {entry.name}
+                {tag?.(entry) && <span className={styles.tag}>{tag(entry)}</span>}
                 {source === "pod" && shipped && files && shipped[entry.path] === files[entry.path] && (
                   <span className={styles.tag}>{t("programs.unchanged")}</span>
                 )}

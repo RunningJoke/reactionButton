@@ -256,3 +256,7 @@
   white-space: nowrap;
   font-family: var(--font-mono);
 }
+
+.rp-port-row[data-side="down"] {
+  justify-content: center;
+}

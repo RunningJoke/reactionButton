@@ -1,0 +1,86 @@
+.dialog {
+  width: 100%;
+  max-width: 440px;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.2);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+@media (min-width: 600px) {
+  .dialog {
+    width: calc(100% - 2 * var(--space-4));
+    margin: auto;
+    border-radius: var(--radius-l);
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.content h2 {
+  font-size: 18px;
+}
+
+.content p {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.button {
+  min-height: var(--touch);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.danger {
+  border-color: var(--error);
+  background: var(--error);
+  color: var(--surface);
+}
+
+.input {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+}
+
+.error {
+  font-size: 13px;
+  color: var(--error);
+}

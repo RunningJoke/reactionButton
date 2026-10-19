@@ -95,11 +95,82 @@
     "errors_other": "{{count}} Fehler",
     "warnings_one": "{{count}} Hinweis",
     "warnings_other": "{{count}} Hinweise",
-    "valid": "Gültig"
+    "valid": "Gültig",
+    "mine": "Meine Programme",
+    "mineEmpty": "Noch keine eigenen Programme. Mit + neu anlegen oder ein Programm öffnen und Bearbeiten tippen.",
+    "fromPod": "Kopie vom Pod",
+    "fromShipped": "Kopie mitgeliefert",
+    "import": "Importieren",
+    "importFailed": "{{file}} ist keine Programmdatei.",
+    "new": "Neues Programm",
+    "newTitle": "Neues Programm",
+    "duplicateTitle": "Programm duplizieren",
+    "duplicate": "Duplizieren",
+    "create": "Anlegen",
+    "copyOf": "Kopie von {{name}}",
+    "namePlaceholder": "z. B. Sprint 4 Pods",
+    "deleteTitle": "Programm löschen?",
+    "deleteText": "„{{name}}“ ({{path}}) wird auf diesem Gerät gelöscht. Programme auf dem Pod bleiben unverändert.",
+    "delete": "Programm löschen",
+    "export": "Datei exportieren"
   },
   "editor": {
     "title": "Editor",
-    "intro": "Programme durch Verbinden von Blöcken bauen."
+    "intro": "Programme Block für Block bauen.",
+    "noProgram": "Kein Programm geöffnet",
+    "noProgramHint": "Neues Programm anlegen oder unter Programme eines öffnen und Bearbeiten tippen.",
+    "openProgram": "Aus Programme öffnen",
+    "untitled": "Programm ohne Namen",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "more": "Mehr",
+    "settings": "Programmeinstellungen",
+    "emptyProgram": "Dieses Programm hat noch keine Blöcke. Den ersten mit + hinzufügen.",
+    "check": "Prüfung",
+    "size": "{{size}} von {{max}} Bytes",
+    "noIssues": "Keine Probleme gefunden.",
+    "error": "Fehler",
+    "warning": "Warnung",
+    "presetBlock": "Aus {{file}} (nur lesen). Zum Ändern in den Programmeinstellungen „In bearbeitbare Kopie umwandeln“ wählen.",
+    "addBlock": "Block hinzufügen",
+    "addAtEnd": "wird am Ende angefügt, nicht verbunden",
+    "addAfter": "wird nach {{name}} eingefügt",
+    "unsupported": "Pod kann ihn nicht ausführen",
+    "templates": "Bibliothek als Kopie",
+    "templatesHelp": "Kopiert die Blöcke eines Bibliotheksteils in dieses Programm, dort sind sie änderbar.",
+    "type": "Blocktyp",
+    "blockName": "Blockname",
+    "nameInvalid": "Buchstaben, Ziffern, _ und -, beginnend mit einem Buchstaben (max. 32).",
+    "nameTaken": "Dieser Name ist schon vergeben.",
+    "parameters": "Parameter",
+    "connections": "Weiter mit",
+    "goTo": "{{port}}: weiter mit",
+    "portFallback": "— weiter bei „weiter“",
+    "portEnd": "— Programm endet",
+    "portNone": "— nicht benutzt",
+    "newBlock": "+ Neuer Block…",
+    "setStart": "Hier starten",
+    "duplicate": "Duplizieren",
+    "delete": "Löschen",
+    "lockedBy": "{{file}} springt zu diesem Block, deshalb kann er nicht umbenannt oder gelöscht werden.",
+    "programName": "Name",
+    "description": "Beschreibung",
+    "peripherals": "Peripherie-Pods (neben der Zentrale)",
+    "fewerPods": "Ein Pod weniger",
+    "morePods": "Ein Pod mehr",
+    "startFirst": "— erster Block",
+    "variablesHelp": "Ganze Zahlen, beim Programmstart zurückgesetzt. Eingebaut: {{builtins}}.",
+    "addVariable": "Variable",
+    "variableName": "Variablenname",
+    "variableValue": "Startwert von {{name}}",
+    "deleteVariable": "{{name}} löschen",
+    "menuPatternHelp": "So erscheint das Programm im Programmmenü des Pods.",
+    "presets": "Bibliotheks-Vorlagen",
+    "presetsHelp": "Eingebundene Bibliotheksteile bleiben schreibgeschützt und werden mit anderen Programmen geteilt.",
+    "removePreset": "{{path}} entfernen",
+    "addPreset": "Bibliotheksteil einbinden…",
+    "flatten": "In bearbeitbare Kopie umwandeln",
+    "addAfterAction": "Block danach einfügen"
   },
   "simulate": {
     "title": "Simulation",
@@ -107,7 +178,24 @@
   },
   "menu": {
     "title": "Menü",
-    "intro": "Reihenfolge der Programme auf dem Pod und ihr LED-Muster."
+    "intro": "Reihenfolge der Programme im Programmmenü des Pods und ihr LED-Muster. Wird auf diesem Gerät gespeichert und beim Übertragen gesendet.",
+    "fromPod": "Ausgangspunkt ist das Menü des verbundenen Pods.",
+    "fromShipped": "Ausgangspunkt ist das mitgelieferte Menü.",
+    "editPattern": "Menümuster von {{name}}",
+    "origin": {
+      "local": "meins",
+      "pod": "auf dem Pod",
+      "shipped": "mitgeliefert",
+      "missing": "fehlt"
+    },
+    "samePattern": "gleiches Muster wie {{name}}",
+    "noPattern": "kein Menümuster",
+    "up": "{{name}} nach oben",
+    "down": "{{name}} nach unten",
+    "remove": "{{name}} aus dem Menü nehmen",
+    "add": "Programm hinzufügen",
+    "nothingToAdd": "Alle Programme sind im Menü.",
+    "copyNote": "Eine Änderung des Musters legt eine lokale Kopie dieses Programms an (gleicher Pfad)."
   },
   "settings": {
     "title": "Einstellungen",
@@ -186,7 +274,9 @@
     "variables": "Variablen",
     "includes": "Bindet ein",
     "start": "Start",
-    "fallbackToNext": "geht bei „weiter“ weiter"
+    "fallbackToNext": "geht bei „weiter“ weiter",
+    "edit": "Bearbeiten",
+    "openCopy": "Meine Kopie öffnen"
   },
   "graph": {
     "start": "Startblock",
@@ -253,5 +343,155 @@
       "name": "Auswertung",
       "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
     }
+  },
+  "common": {
+    "cancel": "Abbrechen"
+  },
+  "fields": {
+    "number": "Zahl",
+    "variable": "Variable",
+    "default": "Standard",
+    "customColor": "Eigene Farbe",
+    "defaultIs": "Standard {{value}}",
+    "notSet": "nicht gesetzt",
+    "required": "Pflicht",
+    "yes": "ja",
+    "no": "nein",
+    "color": {
+      "label": "Farbe"
+    },
+    "leds": {
+      "label": "LEDs",
+      "help": "LEDs antippen, um sie ein- oder auszuschalten."
+    },
+    "ms": {
+      "label": "Zeit (ms)",
+      "help": "Feste Wartezeit. Oder Minimum und Maximum für eine zufällige Zeit."
+    },
+    "minMs": {
+      "label": "Minimum (ms)"
+    },
+    "maxMs": {
+      "label": "Maximum (ms)"
+    },
+    "shortMs": {
+      "label": "Kurz drücken bis (ms)",
+      "help": "Kürzere Drücke gehen zu „kurz“, längere zu „lang“."
+    },
+    "timeoutMs": {
+      "label": "Zeitlimit (ms)",
+      "help": "Ohne Druck in dieser Zeit geht es bei „Zeit um“ weiter."
+    },
+    "minTimeoutMs": {
+      "label": "Zufälliges Zeitlimit von (ms)"
+    },
+    "maxTimeoutMs": {
+      "label": "Zufälliges Zeitlimit bis (ms)"
+    },
+    "record": {
+      "label": "Messen als",
+      "help": "Name der Messung, z. B. reaction. Wird von der Auswertung benutzt."
+    },
+    "storeAs": {
+      "label": "Zeit in Variable speichern"
+    },
+    "left": {
+      "label": "Linke Seite"
+    },
+    "op": {
+      "label": "Operation"
+    },
+    "right": {
+      "label": "Rechte Seite"
+    },
+    "var": {
+      "label": "Variable"
+    },
+    "value": {
+      "label": "Wert"
+    },
+    "pod": {
+      "label": "Pod",
+      "help": "Nummer der Peripherie, ab 0."
+    },
+    "mode": {
+      "label": "Modus",
+      "help": "hit: drücken, wenn er leuchtet. avoid: nicht drücken."
+    },
+    "colorAfter": {
+      "label": "Farbe danach"
+    },
+    "pods": {
+      "label": "Anzahl Pods",
+      "help": "Leer: alle Pods des Programms."
+    },
+    "avoid": {
+      "label": "Davon meiden"
+    },
+    "includeCentral": {
+      "label": "Zentrale macht mit"
+    },
+    "hitColor": {
+      "label": "Treffer-Farbe"
+    },
+    "avoidColor": {
+      "label": "Meiden-Farbe"
+    },
+    "syncStartMs": {
+      "label": "Synchronstart (ms)"
+    },
+    "ledsOff": {
+      "label": "LEDs ausschalten"
+    },
+    "metric": {
+      "label": "Messung"
+    },
+    "storeAverage": {
+      "label": "Mittelwert speichern in"
+    },
+    "storeBest": {
+      "label": "Bestwert speichern in"
+    },
+    "storeWorst": {
+      "label": "Schlechtesten speichern in"
+    },
+    "storeCount": {
+      "label": "Anzahl speichern in"
+    },
+    "reset": {
+      "label": "Messungen danach zurücksetzen"
+    }
+  },
+  "ops": {
+    "=": "= setzen",
+    "+": "+ addieren",
+    "-": "− abziehen",
+    "random": "zufällig (0 … Wert−1)",
+    "randomOther": "zufällig, nicht derselbe"
+  },
+  "picker": {
+    "led": "LED {{n}}",
+    "all": "Alle",
+    "none": "Keine",
+    "clear": "Leeren",
+    "paintWith": "Farbe für angetippte LEDs"
+  },
+  "colors": {
+    "off": "aus",
+    "red": "rot",
+    "green": "grün",
+    "blue": "blau",
+    "yellow": "gelb",
+    "magenta": "magenta",
+    "cyan": "cyan",
+    "white": "weiß"
+  },
+  "categories": {
+    "light": "Licht",
+    "wait": "Warten",
+    "input": "Eingabe",
+    "logic": "Logik",
+    "remote": "Andere Pods",
+    "stats": "Auswertung"
   }
 }

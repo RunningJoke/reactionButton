@@ -107,10 +107,12 @@ configApp/
 │   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC check both ways
 │   │   ├── session.ts           connection state for the UI: connect, info / status / list, read-only role, log
 │   │   └── sync.ts              compare local vs pod, push plan, push execution (P5)
-│   ├── store/                   local persistence (Storage interface + IndexedDB adapter)
-│   ├── editor/                  column view (cards + side arrows), column layout, inspector, palette
+│   ├── store/                   local persistence (Storage interface + IndexedDB adapter), workspace (local programs + menu)
+│   ├── editor/                  column view + layout, editing operations (ops.ts), undo / redo, inspector, fields, palette, program settings
+│   ├── programs/                catalog, sources (pod / shipped / local), program actions (new, edit copy, export, delete)
+│   ├── pages/                   one component per screen (Pod, Programs, program view, Editor, Menu, Settings)
+│   ├── components/              LED ring + LED ring picker, sheet, modal
 │   ├── simulator/               engine (TS port of the block semantics), pod views, controls
-│   ├── menu/                    menu order + LED ring picker
 │   └── defaults/                shipped programs, bundled from ../data at build time (raw text)
 └── docs/
     └── acceptance-tests.md      acceptance criteria and test procedures on real pods
@@ -151,8 +153,9 @@ interface PodClient {                       // API level, on top of Transport
 }
 
 interface Storage {                         // local programs, swappable for a remote DB later
-  listPrograms(); getProgram(id); saveProgram(p); deleteProgram(id);
-  getSyncState(setId); saveSyncState(setId, state);
+  listPrograms(); saveProgram(p); deleteProgram(id);
+  getMenu(); saveMenu(paths);               // the local menu (§6)
+  getSyncState(setId); saveSyncState(setId, state);   // P5
 }
 ```
 
@@ -196,8 +199,7 @@ type ProgramDoc = {
   id: string;                 // local uuid
   path: string;               // target path on the pod, e.g. "/prog/sprint.json"
   json: ProgramJson;          // exactly what goes to the pod (format of programs.md)
-  origin: "local" | "pod" | "default";
-  readOnly: boolean;          // true for /prog/lib/* and for shipped defaults
+  origin: "local" | "pod" | "default";   // made here, or a copy of a pod / shipped program
   updatedAt: number;
 };
 
@@ -211,8 +213,17 @@ type SyncState = {            // per pod set (setId), remembered after each sync
   is computed every time a program is opened (§7.1), so there are no node positions to keep.
 - Paths: generated from the program name. Slug ≤ 20 characters so that
   `/prog/<slug>.json` stays ≤ 31 characters. Allowed characters as in config-api §4.
-- Import / export: a single program `.json`, or a whole set as a `.zip`
-  (`programs.json` + `prog/…`), the same layout as `data/`.
+- **Local programs are always editable.** Shipped and pod programs are read-only in the app;
+  **Edit** makes a local copy with the **same path** (origin `pod` / `default`), which replaces the
+  file on the pod at push (decision 10). If a local copy of that path exists, Edit opens it.
+  **Duplicate** makes a new program with its own name and path. Library files are never local.
+- A new program's path must not collide with a local, pod or shipped path.
+- **Local menu** (decision 11): one menu, the set being built. Until the user changes it, the
+  menu tab shows the connected pod's menu, else the shipped one. Changing the menu pattern of a
+  program that is not local makes a local copy (same path).
+- Every change is saved to IndexedDB at once; undo / redo (100 steps) lives in memory per open program.
+- Import / export: a single program `.json` (v1). A whole set as a `.zip`
+  (`programs.json` + `prog/…`, the same layout as `data/`) follows with P5.
 
 ---
 
@@ -256,14 +267,22 @@ On push, preset fragments the pod does not have are uploaded too (from the bundl
 
 | Action | Touch | Desktop |
 |---|---|---|
-| Add block | floating button → palette sheet (grouped: Light, Wait, Input, Logic, Remote, Stats) | palette sidebar, inserts below the selected block |
+| Add block | floating button or "add block after" in the inspector → palette sheet (grouped: Light, Wait, Input, Logic, Remote, Stats, library as copy) | same, palette in the side panel |
 | Edit parameters | tap node → inspector bottom sheet | inspector side panel |
 | Connect port | inspector: per port a "go to" select with all block names (+ "new block…") | same as touch |
-| Delete / duplicate / rename | inspector actions | keyboard + context menu |
+| Delete / duplicate / rename | inspector actions | inspector actions, Delete key |
 | Set start block | inspector | inspector |
 | Undo / redo | header buttons | Ctrl+Z / Ctrl+Y |
 
-Renaming a block updates every port that points to it.
+Renaming a block updates every port that points to it. With a block selected, a new block is
+inserted after it (selected → new → the old next, decision 12); otherwise it is added at the end,
+unconnected (the first block of an empty program becomes the start). "New block…" in a port
+select adds a block and connects that port to it. Own blocks that a preset continues at (e.g.
+`EnterProgram` for `loop`) cannot be renamed or deleted. Renaming a variable updates every block
+that reads or writes it. Changing the block type keeps the fields and ports the new type has.
+
+A block that continues straight down through a port other than `next` (e.g. a button with only
+`timeout`) shows the port name on the card, so the column view never hides which exit is taken.
 
 ### 7.4 Parameter inputs
 
@@ -428,6 +447,9 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 | 7 | Block type definitions | app keeps its own copy, separate from the firmware |
 | 8 | Push | update only, never delete unless the user asks |
 | 9 | Conflicts | simple choice "keep pod" / "keep mine", no diff |
+| 10 | Editing a shipped / pod program | local copy with the same path; replaces the pod file at push |
+| 11 | Menu before push exists | one local menu, starting from the pod's (or the shipped) menu |
+| 12 | Where a new block goes | after the selected block (rewired), else at the end unconnected |
 
 ---
 
@@ -438,8 +460,8 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 | P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
 | P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
 | P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE waits for firmware CR-0 |
-| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | built, review open |
-| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | open |
+| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | done |
+| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | built, review open |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | open |
 

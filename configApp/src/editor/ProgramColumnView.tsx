@@ -95,6 +95,7 @@ export function ProgramColumnView({ graph, selected, active, onSelect }: Props) 
               <BlockCard
                 node={byId.get(id)!}
                 arrows={arrowsBySource.get(id) ?? []}
+                joinedPort={layout.joined.has(id) ? byId.get(id)!.ports[0] : undefined}
                 selected={id === selected}
                 active={id === active}
                 onSelect={onSelect}
@@ -182,13 +183,15 @@ function toward(from: Point, to: Point, r: number): Point {
 type CardProps = {
   node: GraphNode;
   arrows: SideArrow[];
+  /** port that continues straight down (no arrow) */
+  joinedPort?: string;
   selected: boolean;
   active: boolean;
   onSelect?: (id: string | null) => void;
 };
 
 /** One block: header with icon, name and type, key parameters, one row per outgoing arrow. */
-const BlockCard = memo(function BlockCard({ node, arrows, selected, active, onSelect }: CardProps) {
+const BlockCard = memo(function BlockCard({ node, arrows, joinedPort, selected, active, onSelect }: CardProps) {
   const { t } = useTranslation();
   const block = node.block;
   const Icon = node.external ? Unlink : blockIcon(block?.type);
@@ -249,6 +252,15 @@ const BlockCard = memo(function BlockCard({ node, arrows, selected, active, onSe
               <span className="rp-port-target">→ {arrow.edge.target}</span>
             </span>
           ))}
+        </span>
+      )}
+      {/* continuing straight down through a port other than "next": name the port, a press etc. still matters */}
+      {joinedPort && joinedPort !== "next" && (
+        <span className="rp-card-ports">
+          <span className="rp-port-row" data-side="down">
+            <span className="rp-port">{t(`ports.${joinedPort}`)}</span>
+            <span className="rp-port-target">↓</span>
+          </span>
         </span>
       )}
     </button>

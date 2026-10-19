@@ -95,11 +95,82 @@
     "errors_other": "{{count}} errors",
     "warnings_one": "{{count}} warning",
     "warnings_other": "{{count}} warnings",
-    "valid": "Valid"
+    "valid": "Valid",
+    "mine": "My programs",
+    "mineEmpty": "No programs of your own yet. Create one with + or open a program and tap Edit.",
+    "fromPod": "copy from pod",
+    "fromShipped": "copy of shipped",
+    "import": "Import",
+    "importFailed": "{{file}} is not a program file.",
+    "new": "New program",
+    "newTitle": "New program",
+    "duplicateTitle": "Duplicate program",
+    "duplicate": "Duplicate",
+    "create": "Create",
+    "copyOf": "Copy of {{name}}",
+    "namePlaceholder": "e.g. Sprint 4 pods",
+    "deleteTitle": "Delete program?",
+    "deleteText": "“{{name}}” ({{path}}) is deleted from this device. Programs on the pod are not changed.",
+    "delete": "Delete program",
+    "export": "Export file"
   },
   "editor": {
     "title": "Editor",
-    "intro": "Build programs by connecting blocks."
+    "intro": "Build programs block by block.",
+    "noProgram": "No program open",
+    "noProgramHint": "Create a new program, or open one in Programs and tap Edit.",
+    "openProgram": "Open from Programs",
+    "untitled": "Untitled program",
+    "undo": "Undo",
+    "redo": "Redo",
+    "more": "More",
+    "settings": "Program settings",
+    "emptyProgram": "This program has no blocks yet. Add the first one with +.",
+    "check": "Check",
+    "size": "{{size}} of {{max}} bytes",
+    "noIssues": "No problems found.",
+    "error": "Error",
+    "warning": "Warning",
+    "presetBlock": "From {{file}} (read only). To change it, use “Convert to editable copy” in the program settings.",
+    "addBlock": "Add block",
+    "addAtEnd": "added at the end, not connected",
+    "addAfter": "inserted after {{name}}",
+    "unsupported": "pod cannot run it",
+    "templates": "Library as copy",
+    "templatesHelp": "Copies the blocks of a library part into this program, where you can change them.",
+    "type": "Block type",
+    "blockName": "Block name",
+    "nameInvalid": "Letters, digits, _ and -, starting with a letter (max. 32).",
+    "nameTaken": "This name is already used.",
+    "parameters": "Parameters",
+    "connections": "Continue with",
+    "goTo": "{{port}}: go to",
+    "portFallback": "— continues at “next”",
+    "portEnd": "— program ends",
+    "portNone": "— not used",
+    "newBlock": "+ New block…",
+    "setStart": "Start here",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "lockedBy": "{{file}} continues at this block, so it cannot be renamed or deleted.",
+    "programName": "Name",
+    "description": "Description",
+    "peripherals": "Peripherals (pods besides the central)",
+    "fewerPods": "One pod less",
+    "morePods": "One pod more",
+    "startFirst": "— first block",
+    "variablesHelp": "Whole numbers, reset at program start. Built in: {{builtins}}.",
+    "addVariable": "Variable",
+    "variableName": "Variable name",
+    "variableValue": "Start value of {{name}}",
+    "deleteVariable": "Delete {{name}}",
+    "menuPatternHelp": "How the program shows in the pod's program menu.",
+    "presets": "Library presets",
+    "presetsHelp": "Included library parts stay read only and are shared with other programs.",
+    "removePreset": "Remove {{path}}",
+    "addPreset": "Include a library part…",
+    "flatten": "Convert to editable copy",
+    "addAfterAction": "Add block after"
   },
   "simulate": {
     "title": "Simulate",
@@ -107,7 +178,24 @@
   },
   "menu": {
     "title": "Menu",
-    "intro": "Order of the programs on the pod and their LED pattern."
+    "intro": "Order of the programs in the pod's program menu and their LED pattern. Kept on this device and sent with push.",
+    "fromPod": "Starting from the menu of the connected pod.",
+    "fromShipped": "Starting from the shipped menu.",
+    "editPattern": "Menu pattern of {{name}}",
+    "origin": {
+      "local": "mine",
+      "pod": "on pod",
+      "shipped": "shipped",
+      "missing": "missing"
+    },
+    "samePattern": "same pattern as {{name}}",
+    "noPattern": "no menu pattern",
+    "up": "Move {{name}} up",
+    "down": "Move {{name}} down",
+    "remove": "Remove {{name}} from the menu",
+    "add": "Add program",
+    "nothingToAdd": "All programs are in the menu.",
+    "copyNote": "Changing the pattern makes a local copy of this program (same path)."
   },
   "settings": {
     "title": "Settings",
@@ -186,7 +274,9 @@
     "variables": "Variables",
     "includes": "Includes",
     "start": "Start",
-    "fallbackToNext": "continues at “next”"
+    "fallbackToNext": "continues at “next”",
+    "edit": "Edit",
+    "openCopy": "Open my copy"
   },
   "graph": {
     "start": "Start block",
@@ -253,5 +343,155 @@
       "name": "Summary",
       "help": "Average, best and worst of a measurement, printed on the serial console."
     }
+  },
+  "common": {
+    "cancel": "Cancel"
+  },
+  "fields": {
+    "number": "Number",
+    "variable": "Variable",
+    "default": "Default",
+    "customColor": "Own colour",
+    "defaultIs": "default {{value}}",
+    "notSet": "not set",
+    "required": "required",
+    "yes": "yes",
+    "no": "no",
+    "color": {
+      "label": "Colour"
+    },
+    "leds": {
+      "label": "LEDs",
+      "help": "Tap LEDs to switch them on or off."
+    },
+    "ms": {
+      "label": "Time (ms)",
+      "help": "Fixed wait. Or set min and max for a random wait."
+    },
+    "minMs": {
+      "label": "Minimum (ms)"
+    },
+    "maxMs": {
+      "label": "Maximum (ms)"
+    },
+    "shortMs": {
+      "label": "Short press up to (ms)",
+      "help": "Shorter presses leave at “short”, longer ones at “long”."
+    },
+    "timeoutMs": {
+      "label": "Time-out (ms)",
+      "help": "Without a press in this time the block leaves at “time-out”."
+    },
+    "minTimeoutMs": {
+      "label": "Random time-out from (ms)"
+    },
+    "maxTimeoutMs": {
+      "label": "Random time-out to (ms)"
+    },
+    "record": {
+      "label": "Measure as",
+      "help": "Name of the measurement, e.g. reaction. Used by the summary."
+    },
+    "storeAs": {
+      "label": "Store time in variable"
+    },
+    "left": {
+      "label": "Left side"
+    },
+    "op": {
+      "label": "Operation"
+    },
+    "right": {
+      "label": "Right side"
+    },
+    "var": {
+      "label": "Variable"
+    },
+    "value": {
+      "label": "Value"
+    },
+    "pod": {
+      "label": "Pod",
+      "help": "Number of the peripheral, from 0."
+    },
+    "mode": {
+      "label": "Mode",
+      "help": "hit: press when lit. avoid: do not press."
+    },
+    "colorAfter": {
+      "label": "Colour after"
+    },
+    "pods": {
+      "label": "Number of pods",
+      "help": "Empty: all pods of the program."
+    },
+    "avoid": {
+      "label": "Of which to avoid"
+    },
+    "includeCentral": {
+      "label": "Central takes part"
+    },
+    "hitColor": {
+      "label": "Hit colour"
+    },
+    "avoidColor": {
+      "label": "Avoid colour"
+    },
+    "syncStartMs": {
+      "label": "Sync start (ms)"
+    },
+    "ledsOff": {
+      "label": "Switch LEDs off"
+    },
+    "metric": {
+      "label": "Measurement"
+    },
+    "storeAverage": {
+      "label": "Store average in"
+    },
+    "storeBest": {
+      "label": "Store best in"
+    },
+    "storeWorst": {
+      "label": "Store worst in"
+    },
+    "storeCount": {
+      "label": "Store count in"
+    },
+    "reset": {
+      "label": "Reset measurements afterwards"
+    }
+  },
+  "ops": {
+    "=": "= set",
+    "+": "+ add",
+    "-": "− subtract",
+    "random": "random (0 … value−1)",
+    "randomOther": "random, not the same"
+  },
+  "picker": {
+    "led": "LED {{n}}",
+    "all": "All",
+    "none": "None",
+    "clear": "Clear",
+    "paintWith": "Colour for tapped LEDs"
+  },
+  "colors": {
+    "off": "off",
+    "red": "red",
+    "green": "green",
+    "blue": "blue",
+    "yellow": "yellow",
+    "magenta": "magenta",
+    "cyan": "cyan",
+    "white": "white"
+  },
+  "categories": {
+    "light": "Light",
+    "wait": "Wait",
+    "input": "Input",
+    "logic": "Logic",
+    "remote": "Remote pods",
+    "stats": "Statistics"
   }
 }
