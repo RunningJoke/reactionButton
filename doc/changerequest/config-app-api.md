@@ -15,7 +15,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | CR-0 | **Blocker** | BLE responses are dropped when the client subscribes for notifications | done (firmware 2.1, branch `feature/cr-0-ble-indicate-only`) |
 | CR-1 | High | Tell sets apart in the BLE advertisement | done (firmware 2.2, branch `feature/cr-1-ble-set-name`) |
 | CR-2 | Medium | Program format revision in `info` | done (firmware 2.3, branch `feature/cr-2-program-format`) |
-| CR-3 | Medium | Document engine details the simulator must copy | open |
+| CR-3 | Medium | Document engine details the simulator must copy | done (docs only, branch `feature/cr-3-engine-semantics`) |
 | CR-4 | Medium | `validate` with inline content (dry run) | open |
 | CR-5 | Low | Program metadata in `list` | open |
 | CR-6 | Low | Optional PIN for write operations | open |
@@ -113,6 +113,11 @@ fields, ports or semantics. Keep a short changelog table in [../programs.md](../
 ---
 
 ## CR-3 – Document engine details the simulator must copy (Medium, docs only)
+
+**Status: done**: [programs.md](../programs.md) §7 "Engine semantics" answers every point
+below with code references. Firmware unchanged (docs only). Notable details found: a
+`timeoutMs` of 0 means *no timeout* for `button` but *immediate timeout* for `remotePress` /
+`remoteMultiPress`; a press of exactly `shortMs` is `long`.
 
 **Reason.** The app simulates programs in the browser. To behave like the pod it has to
 copy details that are only in the code today. If they change silently, the simulator and
