@@ -1,6 +1,6 @@
 # ReactPod Config App – Specification
 
-Status: **agreed** (2026-10-18) · Branch: `feature/config-app` · Date: 2026-10-18
+Status: **agreed** (2026-10-18), P0–P6 accepted (2026-10-19) · Branch: `main` · Date: 2026-10-19
 
 The ReactPod Config App is a configuration tool for coaches and trainers, separate from
 the firmware. It connects to a ReactPod set, shows the block types and programs, lets the
@@ -113,7 +113,7 @@ configApp/
 │   ├── programs/                catalog, sources (pod / shipped / local), program actions (new, edit copy, export, delete)
 │   ├── pages/                   one component per screen (Pod, Programs, program view, Editor, Menu, Settings)
 │   ├── components/              LED ring + LED ring picker, sheet, modal
-│   ├── simulator/               engine (TS port of the block semantics), pod views, controls
+│   ├── simulator/               engine.ts (TS port of the block semantics), seeded random, useSimulation (real-time loop)
 │   └── defaults/                shipped programs, bundled from ../data at build time (raw text)
 └── docs/
     └── acceptance-tests.md      acceptance criteria and test procedures on real pods
@@ -352,6 +352,27 @@ In step mode a waiting block stays current until the user presses a pod or uses 
 The simulator models logic, not radio timing. Reaction times shown are user click times,
 not pod measurements.
 
+### 8.3 Implementation notes
+
+- `src/simulator/engine.ts` follows [programs.md](../doc/programs.md) §7 rule by rule: one engine
+  pass per simulated ms, 32 steps per pass, `enter` takes times and random values, unconnected
+  ports fall back to `next`, unknown variables read 0, `uint8_t` pod ids, `timeoutMs: 0` means *no
+  timeout* for `button` but *at once* for the remote blocks, 20 ms button debounce.
+- The set always has the program's `peripherals` connected. Peripherals behave like
+  `PeripheralRole`: an armed pod lights (at once or at `syncStartMs`), a press shows `colorAfter`
+  and reports the reaction time; the central then resets it. Presses of earlier activations are
+  dropped when a block polls them, like on the pod.
+- **Step** runs the current pass until the next block is entered. A block waiting for a press stays
+  current ("waiting"); pods that light by themselves (`syncStartMs`) are lit by the step, because
+  that is no wait for the user. While paused, a press or release is handled at once (one step).
+- **Skip wait** jumps the simulated clock to the end of a delay or timeout. A block that waits
+  without a timeout (`button`, `remotePress`, `remoteMultiPress`) leaves through its `timeout` port
+  (fallback rules apply); a `button` already pressed keeps waiting for the release.
+- The log has every entered block and the `RESULT` / `SUMMARY` lines. **Copy trace** gives the
+  block events in the format of the pod's `trace on` (AT-M5).
+- Entry points: the Simulate tab (program picker: own programs and the menu), the play button in
+  the editor and in the program view. Programs with errors are not simulated.
+
 ---
 
 ## 9. Pod connection and sync
@@ -498,8 +519,8 @@ Implementation notes (`src/pod/sync.ts`):
 | P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE ready for test with firmware 2.7 (AT-B*) |
 | P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | done |
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | done |
-| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | built (demo pod), hardware tests open |
-| P6 | Simulator | AT-M* pass, stepped run matches pod trace | open |
+| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | done (accepted 2026-10-19) |
+| P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](docs/acceptance-tests.md).
 Requested firmware / API changes: [../doc/changerequest/config-app-api.md](../doc/changerequest/config-app-api.md).

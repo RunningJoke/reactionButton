@@ -16,9 +16,6 @@
     "connecting": "Verbinde…",
     "connected": "Verbunden"
   },
-  "placeholder": {
-    "comingIn": "Kommt in Phase {{phase}}"
-  },
   "pod": {
     "intro": "Mit einer Zentrale im Programmmenü verbinden.",
     "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
@@ -198,7 +195,47 @@
   },
   "simulate": {
     "title": "Simulation",
-    "intro": "Ein Programm auf virtuellen Pods ausführen, Schritt für Schritt."
+    "open": "Simulieren",
+    "program": "Programm",
+    "noProgram": "Wähle ein Programm zum Simulieren oder erstelle eines im Editor.",
+    "hasErrors": "Dieses Programm hat Fehler und kann nicht simuliert werden. Behebe sie zuerst im Editor.",
+    "openEditor": "Im Editor öffnen",
+    "graph": "Block-Graph",
+    "breakpointHint": "Tippe auf einen Block, um einen Haltepunkt zu setzen oder zu entfernen.",
+    "pods": "Pods",
+    "podsHint": "Tippe auf den Knopf eines Pods, um ihn zu drücken. Gedrückt halten für einen langen Druck.",
+    "central": "Zentrale · {{id}}",
+    "peripheral": "Pod {{id}}",
+    "press": "{{pod}} drücken",
+    "controls": "Steuerung",
+    "run": "Start",
+    "pause": "Pause",
+    "step": "Schritt",
+    "skipWait": "Warten überspringen",
+    "reset": "Zurücksetzen",
+    "speed": "Tempo",
+    "seed": "Startwert",
+    "time": "{{seconds}} s",
+    "status": {
+      "ready": "Bereit",
+      "running": "Läuft",
+      "paused": "Angehalten",
+      "waiting": "Wartet auf einen Druck (oder Warten überspringen)",
+      "ended": "Programm beendet"
+    },
+    "variables": "Variablen",
+    "metrics": "Messungen",
+    "noMetrics": "Noch keine Messungen.",
+    "metric": "Messgröße",
+    "count": "Anzahl",
+    "average": "Mittel",
+    "best": "Beste",
+    "worst": "Schlechteste",
+    "last": "Zuletzt: {{values}}",
+    "metricsHint": "Die Zeiten sind deine Klicks, keine Messungen eines Pods.",
+    "log": "Protokoll",
+    "copyTrace": "Trace kopieren",
+    "copied": "Kopiert"
   },
   "menu": {
     "title": "Menü",
@@ -316,7 +353,8 @@
     "locked": "Aus der Bibliothek (nur lesen)",
     "external": "in einer anderen Datei",
     "ends": "Programm endet hier",
-    "fallback": "{{ports}} → weiter"
+    "fallback": "{{ports}} → weiter",
+    "breakpoint": "Haltepunkt"
   },
   "summary": {
     "leds_one": "{{count}} LED",

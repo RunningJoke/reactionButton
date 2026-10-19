@@ -16,9 +16,6 @@
     "connecting": "Connecting…",
     "connected": "Connected"
   },
-  "placeholder": {
-    "comingIn": "Coming in phase {{phase}}"
-  },
   "pod": {
     "intro": "Connect to a central in the program menu.",
     "menuHint": "To open the program menu, switch the pod on and hold the button during the blue boot animation.",
@@ -198,7 +195,47 @@
   },
   "simulate": {
     "title": "Simulate",
-    "intro": "Run a program on virtual pods, step by step."
+    "open": "Simulate",
+    "program": "Program",
+    "noProgram": "Choose a program to simulate, or create one in the editor.",
+    "hasErrors": "This program has errors and cannot be simulated. Fix them in the editor first.",
+    "openEditor": "Open in the editor",
+    "graph": "Block graph",
+    "breakpointHint": "Tap a block to set or remove a breakpoint.",
+    "pods": "Pods",
+    "podsHint": "Tap a pod's button to press it. Press and hold for a long press.",
+    "central": "Central · {{id}}",
+    "peripheral": "Pod {{id}}",
+    "press": "Press {{pod}}",
+    "controls": "Controls",
+    "run": "Run",
+    "pause": "Pause",
+    "step": "Step",
+    "skipWait": "Skip wait",
+    "reset": "Reset",
+    "speed": "Speed",
+    "seed": "Seed",
+    "time": "{{seconds}} s",
+    "status": {
+      "ready": "Ready",
+      "running": "Running",
+      "paused": "Paused",
+      "waiting": "Waiting for a press (or skip wait)",
+      "ended": "Program ended"
+    },
+    "variables": "Variables",
+    "metrics": "Measurements",
+    "noMetrics": "No measurements yet.",
+    "metric": "Metric",
+    "count": "Count",
+    "average": "Average",
+    "best": "Best",
+    "worst": "Worst",
+    "last": "Last: {{values}}",
+    "metricsHint": "Times are your clicks, not measurements of a pod.",
+    "log": "Log",
+    "copyTrace": "Copy trace",
+    "copied": "Copied"
   },
   "menu": {
     "title": "Menu",
@@ -316,7 +353,8 @@
     "locked": "From the library (read only)",
     "external": "in another file",
     "ends": "Program ends here",
-    "fallback": "{{ports}} → next"
+    "fallback": "{{ports}} → next",
+    "breakpoint": "Breakpoint"
   },
   "summary": {
     "leds_one": "{{count}} LED",

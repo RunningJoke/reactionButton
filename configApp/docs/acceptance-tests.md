@@ -88,3 +88,5 @@ Needs firmware ≥ 2.1 (change request CR-0, `doc/changerequest/config-app-api.m
 | AT-S4 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
 | AT-B1 … AT-B5 | – | – | 2.0 | blocked | firmware 2.0 lacks CR-0 |
 | AT-B1 … AT-B7 | – | – | 2.7 | open | firmware with CR-0 … CR-7 builds, not yet run |
+| AT-P1 … AT-P13 | 2026-10-19 | – | 2.7 | accepted | P5 confirmed as implemented by Patrick Stähle |
+| AT-M1 … AT-M5 | 2026-10-19 | – | 2.7 | accepted | P6 confirmed as implemented by Patrick Stähle |
