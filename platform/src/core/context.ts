@@ -1,10 +1,10 @@
 import type { Ports } from "./ports";
 
-/** Who calls. PL0 knows only anonymous callers; users and agent tokens come with PL1 / PL4. */
+/** Who calls. Users sign in with session tokens (PL1); agent tokens for AI clients come with PL4. */
 export type Actor =
   | { kind: "anonymous" }
-  | { kind: "user"; userId: string }
-  | { kind: "agent"; userId: string; clientId: string };
+  | { kind: "user"; userId: string; tokenId: string }
+  | { kind: "agent"; userId: string; tokenId: string; clientId: string };
 
 /** Everything a use case gets besides its input. The same for every front door. */
 export type Ctx = {
@@ -14,5 +14,6 @@ export type Ctx = {
   scopes: readonly string[];
   /** which front door the call came through */
   via: "rest" | "mcp" | "internal";
+  client: { ip?: string; userAgent?: string };
   ports: Ports;
 };

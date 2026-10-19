@@ -18,6 +18,8 @@ export const invalidInput = (detail: string, extra: Record<string, unknown> = {}
 export const unauthorized = () => new AppError(401, "unauthorized", "Sign in to do this.");
 export const forbidden = (detail = "Not allowed.") => new AppError(403, "forbidden", detail);
 export const notFound = (detail = "Not found.") => new AppError(404, "not_found", detail);
+export const conflict = (detail: string) => new AppError(409, "conflict", detail);
+export const tooManyRequests = () => new AppError(429, "too_many_requests", "Too many requests. Try again later.");
 
 /** RFC 9457 problem details. */
 export function toProblem(error: AppError, instance?: string) {

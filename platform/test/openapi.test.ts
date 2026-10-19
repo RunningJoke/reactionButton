@@ -18,3 +18,13 @@ describe("OpenAPI", () => {
     expect(parse(file)).toEqual(JSON.parse(JSON.stringify(doc)));
   });
 });
+
+describe("OpenAPI security", () => {
+  it("documents 401 / 403 for every operation that needs a scope", () => {
+    for (const path of Object.values(buildOpenApi().paths)) {
+      for (const op of Object.values(path) as { operationId: string; security?: unknown; responses: Record<string, unknown> }[]) {
+        if (op.security) expect(Object.keys(op.responses), op.operationId).toEqual(expect.arrayContaining(["401", "403"]));
+      }
+    }
+  });
+});

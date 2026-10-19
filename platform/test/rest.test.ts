@@ -1,19 +1,24 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROGRAM_FORMAT } from "@reactpod/program-model";
-import { describe, expect, it } from "vitest";
-import { program, testApp } from "./helpers";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { program, testEnv, type TestEnv } from "./helpers";
 
-const app = testApp();
+let env: TestEnv;
+beforeAll(async () => {
+  env = await testEnv();
+});
+afterAll(() => env.close());
+const request = (path: string, init?: RequestInit) => env.app.request(path, init);
 const post = (path: string, body: unknown) =>
-  app.request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
 describe("REST", () => {
   it("GET /v1/meta tells version, program format and features", async () => {
-    const res = await app.request("/v1/meta");
+    const res = await request("/v1/meta");
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ api: "v1", programFormat: PROGRAM_FORMAT, features: ["validate"] });
+    expect(body).toMatchObject({ api: "v1", programFormat: PROGRAM_FORMAT, features: expect.arrayContaining(["validate", "accounts", "orgs"]) });
   });
 
   it("validates a valid program", async () => {
@@ -44,18 +49,18 @@ describe("REST", () => {
   });
 
   it("answers unknown routes with 404 problem+json", async () => {
-    const res = await app.request("/v1/nothing");
+    const res = await request("/v1/nothing");
     expect(res.status).toBe(404);
     expect(await res.json()).toMatchObject({ title: "not_found" });
   });
 
   it("allows the app origin via CORS", async () => {
-    const res = await app.request("/v1/meta", { headers: { Origin: "http://localhost:5173" } });
+    const res = await request("/v1/meta", { headers: { Origin: "http://localhost:5173" } });
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:5173");
   });
 
   it("has health checks", async () => {
-    expect(await (await app.request("/healthz")).json()).toEqual({ ok: true });
-    expect(await (await app.request("/readyz")).json()).toEqual({ ok: true, db: "none" });
+    expect(await (await request("/healthz")).json()).toEqual({ ok: true });
+    expect(await (await request("/readyz")).json()).toEqual({ ok: true, db: "up" });
   });
 });
