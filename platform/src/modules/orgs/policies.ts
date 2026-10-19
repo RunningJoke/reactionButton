@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Tx } from "../../adapters/db";
 import { userId } from "../../core/auth";
 import type { Ctx } from "../../core/context";
-import { forbidden, notFound } from "../../core/errors";
-import { memberships, organizations, type Role } from "./schema";
+import { forbidden, invalidInput, notFound } from "../../core/errors";
+import { memberships, organizations, teams, type Role } from "./schema";
 
 const RANK: Record<Role, number> = { owner: 5, admin: 4, coach: 3, athlete: 2, viewer: 1 };
 
@@ -40,4 +40,11 @@ export function seesTeams(member: Member, teamIds: readonly string[]): boolean {
 
 export function requireClub(member: Member): void {
   if (member.orgKind !== "club") throw forbidden("Only possible in a club, not in a personal space.");
+}
+
+/** All of `teamIds` must be teams of the club. */
+export async function requireTeamsOfOrg(tx: Tx, orgId: string, teamIds: readonly string[]): Promise<void> {
+  if (teamIds.length === 0) return;
+  const found = await tx.select({ id: teams.id }).from(teams).where(and(eq(teams.orgId, orgId), inArray(teams.id, [...teamIds])));
+  if (found.length !== new Set(teamIds).size) throw invalidInput("Unknown team in teamIds.");
 }

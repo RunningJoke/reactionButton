@@ -41,5 +41,6 @@ export async function authenticate(
     row.kind === "agent"
       ? { kind: "agent", userId: row.userId, tokenId: row.id, clientId: row.label }
       : { kind: "user", userId: row.userId, tokenId: row.id };
-  return { actor, scopes: row.scopes };
+  // sessions always carry every scope, also scopes added after the token was issued
+  return { actor, scopes: row.kind === "session" ? [...SCOPES] : row.scopes };
 }

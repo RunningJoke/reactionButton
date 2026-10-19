@@ -2,6 +2,7 @@
 export * from "./blockTypes";
 export * from "./colors";
 export * from "./format";
+export * from "./jsonSchema";
 export * from "./limits";
 export * from "./program";
 export * from "./utf8";

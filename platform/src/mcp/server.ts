@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { BLOCK_TYPES, buildProgramSchema, ISSUE_CODES, PROGRAM_FORMAT } from "@reactpod/program-model";
 import pkg from "../../package.json" with { type: "json" };
 import type { Ctx } from "../core/context";
 import { AppError } from "../core/errors";
@@ -20,6 +21,7 @@ export function createMcpServer(ctx: Omit<Ctx, "via">): McpServer {
     },
   );
   const mcpCtx: Ctx = { ...ctx, via: "mcp" };
+  registerResources(server);
   for (const useCase of useCases) {
     if (useCase.agent === "deny") continue;
     server.registerTool(
@@ -44,4 +46,32 @@ export function createMcpServer(ctx: Omit<Ctx, "via">): McpServer {
     );
   }
   return server;
+}
+
+const json = (uri: URL, value: unknown) => ({
+  contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(value, null, 2) }],
+});
+
+/** Reference material for writing programs (spec §7.2). */
+function registerResources(server: McpServer) {
+  server.registerResource(
+    "program-schema",
+    "reactpod://spec/program.schema.json",
+    {
+      title: "Program JSON Schema",
+      description: `JSON Schema of a ReactPod program file (program format ${PROGRAM_FORMAT}). Check results with validate_program.`,
+      mimeType: "application/json",
+    },
+    async (uri) => json(uri, buildProgramSchema()),
+  );
+  server.registerResource(
+    "block-types",
+    "reactpod://spec/block-types.json",
+    {
+      title: "Block types",
+      description: "Every block type with its ports (in firmware order), fields, defaults and whether it waits.",
+      mimeType: "application/json",
+    },
+    async (uri) => json(uri, { programFormat: PROGRAM_FORMAT, blockTypes: BLOCK_TYPES, issueCodes: ISSUE_CODES }),
+  );
 }

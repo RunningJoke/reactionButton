@@ -14,6 +14,9 @@ tags:
   - name: orgs
   - name: athletes
   - name: audit
+  - name: presets
+  - name: sets
+  - name: reports
 paths:
   /v1/meta:
     get:
@@ -2773,6 +2776,3385 @@ paths:
         "403":
           description: Not allowed
           content: *a29
+  /v1/programs:
+    get:
+      operationId: search_programs
+      summary: Search programs
+      description: "Finds programs: public ones, and those of the caller's clubs. Filter by text, tags, number of pods or club. Without sign-in only public programs are found."
+      tags:
+        - programs
+      x-agent: allow
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            description: text in title or description
+            type: string
+            maxLength: 100
+        - name: tags
+          in: query
+          required: false
+          schema:
+            description: comma-separated; programs with any of them
+            type: string
+            maxLength: 200
+        - name: pods
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 8
+        - name: orgId
+          in: query
+          required: false
+          schema:
+            description: only programs of this club
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: sort
+          in: query
+          required: false
+          schema:
+            default: new
+            type: string
+            enum:
+              - new
+              - rating
+              - title
+        - name: offset
+          in: query
+          required: false
+          schema:
+            default: 0
+            type: integer
+            minimum: 0
+            maximum: 10000
+        - name: limit
+          in: query
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  programs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        orgId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        pods:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                          description: pods the program needs
+                        language:
+                          type: string
+                        licence:
+                          type: string
+                          enum:
+                            - CC-BY-4.0
+                            - CC0-1.0
+                        visibility:
+                          type: string
+                          enum:
+                            - private
+                            - team
+                            - org
+                            - public
+                        teamIds:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        forkOf:
+                          anyOf:
+                            - type: object
+                              properties:
+                                programId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                revision:
+                                  type: integer
+                                  minimum: -9007199254740991
+                                  maximum: 9007199254740991
+                                title:
+                                  type: string
+                              required:
+                                - programId
+                                - revision
+                                - title
+                              additionalProperties: false
+                            - type: "null"
+                          description: the program this one was copied from (attribution)
+                        latestRevision:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        publishedRevision:
+                          anyOf:
+                            - type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                            - type: "null"
+                        rating:
+                          type: object
+                          properties:
+                            average:
+                              type:
+                                - number
+                                - "null"
+                            count:
+                              type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                          required:
+                            - average
+                            - count
+                          additionalProperties: false
+                        canEdit:
+                          type: boolean
+                        createdAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                      required:
+                        - id
+                        - orgId
+                        - title
+                        - description
+                        - tags
+                        - pods
+                        - language
+                        - licence
+                        - visibility
+                        - teamIds
+                        - forkOf
+                        - latestRevision
+                        - publishedRevision
+                        - rating
+                        - canEdit
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                  more:
+                    type: boolean
+                required:
+                  - programs
+                  - more
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: create_program
+      summary: Save a new program (draft)
+      description: Saves a program file as the first draft revision of a new program in a club or the personal space. Drafts may have validation errors; publish_revision needs an error-free revision and is done by a person. Includes are limited to the shipped library (/prog/lib/*). Returns the validation issues.
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orgId:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                path:
+                  type: string
+                  maxLength: 31
+                  description: pod path, e.g. /prog/sprint.json
+                text:
+                  type: string
+                  maxLength: 32768
+                  description: the program file as stored on the pod (JSON text)
+                title:
+                  description: "default: the program's name"
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                description:
+                  default: ""
+                  type: string
+                  maxLength: 2000
+                tags:
+                  default: []
+                  maxItems: 10
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 30
+                language:
+                  default: en
+                  type: string
+                  enum:
+                    - en
+                    - de
+                licence:
+                  default: CC-BY-4.0
+                  type: string
+                  enum:
+                    - CC-BY-4.0
+                    - CC0-1.0
+                visibility:
+                  default: private
+                  type: string
+                  enum:
+                    - private
+                    - team
+                    - org
+                    - public
+                teamIds:
+                  default: []
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                note:
+                  default: ""
+                  type: string
+                  maxLength: 500
+              required:
+                - orgId
+                - path
+                - text
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  program:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      orgId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      pods:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                        description: pods the program needs
+                      language:
+                        type: string
+                      licence:
+                        type: string
+                        enum:
+                          - CC-BY-4.0
+                          - CC0-1.0
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - team
+                          - org
+                          - public
+                      teamIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      forkOf:
+                        anyOf:
+                          - type: object
+                            properties:
+                              programId:
+                                type: string
+                                format: uuid
+                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              revision:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              title:
+                                type: string
+                            required:
+                              - programId
+                              - revision
+                              - title
+                            additionalProperties: false
+                          - type: "null"
+                        description: the program this one was copied from (attribution)
+                      latestRevision:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      publishedRevision:
+                        anyOf:
+                          - type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                          - type: "null"
+                      rating:
+                        type: object
+                        properties:
+                          average:
+                            type:
+                              - number
+                              - "null"
+                          count:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                        required:
+                          - average
+                          - count
+                        additionalProperties: false
+                      canEdit:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - orgId
+                      - title
+                      - description
+                      - tags
+                      - pods
+                      - language
+                      - licence
+                      - visibility
+                      - teamIds
+                      - forkOf
+                      - latestRevision
+                      - publishedRevision
+                      - rating
+                      - canEdit
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  revision:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      n:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      path:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - published
+                      errors:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      warnings:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      sha256:
+                        type: string
+                      note:
+                        type: string
+                      via:
+                        type: string
+                        description: rest or mcp (made by an AI client)
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - n
+                      - path
+                      - status
+                      - errors
+                      - warnings
+                      - sha256
+                      - note
+                      - via
+                      - createdAt
+                    additionalProperties: false
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        severity:
+                          type: string
+                          enum:
+                            - error
+                            - warning
+                        code:
+                          type: string
+                        file:
+                          type: string
+                        block:
+                          type: string
+                        field:
+                          type: string
+                        params:
+                          type: object
+                          propertyNames:
+                            type: string
+                          additionalProperties:
+                            type:
+                              - string
+                              - number
+                      required:
+                        - severity
+                        - code
+                        - file
+                      additionalProperties: false
+                required:
+                  - program
+                  - revision
+                  - issues
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a30
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a30
+        "403":
+          description: Not allowed
+          content: *a30
+  /v1/programs/{programId}:
+    get:
+      operationId: get_program
+      summary: Program with its file
+      description: "A program's details and the file of one revision (default: the published one; editors get the latest draft while nothing is published)."
+      tags:
+        - programs
+      x-agent: allow
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: revision
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  program:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      orgId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      pods:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                        description: pods the program needs
+                      language:
+                        type: string
+                      licence:
+                        type: string
+                        enum:
+                          - CC-BY-4.0
+                          - CC0-1.0
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - team
+                          - org
+                          - public
+                      teamIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      forkOf:
+                        anyOf:
+                          - type: object
+                            properties:
+                              programId:
+                                type: string
+                                format: uuid
+                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              revision:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              title:
+                                type: string
+                            required:
+                              - programId
+                              - revision
+                              - title
+                            additionalProperties: false
+                          - type: "null"
+                        description: the program this one was copied from (attribution)
+                      latestRevision:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      publishedRevision:
+                        anyOf:
+                          - type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                          - type: "null"
+                      rating:
+                        type: object
+                        properties:
+                          average:
+                            type:
+                              - number
+                              - "null"
+                          count:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                        required:
+                          - average
+                          - count
+                        additionalProperties: false
+                      canEdit:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - orgId
+                      - title
+                      - description
+                      - tags
+                      - pods
+                      - language
+                      - licence
+                      - visibility
+                      - teamIds
+                      - forkOf
+                      - latestRevision
+                      - publishedRevision
+                      - rating
+                      - canEdit
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  revision:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      n:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      path:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - published
+                      errors:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      warnings:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      sha256:
+                        type: string
+                      note:
+                        type: string
+                      via:
+                        type: string
+                        description: rest or mcp (made by an AI client)
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                      programFormat:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      text:
+                        type: string
+                      json:
+                        type: object
+                        propertyNames:
+                          type: string
+                        additionalProperties: {}
+                    required:
+                      - id
+                      - n
+                      - path
+                      - status
+                      - errors
+                      - warnings
+                      - sha256
+                      - note
+                      - via
+                      - createdAt
+                      - programFormat
+                      - text
+                      - json
+                    additionalProperties: false
+                required:
+                  - program
+                  - revision
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: update_program
+      summary: Change program details
+      description: Title, description, tags, language, licence and who can see it. Editors only.
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                description:
+                  type: string
+                  maxLength: 2000
+                tags:
+                  maxItems: 10
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 30
+                language:
+                  type: string
+                  enum:
+                    - en
+                    - de
+                licence:
+                  type: string
+                  enum:
+                    - CC-BY-4.0
+                    - CC0-1.0
+                visibility:
+                  type: string
+                  enum:
+                    - private
+                    - team
+                    - org
+                    - public
+                teamIds:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  pods:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                    description: pods the program needs
+                  language:
+                    type: string
+                  licence:
+                    type: string
+                    enum:
+                      - CC-BY-4.0
+                      - CC0-1.0
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  forkOf:
+                    anyOf:
+                      - type: object
+                        properties:
+                          programId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                          revision:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                          title:
+                            type: string
+                        required:
+                          - programId
+                          - revision
+                          - title
+                        additionalProperties: false
+                      - type: "null"
+                    description: the program this one was copied from (attribution)
+                  latestRevision:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  publishedRevision:
+                    anyOf:
+                      - type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      - type: "null"
+                  rating:
+                    type: object
+                    properties:
+                      average:
+                        type:
+                          - number
+                          - "null"
+                      count:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - average
+                      - count
+                    additionalProperties: false
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - title
+                  - description
+                  - tags
+                  - pods
+                  - language
+                  - licence
+                  - visibility
+                  - teamIds
+                  - forkOf
+                  - latestRevision
+                  - publishedRevision
+                  - rating
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a31
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a31
+        "403":
+          description: Not allowed
+          content: *a31
+    delete:
+      operationId: delete_program
+      summary: Delete a program
+      description: Removes a program from search and its club. Presets and sets that use its revisions keep working.
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                required:
+                  - ok
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a32
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a32
+        "403":
+          description: Not allowed
+          content: *a32
+  /v1/programs/{programId}/revisions:
+    get:
+      operationId: list_revisions
+      summary: Revisions of a program
+      description: All saved versions, newest first. Readers see published revisions, editors also drafts.
+      tags:
+        - programs
+      x-agent: allow
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        n:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        path:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - published
+                        errors:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        warnings:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        sha256:
+                          type: string
+                        note:
+                          type: string
+                        via:
+                          type: string
+                          description: rest or mcp (made by an AI client)
+                        createdAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                      required:
+                        - id
+                        - n
+                        - path
+                        - status
+                        - errors
+                        - warnings
+                        - sha256
+                        - note
+                        - via
+                        - createdAt
+                      additionalProperties: false
+                required:
+                  - revisions
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: save_revision
+      summary: Save a new revision (draft)
+      description: Saves a changed program file as the next draft revision. Editors of the program only.
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: draft
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  maxLength: 31
+                  description: pod path, e.g. /prog/sprint.json
+                text:
+                  type: string
+                  maxLength: 32768
+                  description: the program file as stored on the pod (JSON text)
+                note:
+                  default: ""
+                  type: string
+                  maxLength: 500
+              required:
+                - path
+                - text
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  program:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      orgId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      pods:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                        description: pods the program needs
+                      language:
+                        type: string
+                      licence:
+                        type: string
+                        enum:
+                          - CC-BY-4.0
+                          - CC0-1.0
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - team
+                          - org
+                          - public
+                      teamIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      forkOf:
+                        anyOf:
+                          - type: object
+                            properties:
+                              programId:
+                                type: string
+                                format: uuid
+                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              revision:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              title:
+                                type: string
+                            required:
+                              - programId
+                              - revision
+                              - title
+                            additionalProperties: false
+                          - type: "null"
+                        description: the program this one was copied from (attribution)
+                      latestRevision:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      publishedRevision:
+                        anyOf:
+                          - type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                          - type: "null"
+                      rating:
+                        type: object
+                        properties:
+                          average:
+                            type:
+                              - number
+                              - "null"
+                          count:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                        required:
+                          - average
+                          - count
+                        additionalProperties: false
+                      canEdit:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - orgId
+                      - title
+                      - description
+                      - tags
+                      - pods
+                      - language
+                      - licence
+                      - visibility
+                      - teamIds
+                      - forkOf
+                      - latestRevision
+                      - publishedRevision
+                      - rating
+                      - canEdit
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  revision:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      n:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      path:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - published
+                      errors:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      warnings:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      sha256:
+                        type: string
+                      note:
+                        type: string
+                      via:
+                        type: string
+                        description: rest or mcp (made by an AI client)
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - n
+                      - path
+                      - status
+                      - errors
+                      - warnings
+                      - sha256
+                      - note
+                      - via
+                      - createdAt
+                    additionalProperties: false
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        severity:
+                          type: string
+                          enum:
+                            - error
+                            - warning
+                        code:
+                          type: string
+                        file:
+                          type: string
+                        block:
+                          type: string
+                        field:
+                          type: string
+                        params:
+                          type: object
+                          propertyNames:
+                            type: string
+                          additionalProperties:
+                            type:
+                              - string
+                              - number
+                      required:
+                        - severity
+                        - code
+                        - file
+                      additionalProperties: false
+                required:
+                  - program
+                  - revision
+                  - issues
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a33
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a33
+        "403":
+          description: Not allowed
+          content: *a33
+  /v1/programs/{programId}/revisions/{n}/publish:
+    post:
+      operationId: publish_revision
+      summary: Publish a revision
+      description: Makes a draft revision the published version that readers get. Only revisions without validation errors. Done by a person, not by AI clients.
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: n
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  program:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      orgId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      pods:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                        description: pods the program needs
+                      language:
+                        type: string
+                      licence:
+                        type: string
+                        enum:
+                          - CC-BY-4.0
+                          - CC0-1.0
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - team
+                          - org
+                          - public
+                      teamIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      forkOf:
+                        anyOf:
+                          - type: object
+                            properties:
+                              programId:
+                                type: string
+                                format: uuid
+                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              revision:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              title:
+                                type: string
+                            required:
+                              - programId
+                              - revision
+                              - title
+                            additionalProperties: false
+                          - type: "null"
+                        description: the program this one was copied from (attribution)
+                      latestRevision:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      publishedRevision:
+                        anyOf:
+                          - type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                          - type: "null"
+                      rating:
+                        type: object
+                        properties:
+                          average:
+                            type:
+                              - number
+                              - "null"
+                          count:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                        required:
+                          - average
+                          - count
+                        additionalProperties: false
+                      canEdit:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - orgId
+                      - title
+                      - description
+                      - tags
+                      - pods
+                      - language
+                      - licence
+                      - visibility
+                      - teamIds
+                      - forkOf
+                      - latestRevision
+                      - publishedRevision
+                      - rating
+                      - canEdit
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                required:
+                  - program
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a34
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a34
+        "403":
+          description: Not allowed
+          content: *a34
+  /v1/programs/{programId}/fork:
+    post:
+      operationId: fork_program
+      summary: Copy a program (fork)
+      description: Copies a revision of a program you can read into a club or your personal space as a new private draft. The copy links to the original (attribution, CC BY).
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: draft
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orgId:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  description: where the copy goes
+                revision:
+                  description: "default: the published revision"
+                  type: integer
+                  minimum: 1
+                  maximum: 9007199254740991
+              required:
+                - orgId
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  program:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      orgId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      pods:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                        description: pods the program needs
+                      language:
+                        type: string
+                      licence:
+                        type: string
+                        enum:
+                          - CC-BY-4.0
+                          - CC0-1.0
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - team
+                          - org
+                          - public
+                      teamIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      forkOf:
+                        anyOf:
+                          - type: object
+                            properties:
+                              programId:
+                                type: string
+                                format: uuid
+                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              revision:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              title:
+                                type: string
+                            required:
+                              - programId
+                              - revision
+                              - title
+                            additionalProperties: false
+                          - type: "null"
+                        description: the program this one was copied from (attribution)
+                      latestRevision:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      publishedRevision:
+                        anyOf:
+                          - type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                          - type: "null"
+                      rating:
+                        type: object
+                        properties:
+                          average:
+                            type:
+                              - number
+                              - "null"
+                          count:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                        required:
+                          - average
+                          - count
+                        additionalProperties: false
+                      canEdit:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - orgId
+                      - title
+                      - description
+                      - tags
+                      - pods
+                      - language
+                      - licence
+                      - visibility
+                      - teamIds
+                      - forkOf
+                      - latestRevision
+                      - publishedRevision
+                      - rating
+                      - canEdit
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  revision:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      n:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      path:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - published
+                      errors:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      warnings:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      sha256:
+                        type: string
+                      note:
+                        type: string
+                      via:
+                        type: string
+                        description: rest or mcp (made by an AI client)
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                        description: ISO 8601 timestamp
+                    required:
+                      - id
+                      - n
+                      - path
+                      - status
+                      - errors
+                      - warnings
+                      - sha256
+                      - note
+                      - via
+                      - createdAt
+                    additionalProperties: false
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        severity:
+                          type: string
+                          enum:
+                            - error
+                            - warning
+                        code:
+                          type: string
+                        file:
+                          type: string
+                        block:
+                          type: string
+                        field:
+                          type: string
+                        params:
+                          type: object
+                          propertyNames:
+                            type: string
+                          additionalProperties:
+                            type:
+                              - string
+                              - number
+                      required:
+                        - severity
+                        - code
+                        - file
+                      additionalProperties: false
+                required:
+                  - program
+                  - revision
+                  - issues
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a35
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a35
+        "403":
+          description: Not allowed
+          content: *a35
+  /v1/programs/{programId}/rating:
+    put:
+      operationId: rate_program
+      summary: Rate a program
+      description: 1 to 5 stars for a published program; again to change. Not for your own programs.
+      tags:
+        - programs
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stars:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+              required:
+                - stars
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  average:
+                    type:
+                      - number
+                      - "null"
+                  count:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                required:
+                  - average
+                  - count
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a36
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a36
+        "403":
+          description: Not allowed
+          content: *a36
+  /v1/presets:
+    get:
+      operationId: list_presets
+      summary: Presets
+      description: Presets (named variable sets) the caller can see, optionally of one program or club.
+      tags:
+        - presets
+      x-agent: allow
+      parameters:
+        - name: programId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: orgId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: offset
+          in: query
+          required: false
+          schema:
+            default: 0
+            type: integer
+            minimum: 0
+            maximum: 9007199254740991
+        - name: limit
+          in: query
+          required: false
+          schema:
+            default: 50
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        orgId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        programId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        revision:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        name:
+                          type: string
+                        variables:
+                          type: object
+                          propertyNames:
+                            type: string
+                          additionalProperties:
+                            type: integer
+                            minimum: -9007199254740991
+                            maximum: 9007199254740991
+                        target:
+                          type: object
+                          properties:
+                            pods:
+                              type: integer
+                              minimum: 1
+                              maximum: 8
+                            ageGroup:
+                              type: string
+                              maxLength: 30
+                            level:
+                              type: string
+                              enum:
+                                - easy
+                                - medium
+                                - hard
+                          additionalProperties: false
+                        notes:
+                          type: string
+                        visibility:
+                          type: string
+                          enum:
+                            - private
+                            - team
+                            - org
+                            - public
+                        teamIds:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - ready
+                          description: draft = made by an AI client, a person marks it ready
+                        canEdit:
+                          type: boolean
+                        createdAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                      required:
+                        - id
+                        - orgId
+                        - programId
+                        - revision
+                        - name
+                        - variables
+                        - target
+                        - notes
+                        - visibility
+                        - teamIds
+                        - status
+                        - canEdit
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                  more:
+                    type: boolean
+                required:
+                  - presets
+                  - more
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: create_preset
+      summary: Create a preset
+      description: Saves a named set of variable values for a program revision (e.g. easier timing for U12). Only variables the program declares can be set. AI clients create drafts that a person marks ready.
+      tags:
+        - presets
+      security:
+        - bearer:
+            - programs:write
+      x-agent: draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orgId:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                programId:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                revision:
+                  description: "default: the published revision"
+                  type: integer
+                  minimum: 1
+                  maximum: 9007199254740991
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                variables:
+                  type: object
+                  propertyNames:
+                    type: string
+                    pattern: ^[A-Za-z_][A-Za-z0-9_]*$
+                  additionalProperties:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                target:
+                  default: {}
+                  type: object
+                  properties:
+                    pods:
+                      type: integer
+                      minimum: 1
+                      maximum: 8
+                    ageGroup:
+                      type: string
+                      maxLength: 30
+                    level:
+                      type: string
+                      enum:
+                        - easy
+                        - medium
+                        - hard
+                notes:
+                  default: ""
+                  type: string
+                  maxLength: 1000
+                visibility:
+                  default: private
+                  type: string
+                  enum:
+                    - private
+                    - team
+                    - org
+                    - public
+                teamIds:
+                  default: []
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              required:
+                - orgId
+                - programId
+                - name
+                - variables
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  programId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  revision:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  name:
+                    type: string
+                  variables:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: integer
+                      minimum: -9007199254740991
+                      maximum: 9007199254740991
+                  target:
+                    type: object
+                    properties:
+                      pods:
+                        type: integer
+                        minimum: 1
+                        maximum: 8
+                      ageGroup:
+                        type: string
+                        maxLength: 30
+                      level:
+                        type: string
+                        enum:
+                          - easy
+                          - medium
+                          - hard
+                    additionalProperties: false
+                  notes:
+                    type: string
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - ready
+                    description: draft = made by an AI client, a person marks it ready
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - programId
+                  - revision
+                  - name
+                  - variables
+                  - target
+                  - notes
+                  - visibility
+                  - teamIds
+                  - status
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a37
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a37
+        "403":
+          description: Not allowed
+          content: *a37
+  /v1/presets/{presetId}:
+    get:
+      operationId: get_preset
+      summary: One preset
+      description: A preset with its variables and program.
+      tags:
+        - presets
+      x-agent: allow
+      parameters:
+        - name: presetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  programId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  revision:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  name:
+                    type: string
+                  variables:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: integer
+                      minimum: -9007199254740991
+                      maximum: 9007199254740991
+                  target:
+                    type: object
+                    properties:
+                      pods:
+                        type: integer
+                        minimum: 1
+                        maximum: 8
+                      ageGroup:
+                        type: string
+                        maxLength: 30
+                      level:
+                        type: string
+                        enum:
+                          - easy
+                          - medium
+                          - hard
+                    additionalProperties: false
+                  notes:
+                    type: string
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - ready
+                    description: draft = made by an AI client, a person marks it ready
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - programId
+                  - revision
+                  - name
+                  - variables
+                  - target
+                  - notes
+                  - visibility
+                  - teamIds
+                  - status
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: update_preset
+      summary: Change a preset
+      description: "Name, variables, target, notes, visibility; `status: ready` confirms a draft made by an AI client."
+      tags:
+        - presets
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: presetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                variables:
+                  type: object
+                  propertyNames:
+                    type: string
+                    pattern: ^[A-Za-z_][A-Za-z0-9_]*$
+                  additionalProperties:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                target:
+                  type: object
+                  properties:
+                    pods:
+                      type: integer
+                      minimum: 1
+                      maximum: 8
+                    ageGroup:
+                      type: string
+                      maxLength: 30
+                    level:
+                      type: string
+                      enum:
+                        - easy
+                        - medium
+                        - hard
+                notes:
+                  type: string
+                  maxLength: 1000
+                visibility:
+                  type: string
+                  enum:
+                    - private
+                    - team
+                    - org
+                    - public
+                teamIds:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                status:
+                  type: string
+                  const: ready
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  programId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  revision:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  name:
+                    type: string
+                  variables:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: integer
+                      minimum: -9007199254740991
+                      maximum: 9007199254740991
+                  target:
+                    type: object
+                    properties:
+                      pods:
+                        type: integer
+                        minimum: 1
+                        maximum: 8
+                      ageGroup:
+                        type: string
+                        maxLength: 30
+                      level:
+                        type: string
+                        enum:
+                          - easy
+                          - medium
+                          - hard
+                    additionalProperties: false
+                  notes:
+                    type: string
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - ready
+                    description: draft = made by an AI client, a person marks it ready
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - programId
+                  - revision
+                  - name
+                  - variables
+                  - target
+                  - notes
+                  - visibility
+                  - teamIds
+                  - status
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a38
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a38
+        "403":
+          description: Not allowed
+          content: *a38
+    delete:
+      operationId: delete_preset
+      summary: Delete a preset
+      description: Deletes a preset that no set uses.
+      tags:
+        - presets
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: presetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                required:
+                  - ok
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a39
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a39
+        "403":
+          description: Not allowed
+          content: *a39
+  /v1/presets/{presetId}/program:
+    get:
+      operationId: render_preset
+      summary: Program file of a preset
+      description: The program file with the preset's variables applied (named after the preset), ready to push to a pod.
+      tags:
+        - presets
+      x-agent: allow
+      parameters:
+        - name: presetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  text:
+                    type: string
+                required:
+                  - path
+                  - text
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /v1/sets:
+    get:
+      operationId: list_sets
+      summary: Sets
+      description: Sets (a menu with its programs) the caller can see, optionally of one club.
+      tags:
+        - sets
+      x-agent: allow
+      parameters:
+        - name: orgId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: offset
+          in: query
+          required: false
+          schema:
+            default: 0
+            type: integer
+            minimum: 0
+            maximum: 9007199254740991
+        - name: limit
+          in: query
+          required: false
+          schema:
+            default: 50
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        orgId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        visibility:
+                          type: string
+                          enum:
+                            - private
+                            - team
+                            - org
+                            - public
+                        teamIds:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - ready
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              position:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              programId:
+                                type: string
+                                format: uuid
+                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              revision:
+                                type: integer
+                                minimum: -9007199254740991
+                                maximum: 9007199254740991
+                              title:
+                                type: string
+                                description: program title, or the preset name
+                              presetId:
+                                anyOf:
+                                  - type: string
+                                    format: uuid
+                                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                  - type: "null"
+                            required:
+                              - position
+                              - programId
+                              - revision
+                              - title
+                              - presetId
+                            additionalProperties: false
+                        canEdit:
+                          type: boolean
+                        createdAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                          description: ISO 8601 timestamp
+                      required:
+                        - id
+                        - orgId
+                        - name
+                        - description
+                        - visibility
+                        - teamIds
+                        - status
+                        - items
+                        - canEdit
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                  more:
+                    type: boolean
+                required:
+                  - sets
+                  - more
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: create_set
+      summary: Create a set
+      description: Saves a menu of programs and presets as a set. AI clients create drafts that a person marks ready.
+      tags:
+        - sets
+      security:
+        - bearer:
+            - programs:write
+      x-agent: draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orgId:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                description:
+                  default: ""
+                  type: string
+                  maxLength: 1000
+                visibility:
+                  default: private
+                  type: string
+                  enum:
+                    - private
+                    - team
+                    - org
+                    - public
+                teamIds:
+                  default: []
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                items:
+                  maxItems: 30
+                  type: array
+                  items:
+                    anyOf:
+                      - type: object
+                        properties:
+                          programId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                          revision:
+                            type: integer
+                            minimum: 1
+                            maximum: 9007199254740991
+                        required:
+                          - programId
+                      - type: object
+                        properties:
+                          presetId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        required:
+                          - presetId
+                  description: "menu entries in order: a program (revision) or a preset"
+              required:
+                - orgId
+                - name
+                - items
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - ready
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        programId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        revision:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        title:
+                          type: string
+                          description: program title, or the preset name
+                        presetId:
+                          anyOf:
+                            - type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            - type: "null"
+                      required:
+                        - position
+                        - programId
+                        - revision
+                        - title
+                        - presetId
+                      additionalProperties: false
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - name
+                  - description
+                  - visibility
+                  - teamIds
+                  - status
+                  - items
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a40
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a40
+        "403":
+          description: Not allowed
+          content: *a40
+  /v1/sets/{setId}:
+    get:
+      operationId: get_set
+      summary: One set
+      description: A set with its menu entries.
+      tags:
+        - sets
+      x-agent: allow
+      parameters:
+        - name: setId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - ready
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        programId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        revision:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        title:
+                          type: string
+                          description: program title, or the preset name
+                        presetId:
+                          anyOf:
+                            - type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            - type: "null"
+                      required:
+                        - position
+                        - programId
+                        - revision
+                        - title
+                        - presetId
+                      additionalProperties: false
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - name
+                  - description
+                  - visibility
+                  - teamIds
+                  - status
+                  - items
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: update_set
+      summary: Change a set
+      description: "Name, description, visibility, menu entries; `status: ready` confirms a draft made by an AI client."
+      tags:
+        - sets
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: setId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                description:
+                  type: string
+                  maxLength: 1000
+                visibility:
+                  type: string
+                  enum:
+                    - private
+                    - team
+                    - org
+                    - public
+                teamIds:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                status:
+                  type: string
+                  const: ready
+                items:
+                  maxItems: 30
+                  type: array
+                  items:
+                    anyOf:
+                      - type: object
+                        properties:
+                          programId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                          revision:
+                            type: integer
+                            minimum: 1
+                            maximum: 9007199254740991
+                        required:
+                          - programId
+                      - type: object
+                        properties:
+                          presetId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        required:
+                          - presetId
+                  description: "menu entries in order: a program (revision) or a preset"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  orgId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  visibility:
+                    type: string
+                    enum:
+                      - private
+                      - team
+                      - org
+                      - public
+                  teamIds:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - ready
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        programId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        revision:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        title:
+                          type: string
+                          description: program title, or the preset name
+                        presetId:
+                          anyOf:
+                            - type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            - type: "null"
+                      required:
+                        - position
+                        - programId
+                        - revision
+                        - title
+                        - presetId
+                      additionalProperties: false
+                  canEdit:
+                    type: boolean
+                  createdAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+                    description: ISO 8601 timestamp
+                required:
+                  - id
+                  - orgId
+                  - name
+                  - description
+                  - visibility
+                  - teamIds
+                  - status
+                  - items
+                  - canEdit
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a41
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a41
+        "403":
+          description: Not allowed
+          content: *a41
+    delete:
+      operationId: delete_set
+      summary: Delete a set
+      description: Deletes a set (not its programs or presets).
+      tags:
+        - sets
+      security:
+        - bearer:
+            - programs:write
+      x-agent: deny
+      parameters:
+        - name: setId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                required:
+                  - ok
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a42
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a42
+        "403":
+          description: Not allowed
+          content: *a42
+  /v1/sets/{setId}/files:
+    get:
+      operationId: export_set
+      summary: Files of a set
+      description: "The pod files of a set: /programs.json (the menu) and every program, presets applied, plus the library parts they include – the layout of firmware/data and of the app's set .zip. Entries the caller can no longer read are skipped."
+      tags:
+        - sets
+      x-agent: allow
+      parameters:
+        - name: setId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: string
+                    description: store path → file text
+                  skipped:
+                    type: array
+                    items:
+                      type: integer
+                      minimum: -9007199254740991
+                      maximum: 9007199254740991
+                    description: positions left out
+                required:
+                  - files
+                  - skipped
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /v1/reports:
+    post:
+      operationId: report_content
+      summary: Report content
+      description: Reports a program, preset or set (abuse, broken, licence). Platform admins review reports.
+      tags:
+        - reports
+      security:
+        - bearer:
+            - programs:read
+      x-agent: deny
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resourceType:
+                  type: string
+                  enum:
+                    - program
+                    - preset
+                    - set
+                resourceId:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                reason:
+                  type: string
+                  enum:
+                    - abuse
+                    - broken
+                    - licence
+                    - other
+                text:
+                  default: ""
+                  type: string
+                  maxLength: 2000
+              required:
+                - resourceType
+                - resourceId
+                - reason
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                required:
+                  - id
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a43
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a43
+        "403":
+          description: Not allowed
+          content: *a43
 components:
   schemas:
     Problem:

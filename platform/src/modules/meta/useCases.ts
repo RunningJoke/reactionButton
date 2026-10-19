@@ -12,7 +12,7 @@ import pkg from "../../../package.json" with { type: "json" };
 import { defineUseCase } from "../../core/useCase";
 
 /** Features the API offers; clients check them like the app checks `info` on a pod (spec §5.4). */
-export const FEATURES = ["validate", "accounts", "orgs"] as const;
+export const FEATURES = ["validate", "accounts", "orgs", "programs", "presets", "sets"] as const;
 
 export const getMeta = defineUseCase({
   name: "get_meta",

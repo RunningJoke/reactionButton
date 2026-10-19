@@ -2,8 +2,17 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import type { Ctx } from "./context";
 import { unauthorized } from "./errors";
 
-/** Scopes of the API (spec §6). Session tokens of the app get all of them. */
-export const SCOPES = ["profile", "org:read", "org:write", "athletes:read", "athletes:write", "audit:read"] as const;
+/** Scopes of the API (spec §6). Session tokens of the app get all of them. `programs:*` covers programs, presets and sets. */
+export const SCOPES = [
+  "profile",
+  "org:read",
+  "org:write",
+  "athletes:read",
+  "athletes:write",
+  "audit:read",
+  "programs:read",
+  "programs:write",
+] as const;
 export type Scope = (typeof SCOPES)[number];
 
 /** Tokens and codes are stored as SHA-256 only. */

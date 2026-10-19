@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Tx } from "../../adapters/db";
 import { hashToken, newToken, userId } from "../../core/auth";
@@ -10,7 +10,7 @@ import { defineUseCase } from "../../core/useCase";
 import { recordAudit } from "../audit/record";
 import { users } from "../identity/schema";
 import { appLink, inviteMail } from "../identity/mails";
-import { atLeast, coversTeams, requireClub, requireMember, seesTeams, type Member } from "./policies";
+import { atLeast, coversTeams, requireClub, requireMember, requireTeamsOfOrg, seesTeams, type Member } from "./policies";
 import { athletes, invites, memberships, organizations, ROLES, teams, type Role } from "./schema";
 
 const RoleSchema = z.enum(ROLES);
@@ -164,12 +164,6 @@ async function ownerCount(tx: Tx, orgId: string): Promise<number> {
     .from(memberships)
     .where(and(eq(memberships.orgId, orgId), eq(memberships.role, "owner")));
   return row?.n ?? 0;
-}
-
-async function requireTeamsOfOrg(tx: Tx, orgId: string, teamIds: readonly string[]): Promise<void> {
-  if (teamIds.length === 0) return;
-  const found = await tx.select({ id: teams.id }).from(teams).where(and(eq(teams.orgId, orgId), inArray(teams.id, [...teamIds])));
-  if (found.length !== new Set(teamIds).size) throw invalidInput("Unknown team in teamIds.");
 }
 
 async function loadMember(tx: Tx, orgId: string, uid: string) {

@@ -2,3 +2,4 @@
 export * from "../modules/audit/schema";
 export * from "../modules/identity/schema";
 export * from "../modules/orgs/schema";
+export * from "../modules/catalog/schema";
