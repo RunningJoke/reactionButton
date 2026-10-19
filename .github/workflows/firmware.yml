@@ -32,7 +32,7 @@ jobs:
       - name: Flash usage
         run: |
           bin=$(stat -c %s firmware/.pio/build/NewBoard/firmware.bin)
-          slot=$(awk -F, '$3 ~ /ota_0|factory/ {gsub(/ /,"",$5); print strtonum($5); exit}' firmware/partitions.csv)
+          slot=$(( $(awk -F'[,[:space:]]+' '$3 == "ota_0" || $3 == "factory" { print $5; exit }' firmware/partitions.csv) ))
           echo "firmware.bin: $bin bytes of $slot ($((100 * bin / slot)) % of the app slot)" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: pio run -d firmware -e NewBoard -t buildfs
       - uses: actions/upload-artifact@v4
