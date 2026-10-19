@@ -51,6 +51,9 @@ Needs firmware ≥ 2.1 (change request CR-0, `doc/changerequest/config-app-api.m
 | AT-P8 | Upload a program with umlauts in name / description (`Übung`) | CRC ok, file identical when read back |
 | AT-P9 | Restore defaults on a pod with a user program | default menu restored, user program file still present (`list`) |
 | AT-P10 | Delete a file via Settings → Advanced | needs the extra confirmation, library and menu are not offered |
+| AT-P11 | Programs → Export set, then on another browser / after clearing site data: Import set, push | the same programs and menu arrive on the pod; files identical (`list` CRCs) |
+| AT-P12 | PIN set over USB, push over BLE | the push dialog asks for the PIN; a wrong PIN stops with "Wrong PIN" before anything is written |
+| AT-P13 | Push a program with an unknown block type to a pod (firmware ≥ 2.4, e.g. edit the JSON and import it) | the pod's dry run reports it, "Nothing was changed", `list` unchanged |
 
 ## M – Simulator (no hardware needed, compare with hardware)
 

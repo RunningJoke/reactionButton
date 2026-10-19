@@ -54,6 +54,7 @@ export function viewUrl(source: SourceId, path: string): string {
   return `/programs/view?source=${source}&path=${encodeURIComponent(path)}`;
 }
 
-export function editorUrl(id: string): string {
-  return `/editor?id=${encodeURIComponent(id)}`;
+/** The editor with a program open, optionally with a block selected (e.g. from a push error). */
+export function editorUrl(id: string, block?: string): string {
+  return `/editor?id=${encodeURIComponent(id)}${block ? `&block=${encodeURIComponent(block)}` : ""}`;
 }

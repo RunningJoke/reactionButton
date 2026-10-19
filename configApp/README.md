@@ -106,7 +106,8 @@ configApp/
 │   │   ├── client.ts            PodClient: one request at a time, ids, timeouts, resend on "overflow"
 │   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC check both ways
 │   │   ├── session.ts           connection state for the UI: connect, info / status / list, read-only role, log
-│   │   └── sync.ts              compare local vs pod, push plan, push execution (P5)
+│   │   ├── sync.ts              compare local vs pod, push / restore plan, push execution
+│   │   └── syncActions.ts       sync for the UI: states of the connected set, keep pod / mine, push, delete
 │   ├── store/                   local persistence (Storage interface + IndexedDB adapter), workspace (local programs + menu)
 │   ├── editor/                  column view + layout, editing operations (ops.ts), undo / redo, inspector, fields, palette, program settings
 │   ├── programs/                catalog, sources (pod / shipped / local), program actions (new, edit copy, export, delete)
@@ -155,7 +156,7 @@ interface PodClient {                       // API level, on top of Transport
 interface Storage {                         // local programs, swappable for a remote DB later
   listPrograms(); saveProgram(p); deleteProgram(id);
   getMenu(); saveMenu(paths);               // the local menu (§6)
-  getSyncState(setId); saveSyncState(setId, state);   // P5
+  getSyncState(setId); saveSyncState(state);          // per set, in IndexedDB "meta" as sync:<setId>
 }
 ```
 
@@ -223,7 +224,10 @@ type SyncState = {            // per pod set (setId), remembered after each sync
   program that is not local makes a local copy (same path).
 - Every change is saved to IndexedDB at once; undo / redo (100 steps) lives in memory per open program.
 - Import / export: a single program `.json` (v1). A whole set as a `.zip`
-  (`programs.json` + `prog/…`, the same layout as `data/`) follows with P5.
+  (`programs.json` + `prog/…`, the same layout as `data/`): **Export set** on the Programs tab
+  writes the local menu, its programs with their includes and every local program. **Import set**
+  takes the menu and the programs (library parts are ignored); local programs with the same path
+  are replaced after a confirmation. A single top folder in the archive is accepted.
 
 ---
 
@@ -407,6 +411,25 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 
 **Push never deletes** (decision 8). Files on the pod that the app does not know stay.
 
+Implementation notes (`src/pod/sync.ts`):
+- A pod file counts as **in sync** when its CRC equals the app's formatted text *or* its JSON is
+  equal (key order and formatting ignored), so a pod copy that was never edited is not a change.
+- The **last common CRC** is remembered per set and path: after every upload, on "take over" /
+  "keep pod", on "keep mine" (the pod's current CRC, so the local file wins) and when a local
+  copy is made from a pod program. An untouched copy of a shipped program uses the shipped file.
+- The **menu** is the set being built (decision 11): a saved local menu that differs from the pod's
+  is pushed, unless the pod's menu changed since the last sync (then conflict). "Keep pod" for the
+  menu forgets the local menu, so the Menu tab follows the pod again.
+- With `features: validateInline` (firmware ≥ 2.4) every program is checked by the pod's loader
+  (dry run) **before** any program or the menu is written; library parts are uploaded first, because
+  the dry run reads includes from the store. Without it, `validate` runs after the upload only.
+- Menu entries the pod does not have are uploaded from the shipped programs, missing presets from
+  the shipped library. The plan lets the user deselect programs; conflicts and pod-newer files are
+  never pushed and are listed as skipped.
+- The sync state is saved after each file, so an interrupted push (busy, lost connection, wrong PIN)
+  shows the right states afterwards; pushing again finishes it.
+- With `info.pinRequired` the push dialog asks for the PIN (`auth`) before the first write.
+
 ### 9.4 Deleting and restoring defaults
 
 - Removing a program from the **menu** is a normal action (the file stays on the pod).
@@ -474,8 +497,8 @@ Using the remembered `SyncState` (last common CRC) the app can tell who changed 
 | P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
 | P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE ready for test with firmware 2.7 (AT-B*) |
 | P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | done |
-| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | built, review open |
-| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | open |
+| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | done |
+| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | built (demo pod), hardware tests open |
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | open |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](docs/acceptance-tests.md).

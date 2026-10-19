@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, Lock, MoreVertical, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow } from "lucide-react";
@@ -32,13 +32,24 @@ export function EditorPage() {
   const loaded = useWorkspace((s) => s.loaded);
   const programs = useWorkspace((s) => s.programs);
   const open = useEditor((s) => s.open);
+  const select = useEditor((s) => s.select);
   const current = useEditor((s) => s.doc);
   const id = params.get("id") ?? current?.id ?? lastOpenedProgram();
+  const block = params.get("block");
   const stored = programs.find((p) => p.id === id);
+  const selectedFromUrl = useRef<string | null>(null);
 
   useEffect(() => {
     if (stored) open(stored);
   }, [stored, open]);
+
+  // `&block=` (e.g. from a push error): select it once after the program is open
+  useEffect(() => {
+    const key = `${id}/${block}`;
+    if (!block || current?.id !== id || selectedFromUrl.current === key) return;
+    selectedFromUrl.current = key;
+    select(block);
+  }, [block, id, current?.id, select]);
 
   if (!loaded) return null;
   if (!stored) return <NoProgram />;

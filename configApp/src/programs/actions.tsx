@@ -7,6 +7,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { formatProgram } from "../model/format";
 import { newProgram } from "../editor/ops";
 import { usePodSession } from "../pod/session";
+import { rememberPodBase } from "../pod/syncActions";
 import type { ProgramDoc } from "../store/programStore";
 import { useWorkspace } from "../store/workspace";
 import { editorUrl } from "./sources";
@@ -26,6 +27,7 @@ export function useEditCopy() {
   return async (path: string, text: string, origin: "pod" | "default") => {
     const existing = programs.find((p) => p.path === path);
     const doc = existing ?? (await add(JSON.parse(text) as Record<string, unknown>, origin, { path }));
+    if (!existing && origin === "pod") await rememberPodBase(path);
     navigate(editorUrl(doc.id));
     return doc;
   };
@@ -37,7 +39,9 @@ export async function ensureLocal(path: string, text: string | undefined, origin
   const existing = programs.find((p) => p.path === path);
   if (existing) return existing;
   if (text === undefined) return undefined;
-  return add(JSON.parse(text) as Record<string, unknown>, origin, { path });
+  const doc = await add(JSON.parse(text) as Record<string, unknown>, origin, { path });
+  if (origin === "pod") await rememberPodBase(path);
+  return doc;
 }
 
 export function downloadProgram(doc: ProgramDoc) {

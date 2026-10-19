@@ -5,6 +5,7 @@ import { AlertTriangle, BookLock, ChevronRight, CircleAlert, CircleCheck, FileUp
 import { LedRing } from "../components/LedRing";
 import { buildCatalog, type CatalogEntry } from "../programs/catalog";
 import { NewProgramModal, useTakenPaths } from "../programs/actions";
+import { SetArchiveButtons } from "../programs/SetArchiveButtons";
 import { editorUrl, useProgramSource, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
 import { parseProgramText, useWorkspace } from "../store/workspace";
 import { usePodSession } from "../pod/session";
@@ -33,7 +34,10 @@ export function ProgramsPage() {
           <h2 className={styles.heading}>
             <FolderHeart size={16} aria-hidden /> {t("programs.mine")}
           </h2>
-          <ImportButton />
+          <div className={styles.headerActions}>
+            <ImportButton />
+            <SetArchiveButtons className={styles.textButton} errorClassName={styles.importError} />
+          </div>
         </div>
         {localCatalog.programs.length === 0 ? (
           <p className={page.muted}>{t("programs.mineEmpty")}</p>

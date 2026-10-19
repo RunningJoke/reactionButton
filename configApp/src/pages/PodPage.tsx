@@ -7,7 +7,10 @@ import { Modal, modalStyles } from "../components/Modal";
 import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "../model/limits";
 import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
 import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
+import type { SyncStatus } from "../pod/sync";
+import { useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
+import { SyncBadge, SyncSection } from "./PodSync";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
 
@@ -48,8 +51,10 @@ function Connected() {
   const session = usePodSession();
   const { info, list, role, kind } = session;
   const [renaming, setRenaming] = useState(false);
+  const states = useSyncStates();
   if (!info || !list) return null;
   const readOnly = isReadOnly(session);
+  const status = new Map(states?.map((s) => [s.path, s.status]));
 
   return (
     <>
@@ -91,7 +96,8 @@ function Connected() {
         )}
       </section>
 
-      <FileGroups list={list} />
+      <SyncSection states={states} readOnly={readOnly} />
+      <FileGroups list={list} status={status} />
       <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />
     </>
   );
@@ -196,7 +202,7 @@ function Fact({ label, value, mono, warn }: { label: string; value: string; mono
   );
 }
 
-function FileGroups({ list }: { list: ListResponse }) {
+function FileGroups({ list, status }: { list: ListResponse; status: ReadonlyMap<string, SyncStatus> }) {
   const { t } = useTranslation();
   const byPath = new Map(list.files.map((f) => [f.path, f]));
   const inMenu = new Set(list.menu);
@@ -215,7 +221,7 @@ function FileGroups({ list }: { list: ListResponse }) {
         ) : (
           <ol className={styles.files}>
             {menu.map(({ path, file }) => (
-              <FileRow key={path} path={path} file={file} />
+              <FileRow key={path} path={path} file={file} status={status.get(path)} />
             ))}
           </ol>
         )}
@@ -227,7 +233,7 @@ function FileGroups({ list }: { list: ListResponse }) {
           </h2>
           <ul className={styles.files}>
             {others.map((file) => (
-              <FileRow key={file.path} path={file.path} file={file} />
+              <FileRow key={file.path} path={file.path} file={file} status={status.get(file.path)} />
             ))}
           </ul>
         </section>
@@ -246,7 +252,7 @@ function FileGroups({ list }: { list: ListResponse }) {
   );
 }
 
-function FileRow({ path, file }: { path: string; file?: FileEntry }) {
+function FileRow({ path, file, status }: { path: string; file?: FileEntry; status?: SyncStatus }) {
   const { i18n, t } = useTranslation();
   return (
     <li className={styles.file}>
@@ -254,6 +260,7 @@ function FileRow({ path, file }: { path: string; file?: FileEntry }) {
         {file?.name !== undefined && <span className={styles.programName}>{file.name}</span>}
         {path}
       </span>
+      {status && <SyncBadge status={status} />}
       {file ? (
         <span className={styles.size}>{formatBytes(file.size, i18n.language)}</span>
       ) : (
