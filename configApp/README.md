@@ -1,6 +1,6 @@
 # ReactPod Config App – Specification
 
-Status: **agreed** (2026-10-18) · Branch: `feature/config-app` · Date: 2026-10-18
+Status: **agreed** (2026-10-18), P0–P6 accepted (2026-10-19) · Branch: `main` · Date: 2026-10-19
 
 The ReactPod Config App is a configuration tool for coaches and trainers, separate from
 the firmware. It connects to a ReactPod set, shows the block types and programs, lets the
@@ -519,8 +519,8 @@ Implementation notes (`src/pod/sync.ts`):
 | P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE ready for test with firmware 2.7 (AT-B*) |
 | P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | done |
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | done |
-| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | built (demo pod), hardware tests open |
-| P6 | Simulator | AT-M* pass, stepped run matches pod trace | built, AT-M1–M4 covered by unit tests, AT-M5 (pod trace) open |
+| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | done (accepted 2026-10-19) |
+| P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](docs/acceptance-tests.md).
 Requested firmware / API changes: [../doc/changerequest/config-app-api.md](../doc/changerequest/config-app-api.md).
