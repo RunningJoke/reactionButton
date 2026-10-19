@@ -1,0 +1,497 @@
+{
+  "app": {
+    "title": "ReactPod Config"
+  },
+  "nav": {
+    "pod": "Pod",
+    "programs": "Programme",
+    "editor": "Editor",
+    "simulate": "Simulation",
+    "menu": "Menü",
+    "settings": "Einstellungen",
+    "main": "Hauptnavigation"
+  },
+  "connection": {
+    "disconnected": "Nicht verbunden",
+    "connecting": "Verbinde…",
+    "connected": "Verbunden"
+  },
+  "placeholder": {
+    "comingIn": "Kommt in Phase {{phase}}"
+  },
+  "pod": {
+    "intro": "Mit einer Zentrale im Programmmenü verbinden.",
+    "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
+    "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",
+    "serialUnsupported": "USB braucht Chrome oder Edge auf einem Computer.",
+    "connect": {
+      "ble": "Bluetooth",
+      "bleHint": "Handy oder Computer, Zentrale im Programmmenü",
+      "serial": "USB-Kabel",
+      "serialHint": "Computer mit Chrome oder Edge, jeder Pod",
+      "simulated": "Demo-Pod",
+      "simulatedHint": "Die App ohne Pod ausprobieren"
+    },
+    "chooseDevice": "Den Pod im Browser-Dialog auswählen.",
+    "errors": {
+      "timeout": "Der Pod hat nicht geantwortet. Ist er im Programmmenü? Bluetooth braucht eine Firmware mit Änderung CR-0.",
+      "disconnected": "Die Verbindung wurde getrennt.",
+      "openFailed": "Der Anschluss ließ sich nicht öffnen. Nutzt ihn ein anderes Programm (z. B. ein serieller Monitor)?",
+      "notAllowed": "Der Browser hat den Zugriff nicht erlaubt.",
+      "busy": "Der Pod ist beschäftigt (Spiel oder Abgleich läuft). Zurück ins Programmmenü.",
+      "overflow": "Der Pod kam nicht hinterher. Bitte noch einmal versuchen.",
+      "unknown": "Etwas ist schiefgegangen."
+    },
+    "kind": {
+      "ble": "Bluetooth-Pod",
+      "serial": "USB-Pod",
+      "simulated": "Demo-Pod"
+    },
+    "role": {
+      "central": "Zentrale",
+      "peripheral": "Peripherie · nur lesen",
+      "booting": "Startet · nur lesen"
+    },
+    "refresh": "Aktualisieren",
+    "disconnect": "Trennen",
+    "firmware": "Firmware",
+    "setId": "Set",
+    "generation": "Speicherstand",
+    "free": "Frei",
+    "firmwareUnsupported": "Diese App ist für Firmware 2.x gemacht. Der Pod hat {{version}}; manches funktioniert evtl. nicht.",
+    "readOnly": "Programme können nur auf einer Zentrale geändert werden. Dieser Pod wird nur angezeigt.",
+    "groups": {
+      "menu": "Menü ({{count}})",
+      "other": "Weitere Programme ({{count}})",
+      "library": "Bibliothek ({{count}})"
+    },
+    "emptyMenu": "Das Menü ist leer.",
+    "missingFile": "fehlt",
+    "dialog": {
+      "title": "Pod-Verbindung",
+      "close": "Schließen"
+    },
+    "notConnected": "Kein Pod verbunden",
+    "connectButton": "Verbinden"
+  },
+  "programs": {
+    "onPod": "Auf dem Pod",
+    "shipped": "Mitgelieferte Programme",
+    "library": "Bibliothek",
+    "libraryHint": "Schreibgeschützte Teile, die Programme einbinden (Vorlage) oder kopieren (Muster).",
+    "connectHint": "Pod verbinden, um seine Programme zu sehen",
+    "reading": "Lese Dateien vom Pod… {{done}} von {{total}}",
+    "missingInMenu": "{{path}} steht im Menü, fehlt aber auf dem Pod",
+    "none": "Keine Programme.",
+    "menuPattern": "Menümuster",
+    "unchanged": "mitgeliefert",
+    "notInMenu": "nicht im Menü",
+    "pods_one": "{{count}} Pod",
+    "pods_other": "{{count}} Pods",
+    "podsTitle": "Benötigte Pods (Zentrale + Peripherie)",
+    "blocks_one": "{{count}} Block",
+    "blocks_other": "{{count}} Blöcke",
+    "errors_one": "{{count}} Fehler",
+    "errors_other": "{{count}} Fehler",
+    "warnings_one": "{{count}} Hinweis",
+    "warnings_other": "{{count}} Hinweise",
+    "valid": "Gültig",
+    "mine": "Meine Programme",
+    "mineEmpty": "Noch keine eigenen Programme. Mit + neu anlegen oder ein Programm öffnen und Bearbeiten tippen.",
+    "fromPod": "Kopie vom Pod",
+    "fromShipped": "Kopie mitgeliefert",
+    "import": "Importieren",
+    "importFailed": "{{file}} ist keine Programmdatei.",
+    "new": "Neues Programm",
+    "newTitle": "Neues Programm",
+    "duplicateTitle": "Programm duplizieren",
+    "duplicate": "Duplizieren",
+    "create": "Anlegen",
+    "copyOf": "Kopie von {{name}}",
+    "namePlaceholder": "z. B. Sprint 4 Pods",
+    "deleteTitle": "Programm löschen?",
+    "deleteText": "„{{name}}“ ({{path}}) wird auf diesem Gerät gelöscht. Programme auf dem Pod bleiben unverändert.",
+    "delete": "Programm löschen",
+    "export": "Datei exportieren"
+  },
+  "editor": {
+    "title": "Editor",
+    "intro": "Programme Block für Block bauen.",
+    "noProgram": "Kein Programm geöffnet",
+    "noProgramHint": "Neues Programm anlegen oder unter Programme eines öffnen und Bearbeiten tippen.",
+    "openProgram": "Aus Programme öffnen",
+    "untitled": "Programm ohne Namen",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "more": "Mehr",
+    "settings": "Programmeinstellungen",
+    "emptyProgram": "Dieses Programm hat noch keine Blöcke. Den ersten mit + hinzufügen.",
+    "check": "Prüfung",
+    "size": "{{size}} von {{max}} Bytes",
+    "noIssues": "Keine Probleme gefunden.",
+    "error": "Fehler",
+    "warning": "Warnung",
+    "presetBlock": "Aus {{file}} (nur lesen). Zum Ändern in den Programmeinstellungen „In bearbeitbare Kopie umwandeln“ wählen.",
+    "addBlock": "Block hinzufügen",
+    "addAtEnd": "wird am Ende angefügt, nicht verbunden",
+    "addAfter": "wird nach {{name}} eingefügt",
+    "unsupported": "Pod kann ihn nicht ausführen",
+    "templates": "Bibliothek als Kopie",
+    "templatesHelp": "Kopiert die Blöcke eines Bibliotheksteils in dieses Programm, dort sind sie änderbar.",
+    "type": "Blocktyp",
+    "blockName": "Blockname",
+    "nameInvalid": "Buchstaben, Ziffern, _ und -, beginnend mit einem Buchstaben (max. 32).",
+    "nameTaken": "Dieser Name ist schon vergeben.",
+    "parameters": "Parameter",
+    "connections": "Weiter mit",
+    "goTo": "{{port}}: weiter mit",
+    "portFallback": "— weiter bei „weiter“",
+    "portEnd": "— Programm endet",
+    "portNone": "— nicht benutzt",
+    "newBlock": "+ Neuer Block…",
+    "setStart": "Hier starten",
+    "duplicate": "Duplizieren",
+    "delete": "Löschen",
+    "lockedBy": "{{file}} springt zu diesem Block, deshalb kann er nicht umbenannt oder gelöscht werden.",
+    "programName": "Name",
+    "description": "Beschreibung",
+    "peripherals": "Peripherie-Pods (neben der Zentrale)",
+    "fewerPods": "Ein Pod weniger",
+    "morePods": "Ein Pod mehr",
+    "startFirst": "— erster Block",
+    "variablesHelp": "Ganze Zahlen, beim Programmstart zurückgesetzt. Eingebaut: {{builtins}}.",
+    "addVariable": "Variable",
+    "variableName": "Variablenname",
+    "variableValue": "Startwert von {{name}}",
+    "deleteVariable": "{{name}} löschen",
+    "menuPatternHelp": "So erscheint das Programm im Programmmenü des Pods.",
+    "presets": "Bibliotheks-Vorlagen",
+    "presetsHelp": "Eingebundene Bibliotheksteile bleiben schreibgeschützt und werden mit anderen Programmen geteilt.",
+    "removePreset": "{{path}} entfernen",
+    "addPreset": "Bibliotheksteil einbinden…",
+    "flatten": "In bearbeitbare Kopie umwandeln",
+    "addAfterAction": "Block danach einfügen"
+  },
+  "simulate": {
+    "title": "Simulation",
+    "intro": "Ein Programm auf virtuellen Pods ausführen, Schritt für Schritt."
+  },
+  "menu": {
+    "title": "Menü",
+    "intro": "Reihenfolge der Programme im Programmmenü des Pods und ihr LED-Muster. Wird auf diesem Gerät gespeichert und beim Übertragen gesendet.",
+    "fromPod": "Ausgangspunkt ist das Menü des verbundenen Pods.",
+    "fromShipped": "Ausgangspunkt ist das mitgelieferte Menü.",
+    "editPattern": "Menümuster von {{name}}",
+    "origin": {
+      "local": "meins",
+      "pod": "auf dem Pod",
+      "shipped": "mitgeliefert",
+      "missing": "fehlt"
+    },
+    "samePattern": "gleiches Muster wie {{name}}",
+    "noPattern": "kein Menümuster",
+    "up": "{{name}} nach oben",
+    "down": "{{name}} nach unten",
+    "remove": "{{name}} aus dem Menü nehmen",
+    "add": "Programm hinzufügen",
+    "nothingToAdd": "Alle Programme sind im Menü.",
+    "copyNote": "Eine Änderung des Musters legt eine lokale Kopie dieses Programms an (gleicher Pfad)."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "languageSystem": "System",
+    "about": "Über",
+    "version": "Version {{version}}",
+    "advanced": "Erweitert",
+    "console": "Debug-Konsole",
+    "consoleHint": "Firmware-Log und Ereignisse der USB-Verbindung.",
+    "consoleEmpty": "Noch keine Ausgabe.",
+    "clear": "Leeren"
+  },
+  "update": {
+    "available": "Eine neue Version ist verfügbar.",
+    "reload": "Aktualisieren",
+    "offlineReady": "Offline einsatzbereit.",
+    "dismiss": "Schließen"
+  },
+  "issues": {
+    "fileNotFound": "Datei {{path}} nicht gefunden",
+    "invalidJson": "Kein gültiges JSON: {{detail}}",
+    "notAnObject": "Die Datei muss ein JSON-Objekt enthalten",
+    "invalidPath": "Pfad {{path}} ist nicht erlaubt (nur /prog/…, Buchstaben, Ziffern, _ - . /)",
+    "pathTooLong": "Pfad {{path}} ist länger als {{max}} Zeichen",
+    "fileTooLarge": "Datei hat {{size}} Bytes, der Pod nimmt {{max}}",
+    "includeTooDeep": "Einbindungen tiefer als {{max}} Ebenen verschachtelt ({{path}})",
+    "includeInvalid": "'include' muss eine Liste von Pfaden sein",
+    "nameMissing": "Das Programm braucht einen Namen",
+    "versionUnsupported": "Unbekannte Formatversion {{version}}",
+    "peripheralsRange": "Anzahl der Peripherie-Pods muss 0 bis {{max}} sein",
+    "variableNotInteger": "Variable {{name}} muss eine ganze Zahl sein",
+    "startNotFound": "Startblock {{start}} existiert nicht",
+    "noBlocks": "Das Programm hat keine Blöcke",
+    "menuInvalid": "Menümuster ist ungültig",
+    "menuInvalidColor": "Menümuster hat eine ungültige Farbe",
+    "menuInvalidLed": "Menümuster nutzt eine LED außerhalb 0 bis {{max}}",
+    "blockNoNameOrType": "Jeder Block braucht einen Namen und einen Typ",
+    "duplicateBlock": "Blockname {{name}} ist doppelt vergeben (auch in {{other}})",
+    "unknownType": "Unbekannter Blocktyp {{type}}",
+    "unsupportedType": "Der verbundene Pod kann keine {{type}}-Blöcke ausführen (Firmware-Update nötig)",
+    "missingField": "Pflichtangabe fehlt",
+    "notValue": "Muss eine ganze Zahl oder eine Variable sein",
+    "notText": "Muss ein Name sein",
+    "notBool": "Muss an oder aus sein",
+    "invalidColor": "Ungültige Farbe",
+    "notNamedColor": "Peripherie-Pods zeigen nur die 8 benannten Farben",
+    "delayNeedsMs": "Braucht eine Dauer oder Minimum und Maximum",
+    "randomTimeoutPair": "Zufälliges Zeitlimit braucht Minimum und Maximum",
+    "unknownOption": "{{value}} ist nicht erlaubt (möglich: {{options}})",
+    "ledsNotList": "LEDs müssen eine Liste sein",
+    "ledOutOfRange": "LED {{led}} gibt es nicht (0 bis {{max}})",
+    "portNotText": "Verbindung muss einen Block nennen",
+    "portUnknownTarget": "Ausgang {{port}} führt zum fehlenden Block {{target}}",
+    "noOutgoing": "Auf diesen Block folgt nichts: das Programm endet hier",
+    "unreachable": "Dieser Block wird nie erreicht",
+    "unknownVariable": "Variable {{name}} wird nie gesetzt (startet bei 0)",
+    "unknownField": "Unbekannte Angabe {{field}} wird vom Pod ignoriert",
+    "indexInvalid": "Die Menüdatei ist ungültig",
+    "indexDuplicate": "{{path}} steht doppelt im Menü",
+    "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Programm"
+  },
+  "view": {
+    "back": "Zurück",
+    "details": "Details",
+    "close": "Schließen",
+    "notFound": "{{path}} wurde nicht gefunden.",
+    "notConnected": "Der Pod ist nicht verbunden.",
+    "fragment": "Bibliotheksteil",
+    "source": {
+      "pod": "auf dem Pod",
+      "shipped": "mitgeliefert"
+    },
+    "issues_one": "{{count}} Hinweis",
+    "issues_other": "{{count}} Hinweise",
+    "variables": "Variablen",
+    "includes": "Bindet ein",
+    "start": "Start",
+    "fallbackToNext": "geht bei „weiter“ weiter",
+    "edit": "Bearbeiten",
+    "openCopy": "Meine Kopie öffnen"
+  },
+  "graph": {
+    "start": "Startblock",
+    "locked": "Aus der Bibliothek (nur lesen)",
+    "external": "in einer anderen Datei",
+    "ends": "Programm endet hier",
+    "fallback": "{{ports}} → weiter"
+  },
+  "summary": {
+    "leds_one": "{{count}} LED",
+    "leds_other": "{{count}} LEDs",
+    "allLeds": "alle LEDs",
+    "waitPress": "auf Druck warten",
+    "pod": "Pod",
+    "pods": "Pods",
+    "allPods": "alle Pods",
+    "hit": "treffen",
+    "avoid": "meiden"
+  },
+  "ports": {
+    "next": "weiter",
+    "pressed": "gedrückt",
+    "short": "kurz",
+    "long": "lang",
+    "timeout": "Zeit um",
+    "true": "wahr",
+    "false": "falsch",
+    "avoidHit": "rot gedrückt"
+  },
+  "blocks": {
+    "led": {
+      "name": "LED",
+      "help": "Setzt die LEDs der Zentrale auf eine Farbe, alle oder ausgewählte. Geht sofort weiter."
+    },
+    "delay": {
+      "name": "Warten",
+      "help": "Wartet eine feste oder zufällige Zeit."
+    },
+    "button": {
+      "name": "Knopf",
+      "help": "Wartet auf einen Druck auf den Knopf der Zentrale. Nur Drücke, die nach Blockbeginn starten, zählen."
+    },
+    "if": {
+      "name": "Wenn",
+      "help": "Vergleicht zwei Werte und geht bei wahr oder falsch weiter."
+    },
+    "setVariable": {
+      "name": "Variable setzen",
+      "help": "Setzt, addiert, subtrahiert oder zieht einen Zufallswert."
+    },
+    "remotePress": {
+      "name": "Pod leuchten",
+      "help": "Lässt einen Peripherie-Pod leuchten und wartet auf seinen Druck. Die Reaktionszeit misst der Pod."
+    },
+    "remoteMultiPress": {
+      "name": "Mehrere Pods leuchten",
+      "help": "Lässt mehrere Pods gleichzeitig leuchten, manche evtl. rot (nicht drücken)."
+    },
+    "remoteResetAll": {
+      "name": "Pods aus",
+      "help": "Schaltet die Peripherie-Pods (und die Zentrale) aus."
+    },
+    "summary": {
+      "name": "Auswertung",
+      "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
+    }
+  },
+  "common": {
+    "cancel": "Abbrechen"
+  },
+  "fields": {
+    "number": "Zahl",
+    "variable": "Variable",
+    "default": "Standard",
+    "customColor": "Eigene Farbe",
+    "defaultIs": "Standard {{value}}",
+    "notSet": "nicht gesetzt",
+    "required": "Pflicht",
+    "yes": "ja",
+    "no": "nein",
+    "color": {
+      "label": "Farbe"
+    },
+    "leds": {
+      "label": "LEDs",
+      "help": "LEDs antippen, um sie ein- oder auszuschalten."
+    },
+    "ms": {
+      "label": "Zeit (ms)",
+      "help": "Feste Wartezeit. Oder Minimum und Maximum für eine zufällige Zeit."
+    },
+    "minMs": {
+      "label": "Minimum (ms)"
+    },
+    "maxMs": {
+      "label": "Maximum (ms)"
+    },
+    "shortMs": {
+      "label": "Kurz drücken bis (ms)",
+      "help": "Kürzere Drücke gehen zu „kurz“, längere zu „lang“."
+    },
+    "timeoutMs": {
+      "label": "Zeitlimit (ms)",
+      "help": "Ohne Druck in dieser Zeit geht es bei „Zeit um“ weiter."
+    },
+    "minTimeoutMs": {
+      "label": "Zufälliges Zeitlimit von (ms)"
+    },
+    "maxTimeoutMs": {
+      "label": "Zufälliges Zeitlimit bis (ms)"
+    },
+    "record": {
+      "label": "Messen als",
+      "help": "Name der Messung, z. B. reaction. Wird von der Auswertung benutzt."
+    },
+    "storeAs": {
+      "label": "Zeit in Variable speichern"
+    },
+    "left": {
+      "label": "Linke Seite"
+    },
+    "op": {
+      "label": "Operation"
+    },
+    "right": {
+      "label": "Rechte Seite"
+    },
+    "var": {
+      "label": "Variable"
+    },
+    "value": {
+      "label": "Wert"
+    },
+    "pod": {
+      "label": "Pod",
+      "help": "Nummer der Peripherie, ab 0."
+    },
+    "mode": {
+      "label": "Modus",
+      "help": "hit: drücken, wenn er leuchtet. avoid: nicht drücken."
+    },
+    "colorAfter": {
+      "label": "Farbe danach"
+    },
+    "pods": {
+      "label": "Anzahl Pods",
+      "help": "Leer: alle Pods des Programms."
+    },
+    "avoid": {
+      "label": "Davon meiden"
+    },
+    "includeCentral": {
+      "label": "Zentrale macht mit"
+    },
+    "hitColor": {
+      "label": "Treffer-Farbe"
+    },
+    "avoidColor": {
+      "label": "Meiden-Farbe"
+    },
+    "syncStartMs": {
+      "label": "Synchronstart (ms)"
+    },
+    "ledsOff": {
+      "label": "LEDs ausschalten"
+    },
+    "metric": {
+      "label": "Messung"
+    },
+    "storeAverage": {
+      "label": "Mittelwert speichern in"
+    },
+    "storeBest": {
+      "label": "Bestwert speichern in"
+    },
+    "storeWorst": {
+      "label": "Schlechtesten speichern in"
+    },
+    "storeCount": {
+      "label": "Anzahl speichern in"
+    },
+    "reset": {
+      "label": "Messungen danach zurücksetzen"
+    }
+  },
+  "ops": {
+    "=": "= setzen",
+    "+": "+ addieren",
+    "-": "− abziehen",
+    "random": "zufällig (0 … Wert−1)",
+    "randomOther": "zufällig, nicht derselbe"
+  },
+  "picker": {
+    "led": "LED {{n}}",
+    "all": "Alle",
+    "none": "Keine",
+    "clear": "Leeren",
+    "paintWith": "Farbe für angetippte LEDs"
+  },
+  "colors": {
+    "off": "aus",
+    "red": "rot",
+    "green": "grün",
+    "blue": "blau",
+    "yellow": "gelb",
+    "magenta": "magenta",
+    "cyan": "cyan",
+    "white": "weiß"
+  },
+  "categories": {
+    "light": "Licht",
+    "wait": "Warten",
+    "input": "Eingabe",
+    "logic": "Logik",
+    "remote": "Andere Pods",
+    "stats": "Auswertung"
+  }
+}

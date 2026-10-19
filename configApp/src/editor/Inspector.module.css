@@ -1,0 +1,490 @@
+/* Inspector, program settings, palette and block details (all inside a Sheet). */
+
+.help,
+.fieldHelp {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.fieldHelp {
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.error,
+.warnText {
+  margin: 0;
+  font-size: 12px;
+  color: var(--error);
+}
+
+.warnText {
+  color: var(--warn);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.group h4,
+.paletteGroup h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.group .field {
+  margin-top: 0;
+}
+
+.label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fieldName {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.required {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--warn);
+}
+
+.input {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  font-size: 15px;
+}
+
+textarea.input {
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+.valueField {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.toggle {
+  display: flex;
+  flex: none;
+  padding: 2px;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+}
+
+.toggle button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.toggle button[aria-checked="true"] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.swatchButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  height: var(--touch);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.swatchButton[aria-checked="true"] {
+  border-color: var(--accent);
+}
+
+.swatch {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+.defaultChip .swatch {
+  width: 16px;
+  height: 16px;
+}
+
+.swatch[data-off] {
+  background: var(--led-off) !important;
+}
+
+.swatch[data-custom]:not([style]) {
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+}
+
+.colorInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.defaultChip,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.defaultChip {
+  min-height: var(--touch);
+}
+
+.defaultChip[aria-checked="true"],
+.chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.chip {
+  align-self: flex-start;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pickerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  cursor: pointer;
+}
+
+.switch input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+.portRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.port {
+  flex: none;
+  min-width: 76px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  text-align: center;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.varRow {
+  display: grid;
+  grid-template-columns: 1fr 110px auto;
+  gap: var(--space-2);
+}
+
+.varRow .input:first-child {
+  font-family: var(--font-mono);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepper button,
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  height: var(--touch);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.iconButton {
+  border: 0;
+  color: var(--text-muted);
+}
+
+.stepper button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepper output {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: transparent;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.action[data-danger] {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 50%, var(--border));
+}
+
+.action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* palette */
+.paletteGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.paletteGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--cat, var(--border));
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.paletteItem svg {
+  flex: none;
+  color: var(--cat, var(--text-muted));
+}
+
+.paletteItem:hover {
+  background: var(--surface-2);
+}
+
+.paletteGroup[data-category="light"] { --cat: var(--cat-light); }
+.paletteGroup[data-category="wait"] { --cat: var(--cat-wait); }
+.paletteGroup[data-category="input"] { --cat: var(--cat-input); }
+.paletteGroup[data-category="logic"] { --cat: var(--cat-logic); }
+.paletteGroup[data-category="remote"] { --cat: var(--cat-remote); }
+.paletteGroup[data-category="stats"] { --cat: var(--cat-stats); }
+
+/* read-only details */
+.details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.details > div {
+  display: contents;
+}
+
+.details dt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.details dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.details code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.portList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.portList li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.issues li {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.issues li svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.issues li[data-level="error"] svg {
+  color: var(--error);
+}
+
+.issues li[data-level="warning"] svg {
+  color: var(--warn);
+}
+
+.fieldCode {
+  margin-left: var(--space-2);
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.locked {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.locked svg {
+  flex: none;
+  margin-top: 2px;
+}

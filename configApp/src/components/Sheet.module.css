@@ -1,0 +1,89 @@
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  max-height: 70%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.15);
+  font-size: 14px;
+}
+
+@media (min-width: 900px) {
+  .sheet {
+    left: auto;
+    top: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-3);
+    width: 340px;
+    max-height: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+  }
+}
+
+.header {
+  position: sticky;
+  top: calc(-1 * var(--space-2));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-4)) var(--space-2);
+  padding: var(--space-2) var(--space-4) 0;
+  background: var(--surface);
+}
+
+.sheet[data-category="light"] .header > svg { color: var(--cat-light); }
+.sheet[data-category="wait"] .header > svg { color: var(--cat-wait); }
+.sheet[data-category="input"] .header > svg { color: var(--cat-input); }
+.sheet[data-category="logic"] .header > svg { color: var(--cat-logic); }
+.sheet[data-category="remote"] .header > svg { color: var(--cat-remote); }
+.sheet[data-category="stats"] .header > svg { color: var(--cat-stats); }
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.title h3 {
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--touch);
+  height: var(--touch);
+  margin-right: calc(-1 * var(--space-2));
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}

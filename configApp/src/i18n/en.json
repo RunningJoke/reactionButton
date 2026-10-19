@@ -1,0 +1,497 @@
+{
+  "app": {
+    "title": "ReactPod Config"
+  },
+  "nav": {
+    "pod": "Pod",
+    "programs": "Programs",
+    "editor": "Editor",
+    "simulate": "Simulate",
+    "menu": "Menu",
+    "settings": "Settings",
+    "main": "Main navigation"
+  },
+  "connection": {
+    "disconnected": "Not connected",
+    "connecting": "Connecting…",
+    "connected": "Connected"
+  },
+  "placeholder": {
+    "comingIn": "Coming in phase {{phase}}"
+  },
+  "pod": {
+    "intro": "Connect to a central in the program menu.",
+    "menuHint": "To open the program menu, switch the pod on and hold the button during the blue boot animation.",
+    "bleUnsupported": "This browser has no Bluetooth access. Use Chrome or Edge, on iPhone the app later.",
+    "serialUnsupported": "USB needs Chrome or Edge on a computer.",
+    "connect": {
+      "ble": "Bluetooth",
+      "bleHint": "Phone or computer, central in the program menu",
+      "serial": "USB cable",
+      "serialHint": "Computer with Chrome or Edge, any pod",
+      "simulated": "Demo pod",
+      "simulatedHint": "Try the app without a pod"
+    },
+    "chooseDevice": "Choose the pod in the browser dialog.",
+    "errors": {
+      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware with change request CR-0.",
+      "disconnected": "The connection was lost.",
+      "openFailed": "The port could not be opened. Is another program (e.g. a serial monitor) using it?",
+      "notAllowed": "The browser did not allow access.",
+      "busy": "The pod is busy (game or sync running). Return to the program menu.",
+      "overflow": "The pod could not keep up. Please try again.",
+      "unknown": "Something went wrong."
+    },
+    "kind": {
+      "ble": "Bluetooth pod",
+      "serial": "USB pod",
+      "simulated": "Demo pod"
+    },
+    "role": {
+      "central": "Central",
+      "peripheral": "Peripheral · read only",
+      "booting": "Starting · read only"
+    },
+    "refresh": "Refresh",
+    "disconnect": "Disconnect",
+    "firmware": "Firmware",
+    "setId": "Set",
+    "generation": "Store version",
+    "free": "Free space",
+    "firmwareUnsupported": "This app is made for firmware 2.x. The pod runs {{version}}; some things may not work.",
+    "readOnly": "Programs can only be changed on a central. This pod is shown read only.",
+    "groups": {
+      "menu": "Menu ({{count}})",
+      "other": "Other programs ({{count}})",
+      "library": "Library ({{count}})"
+    },
+    "emptyMenu": "The menu is empty.",
+    "missingFile": "missing",
+    "dialog": {
+      "title": "Pod connection",
+      "close": "Close"
+    },
+    "notConnected": "No pod connected",
+    "connectButton": "Connect"
+  },
+  "programs": {
+    "onPod": "On the pod",
+    "shipped": "Shipped programs",
+    "library": "Library",
+    "libraryHint": "Read-only parts that programs include (presets) or copy (templates).",
+    "connectHint": "Connect a pod to see its programs",
+    "reading": "Reading files from the pod… {{done}} of {{total}}",
+    "missingInMenu": "{{path}} is in the menu but missing on the pod",
+    "none": "No programs.",
+    "menuPattern": "Menu pattern",
+    "unchanged": "shipped",
+    "notInMenu": "not in menu",
+    "pods_one": "{{count}} pod",
+    "pods_other": "{{count}} pods",
+    "podsTitle": "Pods needed (central + peripherals)",
+    "blocks_one": "{{count}} block",
+    "blocks_other": "{{count}} blocks",
+    "errors_one": "{{count}} error",
+    "errors_other": "{{count}} errors",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings",
+    "valid": "Valid",
+    "mine": "My programs",
+    "mineEmpty": "No programs of your own yet. Create one with + or open a program and tap Edit.",
+    "fromPod": "copy from pod",
+    "fromShipped": "copy of shipped",
+    "import": "Import",
+    "importFailed": "{{file}} is not a program file.",
+    "new": "New program",
+    "newTitle": "New program",
+    "duplicateTitle": "Duplicate program",
+    "duplicate": "Duplicate",
+    "create": "Create",
+    "copyOf": "Copy of {{name}}",
+    "namePlaceholder": "e.g. Sprint 4 pods",
+    "deleteTitle": "Delete program?",
+    "deleteText": "“{{name}}” ({{path}}) is deleted from this device. Programs on the pod are not changed.",
+    "delete": "Delete program",
+    "export": "Export file"
+  },
+  "editor": {
+    "title": "Editor",
+    "intro": "Build programs block by block.",
+    "noProgram": "No program open",
+    "noProgramHint": "Create a new program, or open one in Programs and tap Edit.",
+    "openProgram": "Open from Programs",
+    "untitled": "Untitled program",
+    "undo": "Undo",
+    "redo": "Redo",
+    "more": "More",
+    "settings": "Program settings",
+    "emptyProgram": "This program has no blocks yet. Add the first one with +.",
+    "check": "Check",
+    "size": "{{size}} of {{max}} bytes",
+    "noIssues": "No problems found.",
+    "error": "Error",
+    "warning": "Warning",
+    "presetBlock": "From {{file}} (read only). To change it, use “Convert to editable copy” in the program settings.",
+    "addBlock": "Add block",
+    "addAtEnd": "added at the end, not connected",
+    "addAfter": "inserted after {{name}}",
+    "unsupported": "pod cannot run it",
+    "templates": "Library as copy",
+    "templatesHelp": "Copies the blocks of a library part into this program, where you can change them.",
+    "type": "Block type",
+    "blockName": "Block name",
+    "nameInvalid": "Letters, digits, _ and -, starting with a letter (max. 32).",
+    "nameTaken": "This name is already used.",
+    "parameters": "Parameters",
+    "connections": "Continue with",
+    "goTo": "{{port}}: go to",
+    "portFallback": "— continues at “next”",
+    "portEnd": "— program ends",
+    "portNone": "— not used",
+    "newBlock": "+ New block…",
+    "setStart": "Start here",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "lockedBy": "{{file}} continues at this block, so it cannot be renamed or deleted.",
+    "programName": "Name",
+    "description": "Description",
+    "peripherals": "Peripherals (pods besides the central)",
+    "fewerPods": "One pod less",
+    "morePods": "One pod more",
+    "startFirst": "— first block",
+    "variablesHelp": "Whole numbers, reset at program start. Built in: {{builtins}}.",
+    "addVariable": "Variable",
+    "variableName": "Variable name",
+    "variableValue": "Start value of {{name}}",
+    "deleteVariable": "Delete {{name}}",
+    "menuPatternHelp": "How the program shows in the pod's program menu.",
+    "presets": "Library presets",
+    "presetsHelp": "Included library parts stay read only and are shared with other programs.",
+    "removePreset": "Remove {{path}}",
+    "addPreset": "Include a library part…",
+    "flatten": "Convert to editable copy",
+    "addAfterAction": "Add block after"
+  },
+  "simulate": {
+    "title": "Simulate",
+    "intro": "Run a program on virtual pods, step by step."
+  },
+  "menu": {
+    "title": "Menu",
+    "intro": "Order of the programs in the pod's program menu and their LED pattern. Kept on this device and sent with push.",
+    "fromPod": "Starting from the menu of the connected pod.",
+    "fromShipped": "Starting from the shipped menu.",
+    "editPattern": "Menu pattern of {{name}}",
+    "origin": {
+      "local": "mine",
+      "pod": "on pod",
+      "shipped": "shipped",
+      "missing": "missing"
+    },
+    "samePattern": "same pattern as {{name}}",
+    "noPattern": "no menu pattern",
+    "up": "Move {{name}} up",
+    "down": "Move {{name}} down",
+    "remove": "Remove {{name}} from the menu",
+    "add": "Add program",
+    "nothingToAdd": "All programs are in the menu.",
+    "copyNote": "Changing the pattern makes a local copy of this program (same path)."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageSystem": "System",
+    "about": "About",
+    "version": "Version {{version}}",
+    "advanced": "Advanced",
+    "console": "Debug console",
+    "consoleHint": "Firmware log and events of the USB connection.",
+    "consoleEmpty": "No output yet.",
+    "clear": "Clear"
+  },
+  "update": {
+    "available": "A new version is available.",
+    "reload": "Update",
+    "offlineReady": "Ready to work offline.",
+    "dismiss": "Dismiss"
+  },
+  "issues": {
+    "fileNotFound": "File {{path}} not found",
+    "invalidJson": "Not valid JSON: {{detail}}",
+    "notAnObject": "The file must contain a JSON object",
+    "invalidPath": "Path {{path}} is not allowed (only /prog/…, letters, digits, _ - . /)",
+    "pathTooLong": "Path {{path}} is longer than {{max}} characters",
+    "fileTooLarge": "File has {{size}} bytes, the pod accepts {{max}}",
+    "includeTooDeep": "Includes nested deeper than {{max}} levels ({{path}})",
+    "includeInvalid": "'include' must be a list of paths",
+    "nameMissing": "The program needs a name",
+    "versionUnsupported": "Unknown format version {{version}}",
+    "peripheralsRange": "Number of peripherals must be 0 to {{max}}",
+    "variableNotInteger": "Variable {{name}} must be a whole number",
+    "startNotFound": "Start block {{start}} does not exist",
+    "noBlocks": "The program has no blocks",
+    "menuInvalid": "Menu pattern is invalid",
+    "menuInvalidColor": "Menu pattern has an invalid colour",
+    "menuInvalidLed": "Menu pattern uses an LED outside 0 to {{max}}",
+    "blockNoNameOrType": "Every block needs a name and a type",
+    "duplicateBlock": "Block name {{name}} is used twice (also in {{other}})",
+    "unknownType": "Unknown block type {{type}}",
+    "unsupportedType": "The connected pod cannot run {{type}} blocks (firmware update needed)",
+    "missingField": "Required setting is missing",
+    "notValue": "Must be a whole number or a variable",
+    "notText": "Must be a name",
+    "notBool": "Must be on or off",
+    "invalidColor": "Invalid colour",
+    "notNamedColor": "Peripherals only show the 8 named colours",
+    "delayNeedsMs": "Needs a duration or a minimum and maximum",
+    "randomTimeoutPair": "Random timeout needs both minimum and maximum",
+    "unknownOption": "{{value}} is not allowed (possible: {{options}})",
+    "ledsNotList": "LEDs must be a list",
+    "ledOutOfRange": "LED {{led}} does not exist (0 to {{max}})",
+    "portNotText": "Connection must name a block",
+    "portUnknownTarget": "Output {{port}} leads to the missing block {{target}}",
+    "noOutgoing": "Nothing follows this block: the program ends here",
+    "unreachable": "This block is never reached",
+    "unknownVariable": "Variable {{name}} is never set (starts at 0)",
+    "unknownField": "Unknown setting {{field}} is ignored by the pod",
+    "indexInvalid": "The menu file is invalid",
+    "indexDuplicate": "{{path}} is in the menu twice",
+    "indexNotProgram": "{{path}} is a library part, not a program"
+  },
+  "view": {
+    "back": "Back",
+    "details": "Details",
+    "close": "Close",
+    "notFound": "{{path}} was not found.",
+    "notConnected": "The pod is not connected.",
+    "fragment": "Library part",
+    "source": {
+      "pod": "on the pod",
+      "shipped": "shipped"
+    },
+    "issues_one": "{{count}} note",
+    "issues_other": "{{count}} notes",
+    "variables": "Variables",
+    "includes": "Includes",
+    "start": "Start",
+    "fallbackToNext": "continues at “next”",
+    "edit": "Edit",
+    "openCopy": "Open my copy"
+  },
+  "graph": {
+    "start": "Start block",
+    "locked": "From the library (read only)",
+    "external": "in another file",
+    "ends": "Program ends here",
+    "fallback": "{{ports}} → next"
+  },
+  "summary": {
+    "leds_one": "{{count}} LED",
+    "leds_other": "{{count}} LEDs",
+    "allLeds": "all LEDs",
+    "waitPress": "wait for press",
+    "pod": "pod",
+    "pods": "pods",
+    "allPods": "all pods",
+    "hit": "hit",
+    "avoid": "avoid"
+  },
+  "ports": {
+    "next": "next",
+    "pressed": "pressed",
+    "short": "short",
+    "long": "long",
+    "timeout": "timeout",
+    "true": "true",
+    "false": "false",
+    "avoidHit": "red hit"
+  },
+  "blocks": {
+    "led": {
+      "name": "LED",
+      "help": "Sets the central's LEDs to a colour, all or selected ones. Continues at once."
+    },
+    "delay": {
+      "name": "Wait",
+      "help": "Waits a fixed or random time."
+    },
+    "button": {
+      "name": "Button",
+      "help": "Waits for a press of the central's button. Only presses that start after the block began count."
+    },
+    "if": {
+      "name": "If",
+      "help": "Compares two values and continues at true or false."
+    },
+    "setVariable": {
+      "name": "Set variable",
+      "help": "Sets, adds, subtracts or draws a random value."
+    },
+    "remotePress": {
+      "name": "Light pod",
+      "help": "Lights one peripheral and waits for its press. The reaction time is measured on the pod."
+    },
+    "remoteMultiPress": {
+      "name": "Light several pods",
+      "help": "Lights several pods at once, some may be red (do not press)."
+    },
+    "remoteResetAll": {
+      "name": "Pods off",
+      "help": "Switches the peripherals (and the central) off."
+    },
+    "summary": {
+      "name": "Summary",
+      "help": "Average, best and worst of a measurement, printed on the serial console."
+    }
+  },
+  "common": {
+    "cancel": "Cancel"
+  },
+  "fields": {
+    "number": "Number",
+    "variable": "Variable",
+    "default": "Default",
+    "customColor": "Own colour",
+    "defaultIs": "default {{value}}",
+    "notSet": "not set",
+    "required": "required",
+    "yes": "yes",
+    "no": "no",
+    "color": {
+      "label": "Colour"
+    },
+    "leds": {
+      "label": "LEDs",
+      "help": "Tap LEDs to switch them on or off."
+    },
+    "ms": {
+      "label": "Time (ms)",
+      "help": "Fixed wait. Or set min and max for a random wait."
+    },
+    "minMs": {
+      "label": "Minimum (ms)"
+    },
+    "maxMs": {
+      "label": "Maximum (ms)"
+    },
+    "shortMs": {
+      "label": "Short press up to (ms)",
+      "help": "Shorter presses leave at “short”, longer ones at “long”."
+    },
+    "timeoutMs": {
+      "label": "Time-out (ms)",
+      "help": "Without a press in this time the block leaves at “time-out”."
+    },
+    "minTimeoutMs": {
+      "label": "Random time-out from (ms)"
+    },
+    "maxTimeoutMs": {
+      "label": "Random time-out to (ms)"
+    },
+    "record": {
+      "label": "Measure as",
+      "help": "Name of the measurement, e.g. reaction. Used by the summary."
+    },
+    "storeAs": {
+      "label": "Store time in variable"
+    },
+    "left": {
+      "label": "Left side"
+    },
+    "op": {
+      "label": "Operation"
+    },
+    "right": {
+      "label": "Right side"
+    },
+    "var": {
+      "label": "Variable"
+    },
+    "value": {
+      "label": "Value"
+    },
+    "pod": {
+      "label": "Pod",
+      "help": "Number of the peripheral, from 0."
+    },
+    "mode": {
+      "label": "Mode",
+      "help": "hit: press when lit. avoid: do not press."
+    },
+    "colorAfter": {
+      "label": "Colour after"
+    },
+    "pods": {
+      "label": "Number of pods",
+      "help": "Empty: all pods of the program."
+    },
+    "avoid": {
+      "label": "Of which to avoid"
+    },
+    "includeCentral": {
+      "label": "Central takes part"
+    },
+    "hitColor": {
+      "label": "Hit colour"
+    },
+    "avoidColor": {
+      "label": "Avoid colour"
+    },
+    "syncStartMs": {
+      "label": "Sync start (ms)"
+    },
+    "ledsOff": {
+      "label": "Switch LEDs off"
+    },
+    "metric": {
+      "label": "Measurement"
+    },
+    "storeAverage": {
+      "label": "Store average in"
+    },
+    "storeBest": {
+      "label": "Store best in"
+    },
+    "storeWorst": {
+      "label": "Store worst in"
+    },
+    "storeCount": {
+      "label": "Store count in"
+    },
+    "reset": {
+      "label": "Reset measurements afterwards"
+    }
+  },
+  "ops": {
+    "=": "= set",
+    "+": "+ add",
+    "-": "− subtract",
+    "random": "random (0 … value−1)",
+    "randomOther": "random, not the same"
+  },
+  "picker": {
+    "led": "LED {{n}}",
+    "all": "All",
+    "none": "None",
+    "clear": "Clear",
+    "paintWith": "Colour for tapped LEDs"
+  },
+  "colors": {
+    "off": "off",
+    "red": "red",
+    "green": "green",
+    "blue": "blue",
+    "yellow": "yellow",
+    "magenta": "magenta",
+    "cyan": "cyan",
+    "white": "white"
+  },
+  "categories": {
+    "light": "Light",
+    "wait": "Wait",
+    "input": "Input",
+    "logic": "Logic",
+    "remote": "Remote pods",
+    "stats": "Statistics"
+  }
+}

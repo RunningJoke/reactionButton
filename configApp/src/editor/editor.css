@@ -1,0 +1,262 @@
+/* Block graph (one column). Category colours mark the kind of block; LED colours appear only as swatches. */
+:root {
+  --cat-light: #d97706;
+  --cat-wait: #7c3aed;
+  --cat-input: #16a34a;
+  --cat-logic: #ea580c;
+  --cat-remote: #0891b2;
+  --cat-stats: #db2777;
+  --cat-unknown: #6b7280;
+  --cat-external: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cat-light: #fbbf24;
+    --cat-wait: #a78bfa;
+    --cat-input: #4ade80;
+    --cat-logic: #fb923c;
+    --cat-remote: #22d3ee;
+    --cat-stats: #f472b6;
+  }
+}
+
+.rp-column-scroll {
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* room to scroll the last blocks above the block sheet on phones */
+.rp-column-scroll[data-sheet] {
+  padding-bottom: 55vh;
+}
+
+@media (min-width: 900px) {
+  .rp-column-scroll[data-sheet] {
+    padding-bottom: 0;
+    padding-right: 356px;
+  }
+}
+
+.rp-column {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-6);
+}
+
+.rp-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rp-card-slot {
+  margin-bottom: 12px;
+}
+
+/* continues straight into the block below: no arrow, just a small gap */
+.rp-card-slot[data-joined] {
+  margin-bottom: 3px;
+}
+
+.rp-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rp-arrow {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+
+.rp-arrow[data-lit] {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.rp-arrowhead-plain {
+  fill: var(--text-muted);
+}
+
+.rp-arrowhead-lit {
+  fill: var(--accent);
+}
+
+.rp-card {
+  --cat: var(--cat-unknown);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--cat);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rp-card[data-category="light"] { --cat: var(--cat-light); }
+.rp-card[data-category="wait"] { --cat: var(--cat-wait); }
+.rp-card[data-category="input"] { --cat: var(--cat-input); }
+.rp-card[data-category="logic"] { --cat: var(--cat-logic); }
+.rp-card[data-category="remote"] { --cat: var(--cat-remote); }
+.rp-card[data-category="stats"] { --cat: var(--cat-stats); }
+
+.rp-card[data-category="external"] {
+  --cat: var(--cat-external);
+  border-style: dashed;
+  background: var(--surface-2);
+}
+
+/* blocks from included files (presets): locked and quieter */
+.rp-card:not([data-own]) {
+  background: var(--surface-2);
+}
+
+.rp-card[data-unreachable] {
+  opacity: 0.5;
+}
+
+.rp-card[data-selected] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.rp-card[data-active] {
+  outline: 3px solid var(--cat);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--cat) 25%, transparent);
+}
+
+.rp-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--cat);
+}
+
+.rp-card-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.rp-card-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.rp-flag {
+  flex: none;
+  color: var(--ok);
+}
+
+.rp-end {
+  flex: none;
+  color: var(--error);
+}
+
+/* key parameters on one wrapping line */
+.rp-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  padding: 0 10px 6px 32px;
+  margin-top: -4px;
+  line-height: 18px;
+  min-width: 0;
+}
+
+.rp-card-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.rp-card-hint {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+/* one row per outgoing arrow, on the side the arrow leaves */
+.rp-card-ports {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px dashed var(--border);
+  padding: 2px 0;
+}
+
+.rp-port-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rp-port-row[data-side="right"] {
+  justify-content: flex-end;
+}
+
+.rp-port {
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  line-height: 15px;
+}
+
+.rp-port-target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.rp-port-row[data-side="down"] {
+  justify-content: center;
+}

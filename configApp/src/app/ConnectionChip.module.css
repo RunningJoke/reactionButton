@@ -1,0 +1,45 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  min-height: 30px;
+  border: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* the visible chip stays small, the tap area reaches the touch size */
+.chip {
+  position: relative;
+}
+
+.chip::after {
+  content: "";
+  position: absolute;
+  inset: -7px -2px;
+}
+
+.chip:hover {
+  filter: brightness(0.96);
+}
+
+.chip[data-state="connected"] {
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
+  color: var(--ok);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

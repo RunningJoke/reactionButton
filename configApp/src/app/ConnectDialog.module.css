@@ -1,0 +1,239 @@
+/* bottom sheet on phones, centred dialog on wide screens */
+.dialog {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.2);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+@media (min-width: 600px) {
+  .dialog {
+    width: calc(100% - 2 * var(--space-4));
+    margin: auto;
+    border-radius: var(--radius-l);
+  }
+}
+
+.content {
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.header h2 {
+  flex: 1;
+  font-size: 18px;
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  height: var(--touch);
+  margin-right: calc(-1 * var(--space-2));
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.intro {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "icon title" "icon text";
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  min-height: 72px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option svg {
+  grid-area: icon;
+  color: var(--accent);
+}
+
+.option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.option:not(:disabled):hover {
+  border-color: var(--accent);
+}
+
+.optionTitle {
+  grid-area: title;
+  font-weight: 600;
+}
+
+.optionText {
+  grid-area: text;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.hint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.banner {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--error) 12%, var(--surface));
+  color: var(--error);
+}
+
+.banner svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.banner p {
+  margin: 2px 0 0;
+}
+
+.detail {
+  font-size: 13px;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.pod {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.podIcon {
+  flex: none;
+  color: var(--ok);
+}
+
+.podText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.podFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.podFacts [data-warn] {
+  color: var(--warn);
+}
+
+.podFacts code {
+  font-family: var(--font-mono);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge:not([data-role="central"]) {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.danger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: 0 var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--error) 50%, var(--border));
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--error);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.danger:hover {
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+}
