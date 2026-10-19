@@ -1,0 +1,45 @@
+# Builds the firmware and checks the shipped programs on every PR and push to main.
+name: Firmware
+
+on:
+  push:
+    branches: [main]
+    paths: ["firmware/**", "tools/validate_programs.py", ".github/workflows/firmware.yml"]
+  pull_request:
+    paths: ["firmware/**", "tools/validate_programs.py", ".github/workflows/firmware.yml"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: pio-${{ hashFiles('firmware/platformio.ini', 'firmware/sdkconfig.NewBoard') }}
+      - run: pip install platformio
+      - run: python tools/validate_programs.py
+      - run: pio run -d firmware -e NewBoard
+      - name: Flash usage
+        run: |
+          bin=$(stat -c %s firmware/.pio/build/NewBoard/firmware.bin)
+          slot=$(( $(awk -F'[,[:space:]]+' '$3 == "ota_0" || $3 == "factory" { print $5; exit }' firmware/partitions.csv) ))
+          echo "firmware.bin: $bin bytes of $slot ($((100 * bin / slot)) % of the app slot)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - run: pio run -d firmware -e NewBoard -t buildfs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            firmware/.pio/build/NewBoard/firmware.bin
+            firmware/.pio/build/NewBoard/bootloader.bin
+            firmware/.pio/build/NewBoard/partitions.bin
+            firmware/.pio/build/NewBoard/spiffs.bin

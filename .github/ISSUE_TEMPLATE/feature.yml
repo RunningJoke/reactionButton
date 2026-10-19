@@ -1,0 +1,27 @@
+name: Feature
+description: A new feature or an improvement
+labels: ["type: feature"]
+body:
+  - type: dropdown
+    id: part
+    attributes:
+      label: Part
+      multiple: true
+      options: [Firmware, Config App, Tools, Hardware, Docs, Platform]
+    validations: { required: true }
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / goal
+      description: Who needs it and why
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance test
+      description: How we know it is done

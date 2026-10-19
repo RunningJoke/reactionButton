@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Set up, monitor and test ReactPods over the USB serial port (doc/testing.md).
+Set up, monitor and test ReactPods over the USB serial port (docs/firmware/testing.md).
 
 Requires: pip install pyserial
 
@@ -12,7 +12,7 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py start
     python tools/reactpod_serial.py set-name "Halle 2"    # BLE name "ReactPod Halle 2" ("" = default)
     python tools/reactpod_serial.py set-pin 1234          # PIN for BLE writes ("" = clear it)
-    python tools/reactpod_serial.py push data
+    python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
 
 --port is optional; without it the first Espressif USB port (VID 303A) is used.
@@ -454,7 +454,7 @@ def run_test(pod: PodSerial, args) -> int:
     match = [p for p in programs if args.program in (p["path"], p["name"], str(p["index"]))]
     if not check.ok("program available", bool(match),
                     match[0]["path"] if match else "found: " + ", ".join(p["path"] for p in programs)):
-        hint("Upload the programs: 'pio run -t uploadfs' or this tool with --push data.")
+        hint("Upload the programs: 'pio run -d firmware -t uploadfs' or this tool with --push firmware/data.")
         return 1
     program = match[0]
     if not args.no_validate:

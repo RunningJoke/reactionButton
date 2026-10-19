@@ -1,0 +1,56 @@
+# On a tag fw-vMAJOR.MINOR.PATCH: build, publish a GitHub release with the binaries and an
+# OTA manifest, then redeploy the Pages site so the app can fetch them (same origin, no CORS).
+name: Firmware release
+
+on:
+  push:
+    tags: ["fw-v*"]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/firmware.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag matches FW_VERSION
+        run: |
+          major=$(sed -n 's/#define FW_VERSION_MAJOR \([0-9]*\).*/\1/p' firmware/src/_Definitions.h)
+          minor=$(sed -n 's/#define FW_VERSION_MINOR \([0-9]*\).*/\1/p' firmware/src/_Definitions.h)
+          case "$GITHUB_REF_NAME" in
+            "fw-v$major.$minor."*) ;;
+            *) echo "::error::tag $GITHUB_REF_NAME does not match FW_VERSION $major.$minor"; exit 1 ;;
+          esac
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: bin
+      - name: Manifest
+        run: |
+          cd bin
+          version="${GITHUB_REF_NAME#fw-v}"
+          format=$(sed -n 's/.*PROGRAM_FORMAT = \([0-9]*\).*/\1/p' ../firmware/src/Block/BlockFactory/BlockFactory.h)
+          files=""
+          for f in *.bin; do
+            files="$files{\"name\":\"$f\",\"size\":$(stat -c %s "$f"),\"sha256\":\"$(sha256sum "$f" | cut -d' ' -f1)\"},"
+          done
+          echo "{\"version\":\"$version\",\"programFormat\":$format,\"board\":\"NewBoard\",\"files\":[${files%,}]}" > ota-manifest.json
+          cat ota-manifest.json
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prev=$(git tag -l 'fw-v*' --sort=-v:refname | grep -vx "$GITHUB_REF_NAME" | head -1)
+          gh release create "$GITHUB_REF_NAME" bin/*.bin bin/ota-manifest.json             --title "Firmware ${GITHUB_REF_NAME#fw-v}" --generate-notes ${prev:+--notes-start-tag "$prev"}
+      - name: Redeploy Pages with the new binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run app.yml --ref main
