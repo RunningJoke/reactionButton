@@ -21,6 +21,7 @@
 class ConfigApi {
     public:
         typedef std::function<void(const std::string&)> Sink;
+        typedef std::function<uint16_t()> MtuSource;
 
         // uploadSlot: temp file slot of this transport (uploads of different transports must not mix)
         ConfigApi(const char* transport, uint8_t uploadSlot, Sink sink);
@@ -32,6 +33,9 @@ class ConfigApi {
 
         // A new client connected: forget the authentication (PIN) and any unfinished upload
         void newSession();
+
+        // BLE only: reports the connection's MTU as "mtu" in info and status
+        void setMtuSource(MtuSource source) { this->mtuSource = source; }
 
         static void setError(JsonDocument& response, const char* code, const String& message);
 
@@ -66,6 +70,7 @@ class ConfigApi {
         const char* transport;
         uint8_t uploadSlot;
         Sink sink;
+        MtuSource mtuSource;
 
         bool authenticated = false;
         bool uploadActive = false;

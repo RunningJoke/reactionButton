@@ -159,6 +159,9 @@ void ConfigApi::opStatus(JsonDocument& response) {
     response["firmware"] = String(FW_VERSION_MAJOR) + "." + String(FW_VERSION_MINOR);
     response["uptimeMs"] = millis();
     response["setId"] = hex32(Settings::getSetId());
+    if(this->mtuSource) {
+        response["mtu"] = this->mtuSource();
+    }
     JsonObject st = response["store"].to<JsonObject>();
     st["generation"] = store.generation();
     st["hash"] = hex32(store.hash());
@@ -184,6 +187,9 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["maxRequest"] = (uint32_t)MAX_REQUEST;
     response["maxGetChunk"] = (uint32_t)MAX_GET_CHUNK;
     response["transport"] = this->transport;
+    if(this->mtuSource) {
+        response["mtu"] = this->mtuSource();
+    }
     response["programFormat"] = (uint32_t)BlockFactory::PROGRAM_FORMAT;
     JsonArray features = response["features"].to<JsonArray>();
     features.add("validateInline");

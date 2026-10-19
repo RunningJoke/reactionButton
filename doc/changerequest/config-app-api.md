@@ -19,7 +19,7 @@ When you implement one: update [config-api.md](../config-api.md), the reference 
 | CR-4 | Medium | `validate` with inline content (dry run) | done (firmware 2.4, branch `feature/cr-4-validate-inline`) |
 | CR-5 | Low | Program metadata in `list` | done (firmware 2.5, branch `feature/cr-5-list-metadata`) |
 | CR-6 | Low | Optional PIN for write operations | done (firmware 2.6, branch `feature/cr-6-write-pin`) |
-| CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | open |
+| CR-7 | Medium | Report the BLE MTU in `info` (documented, not implemented) | done (firmware 2.7, branch `feature/cr-7-mtu-in-info`) |
 
 ---
 
@@ -211,6 +211,10 @@ Over USB serial the PIN can be cleared.
 ---
 
 ## CR-7 – Report the BLE MTU in `info` (Medium)
+
+**Status: done** (firmware 2.7). `info` and `status` over BLE report `mtu` (the connection's
+`peerMtu`, via `ConfigApi::setMtuSource` set by PhoneConfig). Absent over USB serial.
+`reactpod_config.py` uses it for the write size.
 
 Added 2026-10-18 (P2 of the app).
 

@@ -41,7 +41,9 @@ namespace {
 }
 
 PhoneConfig::PhoneConfig()
-    : api("ble", UPLOAD_SLOT, [this](const std::string& text) { this->sendLine(text); }) {}
+    : api("ble", UPLOAD_SLOT, [this](const std::string& text) { this->sendLine(text); }) {
+    this->api.setMtuSource([]() { return (uint16_t)peerMtu; });
+}
 
 void PhoneConfig::start() {
     rxBuffer = xStreamBufferCreate(ConfigApi::MAX_REQUEST + 1024, 1);

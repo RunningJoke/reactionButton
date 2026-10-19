@@ -113,7 +113,7 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.6","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
+← {"op":"info","ok":true,"firmware":"2.7","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
    "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline","listMeta"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
@@ -121,6 +121,9 @@ Rules:
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
 is true if a PIN is set and this transport needs it (BLE), see §8.
+`mtu` (firmware ≥ 2.7, BLE only) is the ATT MTU negotiated for this connection (23 until the
+client exchanges the MTU). Write at most `mtu − 3` bytes per BLE write. Over USB serial the
+field is absent. Web Bluetooth does not tell the page the MTU, so read it here.
 `blockTypes` lists what this firmware can run. `programFormat` is the revision of the
 block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
 [programs.md](programs.md) §6. `features` lists optional API features (firmware ≥ 2.4; missing
@@ -186,7 +189,7 @@ switched off when a program is selected.
 | op | Role | Request fields | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | menu: `programs[] {index, name, path, peripherals}`, `selected` |
 | `select` | central, menu | `program`: index, path or name | loads the program, BLE off, radio on, searching for peripherals |
 | `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing |
