@@ -1,0 +1,57 @@
+# Staging / production on one VPS (Hetzner): API + Postgres + Caddy (HTTPS).
+# Lives in /opt/reactpod on the server next to .env (see README.md). CI copies this file and runs:
+#   docker compose pull && docker compose run --rm migrate && docker compose up -d
+name: reactpod
+
+services:
+  api:
+    image: ghcr.io/runningjoke/reactpod-platform:${API_TAG:-feat-platform}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://reactpod:${POSTGRES_PASSWORD}@db:5432/reactpod
+      PUBLIC_URL: https://${API_DOMAIN}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://runningjoke.github.io}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    image: ghcr.io/runningjoke/reactpod-platform:${API_TAG:-feat-platform}
+    command: ["node", "dist-migrate/migrate.js"]
+    environment:
+      DATABASE_URL: postgres://reactpod:${POSTGRES_PASSWORD}@db:5432/reactpod
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reactpod
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: reactpod
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "reactpod"]
+      interval: 5s
+      retries: 20
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+
+volumes:
+  db:
+  caddy_data:
+  caddy_config:

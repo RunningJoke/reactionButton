@@ -1,0 +1,10 @@
+# Docker builds from the repository root (platform/Dockerfile): only send what the image needs
+*
+!packages/program-model/package.json
+!packages/program-model/src
+!platform
+!firmware/data/prog/lib
+**/node_modules
+**/dist
+**/dist-migrate
+**/.env
