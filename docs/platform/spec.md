@@ -537,7 +537,8 @@ platform/
 │   │   ├── identity/      sign-in, sessions, profile, export, deletion (PL1)
 │   │   ├── orgs/          clubs, members, teams, invitations, athletes, policies (PL1)
 │   │   ├── audit/         audit log (PL1)
-│   │   └── catalog/       programs, revisions, presets, sets, ratings, reports, access rules (PL2)
+│   │   ├── catalog/       programs, revisions, presets, sets, ratings, reports, access rules (PL2)
+│   │   └── training/      training sessions, reports, values, statistics, leaderboards (PL3)
 │   ├── adapters/          db.ts (postgres.js + Drizzle), migrate.ts, library.ts (shipped /prog/lib)
 │   ├── http/app.ts        REST front door generated from the registry, /mcp, /healthz, /readyz, /v1/openapi.json
 │   ├── mcp/server.ts      MCP front door: one tool per use case with agent ≠ deny
@@ -620,6 +621,6 @@ Like the app phases: the user approves each phase.
 | PL0 | Skeleton: `platform/`, CI, `packages/program-model` extracted from the app (app tests still green), use-case helper, OpenAPI + MCP generation, deploy pipeline to a staging host | `GET /v1/meta` deployed; app builds against the package | implemented; staging deploy waits for the server + secrets ([deploy](../../platform/deploy/README.md)) |
 | PL1 | Accounts (email code + link; passkeys later, P13), clubs, teams, invitations, managed athletes, audit log | sign up, create club, invite coach, add athletes from the app | API implemented and tested (REST + MCP); app screens later; user test pending |
 | PL2 | Programs, revisions, forks, presets, sets, search, ratings, reports, `spec/program.schema.json`; app: login, publish, install, apply preset | a program made in the app can be published, found and installed on another phone | API implemented and tested (REST + MCP, Postgres 17); app integration later; user test pending |
-| PL3 | Training sessions and reports (upload from the app's offline queue), stats, team leaderboards; pod side: epic #37 | a session on real pods appears in the athlete's stats | API in progress; real pods wait for #38 → #41 / #42 → #45–#47 |
+| PL3 | Training sessions and reports (upload from the app's offline queue), stats, team leaderboards; pod side: epic #37 | a session on real pods appears in the athlete's stats | API implemented and tested (REST + MCP); app upload with #47 / #48; real pods wait for #38 → #41 / #42 → #45–#47; user test pending |
 | PL4 | OAuth for third-party / AI clients, agent tokens, guard rails (the MCP door exists since PL0) | Claude connects, writes a valid program draft and analyses a team's sessions | – |
 | PL5 | Training plans, webhooks, moderation tooling, data export polish | – | – |

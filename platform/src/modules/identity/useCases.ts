@@ -10,6 +10,7 @@ import { recordAudit } from "../audit/record";
 import { auditLog } from "../audit/schema";
 import { athletes, memberships, organizations } from "../orgs/schema";
 import { createPersonalOrg } from "../orgs/service";
+import { resultsOfAthletes } from "../training/useCases";
 import { appLink, loginMail } from "./mails";
 import { accessTokens, loginRequests, users } from "./schema";
 import { issueSession } from "./tokens";
@@ -269,6 +270,7 @@ export const exportMyData = defineUseCase({
     user: User,
     memberships: z.array(z.object({ orgId: Id, orgName: z.string(), kind: z.string(), role: z.string(), teamIds: z.array(Id) })),
     athleteProfiles: z.array(z.object({ id: Id, orgId: Id, name: z.string(), birthYear: z.number().nullable() })),
+    results: z.array(z.record(z.string(), z.unknown())).describe("training sessions with reports of the claimed athlete profiles"),
     sessions: z.array(z.object({ id: Id, label: z.string(), createdAt: Timestamp, expiresAt: Timestamp })),
     activity: z.array(z.object({ at: Timestamp, action: z.string(), resourceType: z.string(), resourceId: z.string().nullable(), via: z.string() })),
   }),
@@ -293,6 +295,7 @@ export const exportMyData = defineUseCase({
       user: toUser(user),
       memberships: ms,
       athleteProfiles: profiles,
+      results: await resultsOfAthletes(db, profiles.map((p) => p.id)),
       sessions: tokens.map((t) => ({ id: t.id, label: t.label, createdAt: iso(t.createdAt), expiresAt: iso(t.expiresAt) })),
       activity: activity.map((a) => ({ at: iso(a.at), action: a.action, resourceType: a.resourceType, resourceId: a.resourceId, via: a.via })),
     };

@@ -98,7 +98,7 @@ describe("invitations", () => {
   });
 
   it("an athlete takes over their profile through an invitation", async () => {
-    const athlete = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Mia" }, owner)).body;
+    const athlete = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Mia" }, owner)).body;
     const token = await join("mia@example.org", { role: "athlete", athleteId: athlete.id });
     const list = (await env.call("GET", `/v1/orgs/${club.id}/athletes`, undefined, owner)).body.athletes;
     expect(list[0]).toMatchObject({ id: athlete.id, claimed: true });
@@ -150,10 +150,10 @@ describe("teams and athletes", () => {
     expect((await env.call("GET", `/v1/orgs/${club.id}/teams`, undefined, coach)).body.teams.map((t: { name: string }) => t.name)).toEqual(["U12"]);
     expect((await env.call("POST", `/v1/orgs/${club.id}/teams`, { name: "X" }, coach)).status).toBe(403);
 
-    const mine = await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Ben", birthYear: 2014, teamIds: [u12.id] }, coach);
+    const mine = await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Ben", birthYear: 2014, teamIds: [u12.id] }, coach);
     expect(mine.status).toBe(201);
-    expect((await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Cem", teamIds: [u14.id] }, coach)).status).toBe(403);
-    const other = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Cem", teamIds: [u14.id] }, owner)).body;
+    expect((await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Cem", teamIds: [u14.id] }, coach)).status).toBe(403);
+    const other = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Cem", teamIds: [u14.id] }, owner)).body;
 
     const seen = (await env.call("GET", `/v1/orgs/${club.id}/athletes`, undefined, coach)).body.athletes;
     expect(seen.map((a: { name: string }) => a.name)).toEqual(["Ben"]);
@@ -175,7 +175,7 @@ describe("teams and athletes", () => {
   it("deleting a team removes it from members and athletes", async () => {
     const u12 = (await env.call("POST", `/v1/orgs/${club.id}/teams`, { name: "U12" }, owner)).body;
     const coach = await join("coach@example.org", { role: "coach", teamIds: [u12.id] });
-    const a = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Ben", teamIds: [u12.id] }, owner)).body;
+    const a = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Ben", teamIds: [u12.id] }, owner)).body;
     expect((await env.call("PATCH", `/v1/orgs/${club.id}/teams/${u12.id}`, { name: "U13", leaderboard: true }, owner)).body).toMatchObject({
       name: "U13",
       leaderboard: true,
@@ -189,7 +189,7 @@ describe("teams and athletes", () => {
   it("rejects teams of another club", async () => {
     const otherClub = (await env.call("POST", "/v1/orgs", { name: "Other" }, owner)).body;
     const foreign = (await env.call("POST", `/v1/orgs/${otherClub.id}/teams`, { name: "T" }, owner)).body;
-    expect((await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "X", teamIds: [foreign.id] }, owner)).status).toBe(400);
+    expect((await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "X", teamIds: [foreign.id] }, owner)).status).toBe(400);
   });
 });
 
@@ -197,7 +197,7 @@ describe("audit log", () => {
   it("records writes, newest first, paged; admins only", async () => {
     await env.call("POST", `/v1/orgs/${club.id}/teams`, { name: "A" }, owner);
     await env.call("POST", `/v1/orgs/${club.id}/teams`, { name: "B" }, owner);
-    await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Mia" }, owner);
+    await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Mia" }, owner);
     const first = (await env.call("GET", `/v1/orgs/${club.id}/audit?limit=2`, undefined, owner)).body;
     expect(first.entries.map((e: { action: string }) => e.action)).toEqual(["athlete.created", "team.created"]);
     expect(first.entries[0]).toMatchObject({ via: "rest", actorKind: "user" });

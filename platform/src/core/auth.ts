@@ -12,6 +12,8 @@ export const SCOPES = [
   "audit:read",
   "programs:read",
   "programs:write",
+  "results:read",
+  "results:write",
 ] as const;
 export type Scope = (typeof SCOPES)[number];
 

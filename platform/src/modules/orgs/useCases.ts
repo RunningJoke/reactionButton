@@ -5,7 +5,7 @@ import { hashToken, newToken, userId } from "../../core/auth";
 import type { Ctx } from "../../core/context";
 import { conflict, forbidden, invalidInput, notFound } from "../../core/errors";
 import { uuidv7 } from "../../core/ids";
-import { Id, iso, Ok, ok, Timestamp } from "../../core/schemas";
+import { Id, iso, isoOrNull, Ok, ok, Timestamp } from "../../core/schemas";
 import { defineUseCase } from "../../core/useCase";
 import { recordAudit } from "../audit/record";
 import { users } from "../identity/schema";
@@ -611,6 +611,7 @@ const Athlete = z.object({
   birthYear: z.number().int().nullable(),
   teamIds: z.array(Id),
   claimed: z.boolean().describe("a user account owns this profile"),
+  consentAt: Timestamp.nullable().describe("when the consent for this profile was confirmed"),
   createdAt: Timestamp,
 });
 type AthleteRow = typeof athletes.$inferSelect;
@@ -627,6 +628,7 @@ function toAthlete(a: AthleteRow, ctx: Ctx, realNames: boolean) {
     birthYear: hide ? null : a.birthYear,
     teamIds: a.teamIds,
     claimed: a.userId !== null,
+    consentAt: isoOrNull(a.consentAt),
     createdAt: iso(a.createdAt),
   };
 }
@@ -668,7 +670,9 @@ export const listAthletes = defineUseCase({
 export const createAthlete = defineUseCase({
   name: "create_athlete",
   title: "Add an athlete",
-  description: "Adds an athlete profile (no login needed). Coaches add to their own teams.",
+  description:
+    "Adds an athlete profile (no login needed). Coaches add to their own teams. `consent: true` confirms that the " +
+    "athlete (for minors: the parents) agreed to the storage of their results; the platform records when and by whom.",
   http: { method: "post", path: "/v1/orgs/{orgId}/athletes", status: 201 },
   tag: "athletes",
   scope: "athletes:write",
@@ -677,6 +681,7 @@ export const createAthlete = defineUseCase({
     name: Name.describe("name or nickname"),
     birthYear: z.number().int().min(1900).max(2100).optional(),
     teamIds: TeamIds.default([]),
+    consent: z.literal(true).describe("the athlete (for minors: the parents) agreed"),
   }),
   output: Athlete,
   run: async (ctx, { orgId, name, birthYear, teamIds }) =>
@@ -688,7 +693,7 @@ export const createAthlete = defineUseCase({
       const now = ctx.ports.clock();
       const [a] = await tx
         .insert(athletes)
-        .values({ id: uuidv7(now.getTime()), orgId, name, birthYear: birthYear ?? null, teamIds, createdAt: now })
+        .values({ id: uuidv7(now.getTime()), orgId, name, birthYear: birthYear ?? null, teamIds, consentAt: now, consentBy: me.userId, createdAt: now })
         .returning();
       await recordAudit(tx, ctx, { orgId, action: "athlete.created", resourceType: "athlete", resourceId: a!.id });
       return toAthlete(a!, ctx, true);
@@ -726,7 +731,7 @@ export const updateAthlete = defineUseCase({
 export const deleteAthlete = defineUseCase({
   name: "delete_athlete",
   title: "Delete an athlete",
-  description: "Deletes an athlete profile (later also its results). Coaches for their teams.",
+  description: "Deletes an athlete profile with all its training sessions and results. Coaches for their teams.",
   http: { method: "delete", path: "/v1/orgs/{orgId}/athletes/{athleteId}" },
   tag: "athletes",
   scope: "athletes:write",

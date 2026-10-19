@@ -68,7 +68,7 @@ describe("MCP", () => {
   it("acts as the signed-in user and pseudonymises athletes unless the club allows real names", async () => {
     const token = await env.signIn("coach@example.org");
     const org = (await env.call("POST", "/v1/orgs", { name: "TV Test" }, token)).body;
-    const athlete = (await env.call("POST", `/v1/orgs/${org.id}/athletes`, { name: "Mia Muster", birthYear: 2014 }, token)).body;
+    const athlete = (await env.call("POST", `/v1/orgs/${org.id}/athletes`, { consent: true, name: "Mia Muster", birthYear: 2014 }, token)).body;
     const client = await mcp(token);
 
     const me = await client.callTool({ name: "get_me", arguments: {} });

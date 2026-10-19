@@ -59,6 +59,9 @@ export const athletes = pgTable(
     name: text("name").notNull(),
     birthYear: integer("birth_year"),
     teamIds: uuid("team_ids").array().notNull().default([]),
+    /** when and by whom the consent (of the parents, for minors) was confirmed (spec §8, P23) */
+    consentAt: ts("consent_at"),
+    consentBy: uuid("consent_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: ts("created_at").notNull(),
   },
   (t) => [index("athletes_org_idx").on(t.orgId)],
