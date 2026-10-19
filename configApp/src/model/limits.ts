@@ -12,6 +12,10 @@ export const MAX_INCLUDE_DEPTH = 3;
 export const MAX_PERIPHERALS = 7;
 export const LED_COUNT = 18;
 export const PROGRAM_FORMAT_VERSION = 1;
+/** Revision of block fields, ports and semantics the app's block types match (`info.programFormat`, programs.md §6). */
+export const PROGRAM_FORMAT = 1;
+/** Longest set name in bytes (`setName`). */
+export const MAX_SET_NAME = 16;
 
 /** Same rules as ProgramStore::isValidPath in the firmware. */
 export function isValidPath(path: unknown): path is string {

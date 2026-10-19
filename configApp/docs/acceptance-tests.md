@@ -25,15 +25,17 @@ generation and store hash.
 
 ## B – BLE (Android Chrome, desktop Chrome)
 
-Needs firmware with change request CR-0 (`doc/changerequest/config-app-api.md` on the firmware branch). Without it the app connects, then reports "The pod did not answer" (timeout).
+Needs firmware ≥ 2.1 (change request CR-0, `doc/changerequest/config-app-api.md`). With firmware 2.0 the app connects, then reports "The pod did not answer" (timeout). AT-B5…B7 need firmware ≥ 2.6.
 
 | ID | Steps | Expected |
 |---|---|---|
-| AT-B1 | App → Pod → Bluetooth | chooser lists "ReactPod Config", connecting works, `info` shown |
+| AT-B1 | App → Pod → Bluetooth | chooser lists "ReactPod xxxx" (last 4 digits of the set id), connecting works, `info` shown |
 | AT-B2 | Central not in the menu (game running) | the app does not find it and shows the hint how to open the menu |
-| AT-B3 | Read all programs of the default set | completes. Note the duration and the MTU |
+| AT-B3 | Read all programs of the default set | completes. Note the duration and the MTU (`info.mtu`, debug console) |
 | AT-B4 | Select a program on the pod (long press) while connected | app shows "disconnected" (BLE off), no data loss locally |
-| AT-B5 | Two centrals in the menu at the same time | user can tell them apart (depends on CR-1, record what is shown) |
+| AT-B5 | Two centrals in the menu at the same time | the chooser shows two different names; each suffix matches the set id in the Pod tab |
+| AT-B6 | Pod tab → rename the set to "Halle 2", disconnect, connect again | the chooser and the Pod tab show "ReactPod Halle 2" / "Halle 2" |
+| AT-B7 | Set a PIN over USB (`reactpod_serial.py set-pin 1234`), then rename over BLE | the app asks for the PIN; a wrong PIN shows "Wrong PIN", the right one saves. Clear the PIN over USB afterwards |
 
 ## P – Sync and push
 
@@ -49,6 +51,9 @@ Needs firmware with change request CR-0 (`doc/changerequest/config-app-api.md` o
 | AT-P8 | Upload a program with umlauts in name / description (`Übung`) | CRC ok, file identical when read back |
 | AT-P9 | Restore defaults on a pod with a user program | default menu restored, user program file still present (`list`) |
 | AT-P10 | Delete a file via Settings → Advanced | needs the extra confirmation, library and menu are not offered |
+| AT-P11 | Programs → Export set, then on another browser / after clearing site data: Import set, push | the same programs and menu arrive on the pod; files identical (`list` CRCs) |
+| AT-P12 | PIN set over USB, push over BLE | the push dialog asks for the PIN; a wrong PIN stops with "Wrong PIN" before anything is written |
+| AT-P13 | Push a program with an unknown block type to a pod (firmware ≥ 2.4, e.g. edit the JSON and import it) | the pod's dry run reports it, "Nothing was changed", `list` unchanged |
 
 ## M – Simulator (no hardware needed, compare with hardware)
 
@@ -81,4 +86,5 @@ Needs firmware with change request CR-0 (`doc/changerequest/config-app-api.md` o
 | AT-S2 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
 | AT-S3 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
 | AT-S4 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
-| AT-B1 … AT-B5 | – | – | 2.0 | blocked | waits for firmware CR-0 |
+| AT-B1 … AT-B5 | – | – | 2.0 | blocked | firmware 2.0 lacks CR-0 |
+| AT-B1 … AT-B7 | – | – | 2.7 | open | firmware with CR-0 … CR-7 builds, not yet run |

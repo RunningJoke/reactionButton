@@ -34,13 +34,15 @@
     },
     "chooseDevice": "Choose the pod in the browser dialog.",
     "errors": {
-      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware with change request CR-0.",
+      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware 2.1 or newer.",
       "disconnected": "The connection was lost.",
       "openFailed": "The port could not be opened. Is another program (e.g. a serial monitor) using it?",
       "notAllowed": "The browser did not allow access.",
       "busy": "The pod is busy (game or sync running). Return to the program menu.",
       "overflow": "The pod could not keep up. Please try again.",
-      "unknown": "Something went wrong."
+      "unknown": "Something went wrong.",
+      "auth_required": "This pod is protected with a PIN. Enter it to make changes.",
+      "auth_failed": "Wrong PIN. Wait 3 seconds before you try again."
     },
     "kind": {
       "ble": "Bluetooth pod",
@@ -72,7 +74,17 @@
       "close": "Close"
     },
     "notConnected": "No pod connected",
-    "connectButton": "Connect"
+    "connectButton": "Connect",
+    "setName": "Set name",
+    "rename": "Rename set",
+    "renameHint": "Shown in the Bluetooth list as “ReactPod <name>”. Leave empty to use the last 4 digits of the set id.",
+    "renameLater": "The new name is shown after this connection ends.",
+    "nameTooLong": "At most {{max}} bytes (umlauts count as 2).",
+    "save": "Save",
+    "pin": "PIN",
+    "pinProtected": "PIN protected",
+    "pinHint": "This pod is protected with a PIN. The owner can change or clear it over USB.",
+    "programFormatNewer": "The pod knows newer block fields (format {{pod}}, app {{app}}). Update the app before you change programs."
   },
   "programs": {
     "onPod": "On the pod",
@@ -112,7 +124,19 @@
     "deleteTitle": "Delete program?",
     "deleteText": "“{{name}}” ({{path}}) is deleted from this device. Programs on the pod are not changed.",
     "delete": "Delete program",
-    "export": "Export file"
+    "export": "Export file",
+    "exportSet": "Export set",
+    "importSet": "Import set",
+    "importSetTitle": "Import set",
+    "importSetText_one": "{{file}} contains {{count}} program:",
+    "importSetText_other": "{{file}} contains {{count}} programs:",
+    "importSetMenu": "The menu ({{count}} entries) replaces the menu in this app.",
+    "importSetReplaces_one": "{{count}} of your programs with the same path is replaced.",
+    "importSetReplaces_other": "{{count}} of your programs with the same path are replaced.",
+    "importSetIgnored": "Not imported (library or not a program): {{files}}",
+    "importSetDone_one": "Imported {{count}} program.",
+    "importSetDone_other": "Imported {{count}} programs.",
+    "importSetFailed": "{{file}} is not a program set (.zip with programs.json and prog/…)."
   },
   "editor": {
     "title": "Editor",
@@ -207,7 +231,16 @@
     "console": "Debug console",
     "consoleHint": "Firmware log and events of the USB connection.",
     "consoleEmpty": "No output yet.",
-    "clear": "Clear"
+    "clear": "Clear",
+    "deleteFiles": "Delete files on the pod",
+    "deleteNotConnected": "Connect a central to delete files.",
+    "deleteHint": "Library parts and the menu cannot be deleted. Remove a program from the menu first.",
+    "inMenu": "in the menu",
+    "deleteSelected_one": "Delete {{count}} file…",
+    "deleteSelected_other": "Delete {{count}} files…",
+    "deleteTitle": "Delete files",
+    "deleteText": "These files are deleted from the pod. This cannot be undone.",
+    "holdToDelete": "Hold to delete"
   },
   "update": {
     "available": "A new version is available.",
@@ -493,5 +526,55 @@
     "logic": "Logic",
     "remote": "Remote pods",
     "stats": "Statistics"
+  },
+  "sync": {
+    "title": "Sync",
+    "loading": "Reading the pod…",
+    "clean": "The pod has everything from this app.",
+    "menu": "Menu",
+    "status": {
+      "inSync": "in sync",
+      "localNewer": "changed here",
+      "podNewer": "changed on the pod",
+      "conflict": "conflict",
+      "new": "new",
+      "podOnly": "on the pod"
+    },
+    "conflictHint": "Changed here and on the pod. Choose which one to keep.",
+    "takeOver": "Take over",
+    "keepPod": "Keep pod",
+    "keepMine": "Keep mine",
+    "push": "Push to pod",
+    "restore": "Restore defaults",
+    "pushTitle": "Push to the pod",
+    "restoreTitle": "Restore defaults",
+    "restoreText": "The shipped programs, the library and the default menu are written to the pod. Your programs on the pod stay, but are no longer in the menu. The menu in this app then follows the pod again.",
+    "choose": "Files to push",
+    "nothing": "Nothing to upload.",
+    "planCount_one": "{{count}} file will be uploaded",
+    "planCount_other": "{{count}} files will be uploaded",
+    "reason": {
+      "program": "your program",
+      "menu": "menu",
+      "preset": "library part",
+      "shipped": "shipped program"
+    },
+    "skipped_one": "{{count}} file is not pushed (conflict or changed on the pod).",
+    "skipped_other": "{{count}} files are not pushed (conflict or changed on the pod).",
+    "errorsTitle": "Fix these errors first",
+    "start": "Push",
+    "restoreStart": "Restore",
+    "starting": "Starting…",
+    "uploading": "Uploading {{path}} ({{done}} of {{total}})",
+    "checking": "Checking {{path}} on the pod",
+    "done_one": "{{count}} file uploaded.",
+    "done_other": "{{count}} files uploaded.",
+    "stopped": "Nothing was changed: the pod's check found errors.",
+    "podIssuesTitle": "The pod reports errors",
+    "spreadHint": "Start any program once with all pods switched on, so the whole set gets the new programs.",
+    "failed": "The push stopped.",
+    "partial_one": "{{count}} file was uploaded before. Push again to finish.",
+    "partial_other": "{{count}} files were uploaded before. Push again to finish.",
+    "close": "Close"
   }
 }

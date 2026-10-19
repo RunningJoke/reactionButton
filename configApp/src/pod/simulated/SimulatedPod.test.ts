@@ -84,6 +84,61 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
+  it("reports the firmware 2.7 fields in info", () => {
+    const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.7", setName: "Halle 2", pinRequired: false, programFormat: 1 });
+    expect(info.features).toEqual(["validateInline", "listMeta"]);
+  });
+
+  it("reports program metadata in list (listMeta)", () => {
+    const pod = new SimulatedPod({ files: { ...DEFAULT_FILES, "/prog/broken.json": "{" } });
+    const files = (call(pod, { op: "list" }) as { files: Json[] }).files;
+    const byPath = new Map(files.map((f) => [f.path, f]));
+    const duo = JSON.parse(DEFAULT_FILES["/prog/duo.json"]!) as Json;
+    expect(byPath.get("/prog/duo.json")).toMatchObject({ name: duo.name, peripherals: duo.peripherals, menu: duo.menu });
+    expect(byPath.get("/prog/lib/loop.json")).toMatchObject({ fragment: true });
+    expect(byPath.get("/prog/lib/loop.json")).not.toHaveProperty("name");
+    expect(byPath.get("/programs.json")).toEqual({ path: "/programs.json", size: expect.any(Number), crc: expect.any(String) });
+    expect(Object.keys(byPath.get("/prog/broken.json")!)).toEqual(["path", "size", "crc"]);
+  });
+
+  it("validates inline data without storing it (validateInline)", () => {
+    const pod = new SimulatedPod({ files: DEFAULT_FILES });
+    const generation = pod.generation;
+    const good = DEFAULT_FILES["/prog/duo.json"]!;
+    expect(call(pod, { op: "validate", path: "/prog/new.json", data: good })).toMatchObject({ ok: true, path: "/prog/new.json", blocks: 15 });
+    const bad = call(pod, { op: "validate", path: "/prog/new.json", data: JSON.stringify({ name: "X", blocks: [{ name: "Hit", type: "buton" }] }) });
+    expect(bad).toMatchObject({ ok: false, error: "invalid_program" });
+    expect(bad.message).toContain("'Hit'");
+    expect(call(pod, { op: "validate", path: "bad", data: good })).toMatchObject({ error: "bad_path" });
+    expect(pod.files.has("/prog/new.json")).toBe(false);
+    expect(pod.generation).toBe(generation);
+  });
+
+  it("stores the set name", () => {
+    const pod = new SimulatedPod();
+    expect(call(pod, { op: "setName", name: " Halle 2 " })).toMatchObject({ ok: true, setName: "Halle 2" });
+    expect(call(pod, { op: "info" })).toMatchObject({ setName: "Halle 2" });
+    expect(call(pod, { op: "setName", name: "ä".repeat(9) })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "setName", name: "a\tb" })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "setName" })).toMatchObject({ ok: true, setName: "" });
+  });
+
+  it("needs the PIN for writes when one is set", () => {
+    const pod = new SimulatedPod({ files: { "/prog/a.json": "{}" }, pin: "1234" });
+    expect(call(pod, { op: "info" })).toMatchObject({ pinRequired: true });
+    expect(call(pod, { op: "put", path: "/prog/a.json", data: "[]" })).toMatchObject({ error: "auth_required" });
+    expect(call(pod, { op: "delete", path: "/prog/a.json" })).toMatchObject({ error: "auth_required" });
+    expect(call(pod, { op: "setName", name: "x" })).toMatchObject({ error: "auth_required" });
+    expect(call(pod, { op: "get", path: "/prog/a.json" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "auth", pin: "0000" })).toMatchObject({ error: "auth_failed" });
+    expect(call(pod, { op: "auth", pin: "1234" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "put", path: "/prog/a.json", data: "[]" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "setPin", pin: "" })).toMatchObject({ error: "bad_request" });
+    pod.newSession();
+    expect(call(pod, { op: "put", path: "/prog/a.json", data: "{}" })).toMatchObject({ error: "auth_required" });
+  });
+
   it("changes the store hash with the content", () => {
     const pod = new SimulatedPod({ files: { "/prog/a.json": "{}" } });
     const before = pod.storeHash;

@@ -1,0 +1,37 @@
+.button {
+  position: relative;
+  overflow: hidden;
+  min-height: var(--touch);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--error);
+  font-weight: 600;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--error);
+  opacity: 0.25;
+}
+
+.button[data-holding] .fill {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms) linear;
+}
+
+.label {
+  position: relative;
+}

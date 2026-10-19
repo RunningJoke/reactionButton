@@ -1,9 +1,11 @@
 /**
  * BLE via @capacitor-community/bluetooth-le: Web Bluetooth in the browser, native BLE in the
- * Capacitor app. GATT layout: config-api.md §2. The central only advertises in the program menu.
+ * Capacitor app. GATT layout: config-api.md §2. The central only advertises in the program menu,
+ * as "ReactPod <set name or last 4 digits of the setId>" (§2.1).
  *
- * Firmware CR-0 (doc/changerequest/config-app-api.md) must be fixed before responses arrive:
- * the pod indicates, but browsers subscribe for notifications.
+ * Needs firmware ≥ 2.1 (CR-0): the Response characteristic offers indications only, so
+ * `startNotifications` subscribes for indications. Firmware 2.0 also offered notify; the
+ * browser then picked notifications and the pod's indications were dropped.
  */
 import { BleClient } from "@capacitor-community/bluetooth-le";
 import { PodError } from "../protocol";
@@ -46,7 +48,7 @@ export class BleTransport implements Transport {
     return this.writeBytes;
   }
 
-  /** Uses a known MTU, e.g. `info.mtu` of the pod (firmware CR-7). */
+  /** Uses a known MTU, e.g. `info.mtu` of the pod (firmware ≥ 2.7). */
   setMtu(mtu: number) {
     if (Number.isInteger(mtu) && mtu > 3) this.writeBytes = Math.min(mtu - 3, MAX_WRITE_BYTES);
   }

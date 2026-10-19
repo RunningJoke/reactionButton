@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SimulatedPod } from "../simulated/SimulatedPod";
+import type { SimulatedTransport } from "../simulated/SimulatedTransport";
 import { PodClient } from "../client";
 import { encodeUtf8 } from "../utf8";
 
@@ -109,7 +110,7 @@ vi.mock("@capacitor-community/bluetooth-le", () => {
   return {
     BleClient: {
       initialize: vi.fn(async () => {}),
-      requestDevice: vi.fn(async () => ({ deviceId: "dev1", name: "ReactPod Config" })),
+      requestDevice: vi.fn(async () => ({ deviceId: "dev1", name: "ReactPod 91c2" })),
       connect: vi.fn(async (_id: string, onDisconnect: () => void) => {
         ble.onDisconnect = onDisconnect;
       }),
@@ -154,7 +155,7 @@ describe("BleTransport", () => {
     const { BleTransport } = await import("./BleTransport");
     const transport = new BleTransport();
     await transport.connect();
-    expect(transport.name).toBe("ReactPod Config");
+    expect(transport.name).toBe("ReactPod 91c2");
     expect(transport.maxWrite).toBe(20);
     const client = new PodClient(transport, { timeoutMs: 500 });
     const list = await client.list();
@@ -197,5 +198,27 @@ describe("pod session", () => {
     await s.disconnect();
     expect(usePodSession.getState().state).toBe("disconnected");
     expect(isReadOnly({ role: "peripheral" })).toBe(true);
+  });
+
+  it("authenticates and renames the set", async () => {
+    const { usePodSession, needsPin, setLabel } = await import("../session");
+    await usePodSession.getState().connect("simulated");
+    const client = usePodSession.getState().client!;
+    const pod = (client.transport as SimulatedTransport).pod;
+    expect(setLabel(usePodSession.getState())).toBe(`ReactPod ${pod.setId.slice(-4)}`);
+
+    pod.pin = "4711";
+    await usePodSession.getState().refresh();
+    expect(needsPin(usePodSession.getState())).toBe(true);
+    await expect(usePodSession.getState().renameSet("Halle 2")).rejects.toMatchObject({ code: "auth_required" });
+    await expect(usePodSession.getState().authenticate("1")).rejects.toMatchObject({ code: "auth_failed" });
+    await usePodSession.getState().authenticate("4711");
+    expect(needsPin(usePodSession.getState())).toBe(false);
+    await usePodSession.getState().renameSet("Halle 2");
+    expect(usePodSession.getState().info?.setName).toBe("Halle 2");
+    expect(setLabel(usePodSession.getState())).toBe("Halle 2");
+
+    await usePodSession.getState().disconnect();
+    expect(usePodSession.getState().authenticated).toBe(false);
   });
 });

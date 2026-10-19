@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Bluetooth, Info, Loader, Lock, MonitorSmartphone, Unplug, Usb, X, type LucideIcon } from "lucide-react";
-import { firmwareSupported, isReadOnly, usePodSession } from "../pod/session";
+import { firmwareSupported, isReadOnly, setLabel, usePodSession } from "../pod/session";
 import { isWebBluetoothAvailable } from "../pod/transport/BleTransport";
 import type { TransportKind } from "../pod/transport/Transport";
 import { isWebSerialAvailable } from "../pod/transport/WebSerialTransport";
@@ -60,7 +60,7 @@ export function ErrorBanner() {
   const { t } = useTranslation();
   const error = usePodSession((s) => s.error);
   if (!error) return null;
-  const known = ["timeout", "disconnected", "openFailed", "notAllowed", "busy", "overflow"];
+  const known = ["timeout", "disconnected", "openFailed", "notAllowed", "busy", "overflow", "auth_required", "auth_failed"];
   return (
     <div className={styles.banner} role="alert">
       <AlertTriangle size={20} aria-hidden />
@@ -124,7 +124,7 @@ function ConnectedPod() {
       <div className={styles.pod}>
         <Icon size={28} aria-hidden className={styles.podIcon} />
         <div className={styles.podText}>
-          <strong>{session.deviceName ?? t(`pod.kind.${kind ?? "ble"}`)}</strong>
+          <strong>{setLabel(session) ?? t(`pod.kind.${kind ?? "ble"}`)}</strong>
           <span className={styles.podFacts}>
             <span className={styles.badge} data-role={role}>
               {isReadOnly(session) && <Lock size={12} aria-hidden />}

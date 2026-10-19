@@ -5,7 +5,7 @@ import { MemoryStorage } from "./programStore";
 import { localFiles, parseProgramText, useWorkspace } from "./workspace";
 
 beforeEach(() => {
-  useWorkspace.setState({ loaded: false, programs: [], menu: undefined, storage: new MemoryStorage() });
+  useWorkspace.setState({ loaded: false, programs: [], menu: undefined, sync: null, storage: new MemoryStorage() });
   useEditor.getState().close();
 });
 
@@ -28,6 +28,18 @@ describe("workspace", () => {
     useWorkspace.setState({ loaded: false, programs: [], menu: undefined });
     await useWorkspace.getState().load();
     expect(useWorkspace.getState().menu).toEqual(["/prog/solo.json"]);
+  });
+
+  it("remembers the sync state per set and forgets the menu", async () => {
+    const ws = useWorkspace.getState();
+    await ws.recordSync("aa", { "/prog/a.json": { crc: "ABCDEF01", size: 3 }, "/prog/b.json": { crc: "1", size: 1 } });
+    await ws.recordSync("aa", { "/prog/b.json": null });
+    useWorkspace.setState({ sync: null });
+    expect(await useWorkspace.getState().loadSync("aa")).toEqual({ setId: "aa", files: { "/prog/a.json": { crc: "abcdef01", size: 3 } } });
+    expect((await useWorkspace.getState().loadSync("bb")).files).toEqual({});
+    await ws.setMenu(["/prog/a.json"]);
+    await ws.setMenu(undefined);
+    expect(await ws.storage.getMenu()).toBeUndefined();
   });
 
   it("rejects imported files that are not programs", () => {

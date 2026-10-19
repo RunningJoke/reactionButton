@@ -7,6 +7,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { fileCache } from "../store/fileCache";
 import { PodClient } from "./client";
 import { readFile } from "./files";
+import { PROGRAM_FORMAT } from "../model/limits";
 import { PodError, type InfoResponse, type ListResponse, type PodEvent, type PodRole } from "./protocol";
 import { SimulatedPod } from "./simulated/SimulatedPod";
 import { SimulatedTransport } from "./simulated/SimulatedTransport";
@@ -39,11 +40,17 @@ type PodSession = {
   error: SessionError | null;
   log: LogEntry[];
   client: PodClient | null;
+  /** the PIN was accepted on this connection (`auth`) */
+  authenticated: boolean;
 
   connect: (kind: TransportKind) => Promise<void>;
   disconnect: () => Promise<void>;
   refresh: () => Promise<void>;
   clearLog: () => void;
+  /** Sends the PIN. Rejects with PodError `auth_failed` on a wrong PIN. */
+  authenticate: (pin: string) => Promise<void>;
+  /** Stores the set name ("" clears it). Needs `authenticate` first if `needsPin`. */
+  renameSet: (name: string) => Promise<void>;
 };
 
 /** Writes are only allowed on a central (decision O6). */
@@ -54,6 +61,25 @@ export function isReadOnly(session: Pick<PodSession, "role">): boolean {
 export function firmwareSupported(info: InfoResponse | null): boolean {
   if (!info) return true;
   return Number.parseInt(info.firmware, 10) === SUPPORTED_FIRMWARE_MAJOR;
+}
+
+/** The pod's block types have fields, ports or semantics the app does not know (firmware CR-2). */
+export function programFormatNewer(info: InfoResponse | null): boolean {
+  return (info?.programFormat ?? 1) > PROGRAM_FORMAT;
+}
+
+/** Write ops (put, delete, setName) need the PIN first. */
+export function needsPin(session: Pick<PodSession, "info" | "authenticated">): boolean {
+  return session.info?.pinRequired === true && !session.authenticated;
+}
+
+export function hasFeature(info: InfoResponse | null, feature: string): boolean {
+  return info?.features?.includes(feature) ?? false;
+}
+
+/** Name to show for the set: the stored set name, else the advertised name, else the set id. */
+export function setLabel(session: Pick<PodSession, "info" | "deviceName">): string | null {
+  return session.info?.setName || session.deviceName || (session.info ? `ReactPod ${session.info.setId.slice(-4)}` : null);
 }
 
 function createTransport(kind: TransportKind): Transport {
@@ -91,7 +117,7 @@ export const usePodSession = create<PodSession>((set, get) => {
     for (const off of unsubscribe) off();
     unsubscribe = [];
     get().client?.dispose();
-    set({ state: "disconnected", client: null, info: null, role: null, list: null, deviceName: null, files: {}, loading: null });
+    set({ state: "disconnected", client: null, info: null, role: null, list: null, deviceName: null, files: {}, loading: null, authenticated: false });
   };
 
   /** Reads every listed file that is not cached yet (by size + CRC). */
@@ -125,6 +151,7 @@ export const usePodSession = create<PodSession>((set, get) => {
     error: null,
     log: [],
     client: null,
+    authenticated: false,
 
     async connect(kind) {
       if (get().state !== "disconnected") return;
@@ -184,6 +211,26 @@ export const usePodSession = create<PodSession>((set, get) => {
 
     clearLog() {
       set({ log: [] });
+    },
+
+    async authenticate(pin) {
+      const client = get().client;
+      if (!client) throw new PodError("disconnected", "not connected", "auth");
+      try {
+        await client.auth(pin);
+      } catch (e) {
+        if (get().client === client) set({ authenticated: false });
+        throw e;
+      }
+      if (get().client === client) set({ authenticated: true });
+    },
+
+    async renameSet(name) {
+      const client = get().client;
+      if (!client) throw new PodError("disconnected", "not connected", "setName");
+      const response = await client.setName(name);
+      const info = get().info;
+      if (get().client === client && info) set({ info: { ...info, setName: response.setName } });
     },
   };
 });

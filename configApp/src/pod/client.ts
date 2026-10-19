@@ -8,6 +8,7 @@ import {
   type PodEvent,
   type PutResponse,
   type ResponseBase,
+  type SetNameResponse,
   type StatusResponse,
   type ValidateResponse,
 } from "./protocol";
@@ -96,8 +97,17 @@ export class PodClient {
   delete(path: string) {
     return this.request<DeleteResponse>("delete", { path });
   }
-  validate(path: string) {
-    return this.request<ValidateResponse>("validate", { path });
+  /** Loads the program on the pod without starting it. With `data` (feature `validateInline`): dry run of that text. */
+  validate(path: string, data?: string) {
+    return this.request<ValidateResponse>("validate", data === undefined ? { path } : { path, data });
+  }
+  /** Unlocks put / delete / setName for this connection when `info.pinRequired`. */
+  auth(pin: string) {
+    return this.request<ResponseBase>("auth", { pin });
+  }
+  /** Stores the set name ("" clears it), advertised as "ReactPod <name>" after this connection. */
+  setName(name: string) {
+    return this.request<SetNameResponse>("setName", { name });
   }
 
   private send<T extends ResponseBase>(op: string, fields: Record<string, unknown>): Promise<T> {

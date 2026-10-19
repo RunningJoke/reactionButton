@@ -1,12 +1,12 @@
 /**
  * The user's local programs and menu: the set they are building. Everything is saved at once,
- * so nothing is lost when the app is closed. Push to a pod follows in P5.
+ * so nothing is lost when the app is closed. Also the sync state per pod set (README §9.2).
  */
 import { create } from "zustand";
 import { formatProgram } from "../model/format";
 import { pathForName } from "../model/limits";
 import { isObject } from "../model/program";
-import { createStorage, type ProgramDoc, type Storage } from "./programStore";
+import { createStorage, type ProgramDoc, type Storage, type SyncBase, type SyncState } from "./programStore";
 
 type Workspace = {
   loaded: boolean;
@@ -14,12 +14,19 @@ type Workspace = {
   /** undefined until the user changes the menu (then the pod's or the shipped menu is shown) */
   menu: string[] | undefined;
   storage: Storage;
+  /** sync state of the connected set, see `loadSync` */
+  sync: SyncState | null;
 
   load: () => Promise<void>;
   /** saves a changed program document (updates `updatedAt`) */
   save: (doc: ProgramDoc) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  setMenu: (menu: string[]) => Promise<void>;
+  /** `undefined` forgets the local menu */
+  setMenu: (menu: string[] | undefined) => Promise<void>;
+  /** reads the sync state of a set (empty if never synced) */
+  loadSync: (setId: string) => Promise<SyncState>;
+  /** remembers the common state of files (`null` forgets a file, e.g. after delete) */
+  recordSync: (setId: string, files: Record<string, SyncBase | null>) => Promise<void>;
   /** adds a program; the path is made unique against `taken` and the local programs */
   add: (json: Record<string, unknown>, origin: ProgramDoc["origin"], options?: { path?: string; taken?: Iterable<string> }) => Promise<ProgramDoc>;
 };
@@ -29,6 +36,7 @@ export const useWorkspace = create<Workspace>((set, get) => ({
   programs: [],
   menu: undefined,
   storage: createStorage(),
+  sync: null,
 
   async load() {
     if (get().loaded) return;
@@ -55,6 +63,34 @@ export const useWorkspace = create<Workspace>((set, get) => ({
   async setMenu(menu) {
     set({ menu });
     await get().storage.saveMenu(menu);
+  },
+
+  async loadSync(setId) {
+    const current = get().sync;
+    if (current?.setId === setId) return current;
+    let state: SyncState = { setId, files: {} };
+    try {
+      state = (await get().storage.getSyncState(setId)) ?? state;
+    } catch {
+      // storage blocked: start empty
+    }
+    set({ sync: state });
+    return state;
+  },
+
+  async recordSync(setId, files) {
+    const base = await get().loadSync(setId);
+    const next: SyncState = { setId, files: { ...base.files } };
+    for (const [path, entry] of Object.entries(files)) {
+      if (entry) next.files[path] = { crc: entry.crc.toLowerCase(), size: entry.size };
+      else delete next.files[path];
+    }
+    set({ sync: next });
+    try {
+      await get().storage.saveSyncState(next);
+    } catch {
+      // kept in memory
+    }
   },
 
   async add(json, origin, options = {}) {
