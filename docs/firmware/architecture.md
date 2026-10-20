@@ -226,6 +226,7 @@ repeat up to 32 times:
 | `remoteMultiPress` | `RemoteMultiplePressBlock` | next, avoidHit, timeout |
 | `remoteResetAll` | `RemoteResetAllBlock` | next |
 | `summary` | `SummaryBlock` | next |
+| `repeat` | `RepeatBlock` | next, body, done |
 
 ### 6.4 Variables
 

@@ -117,7 +117,7 @@ Rules:
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
    "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":2,"features":["validateInline","listMeta"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
-                 "remoteMultiPress","remoteResetAll","summary"]}
+                 "remoteMultiPress","remoteResetAll","summary","repeat"]}
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
 is true if a PIN is set and this transport needs it (BLE), see §8.

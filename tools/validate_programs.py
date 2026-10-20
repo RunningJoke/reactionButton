@@ -37,6 +37,7 @@ BLOCK_TYPES = {
                          ["hitColor", "avoidColor"]),
     "remoteResetAll":   (["next"], [], ["pods"], [], []),
     "summary":          (["next"], ["metric"], [], [], []),
+    "repeat":           (["next", "body", "done"], ["count"], ["count"], [], []),
 }
 
 # fields every block may carry (programFormat 2): timer name, handled by the engine
@@ -132,6 +133,8 @@ class Validator:
         for field in TIMER_FIELDS:
             if field in block and (not isinstance(block[field], str) or block[field] == ""):
                 self.error(where, f"'{field}' must be a timer name")
+        if btype == "repeat" and "storeIndex" in block and not isinstance(block["storeIndex"], str):
+            self.error(where, "'storeIndex' must be a variable name")
         if btype == "led":
             for led in block.get("leds", []):
                 if not isinstance(led, int) or not 0 <= led < 18:
@@ -160,6 +163,29 @@ class Validator:
         for name in sorted(stopped - started):
             self.warning(fs_path, f"timer '{name}' is stopped but never started")
 
+    def check_repeats(self, blocks):
+        """Warns when no path from a repeat block's body leads back to it."""
+        by_name = {block.get("name"): block for _, block in blocks}
+
+        def targets(block):
+            ports = BLOCK_TYPES.get(block.get("type"), ([],))[0]
+            return [block[port] for port in ports if isinstance(block.get(port), str)]
+
+        for file, block in blocks:
+            if block.get("type") != "repeat":
+                continue
+            name = block.get("name")
+            first = block.get("body", block.get("next"))
+            seen, todo = set(), [first] if isinstance(first, str) else []
+            while todo and name not in seen:
+                current = todo.pop()
+                if current in seen or current not in by_name:
+                    continue
+                seen.add(current)
+                todo.extend(targets(by_name[current]))
+            if name not in seen:
+                self.warning(f"{file} block '{name}'", "no path from 'body' leads back to this repeat block")
+
     def check_program(self, fs_path):
         blocks = []
         doc = self.collect(fs_path, blocks)
@@ -175,6 +201,7 @@ class Validator:
             self.check_block(file, block, names)
 
         self.check_timers(fs_path, blocks)
+        self.check_repeats(blocks)
 
         start = doc.get("start")
         if start is not None and start not in names:

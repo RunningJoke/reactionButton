@@ -214,6 +214,23 @@ Ports: `next`
 
 Ports: `next`
 
+### `repeat` – counted loop
+`programFormat` ≥ 2 (§6).
+
+| Field | | Default |
+|---|---|---|
+| `count` | value, number of passes through `body` | required |
+| `storeIndex` | variable that gets the current pass (1 … `count`) | – |
+
+Ports: `body` (one more pass), `done` (after `count` passes). Both fall back to `next`.
+
+```json
+{ "name": "Rounds", "type": "repeat", "count": "MAX_LOOPS", "storeIndex": "RUNS", "body": "OneRound", "done": "Summary" }
+```
+
+The last block of the body links back to the repeat block. Entering the block again after
+`done` starts a new series of `count` passes. Details: §7.10.
+
 ## 3. Measurements
 
 Blocks with `record` add a measurement to a named metric, and so does every `timerStop`
@@ -240,6 +257,7 @@ To add a new kind of measurement (e.g. press duration or misses), a block calls
    - `enter(ctx)`: reset state, take timestamps.
    - `execute(ctx)`: return `BlockStatus::running()` while waiting, `BlockStatus::done(port)` when finished.
    - `portCount()` / `portName(i)` if the block has more than `next`.
+   - `onProgramStart()` if the block keeps state across entries (e.g. a loop counter).
 2. Add one line to the table in [BlockFactory.cpp](../../firmware/src/Block/BlockFactory/BlockFactory.cpp).
 3. Add the type to `BLOCK_TYPES` in [tools/validate_programs.py](../../tools/validate_programs.py)
    and document it here.
@@ -268,7 +286,7 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 | `programFormat` | Firmware | Changes |
 |---|---|---|
 | 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
-| 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9) |
+| 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
 
 Programs of an older revision run unchanged on newer firmware. A program that uses fields
 or block types of a newer revision is rejected by older firmware only if it uses a new
@@ -308,7 +326,7 @@ changes, increase `programFormat` (§6).
 
 | Type | Finishes | Value read |
 |---|---|---|
-| `led`, `if`, `setVariable`, `remoteResetAll`, `summary` | immediately, in the pass it is entered | on execute |
+| `led`, `if`, `setVariable`, `remoteResetAll`, `summary`, `repeat` | immediately, in the pass it is entered | on execute |
 | `delay` | when `millis() ≥ entry + duration` (checked once per pass). A duration of 0 finishes in the entry pass | on enter |
 | `button` | on press / release / timeout | timeout on enter, `shortMs` on release |
 | `remotePress` | on the peripheral's press / timeout. Immediately through `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass |
@@ -425,3 +443,24 @@ Code: [BlockManager.cpp](../../firmware/src/BlockManager/BlockManager.cpp) (`ent
 - A pause (`restartCurrentBlock`) does not leave the block: timers keep running (the pause
   is part of the measured time) and are neither started nor stopped.
 - All timers are stopped and the orphan count is 0 when the program starts.
+
+### 7.10 `repeat`
+
+Code: [RepeatBlock.cpp](../../firmware/src/Block/RepeatBlock/RepeatBlock.cpp).
+
+- Every block has its own counter, 0 when the program starts (`onProgramStart`).
+- On execute (once per entry) the counter is incremented and `count` is read. If
+  counter ≤ `count`: `storeIndex` = counter, leave through `body`. Otherwise: counter = 0,
+  leave through `done`; `storeIndex` keeps its last value.
+- So `count` = 3 gives `body`, `body`, `body`, `done`, and the next entry starts again
+  with pass 1. `count` ≤ 0 leaves through `done` on every entry and never sets `storeIndex`.
+  A `count` lowered during the loop below the passes already made ends the loop at the
+  next entry.
+- Unconnected `body` or `done` fall back to `next` (§7.1). With neither connected the
+  program ends.
+- Nested repeats count independently: an outer `count` 2 around an inner `count` 3 runs
+  the inner body 6 times.
+- A pause (`restartCurrentBlock`) does not change the counter: the counter changes only on
+  execute, and a re-entered block has not been executed yet.
+- If the program leaves the body for good (never returns to the repeat block), the counter
+  keeps its value until the block next reaches `done`. This is not detected.

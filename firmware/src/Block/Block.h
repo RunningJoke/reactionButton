@@ -56,6 +56,10 @@ class Block {
         // Reads the type-specific JSON fields. Return ctx.fail("...") on invalid input.
         virtual bool configure(JsonObjectConst json, BlockLoadContext& ctx) { return true; }
 
+        // Called for every block when the program starts. Clears state that lives across
+        // entries (e.g. the counter of a repeat block).
+        virtual void onProgramStart() {}
+
         // Called every time the block becomes the current block (also when it re-enters itself).
         virtual void enter(BlockContext& ctx) {}
 

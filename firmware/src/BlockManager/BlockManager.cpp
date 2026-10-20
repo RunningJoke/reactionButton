@@ -249,6 +249,9 @@ bool BlockManager::start(IPodNetwork* network) {
         peripheralCount
     };
 
+    for(Block* block : this->blocks) {
+        block->onProgramStart();
+    }
     for(Timer& timer : this->timers) {
         timer.running = false;
     }
