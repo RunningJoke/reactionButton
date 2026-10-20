@@ -1,4 +1,5 @@
-// Draws the app icon (pod with 18-LED ring) as SVG and PNG without extra dependencies.
+// Draws the app icon (DESIGN.md, "app icon": six-segment ring, 4 blue "ready" + 2 green "go",
+// white button in the middle) as SVG and PNG without extra dependencies.
 // Run: npm run icons  → public/icons/*
 import { writeFileSync, mkdirSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -6,36 +7,51 @@ import { deflateSync } from "node:zlib";
 const OUT = new URL("../public/icons/", import.meta.url);
 mkdirSync(OUT, { recursive: true });
 
-const BG = [16, 20, 24];
-const POD = [36, 42, 50];
-const OFF = [58, 66, 78];
-const LIT = { 0: [52, 211, 153], 6: [96, 165, 250], 12: [96, 165, 250] };
-const BUTTON = [230, 236, 242];
+const BG = [11, 20, 38]; // Midnight --bg
+const READY = [91, 155, 255]; // --accent
+const GO = [34, 197, 94]; // --led-green
+const BUTTON = [231, 238, 250]; // --text
+const RING_R = 160 / 512;
+const RING_W = 56 / 512;
+const DISC_R = 70 / 512;
+// segments clockwise from 12 o'clock; 60° each, 12° gap, the round caps take about 10° per end
+const SEGMENTS = [GO, GO, READY, READY, READY, READY].map((color, k) => ({ color, from: k * 60 + 16, to: (k + 1) * 60 - 16 }));
 
-// Shapes in unit coordinates (0..1). `scale` shrinks the drawing for the maskable safe zone.
-function shapes(scale) {
-  const c = 0.5;
-  const s = (v) => v * scale;
-  const list = [{ x: c, y: c, r: s(0.42), color: POD }];
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * Math.PI * 2 - Math.PI / 2;
-    list.push({ x: c + Math.cos(a) * s(0.34), y: c + Math.sin(a) * s(0.34), r: s(0.04), color: LIT[i] ?? OFF });
+const polar = (deg, r, scale) => {
+  const t = (deg * Math.PI) / 180;
+  return [0.5 + Math.sin(t) * r * scale, 0.5 - Math.cos(t) * r * scale];
+};
+
+function colorAt(x, y, scale) {
+  const dx = x - 0.5;
+  const dy = y - 0.5;
+  const d = Math.hypot(dx, dy);
+  if (d <= DISC_R * scale) return BUTTON;
+  const half = (RING_W * scale) / 2;
+  const deg = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+  for (const s of SEGMENTS) {
+    if (Math.abs(d - RING_R * scale) <= half && deg >= s.from && deg <= s.to) return s.color;
+    for (const end of [s.from, s.to]) {
+      const [ex, ey] = polar(end, RING_R, scale);
+      if ((x - ex) ** 2 + (y - ey) ** 2 <= half * half) return s.color;
+    }
   }
-  list.push({ x: c, y: c, r: s(0.2), color: BUTTON });
-  return list;
+  return BG;
 }
 
 function svg() {
-  const circles = shapes(1)
-    .map((d) => `<circle cx="${d.x * 512}" cy="${d.y * 512}" r="${d.r * 512}" fill="rgb(${d.color.join(",")})"/>`)
-    .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="rgb(${BG.join(",")})"/>${circles}</svg>\n`;
+  const rgb = (c) => `rgb(${c.join(",")})`;
+  const arcs = SEGMENTS.map((s) => {
+    const [x1, y1] = polar(s.from, RING_R, 1).map((v) => (v * 512).toFixed(1));
+    const [x2, y2] = polar(s.to, RING_R, 1).map((v) => (v * 512).toFixed(1));
+    return `<path d="M${x1} ${y1}A160 160 0 0 1 ${x2} ${y2}" fill="none" stroke="${rgb(s.color)}" stroke-width="56" stroke-linecap="round"/>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="${rgb(BG)}"/>${arcs}<circle cx="256" cy="256" r="70" fill="${rgb(BUTTON)}"/></svg>\n`;
 }
 
 function png(size, { scale, rounded }) {
   const ss = 4; // supersampling per axis
-  const list = shapes(scale);
-  const radius = rounded ? 112 / 512 : 0;
+  const radius = rounded ? 116 / 512 : 0;
   const raw = Buffer.alloc((size * 4 + 1) * size);
   for (let py = 0; py < size; py++) {
     raw[py * (size * 4 + 1)] = 0; // filter: none
@@ -46,8 +62,7 @@ function png(size, { scale, rounded }) {
           const x = (px + (sx + 0.5) / ss) / size;
           const y = (py + (sy + 0.5) / ss) / size;
           if (!insideRoundedRect(x, y, radius)) continue;
-          let color = BG;
-          for (const d of list) if ((x - d.x) ** 2 + (y - d.y) ** 2 <= d.r ** 2) color = d.color;
+          const color = colorAt(x, y, scale);
           r += color[0]; g += color[1]; b += color[2]; a += 255;
         }
       }

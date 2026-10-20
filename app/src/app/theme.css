@@ -1,8 +1,11 @@
-/* Design tokens. One accent colour; LED colours only where they mean LED colours. */
+/* Design tokens: theme "Midnight" (dark, default) with its light companion "Daylight".
+   Guidelines and the design canvas: app/DESIGN.md. One accent colour; LED colours only where they mean LED colours. */
 :root {
   color-scheme: light dark;
 
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* titles and big numbers (reaction times) */
+  --font-display: "Barlow Semi Condensed", var(--font);
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   --space-1: 4px;
@@ -17,26 +20,40 @@
   --radius-l: 20px;
 
   --touch: 44px;
-  --header-h: 52px;
-  --tabbar-h: 60px;
+  --header-h: 56px;
+  --tabbar-h: 68px;
+  /* floating tab bar: gap to the screen edges */
+  --tabbar-gap: 12px;
   --rail-w: 84px;
+  --icon-stroke: 2.5;
 
-  --bg: #f5f7f9;
+  /* Daylight */
+  --bg: #eef3fb;
   --surface: #ffffff;
-  --surface-2: #eef1f4;
-  --border: #dde2e8;
-  --text: #15191e;
-  --text-muted: #5d6874;
-  --accent: #2563eb;
+  --surface-2: #e2eaf6;
+  --border: #c9d5e8;
+  --text: #0b1630;
+  --text-muted: #4a5c7e;
+  --accent: #1e5bd8;
   --accent-contrast: #ffffff;
-  --accent-soft: #dbe6fd;
-  --ok: #15803d;
-  --warn: #b45309;
-  --error: #b91c1c;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.06);
+  --accent-soft: #dce7fc;
+  --ok: #11804a;
+  --warn: #a85a00;
+  --error: #c21e3a;
+  --shadow: 0 1px 2px rgb(11 22 48 / 0.06), 0 4px 16px rgb(11 22 48 / 0.08);
+  --floating-bg: rgb(255 255 255 / 0.9);
+  --floating-border: #c9d5e8;
+  --floating-shadow: 0 10px 28px rgb(11 22 48 / 0.18);
+
+  /* the pod (raised puck) looks the same in both themes: it is the dark device */
+  --pod-edge: #050a14;
+  --pod-base: #08101f;
+  --pod-cap: #1a2c4d;
+  --pod-ink: #e7eefa;
+  --pod-ink-muted: #93a5c6;
 
   /* LED colours (named colours of the firmware) */
-  --led-off: #3a424e;
+  --led-off: #22365c;
   --led-red: #ef4444;
   --led-green: #22c55e;
   --led-blue: #3b82f6;
@@ -44,23 +61,29 @@
   --led-magenta: #d946ef;
   --led-cyan: #06b6d4;
   --led-white: #f8fafc;
+  /* the light on the pod icon (back rim of the cap) */
+  --pod-glow: var(--led-green);
 }
 
+/* Midnight */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #101418;
-    --surface: #181d23;
-    --surface-2: #222830;
-    --border: #2c333c;
-    --text: #e8ecf0;
-    --text-muted: #96a1ad;
-    --accent: #60a5fa;
-    --accent-contrast: #0b1220;
-    --accent-soft: #1d2b42;
-    --ok: #4ade80;
-    --warn: #fbbf24;
-    --error: #f87171;
+    --bg: #0b1426;
+    --surface: #122039;
+    --surface-2: #1a2c4d;
+    --border: #26395e;
+    --text: #e7eefa;
+    --text-muted: #93a5c6;
+    --accent: #5b9bff;
+    --accent-contrast: #06122b;
+    --accent-soft: #1b3566;
+    --ok: #34d399;
+    --warn: #fbbf4b;
+    --error: #ff6b81;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+    --floating-bg: rgb(22 38 68 / 0.88);
+    --floating-border: #2e4570;
+    --floating-shadow: 0 14px 32px rgb(0 0 0 / 0.55);
   }
 }
 
@@ -104,4 +127,9 @@ h2,
 h3 {
   margin: 0;
   line-height: 1.2;
+}
+
+/* Lucide icons: one thick stroke everywhere (DESIGN.md, icons) */
+svg.lucide {
+  stroke-width: var(--icon-stroke);
 }

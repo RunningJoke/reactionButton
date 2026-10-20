@@ -174,13 +174,13 @@ unit tests and demos without hardware.
 
 ## 5. Screens (mobile first)
 
-Bottom tab bar on phones (Pod, Programs, Editor, Simulate, Menu, Results; Settings is the gear
-icon in the header), side rail with all seven on wide screens (≥ 900 px). Icon first, short
-label below.
+Floating tab bar on phones with five tabs (Pod, Programs, Editor, Simulate, Results; Menu is
+linked from the Pod page, Settings is the gear icon in the header), side rail with all seven on
+wide screens (≥ 900 px). Icon first, short label below. Look and styling: [app/DESIGN.md](../../app/DESIGN.md).
 
 | Tab | Icon | Content |
 |---|---|---|
-| **Pod** | bluetooth / usb | set id, firmware, free space, generation; file list with sync state; push, restore defaults. Not connected: a Connect button that opens the connection dialog |
+| **Pod** | pod (puck) | set id, firmware, free space, generation; file list with sync state; push, restore defaults. Not connected: a Connect button that opens the connection dialog |
 | **Programs** | list | local programs + programs read from the pod + library (read-only); create, duplicate, import, export |
 | **Editor** | workflow | graph of one program (§7) |
 | **Simulate** | play | pods + graph + controls (§8) |
