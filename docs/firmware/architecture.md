@@ -198,9 +198,9 @@ repeat up to 32 times:
     if status == running: return                 // block waits, try again next pass
     next = current.target[status.port]
     if not connected and block has "next": next = current.target[next]
-    current.exit(ctx)
+    current.exit(ctx); stop current.timerStop     // records the timer as a metric
     if next == none: program ends
-    current = next; current.enter(ctx)
+    current = next; start current.timerStart; current.enter(ctx)
 ```
 
 - `enter()` runs every time a block becomes current, also for the start block and
@@ -209,6 +209,9 @@ repeat up to 32 times:
   return `running` and never block the loop.
 - Blocks get everything they need through `BlockContext`: variables, LEDs, button,
   results, peripherals, and the central's pod id.
+- The `timerStart` / `timerStop` flags that every block may carry are handled by
+  `BlockManager` (enter / exit), not by the blocks. `restartCurrentBlock` (pause) does not
+  touch them. See [programs.md](programs.md) §2 (*Timers*) and §7.9.
 
 ### 6.3 Block types
 

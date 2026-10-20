@@ -82,4 +82,8 @@ class Block {
 
         std::string name;
         int16_t targets[MAX_PORTS] = {-1, -1, -1, -1, -1, -1};
+
+        // "timerStart" / "timerStop" of any block: index into BlockManager's timers, -1 = none
+        int8_t timerStart = -1;
+        int8_t timerStop = -1;
 };

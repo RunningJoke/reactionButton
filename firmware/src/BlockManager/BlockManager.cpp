@@ -25,6 +25,8 @@ void BlockManager::clear() {
     }
     this->blocks.clear();
     this->pendingLinks.clear();
+    this->timers.clear();
+    this->orphanStops = 0;
     this->startIndex = -1;
     this->currentIndex = -1;
     this->running = false;
@@ -138,6 +140,11 @@ bool BlockManager::loadBlocks(JsonArrayConst blocks, const char* path) {
         if(!block->configure(json, loadContext)) {
             return this->fail(String(path) + ": block '" + name + "': " + loadContext.error);
         }
+        if(!this->parseTimer(json["timerStart"], block->timerStart)
+                || !this->parseTimer(json["timerStop"], block->timerStop)) {
+            return this->fail(String(path) + ": block '" + name
+                              + "': 'timerStart' / 'timerStop' must be a name (at most 16 timers)");
+        }
 
         PendingLinks links;
         for(uint8_t port = 0; port < block->portCount() && port < Block::MAX_PORTS; port++) {
@@ -178,6 +185,45 @@ bool BlockManager::resolveLinks() {
     return true;
 }
 
+bool BlockManager::parseTimer(JsonVariantConst json, int8_t& id) {
+    if(json.isNull()) {
+        return true;
+    }
+    const char* name = json.is<const char*>() ? json.as<const char*>() : nullptr;
+    if(name == nullptr || name[0] == '\0') {
+        return false;
+    }
+    for(size_t i = 0; i < this->timers.size(); i++) {
+        if(this->timers[i].name == name) {
+            id = (int8_t)i;
+            return true;
+        }
+    }
+    if(this->timers.size() >= MAX_TIMERS) {
+        return false;
+    }
+    Timer timer;
+    timer.name = name;
+    this->timers.push_back(timer);
+    id = (int8_t)(this->timers.size() - 1);
+    return true;
+}
+
+void BlockManager::stopTimer(const Block& block) {
+    if(block.timerStop < 0) {
+        return;
+    }
+    Timer& timer = this->timers[block.timerStop];
+    if(!timer.running) {
+        this->orphanStops++;
+        ESP_LOGW(TAG, "timer '%s' stopped in '%s' but not running", timer.name.c_str(), block.getName().c_str());
+        return;
+    }
+    timer.running = false;
+    this->context->results.record(timer.name.c_str(), this->context->centralPodId,
+                                  (int32_t)(millis() - timer.startMs));
+}
+
 int16_t BlockManager::findIndex(const std::string& name) const {
     for(size_t i = 0; i < this->blocks.size(); i++) {
         if(this->blocks[i]->getName() == name) {
@@ -202,6 +248,11 @@ bool BlockManager::start(IPodNetwork* network) {
         network,
         peripheralCount
     };
+
+    for(Timer& timer : this->timers) {
+        timer.running = false;
+    }
+    this->orphanStops = 0;
 
     this->currentIndex = this->startIndex;
     this->running = true;
@@ -229,6 +280,7 @@ void BlockManager::run() {
         }
 
         block->exit(ctx);
+        this->stopTimer(*block);
 
         if(next < 0) {
             ESP_LOGI(TAG, "program ended in block '%s'", block->getName().c_str());
@@ -245,12 +297,19 @@ void BlockManager::restartCurrentBlock() {
     if(!this->running) {
         return;
     }
+    // the block is not left: its timers keep running, the pause counts
     this->blocks[this->currentIndex]->exit(*this->context);
-    this->enterCurrent();
+    this->enterCurrent(false);
 }
 
-void BlockManager::enterCurrent() {
+void BlockManager::enterCurrent(bool applyTimers) {
     Block* block = this->blocks[this->currentIndex];
+    if(applyTimers && block->timerStart >= 0) {
+        // a running timer is restarted
+        Timer& timer = this->timers[block->timerStart];
+        timer.startMs = millis();
+        timer.running = true;
+    }
     block->enter(*this->context);
     if(this->enterHook != nullptr) {
         this->enterHook(block->getName().c_str());
