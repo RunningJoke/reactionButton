@@ -70,7 +70,7 @@ src/
 ├── Input/Button.*            debounced button with edge counters and µs timestamps
 ├── Results/Results.*         measurement records + statistics, CSV on serial
 ├── VariableManager/          program variables (int64), resolved to ids at load time
-├── LEDManager/               NeoPixel wrapper, palette patterns, boot + error animations
+├── LEDManager/               NeoPixel wrapper, palette patterns, boot + error animations, effect player
 └── ColorSet/                 RGB struct and colour constants
 ```
 
@@ -198,9 +198,9 @@ repeat up to 32 times:
     if status == running: return                 // block waits, try again next pass
     next = current.target[status.port]
     if not connected and block has "next": next = current.target[next]
-    current.exit(ctx)
+    current.exit(ctx); stop current.timerStop     // records the timer as a metric
     if next == none: program ends
-    current = next; current.enter(ctx)
+    current = next; start current.timerStart; current.enter(ctx)
 ```
 
 - `enter()` runs every time a block becomes current, also for the start block and
@@ -209,6 +209,9 @@ repeat up to 32 times:
   return `running` and never block the loop.
 - Blocks get everything they need through `BlockContext`: variables, LEDs, button,
   results, peripherals, and the central's pod id.
+- The `timerStart` / `timerStop` flags that every block may carry are handled by
+  `BlockManager` (enter / exit), not by the blocks. `restartCurrentBlock` (pause) does not
+  touch them. See [programs.md](programs.md) §2 (*Timers*) and §7.9.
 
 ### 6.3 Block types
 
@@ -223,6 +226,7 @@ repeat up to 32 times:
 | `remoteMultiPress` | `RemoteMultiplePressBlock` | next, avoidHit, timeout |
 | `remoteResetAll` | `RemoteResetAllBlock` | next |
 | `summary` | `SummaryBlock` | next |
+| `repeat` | `RepeatBlock` | next, body, done |
 
 ### 6.4 Variables
 
@@ -254,4 +258,15 @@ load time. Unknown variables read as 0. Variables set by the system:
 - `setLEDColors(LEDPattern*)` – palette pattern: up to 8 palette colours, per-LED palette
   index packed as 3 bits × 18 into a `uint64_t` (`LEDPaletteID`), plus an optional
   `LEDAnimation::animate(now)` that mutates the indices.
-- All colours are at full brightness (255); no global brightness limit.
+- `playEffect(EffectDesc, startUs)` – effect player (firmware ≥ 2.8): one effect at a time,
+  table of effects in [link-protocol.md](link-protocol.md) §2.1. Every static call above stops it.
+  `RoleManager::run()` calls `LEDManager::service()` after the role in every loop pass; it
+  returns at once when nothing animates (`isAnimating()` false, light sleep allowed, #21).
+  A frame is computed from the time since the start and shown only when it changed, at most
+  every 16 ms. The first frame is shown inside `playEffect` when the start time has come.
+- Effects on other pods: `IPodNetwork::effect(pod, desc, startAtUs)` (EFFECT frame) and
+  `ArmCommand::waiting` (effect while an armed pod waits for the press). Check
+  `IPodNetwork::supportsEffects(pod)`; pods with older firmware show static colours.
+- `LEDManager/EffectJson` parses the JSON form of an effect (used by the `effect` test op).
+- Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included
+  (default 255 = full brightness).

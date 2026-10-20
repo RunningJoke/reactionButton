@@ -7,6 +7,7 @@ import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
 import { isReadOnly, needsPin, usePodSession } from "../pod/session";
 import { deleteFiles } from "../pod/syncActions";
+import { PlatformSettings } from "./PlatformSettings";
 import styles from "./Page.module.css";
 
 type Choice = Language | "system";
@@ -45,6 +46,8 @@ export function SettingsPage() {
           ))}
         </div>
       </section>
+
+      <PlatformSettings />
 
       <DebugConsole />
 

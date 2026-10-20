@@ -21,6 +21,11 @@ struct ArmCommand {
     uint8_t colorActive = Protocol::Color::GREEN;
     uint8_t colorAfter = Protocol::Color::OFF;
     int64_t startAtUs = 0;              // network time (see nowUs), 0 = immediately
+
+    // Optional effect while waiting for the press, started at the activation (startAtUs).
+    // Pods without effect support (supportsEffects false) show colorActive instead.
+    Protocol::EffectDesc waiting = {Protocol::EffectId::NONE, Protocol::Color::GREEN, Protocol::Color::OFF,
+                                    255, 0, 0, 0, 0};
 };
 
 /**
@@ -45,4 +50,13 @@ class IPodNetwork {
 
         // Time base shared with all peripherals (µs). Use it for ArmCommand::startAtUs.
         virtual int64_t nowUs() const = 0;
+
+        // Whether the pod plays effects (EFFECT frames, ArmCommand::waiting). False for
+        // pods with older firmware: show a static colour (arm / colorActive) instead.
+        virtual bool supportsEffects(uint8_t podId) const { return false; }
+
+        // Plays an effect on a pod's ring, starting at startAtUs (network time, 0 = now).
+        // Does not arm or reset the pod. EffectId::NONE stops it and switches the LEDs off.
+        // Returns false (nothing sent) if the pod does not support effects.
+        virtual bool effect(uint8_t podId, const Protocol::EffectDesc& effect, int64_t startAtUs) { return false; }
 };

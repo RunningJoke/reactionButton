@@ -7,6 +7,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { fileCache } from "../store/fileCache";
 import { PodClient } from "./client";
 import { readFile } from "./files";
+import { linkResults } from "../results/podLink";
 import { PROGRAM_FORMAT } from "@reactpod/program-model";
 import { PodError, type InfoResponse, type ListResponse, type PodEvent, type PodRole } from "./protocol";
 import { SimulatedPod } from "./simulated/SimulatedPod";
@@ -89,7 +90,8 @@ function createTransport(kind: TransportKind): Transport {
     case "serial":
       return new WebSerialTransport();
     case "simulated":
-      return new SimulatedTransport(new SimulatedPod({ files: DEFAULT_FILES }), { latencyMs: 30 });
+      // the demo pod also shows the planned live results (#41 / #42)
+      return new SimulatedTransport(new SimulatedPod({ files: DEFAULT_FILES, results: true }), { latencyMs: 30 });
   }
 }
 
@@ -188,6 +190,15 @@ export const usePodSession = create<PodSession>((set, get) => {
       }
       // a failed download is reported, the connection stays
       await loadFiles(client, get().list!).catch((e: unknown) => set({ error: toSessionError(e), loading: null }));
+      // reports of `communicate` blocks (#41): only pods with the "reports" feature
+      if (get().client === client) {
+        const results = linkResults(client, get().info!, {
+          programText: (path) => (get().client === client ? get().files[path] : undefined),
+          log: (text) => append({ t: Date.now(), kind: "log", text }),
+        });
+        unsubscribe.push(results.stop);
+        await results.started;
+      }
     },
 
     async disconnect() {

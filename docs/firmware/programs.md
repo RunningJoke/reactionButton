@@ -99,6 +99,29 @@ name (`"MAX_LOOPS"`). Variables are read when the block runs.
 blue, yellow, magenta, cyan, white. Colours sent to **peripherals** must be named
 colours, because the BLE protocol only transports these 8.
 
+### Timers – fields of every block
+
+`programFormat` ≥ 2 (§6). Any block, of any type, may also carry:
+
+| Field | | Default |
+|---|---|---|
+| `timerStart` | timer name. Starts the timer when the block is **entered** | – |
+| `timerStop` | timer name. When the block is **left**, records *now − start* (ms) as the metric `<name>` with the central's pod id, then clears the timer | – |
+
+```json
+{ "name": "Go",     "type": "remotePress", "pod": 0, "timerStart": "lap", "next": "Back" },
+{ "name": "Finish", "type": "button", "timerStop": "lap", "next": "Report" }
+```
+
+- A timer name is a non-empty string, like a metric name. A program (with its includes)
+  may use at most 16 different timer names.
+- The time is recorded exactly like `record`: `RESULT` line, statistics, `summary`.
+- On a waiting block (`button`, `remotePress`, …) the stop time is the moment the block
+  is left, i.e. the press. For remote blocks that is when the central receives the press
+  (a few ms after the press on the peripheral).
+- A block with both fields and the same name measures its own duration.
+- Engine details (restart, orphan stops, pause): §7.9.
+
 ### `led` – set central LEDs
 | Field | | Default |
 |---|---|---|
@@ -191,9 +214,27 @@ Ports: `next`
 
 Ports: `next`
 
+### `repeat` – counted loop
+`programFormat` ≥ 2 (§6).
+
+| Field | | Default |
+|---|---|---|
+| `count` | value, number of passes through `body` | required |
+| `storeIndex` | variable that gets the current pass (1 … `count`) | – |
+
+Ports: `body` (one more pass), `done` (after `count` passes). Both fall back to `next`.
+
+```json
+{ "name": "Rounds", "type": "repeat", "count": "MAX_LOOPS", "storeIndex": "RUNS", "body": "OneRound", "done": "Summary" }
+```
+
+The last block of the body links back to the repeat block. Entering the block again after
+`done` starts a new series of `count` passes. Details: §7.10.
+
 ## 3. Measurements
 
-Blocks with `record` add a measurement to a named metric. Every measurement is printed on
+Blocks with `record` add a measurement to a named metric, and so does every `timerStop`
+(metric = the timer name, pod id = the central's). Every measurement is printed on
 the serial console (115200 baud):
 
 ```
@@ -216,6 +257,7 @@ To add a new kind of measurement (e.g. press duration or misses), a block calls
    - `enter(ctx)`: reset state, take timestamps.
    - `execute(ctx)`: return `BlockStatus::running()` while waiting, `BlockStatus::done(port)` when finished.
    - `portCount()` / `portName(i)` if the block has more than `next`.
+   - `onProgramStart()` if the block keeps state across entries (e.g. a loop counter).
 2. Add one line to the table in [BlockFactory.cpp](../../firmware/src/Block/BlockFactory/BlockFactory.cpp).
 3. Add the type to `BLOCK_TYPES` in [tools/validate_programs.py](../../tools/validate_programs.py)
    and document it here.
@@ -244,6 +286,11 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 | `programFormat` | Firmware | Changes |
 |---|---|---|
 | 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
+| 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
+
+Programs of an older revision run unchanged on newer firmware. A program that uses fields
+or block types of a newer revision is rejected by older firmware only if it uses a new
+block type; unknown fields are ignored there, so check `programFormat` before uploading.
 
 Firmware before 2.3 does not report `programFormat`; treat a missing field as revision 1.
 
@@ -279,7 +326,7 @@ changes, increase `programFormat` (§6).
 
 | Type | Finishes | Value read |
 |---|---|---|
-| `led`, `if`, `setVariable`, `remoteResetAll`, `summary` | immediately, in the pass it is entered | on execute |
+| `led`, `if`, `setVariable`, `remoteResetAll`, `summary`, `repeat` | immediately, in the pass it is entered | on execute |
 | `delay` | when `millis() ≥ entry + duration` (checked once per pass). A duration of 0 finishes in the entry pass | on enter |
 | `button` | on press / release / timeout | timeout on enter, `shortMs` on release |
 | `remotePress` | on the peripheral's press / timeout. Immediately through `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass |
@@ -377,3 +424,43 @@ Code: [SummaryBlock.cpp](../../firmware/src/Block/SummaryBlock/SummaryBlock.cpp)
 - `if` has no `next`: an unconnected `true` / `false` ends the program.
 - `remoteResetAll` resets peripherals `0 … min(pods, connected) − 1` (default all connected),
   and switches the central's LEDs off unless `ledsOff` is false.
+
+### 7.9 Timers (`timerStart` / `timerStop`)
+
+Code: [BlockManager.cpp](../../firmware/src/BlockManager/BlockManager.cpp) (`enterCurrent`, `stopTimer`).
+
+- `timerStart` is applied when the block is entered, **before** its `enter()`: the timer
+  stores `millis()` and is running. A start on a running timer restarts it.
+- `timerStop` is applied when the block is left, **after** its `exit()`, also when the
+  program ends in that block. A running timer records *`millis()` − start* (ms) for the
+  central's pod id (`REQUIRED_PERIPHERALS`) and stops. A stop on a timer that is not running
+  is ignored and counted (`status.timers.orphanStops`, config-api.md §5).
+- When a block is left and the next one entered, the stop of the old block comes before
+  the start of the new one. A block that links to itself with both fields and the same
+  name therefore records each of its passes.
+- An instant block is entered and left in the same pass, so its own duration is 0 ms.
+  Timer values are accurate to one loop pass.
+- A pause (`restartCurrentBlock`) does not leave the block: timers keep running (the pause
+  is part of the measured time) and are neither started nor stopped.
+- All timers are stopped and the orphan count is 0 when the program starts.
+
+### 7.10 `repeat`
+
+Code: [RepeatBlock.cpp](../../firmware/src/Block/RepeatBlock/RepeatBlock.cpp).
+
+- Every block has its own counter, 0 when the program starts (`onProgramStart`).
+- On execute (once per entry) the counter is incremented and `count` is read. If
+  counter ≤ `count`: `storeIndex` = counter, leave through `body`. Otherwise: counter = 0,
+  leave through `done`; `storeIndex` keeps its last value.
+- So `count` = 3 gives `body`, `body`, `body`, `done`, and the next entry starts again
+  with pass 1. `count` ≤ 0 leaves through `done` on every entry and never sets `storeIndex`.
+  A `count` lowered during the loop below the passes already made ends the loop at the
+  next entry.
+- Unconnected `body` or `done` fall back to `next` (§7.1). With neither connected the
+  program ends.
+- Nested repeats count independently: an outer `count` 2 around an inner `count` 3 runs
+  the inner body 6 times.
+- A pause (`restartCurrentBlock`) does not change the counter: the counter changes only on
+  execute, and a re-entered block has not been executed yet.
+- If the program leaves the body for good (never returns to the repeat block), the counter
+  keeps its value until the block next reaches `done`. This is not detected.

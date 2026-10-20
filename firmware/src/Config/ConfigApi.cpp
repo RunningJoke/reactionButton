@@ -142,10 +142,11 @@ void ConfigApi::opHelp(JsonDocument& response) {
     }
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
-        const char* central[] = {"programs", "select", "start", "press", "stop"};
+        const char* central[] = {"programs", "select", "start", "press", "effect", "stop"};
         for(const char* op : central) ops.add(op);
     } else {
         ops.add("press");
+        ops.add("effect");
     }
     response["transport"] = this->transport;
 }
@@ -194,6 +195,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     JsonArray features = response["features"].to<JsonArray>();
     features.add("validateInline");
     features.add("listMeta");
+    features.add("effects");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

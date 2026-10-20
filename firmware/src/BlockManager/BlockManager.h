@@ -31,6 +31,10 @@ class IPodNetwork;
  * Runtime: run() is called once per loop pass. Blocks that finish immediately are
  * chained within the same pass (up to MAX_STEPS_PER_PASS), so a sequence like
  * LED -> setVariable -> if costs no extra loop passes.
+ *
+ * Timers: any block may carry "timerStart": "<name>" (start when the block is entered) and
+ * "timerStop": "<name>" (when the block is left, record now - start as metric <name> for
+ * the central's pod id). Handled here, not in the blocks.
  */
 class BlockManager {
     public:
@@ -58,15 +62,26 @@ class BlockManager {
         // Test support: called with the block name whenever a block is entered (nullptr = off)
         void setEnterHook(void (*hook)(const char* blockName)) { this->enterHook = hook; }
         size_t blockCount() const { return this->blocks.size(); }
+
+        // timerStop without a running timerStart since the program started (status.timers)
+        uint32_t timerOrphanStops() const { return this->orphanStops; }
         const String& getLastError() const { return this->lastError; }
 
     private:
         static const uint8_t MAX_STEPS_PER_PASS = 32;
         static const uint8_t MAX_INCLUDE_DEPTH = 3;
+        static const uint8_t MAX_TIMERS = 16;   // different timer names per program
 
         // Port targets by name, resolved to indices after all blocks are loaded
         struct PendingLinks {
             std::string targets[Block::MAX_PORTS];
+        };
+
+        // Named timer of the "timerStart" / "timerStop" block flags
+        struct Timer {
+            std::string name;
+            uint32_t startMs = 0;
+            bool running = false;
         };
 
         BlockManager();
@@ -78,8 +93,12 @@ class BlockManager {
         int16_t findIndex(const std::string& name) const;
         void clear();
         bool fail(const String& message);
+        bool parseTimer(JsonVariantConst json, int8_t& id);
+        void stopTimer(const Block& block);
 
         std::vector<Block*> blocks;
+        std::vector<Timer> timers;
+        uint32_t orphanStops = 0;
         std::vector<PendingLinks> pendingLinks;
         int16_t startIndex = -1;
         int16_t currentIndex = -1;
@@ -89,7 +108,8 @@ class BlockManager {
         BlockContext* context = nullptr;
         void (*enterHook)(const char* blockName) = nullptr;
 
-        void enterCurrent();
+        // applyTimers = false: re-entry after a pause, the block was not left
+        void enterCurrent(bool applyTimers = true);
 };
 
 

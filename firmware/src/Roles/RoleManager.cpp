@@ -6,6 +6,7 @@
 #include "Roles/Peripheral/PeripheralRole.h"
 #include "Config/SerialConsole.h"
 #include "Diagnostics/Diag.h"
+#include "LEDManager/LEDManager.h"
 
 RoleManager* RoleManager::manager = nullptr;
 
@@ -42,4 +43,6 @@ void RoleManager::run() {
     if(this->role != nullptr) {
         this->role->run();
     }
+    // after the role: an effect started in this pass already showed its first frame
+    LEDManager::getManager()->service();
 }

@@ -133,9 +133,13 @@ void PodNetwork::handleHello(const RxFrame& frame) {
 void PodNetwork::handleClaimAck(const RxFrame& frame) {
     const ClaimAck* ack = reinterpret_cast<const ClaimAck*>(frame.data);
 
+    // appended field: pods with older firmware send a shorter CLAIM_ACK (no features)
+    uint8_t features = frame.len >= sizeof(ClaimAck) ? ack->linkFeatures : 0;
+
     int16_t known = this->findPod(frame.mac);
     if(known >= 0) {
         this->pods[known].lastSeenUs = esp_timer_get_time();
+        this->pods[known].linkFeatures = features;     // the pod may have been updated
         return;
     }
 
@@ -147,8 +151,9 @@ void PodNetwork::handleClaimAck(const RxFrame& frame) {
     Pod pod;
     memcpy(pod.mac, frame.mac, 6);
     pod.lastSeenUs = esp_timer_get_time();
+    pod.linkFeatures = features;
     this->pods.push_back(pod);
-    ESP_LOGI(TAG, "pod %u joined", ack->podId);
+    ESP_LOGI(TAG, "pod %u joined (link features %02x)", ack->podId, features);
 }
 
 void PodNetwork::handlePing(const RxFrame& frame, int16_t podId) {
@@ -193,8 +198,29 @@ uint8_t PodNetwork::arm(uint8_t podId, const ArmCommand& command) {
     arm.colorActive = command.colorActive;
     arm.colorAfter = command.colorAfter;
     arm.startAtUs = command.startAtUs;
-    this->link.send(pod.mac, &arm, sizeof(arm), 5, -1, true);
+    arm.waiting = command.waiting;
+    // the waiting effect is appended only when the pod plays it; otherwise it shows colorActive
+    bool withEffect = command.waiting.effect != EffectId::NONE && this->supportsEffects(podId);
+    uint8_t len = withEffect ? sizeof(arm) : offsetof(Arm, waiting);
+    this->link.send(pod.mac, &arm, len, 5, -1, true);
     return pod.cmdSeq;
+}
+
+bool PodNetwork::supportsEffects(uint8_t podId) const {
+    return podId < this->pods.size() && (this->pods[podId].linkFeatures & LINK_FEATURE_EFFECTS) != 0;
+}
+
+bool PodNetwork::effect(uint8_t podId, const EffectDesc& effect, int64_t startAtUs) {
+    if(!this->supportsEffects(podId)) {
+        return false;
+    }
+    Effect frame;
+    fillHeader(frame.header, MsgType::EFFECT, this->setId);
+    frame.effect = effect;
+    frame.startAtUs = startAtUs;
+    // retried and ordered like RESET, so ARM / RESET / EFFECT keep the order they were sent in
+    this->link.send(this->pods[podId].mac, &frame, sizeof(frame), 5, -1, true);
+    return true;
 }
 
 void PodNetwork::reset(uint8_t podId) {
@@ -230,6 +256,7 @@ void PodNetwork::describe(JsonArray out) const {
         entry["mac"] = mac;
         entry["alive"] = this->isAlive((uint8_t)i);
         entry["lastSeenMs"] = (uint32_t)((now - pod.lastSeenUs) / 1000);
+        entry["effects"] = (pod.linkFeatures & LINK_FEATURE_EFFECTS) != 0;
 
         EspNowLink::LinkStats st;
         if(this->link.stats(pod.mac, st)) {

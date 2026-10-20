@@ -53,6 +53,7 @@ class CentralRole : public IRole {
         void opPrograms(JsonDocument& response);
         void opSelect(JsonObjectConst request, JsonDocument& response);
         void opStart(JsonDocument& response);
+        void opEffect(JsonObjectConst request, JsonDocument& response);
 
         State state = State::MENU;
         ProgramCatalog catalog;

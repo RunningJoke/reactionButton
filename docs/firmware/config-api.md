@@ -113,11 +113,11 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.7","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
+← {"op":"info","ok":true,"firmware":"2.8","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":1,"features":["validateInline","listMeta"],
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":2,"features":["validateInline","listMeta","effects"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
-                 "remoteMultiPress","remoteResetAll","summary"]}
+                 "remoteMultiPress","remoteResetAll","summary","repeat"]}
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
 is true if a PIN is set and this transport needs it (BLE), see §8.
@@ -128,7 +128,8 @@ field is absent. Web Bluetooth does not tell the page the MTU, so read it here.
 block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase is listed in
 [programs.md](programs.md) §6. `features` lists optional API features (firmware ≥ 2.4; missing
 = none): `validateInline` = `validate` accepts `data` (dry run); `listMeta` = `list` reports
-program metadata. A program that uses another type fails `validate`.
+program metadata; `effects` (firmware ≥ 2.8) = the ring effect player: `effect` op,
+`status.pods[].effects` ([link-protocol.md](link-protocol.md) §2.1). A program that uses another type fails `validate`.
 
 ### `list`
 ```json
@@ -189,11 +190,12 @@ switched off when a program is selected.
 | op | Role | Request fields | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, effects, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | menu: `programs[] {index, name, path, peripherals}`, `selected` |
 | `select` | central, menu | `program`: index, path or name | loads the program, BLE off, radio on, searching for peripherals |
 | `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing |
 | `press` | any | – | simulates a short press of this pod's button (not for the menu) |
+| `effect` | any (firmware ≥ 2.8) | `effect` (name), optional `color`, `color2`, `brightness`, `durationMs`, `periodMs`, `segment` (spin), `from` / `to` (dim), `value` (level, %), `reverse`, `endOff`, `delayMs`. Central also `target`: `"self"` (default), a pod id, `"pods"`, `"all"` | test op: plays a ring effect ([link-protocol.md](link-protocol.md) §2.1). Pods and the central start at the same network time, now + `delayMs` (default 50 ms with pods, else 0). Response: `effect`, central also `startAtUs`, `sent[]`, `skipped[]` (pods without effect support). `busy` while a game runs (central) or the pod is armed (peripheral) |
 | `stop` | central | – | ends the program; the pod restarts as central into the menu |
 | `results` | any | `reset` (bool) | statistics per metric since the last summary |
 | `trace` | any | `on` (bool) | serial only: emits `{"event":"block","name":...}` whenever a block is entered |
@@ -201,6 +203,9 @@ switched off when a program is selected.
 | `auth` | any | `pin`: string | unlocks `put`, `delete`, `setName` for this BLE connection (§8). `ok` without a PIN set |
 | `setPin` | any, **serial only** | `pin`: 4–6 digits as a string; `""` or missing clears it | stores the PIN in NVS. Response: `pinSet`. Serial text form: `setPin 1234` |
 | `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2` |
+
+`pods[].effects` (firmware ≥ 2.8): the pod plays ring effects. `false` for pods with older
+firmware; effects then fall back to a static colour on that pod.
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
 changes during a game or a sync), `not_ready`.

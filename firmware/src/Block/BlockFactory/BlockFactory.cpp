@@ -9,6 +9,7 @@
 #include "Block/RemoteMultiplePressBlock/RemoteMultiplePressBlock.h"
 #include "Block/RemoteResetAllBlock/RemoteResetAllBlock.h"
 #include "Block/SummaryBlock/SummaryBlock.h"
+#include "Block/RepeatBlock/RepeatBlock.h"
 
 namespace {
     template<typename T>
@@ -32,6 +33,7 @@ namespace {
         {"remoteMultiPress", &createBlock<RemoteMultiplePressBlock>},
         {"remoteResetAll",   &createBlock<RemoteResetAllBlock>},
         {"summary",          &createBlock<SummaryBlock>},
+        {"repeat",           &createBlock<RepeatBlock>},
     };
 }
 

@@ -6,6 +6,8 @@
 #ifdef REACTPOD_BLE_ESPNOW_TEST
 #include "TestHw/BleEspNowTest.h"
 #endif
+#include "Config/ConfigApi.h"
+#include "LEDManager/EffectJson.h"
 
 using namespace Protocol;
 
@@ -143,7 +145,11 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
             break;
         }
         case MsgType::ARM:
-            this->handleArm(*reinterpret_cast<const Arm*>(frame.data));
+            this->handleArm(frame);
+            break;
+
+        case MsgType::EFFECT:
+            this->handleEffect(*reinterpret_cast<const Effect*>(frame.data));
             break;
 
         case MsgType::SYNC_READ_REQ:
@@ -185,6 +191,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ClaimAck ack;
     fillHeader(ack.header, MsgType::CLAIM_ACK, this->setId);
     ack.podId = this->podId;
+    ack.linkFeatures = LINK_FEATURE_EFFECTS;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
     if(this->state == State::UNCLAIMED) {
@@ -196,11 +203,28 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     }
 }
 
-void PeripheralRole::handleArm(const Arm& arm) {
+int64_t PeripheralRole::localStartUs(int64_t centralUs) const {
+    if(centralUs == 0 || !this->clock.isSynced()) {
+        return 0;   // now
+    }
+    int64_t local = this->clock.toLocal(centralUs);
+    return local != 0 ? local : 1;
+}
+
+void PeripheralRole::handleArm(const RxFrame& frame) {
+    const Arm& arm = *reinterpret_cast<const Arm*>(frame.data);
     this->cmdSeq = arm.cmdSeq;
     this->mode = arm.mode;
     this->colorActive = arm.colorActive;
     this->colorAfter = arm.colorAfter;
+
+    // optional waiting effect (appended field, firmware >= 2.8). It is timed from the start
+    // time, so a late ARM joins the animation of the other pods instead of restarting it.
+    this->hasWaitingEffect = frame.len >= sizeof(Arm) && arm.waiting.effect != EffectId::NONE;
+    if(this->hasWaitingEffect) {
+        this->waitingEffect = arm.waiting;
+        this->waitingEffectStartUs = this->localStartUs(arm.startAtUs);
+    }
 
     int64_t now = esp_timer_get_time();
     if(arm.startAtUs != 0 && this->clock.isSynced()) {
@@ -223,8 +247,18 @@ void PeripheralRole::handleArm(const Arm& arm) {
     this->activate();
 }
 
+void PeripheralRole::handleEffect(const Effect& effect) {
+    // only the LEDs change; an armed pod stays armed (its next LED change wins)
+    if(!LEDManager::getManager()->playEffect(effect.effect, this->localStartUs(effect.startAtUs))) {
+        ESP_LOGW(TAG, "unknown effect %u ignored", (unsigned)effect.effect.effect);
+    }
+}
+
 void PeripheralRole::activate() {
-    LEDManager::getManager()->setLEDColors(this->colorActive);
+    LEDManager* leds = LEDManager::getManager();
+    if(!this->hasWaitingEffect || !leds->playEffect(this->waitingEffect, this->waitingEffectStartUs)) {
+        leds->setLEDColors(this->colorActive);
+    }
     // measure from the moment the LED data was sent; only presses after this count
     this->activatedUs = esp_timer_get_time();
     this->pressCountAtActivation = Button::get().pressCount();
@@ -299,5 +333,23 @@ bool PeripheralRole::control(const char* op, JsonObjectConst request, JsonDocume
         return true;
     }
 #endif
+    if(strcmp(op, "effect") == 0) {
+        // test op: play an effect on this pod's ring
+        if(this->state == State::ACTIVE || this->state == State::SCHEDULED) {
+            ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
+            return true;
+        }
+        EffectDesc effect;
+        String error;
+        if(!EffectJson::parse(request, effect, error)) {
+            ConfigApi::setError(response, "bad_request", error);
+            return true;
+        }
+        uint32_t delayMs = request["delayMs"] | 0u;
+        LEDManager::getManager()->playEffect(effect, delayMs != 0 ? esp_timer_get_time() + (int64_t)delayMs * 1000 : 0);
+        response["ok"] = true;
+        response["effect"] = LEDManager::effectName(effect.effect);
+        return true;
+    }
     return false;
 }
