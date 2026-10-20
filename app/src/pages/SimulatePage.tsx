@@ -148,15 +148,18 @@ function ProgramPicker({ target }: { target: Target | null }) {
   );
 }
 
-/** Every pod of the program: an 18-LED ring with a big button (press and hold = long press). */
+/** Every pod of the program as a raised puck; the whole puck is the button (press and hold = long press). */
 function Pods({ sim }: { sim: SimulationControls }) {
   const { t } = useTranslation();
+  // the pods fill the stage: the fewer pods, the bigger the target
+  const count = sim.snapshot.pods.length;
+  const size = count <= 2 ? 140 : count <= 4 ? 116 : 96;
   return (
     <section className={page.section} aria-label={t("simulate.pods")}>
       <ul className={styles.pods}>
         {sim.snapshot.pods.map((pod) => (
           <li key={pod.id}>
-            <PodButton pod={pod} onPress={() => sim.press(pod.id)} onRelease={() => sim.release(pod.id)} />
+            <PodButton pod={pod} size={size} onPress={() => sim.press(pod.id)} onRelease={() => sim.release(pod.id)} />
           </li>
         ))}
       </ul>
@@ -165,7 +168,7 @@ function Pods({ sim }: { sim: SimulationControls }) {
   );
 }
 
-function PodButton({ pod, onPress, onRelease }: { pod: PodView; onPress: () => void; onRelease: () => void }) {
+function PodButton({ pod, size, onPress, onRelease }: { pod: PodView; size: number; onPress: () => void; onRelease: () => void }) {
   const { t } = useTranslation();
   const down = useRef(false);
   const label = pod.central ? t("simulate.central", { id: pod.id }) : t("simulate.peripheral", { id: pod.id });
@@ -181,31 +184,29 @@ function PodButton({ pod, onPress, onRelease }: { pod: PodView; onPress: () => v
   };
   return (
     <div className={styles.pod} data-state={pod.state}>
-      <div className={styles.ring}>
-        <LedRing colors={pod.leds} size={104} label={label} />
-        <button
-          type="button"
-          className={styles.podButton}
-          data-held={pod.held || undefined}
-          aria-label={t("simulate.press", { pod: label })}
-          onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture?.(e.pointerId);
+      <button
+        type="button"
+        className={styles.podButton}
+        data-held={pod.held || undefined}
+        aria-label={t("simulate.press", { pod: label })}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          start();
+        }}
+        onPointerUp={end}
+        onPointerCancel={end}
+        onContextMenu={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+            e.preventDefault();
             start();
-          }}
-          onPointerUp={end}
-          onPointerCancel={end}
-          onContextMenu={(e) => e.preventDefault()}
-          onKeyDown={(e) => {
-            if ((e.key === " " || e.key === "Enter") && !e.repeat) {
-              e.preventDefault();
-              start();
-            }
-          }}
-          onKeyUp={(e) => (e.key === " " || e.key === "Enter") && end()}
-          onBlur={end}
-        />
-      </div>
-      <span className={styles.podLabel}>{label}</span>
+          }
+        }}
+        onKeyUp={(e) => (e.key === " " || e.key === "Enter") && end()}
+        onBlur={end}
+      >
+        <LedRing colors={pod.leds} size={size} title={label} subtitle={pod.state === "active" ? t("simulate.pressNow") : undefined} pressed={pod.held} />
+      </button>
     </div>
   );
 }

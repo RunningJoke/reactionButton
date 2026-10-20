@@ -3,13 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#101418" />
+    <meta name="theme-color" content="#0b1426" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <title>ReactPod Config</title>
+    <style>
+      /* Splash (DESIGN.md, "splash"): shown until React mounts into #root and replaces it. */
+      .rp-splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; background: #0b1426; color: #e7eefa; font-family: Inter, system-ui, sans-serif; }
+      .rp-splash-puck { position: relative; width: 220px; height: 220px; border-radius: 50%; background: #08101f; box-shadow: 0 10px 0 #050a14, 0 22px 40px rgb(0 0 0 / 0.5); animation: rp-press 2.8s ease-in-out infinite; }
+      .rp-splash-puck::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: #1a2c4d; box-shadow: inset 0 3px 0 rgb(255 255 255 / 0.16), inset 0 -14px 26px rgb(0 0 0 / 0.35); }
+      .rp-splash-puck i { position: absolute; left: 101px; top: 106px; width: 18px; height: 8px; border-radius: 4px; background: #5b9bff; box-shadow: 0 0 12px #5b9bff; transform: rotate(calc(var(--i) * 20deg)) translateY(-86px); animation: rp-chase 1.4s linear calc(var(--i) * 1.4s / 18 - 1.4s) infinite; }
+      .rp-splash-puck i:nth-child(-n + 6) { background: #22c55e; box-shadow: 0 0 12px #22c55e; }
+      .rp-splash-name { position: absolute; inset: 0; display: grid; place-items: center; font: 700 34px "Barlow Semi Condensed", system-ui, sans-serif; letter-spacing: -0.01em; }
+      .rp-splash p { margin: 0; font-size: 14px; color: #93a5c6; }
+      @keyframes rp-chase { 0% { opacity: 1; } 40%, 100% { opacity: 0.12; } }
+      @keyframes rp-press { 0%, 72%, 100% { transform: translateY(0); box-shadow: 0 10px 0 #050a14, 0 22px 40px rgb(0 0 0 / 0.5); } 82% { transform: translateY(8px); box-shadow: 0 2px 0 #050a14, 0 6px 14px rgb(0 0 0 / 0.45); } }
+      @media (prefers-reduced-motion: reduce) { .rp-splash-puck, .rp-splash-puck i { animation: none; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="rp-splash" role="status" aria-label="ReactPod">
+        <div class="rp-splash-puck"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i><i style="--i:14"></i><i style="--i:15"></i><i style="--i:16"></i><i style="--i:17"></i><span class="rp-splash-name">ReactPod</span></div>
+        <p>Loading…</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

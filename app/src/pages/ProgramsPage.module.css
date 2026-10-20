@@ -195,7 +195,7 @@
 .fab {
   position: fixed;
   right: var(--space-4);
-  bottom: calc(var(--tabbar-h) + var(--space-4) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--tabbar-h) + 2 * var(--tabbar-gap) + env(safe-area-inset-bottom, 0px));
   z-index: 4;
   display: grid;
   place-items: center;

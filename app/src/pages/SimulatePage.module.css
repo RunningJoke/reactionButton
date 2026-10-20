@@ -73,7 +73,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-3);
+  gap: var(--space-4) var(--space-6);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -83,27 +83,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
 }
 
-.ring {
-  position: relative;
-  width: 104px;
-  height: 104px;
-}
-
-.ring :global(.led-ring) {
-  display: block;
-}
-
-/* the big round button in the middle of the ring */
+/* the raised puck is the button: no frame of its own, the cap moves down while held */
 .podButton {
-  position: absolute;
-  inset: 28px;
-  border: 2px solid var(--border);
+  display: block;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  background: none;
   cursor: pointer;
   touch-action: none;
   user-select: none;
@@ -111,29 +99,13 @@
   -webkit-touch-callout: none;
 }
 
-.podButton:hover {
-  border-color: var(--accent);
-}
-
-.podButton[data-held] {
-  transform: scale(0.92);
-  background: var(--surface-2);
-  border-color: var(--accent);
+.podButton :global(.led-ring) {
+  display: block;
 }
 
 .podButton:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.podLabel {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.pod[data-state="active"] .podLabel {
-  color: var(--text);
-  font-weight: 600;
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .hint {
