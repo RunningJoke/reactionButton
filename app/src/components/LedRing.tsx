@@ -1,6 +1,6 @@
-import { colorToRgb } from "../model/colors";
-import { LED_COUNT } from "../model/limits";
-import type { MenuGroup } from "../model/program";
+import { colorToRgb } from "@reactpod/program-model";
+import { LED_COUNT } from "@reactpod/program-model";
+import type { MenuGroup } from "@reactpod/program-model";
 
 type Props = {
   /** LED colours by index; missing = off */

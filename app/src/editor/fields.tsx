@@ -3,9 +3,9 @@ import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Hash, Variable } from "lucide-react";
 import { LedRingPicker } from "../components/LedRingPicker";
-import { colorToRgb, isColor, NAMED_COLORS, namedColor, type Color } from "../model/colors";
-import { LED_COUNT } from "../model/limits";
-import { isObject, type MenuGroup } from "../model/program";
+import { colorToRgb, isColor, NAMED_COLORS, namedColor, type Color } from "@reactpod/program-model";
+import { LED_COUNT } from "@reactpod/program-model";
+import { isObject, type MenuGroup } from "@reactpod/program-model";
 import styles from "./Inspector.module.css";
 
 /** Number field that commits whole numbers; empty = unset. Keeps the typed text while focused. */

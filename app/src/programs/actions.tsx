@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Modal, modalStyles } from "../components/Modal";
 import { DEFAULT_FILES } from "../defaults";
-import { formatProgram } from "../model/format";
+import { formatProgram } from "@reactpod/program-model";
 import { newProgram } from "../editor/ops";
 import { usePodSession } from "../pod/session";
 import { rememberPodBase } from "../pod/syncActions";

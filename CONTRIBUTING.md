@@ -32,11 +32,13 @@ The docs are the contract between firmware, app and tools.
 2. Bump `FW_VERSION_MINOR` in `firmware/src/_Definitions.h` (`info.firmware`).
 3. New block fields, ports or semantics: increase `PROGRAM_FORMAT` in
    `firmware/src/Block/BlockFactory/BlockFactory.h`, `tools/validate_programs.py` and
-   `app/src/model/limits.ts`, and add a row to programs.md §6.
+   `packages/program-model/src/limits.ts`, and add a row to programs.md §6.
 4. Report a new optional feature in `info.features`.
 5. Update the clients in `tools/`.
 6. Mirror it in the app: `pod/protocol.ts`, `pod/simulated/SimulatedPod.ts`,
-   `model/blockTypes.ts` + `model/validate.ts`, `simulator/engine.ts`.
+   `simulator/engine.ts`; block types and checks in `packages/program-model/src/blockTypes.ts` +
+   `validate.ts` (shared with the platform: run its tests too), then `npm run schema` there to
+   regenerate `spec/program.schema.json`.
 
 The app must keep working with older firmware: check `info`, treat a missing field as the old
 behaviour.
@@ -48,6 +50,7 @@ behaviour.
 | Firmware | `FW_VERSION_MAJOR/MINOR` in `firmware/src/_Definitions.h` | `fw-vMAJOR.MINOR.PATCH` | GitHub release with `firmware.bin`, `bootloader.bin`, `partitions.bin`, `spiffs.bin`, `ota-manifest.json`; also published at `<app url>/firmware/` |
 | App | `version` in `app/package.json` | `app-vX.Y.Z` | GitHub release (notes only); every merge to `main` deploys the app |
 | Program format | `PROGRAM_FORMAT` (integer) | – | programs.md §6 |
+| Platform | `version` in `platform/package.json` | `platform-vX.Y.Z` | container image `ghcr.io/runningjoke/reactpod-platform:vX.Y.Z`; every push to `main` / `feat/platform` deploys staging ([platform/deploy](platform/deploy/README.md)) |
 | Hardware | – | `hw-revN` | – |
 
 Release a firmware: bump the version on a PR, merge it, then
@@ -62,6 +65,8 @@ Release the app: bump `version` in `app/package.json` on a PR, merge it, then ta
 
 ```sh
 cd app && npm test && npx tsc          # app
+cd packages/program-model && npm test && npx tsc && npm run schema:check   # shared program model (app + platform)
+cd platform && npm test && npx tsc && npm run openapi:check   # platform
 pio run -d firmware -e NewBoard        # firmware; CI reports firmware.bin vs. the app slot
 python tools/validate_programs.py      # shipped programs
 ```

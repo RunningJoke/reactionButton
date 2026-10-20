@@ -3,10 +3,10 @@
  * Export: the local menu, its programs with their includes, and every local program.
  */
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import { INDEX_PATH, isLibraryPath, isValidPath, MAX_FILE_SIZE } from "../model/limits";
-import { resolveProgram, type FileSource } from "../model/validate";
+import { INDEX_PATH, isLibraryPath, isValidPath, MAX_FILE_SIZE } from "@reactpod/program-model";
+import { resolveProgram, type FileSource } from "@reactpod/program-model";
 import { formatMenu, parseMenu } from "../pod/sync";
-import { isObject } from "../model/program";
+import { isObject } from "@reactpod/program-model";
 
 /** More files than a pod can sensibly hold: the archive is not a set. */
 const MAX_FILES = 200;

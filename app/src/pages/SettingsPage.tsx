@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
 import { setLanguage, storedLanguage, type Language } from "../i18n";
-import { INDEX_PATH, isLibraryPath } from "../model/limits";
+import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
 import { isReadOnly, needsPin, usePodSession } from "../pod/session";
 import { deleteFiles } from "../pod/syncActions";

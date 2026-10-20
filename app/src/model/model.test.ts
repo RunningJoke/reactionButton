@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../defaults";
-import { colorToRgb, isColor, isNamedColor } from "./colors";
-import { formatIndex, formatProgram } from "./format";
-import { isValidPath, MAX_PATH, pathForName } from "./limits";
+import { colorToRgb, isColor, isNamedColor } from "@reactpod/program-model";
+import { formatIndex, formatProgram } from "@reactpod/program-model";
+import { isValidPath, MAX_PATH, pathForName } from "@reactpod/program-model";
 
 describe("defaults", () => {
   it("bundles the shipped programs from firmware/data/", () => {

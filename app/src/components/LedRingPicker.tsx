@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { colorToRgb } from "../model/colors";
-import { LED_COUNT } from "../model/limits";
+import { colorToRgb } from "@reactpod/program-model";
+import { LED_COUNT } from "@reactpod/program-model";
 import "./ledRingPicker.css";
 
 type Props = {

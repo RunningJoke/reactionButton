@@ -39,6 +39,7 @@ Program format and block semantics: [docs/firmware/programs.md](../firmware/prog
 - Native apps (the architecture prepares for them, see §3).
 - Editing library fragments (`/prog/lib/*` is read-only).
 - Cloud storage / accounts (later a remote database may replace the local store, see §6).
+  Planned as the community platform: [docs/platform/spec.md](../platform/spec.md) (§5.4 app integration).
 - Firmware OTA.
 
 ---

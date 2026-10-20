@@ -14,6 +14,7 @@
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.3.0",
     "@capacitor/core": "^8.5.3",
+    "@reactpod/program-model": "file:../packages/program-model",
     "fflate": "^0.8.3",
     "i18next": "^26.5.2",
     "i18next-browser-languagedetector": "^8.2.1",

@@ -4,7 +4,7 @@ import { AlertTriangle, BookLock, FileJson, Info, KeyRound, ListOrdered, Loader,
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
 import { Modal, modalStyles } from "../components/Modal";
-import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "../model/limits";
+import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
 import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
 import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
 import type { SyncStatus } from "../pod/sync";

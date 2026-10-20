@@ -1,0 +1,586 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://runningjoke.github.io/reactionButton/spec/program.schema.json",
+  "x-programFormat": 1,
+  "title": "ReactPod program",
+  "description": "ReactPod program file (/prog/*.json), program format 1. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "shown in the menu"
+    },
+    "description": {
+      "type": "string"
+    },
+    "peripherals": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7,
+      "description": "peripherals the central connects"
+    },
+    "menu": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/menuGroup"
+      },
+      "description": "LED pattern of the program in the menu"
+    },
+    "variables": {
+      "$ref": "#/$defs/variables"
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/storePath"
+      },
+      "description": "fragments loaded first, in order"
+    },
+    "start": {
+      "$ref": "#/$defs/blockName",
+      "description": "first block; default: the first block"
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/block"
+      }
+    }
+  },
+  "$defs": {
+    "value": {
+      "description": "a number, or the name of a variable read when the block runs",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/$defs/variableName"
+        }
+      ]
+    },
+    "variableName": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "namedColor": {
+      "description": "write lower case (the firmware also accepts other cases); black = off",
+      "enum": [
+        "off",
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "magenta",
+        "cyan",
+        "white",
+        "black"
+      ]
+    },
+    "color": {
+      "description": "named colour, #rrggbb or [r, g, b]",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/namedColor"
+        },
+        {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      ]
+    },
+    "leds": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 17
+      }
+    },
+    "blockName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "storePath": {
+      "type": "string",
+      "maxLength": 31,
+      "pattern": "^/prog/[A-Za-z0-9_\\-./]+$"
+    },
+    "variables": {
+      "description": "initial values (integers); a program overrides values of its includes",
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "menuGroup": {
+      "type": "object",
+      "required": [
+        "leds",
+        "color"
+      ],
+      "properties": {
+        "leds": {
+          "$ref": "#/$defs/leds"
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        }
+      }
+    },
+    "block": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/block_led"
+        },
+        {
+          "$ref": "#/$defs/block_delay"
+        },
+        {
+          "$ref": "#/$defs/block_button"
+        },
+        {
+          "$ref": "#/$defs/block_if"
+        },
+        {
+          "$ref": "#/$defs/block_setVariable"
+        },
+        {
+          "$ref": "#/$defs/block_remotePress"
+        },
+        {
+          "$ref": "#/$defs/block_remoteMultiPress"
+        },
+        {
+          "$ref": "#/$defs/block_remoteResetAll"
+        },
+        {
+          "$ref": "#/$defs/block_summary"
+        }
+      ]
+    },
+    "block_led": {
+      "title": "led",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "color"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "led"
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        },
+        "leds": {
+          "$ref": "#/$defs/leds"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_delay": {
+      "title": "delay",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "delay"
+        },
+        "ms": {
+          "$ref": "#/$defs/value"
+        },
+        "minMs": {
+          "$ref": "#/$defs/value"
+        },
+        "maxMs": {
+          "$ref": "#/$defs/value"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_button": {
+      "title": "button",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "button"
+        },
+        "shortMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 1000"
+        },
+        "timeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "minTimeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "maxTimeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "record": {
+          "type": "string",
+          "minLength": 1,
+          "description": "measurement metric name"
+        },
+        "storeAs": {
+          "$ref": "#/$defs/variableName"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "short": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "long": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "pressed": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_if": {
+      "title": "if",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "left",
+        "right"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "if"
+        },
+        "left": {
+          "$ref": "#/$defs/value"
+        },
+        "op": {
+          "enum": [
+            "==",
+            "!=",
+            ">",
+            "<",
+            ">=",
+            "<=",
+            "=",
+            "!"
+          ],
+          "description": "default: \"==\""
+        },
+        "right": {
+          "$ref": "#/$defs/value"
+        },
+        "true": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "false": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_setVariable": {
+      "title": "setVariable",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "var",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "setVariable"
+        },
+        "var": {
+          "$ref": "#/$defs/variableName"
+        },
+        "op": {
+          "enum": [
+            "=",
+            "+",
+            "-",
+            "random",
+            "randomOther",
+            "set",
+            "add",
+            "sub",
+            "?",
+            "!"
+          ],
+          "description": "default: \"=\""
+        },
+        "value": {
+          "$ref": "#/$defs/value"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_remotePress": {
+      "title": "remotePress",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "pod"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "remotePress"
+        },
+        "pod": {
+          "$ref": "#/$defs/value"
+        },
+        "mode": {
+          "enum": [
+            "hit",
+            "avoid"
+          ],
+          "description": "default: \"hit\""
+        },
+        "color": {
+          "$ref": "#/$defs/namedColor"
+        },
+        "colorAfter": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"off\""
+        },
+        "timeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "record": {
+          "type": "string",
+          "minLength": 1,
+          "description": "measurement metric name"
+        },
+        "storeAs": {
+          "$ref": "#/$defs/variableName"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_remoteMultiPress": {
+      "title": "remoteMultiPress",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "remoteMultiPress"
+        },
+        "pods": {
+          "$ref": "#/$defs/value"
+        },
+        "avoid": {
+          "$ref": "#/$defs/value",
+          "description": "default: 0"
+        },
+        "includeCentral": {
+          "type": "boolean",
+          "description": "default: true"
+        },
+        "hitColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\""
+        },
+        "avoidColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "syncStartMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 20"
+        },
+        "timeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "record": {
+          "type": "string",
+          "minLength": 1,
+          "description": "measurement metric name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "avoidHit": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_remoteResetAll": {
+      "title": "remoteResetAll",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "remoteResetAll"
+        },
+        "pods": {
+          "$ref": "#/$defs/value"
+        },
+        "ledsOff": {
+          "type": "boolean",
+          "description": "default: true"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_summary": {
+      "title": "summary",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "metric"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "summary"
+        },
+        "metric": {
+          "type": "string",
+          "minLength": 1,
+          "description": "measurement metric name"
+        },
+        "storeAverage": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeBest": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeWorst": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeCount": {
+          "$ref": "#/$defs/variableName"
+        },
+        "reset": {
+          "type": "boolean",
+          "description": "default: true"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "fragment": {
+      "title": "ReactPod include fragment",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "variables": {
+          "$ref": "#/$defs/variables"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/storePath"
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      }
+    }
+  }
+}

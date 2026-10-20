@@ -3,9 +3,9 @@
  * so nothing is lost when the app is closed. Also the sync state per pod set (docs/app/spec.md §9.2).
  */
 import { create } from "zustand";
-import { formatProgram } from "../model/format";
-import { pathForName } from "../model/limits";
-import { isObject } from "../model/program";
+import { formatProgram } from "@reactpod/program-model";
+import { pathForName } from "@reactpod/program-model";
+import { isObject } from "@reactpod/program-model";
 import { createStorage, type ProgramDoc, type Storage, type SyncBase, type SyncState } from "./programStore";
 
 type Workspace = {

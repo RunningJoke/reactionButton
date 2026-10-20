@@ -1,0 +1,44 @@
+{
+  "name": "reactpod-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ReactPod community platform: REST API for apps, MCP server for AI clients (docs/platform/spec.md)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "build": "npm run build:server && npm run build:migrate",
+    "start": "node --enable-source-maps dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc",
+    "openapi": "tsx scripts/gen-openapi.ts",
+    "openapi:check": "tsx scripts/gen-openapi.ts --check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file-if-exists=.env src/adapters/migrate.ts",
+    "build:server": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/main.js --sourcemap --external:@electric-sql/pglite --external:drizzle-orm/pglite* --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "build:migrate": "esbuild src/adapters/migrate.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-migrate/migrate.js --sourcemap --external:@electric-sql/pglite --external:drizzle-orm/pglite* --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\""
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@reactpod/program-model": "file:../packages/program-model",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "nodemailer": "^10.1.7",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "yaml": "^2.9.1"
+  }
+}

@@ -3,7 +3,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { columnLayout } from "../editor/columnLayout";
 import { blockSummary } from "../editor/summary";
 import { buildGraph } from "../model/graph";
-import { resolveProgram } from "../model/validate";
+import { resolveProgram } from "@reactpod/program-model";
 import { MemoryFileCache } from "../store/fileCache";
 import { buildCatalog, fileName } from "./catalog";
 

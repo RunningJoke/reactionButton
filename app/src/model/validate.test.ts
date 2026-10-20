@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../defaults";
-import { formatProgram } from "./format";
-import { MAX_FILE_SIZE } from "./limits";
-import { hasErrors, resolveProgram, validateProgram, validateStore, type Issue } from "./validate";
+import { formatProgram } from "@reactpod/program-model";
+import { MAX_FILE_SIZE } from "@reactpod/program-model";
+import { hasErrors, resolveProgram, validateProgram, validateStore, type Issue } from "@reactpod/program-model";
 
 const PATH = "/prog/test.json";
 

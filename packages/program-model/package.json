@@ -1,0 +1,23 @@
+{
+  "name": "@reactpod/program-model",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ReactPod program format: types, block definitions, limits, validation, formatting (shared by app and platform)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc",
+    "schema": "tsx scripts/gen-schema.ts",
+    "schema:check": "tsx scripts/gen-schema.ts --check"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "ajv": "^8.20.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

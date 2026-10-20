@@ -3,9 +3,9 @@
  * (src/Config/ConfigApi.cpp, src/Store/ProgramStore.cpp). Used for development, unit tests and
  * demos without hardware. Radio, sync and games are not simulated.
  */
-import { BLOCK_TYPES } from "../../model/blockTypes";
-import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_REQUEST, MAX_SET_NAME, PROGRAM_FORMAT } from "../../model/limits";
-import { validateProgram, type Issue } from "../../model/validate";
+import { BLOCK_TYPES } from "@reactpod/program-model";
+import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_REQUEST, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
+import { validateProgram, type Issue } from "@reactpod/program-model";
 import { crc32, crcHex, hex32 } from "../crc32";
 import type { ApiErrorCode, PodRole } from "../protocol";
 import { byteLength, encodeUtf8 } from "../utf8";

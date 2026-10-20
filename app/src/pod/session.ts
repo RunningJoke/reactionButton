@@ -7,7 +7,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { fileCache } from "../store/fileCache";
 import { PodClient } from "./client";
 import { readFile } from "./files";
-import { PROGRAM_FORMAT } from "../model/limits";
+import { PROGRAM_FORMAT } from "@reactpod/program-model";
 import { PodError, type InfoResponse, type ListResponse, type PodEvent, type PodRole } from "./protocol";
 import { SimulatedPod } from "./simulated/SimulatedPod";
 import { SimulatedTransport } from "./simulated/SimulatedTransport";

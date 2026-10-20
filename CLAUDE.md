@@ -13,7 +13,10 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 | `app/` | React + TS PWA on Pages: https://runningjoke.github.io/reactionButton/ | [spec](docs/app/spec.md) (§4 layout, §13 phases), [acceptance tests](docs/app/acceptance-tests.md) |
 | `tools/` | `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` | config-api |
 | `hardware/` | KiCad PCB, FreeCAD casing | – |
-| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform | – |
+| `platform/` | Community platform (Hono + Postgres): accounts, clubs, sharing, results; REST + MCP from one use-case list | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases), [deploy](platform/deploy/README.md) |
+| `packages/program-model/` | Program types, block definitions, limits, validator – shared by app and platform | programs |
+| `spec/` | Generated contracts: `platform-api.yaml` (OpenAPI, `cd platform && npm run openapi`), `program.schema.json` (`cd packages/program-model && npm run schema`) | – |
+| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform, platform architecture | – |
 | `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)
@@ -25,6 +28,8 @@ pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # programs
 python tools/validate_programs.py
 python tools/reactpod_serial.py --port COM4 monitor              # log + JSON API over USB
 cd app && npm test && npx tsc                                    # before every app commit
+cd packages/program-model && npm test && npx tsc && npm run schema:check   # program model (also run app + platform tests)
+cd platform && npm test && npx tsc && npm run openapi:check       # before every platform commit
 ```
 
 ## Flows
@@ -59,7 +64,7 @@ Layout of `app/src/`:
 | Folder | Content |
 |---|---|
 | `pod/` | Everything about talking to a pod: `transport/` (BLE via @capacitor-community/bluetooth-le, Web Serial), `simulated/` (demo pod, implements config-api.md in memory), `client.ts` (one request at a time, ids, timeouts, `overflow` retry), `files.ts` (chunked get / put), `session.ts` (connection state for the UI), `sync.ts` + `syncActions.ts` (sync states, push, restore defaults) |
-| `model/` | Program format: block type definitions, validation (port of `tools/validate_programs.py`), graph, formatting, limits |
+| `model/` | `graph.ts` (column order) and the model tests. Types, block definitions, validation, formatting and limits are in `@reactpod/program-model` (`packages/program-model`, `file:` dependency) |
 | `simulator/` | `engine.ts`: the firmware block engine ported to TS (follows programs.md §7), seeded random, real-time hook |
 | `editor/` | Column view of the block graph, editing operations, undo / redo, inspector |
 | `store/` | IndexedDB storage (local programs, menu, sync state per set), file cache |
@@ -76,6 +81,30 @@ Rules:
   script with the local Chrome (`scripts/screenshots.mjs` shows how). Look at the screenshots.
 - Deployment: every push to `main` that touches `app/` or `firmware/data/` runs
   `.github/workflows/app.yml` (test, build, publish on GitHub Pages).
+
+## Platform
+
+```sh
+cd platform
+npm install
+npm run dev        # http://localhost:8787 (/v1/meta, /v1/openapi.json, /mcp); embedded PGlite in .data/dev, sign-in codes in the log
+                   # real Postgres: docker compose -f compose.dev.yaml up -d and DATABASE_URL=postgres://reactpod:reactpod@localhost:5432/reactpod
+npm test           # Vitest: REST, MCP and OpenAPI against the same use cases
+npx tsc
+npm run openapi    # regenerate spec/platform-api.yaml after changing a use case (CI checks it)
+npm run build      # esbuild bundle → dist/main.js (+ dist-migrate/)
+```
+
+Rules:
+- A feature is a **use case** (`src/modules/<module>/useCases.ts`, `defineUseCase`), added to
+  `src/core/registry.ts`. Never write REST routes or MCP tools by hand; both are generated.
+- Use cases talk to the outside only through `ctx.ports` (`src/core/ports.ts`).
+- Set `agent` deliberately: `deny` for anything an AI client must not do, `draft` for writes (spec §7.3).
+- Tables per module in `schema.ts` (exported in `src/db/schema.ts`); after a change run
+  `npm run db:generate` (Drizzle) and commit the migration. Merged migrations are never edited.
+- Rights: `requireMember(tx, ctx, orgId, minRole)` from `modules/orgs/policies.ts`; non-members get 404.
+  Every write calls `recordAudit` (ids only, no names or e-mails).
+- Tests run on PGlite (`test/helpers.ts` → `testEnv()`: fresh database, captured mails, controllable clock).
 
 ## Environment
 

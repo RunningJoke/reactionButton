@@ -2,9 +2,9 @@
  * Block graph of a program or fragment: nodes, edges and which blocks start, end, or are
  * unreachable. Pure data, no layout (see editor/layout.ts).
  */
-import { blockType } from "./blockTypes";
-import { isObject, type Block } from "./program";
-import type { ResolvedProgram } from "./validate";
+import { blockType } from "@reactpod/program-model";
+import { isObject, type Block } from "@reactpod/program-model";
+import type { ResolvedProgram } from "@reactpod/program-model";
 
 export type GraphNode = {
   /** block name (unique in a program) */

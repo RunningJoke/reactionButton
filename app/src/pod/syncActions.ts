@@ -3,7 +3,7 @@
  * restore defaults and delete. Ties `sync.ts` to the pod session and the workspace.
  */
 import { useEffect, useMemo } from "react";
-import { INDEX_PATH } from "../model/limits";
+import { INDEX_PATH } from "@reactpod/program-model";
 import { fileCache } from "../store/fileCache";
 import { useWorkspace } from "../store/workspace";
 import { PodError } from "./protocol";
