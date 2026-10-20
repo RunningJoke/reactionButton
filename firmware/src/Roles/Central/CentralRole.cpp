@@ -300,6 +300,8 @@ void CentralRole::describe(JsonObject status) {
 
     if(this->state == State::RUN || this->state == State::PAUSED) {
         status["block"] = BlockManager::getManager()->currentBlockName();
+        JsonObject timers = status["timers"].to<JsonObject>();
+        timers["orphanStops"] = BlockManager::getManager()->timerOrphanStops();
     }
     if(this->state != State::MENU) {
         VariableManager* vars = VariableManager::getManager();
