@@ -3,6 +3,7 @@
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
 #include "LEDManager/ErrorAnimation.h"
+#include "LEDManager/EffectJson.h"
 #include "BlockManager/BlockManager.h"
 #include "VariableManager/VariableManager.h"
 #include "Input/Button.h"
@@ -320,6 +321,8 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         Button::get().simulatePress();
         response["ok"] = true;
         response["state"] = stateName(this->state);
+    } else if(strcmp(op, "effect") == 0) {
+        this->opEffect(request, response);
     } else if(strcmp(op, "stop") == 0) {
         // back to the program menu: restart as central (answer first)
         Settings::setBootRole(1);
@@ -387,6 +390,57 @@ void CentralRole::opSelect(JsonObjectConst request, JsonDocument& response) {
     response["name"] = program.name;
     response["path"] = program.path;
     response["requiredPeripherals"] = this->requiredPeripherals;
+}
+
+// Test op: plays an effect on the central ("target": "self", default), on one pod (its id),
+// on all pods ("pods") or on both ("all"), all with the same start time (now + delayMs).
+// Pods without effect support are listed in "skipped".
+void CentralRole::opEffect(JsonObjectConst request, JsonDocument& response) {
+    if(this->state == State::RUN || this->state == State::PAUSED) {
+        ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
+        return;
+    }
+    Protocol::EffectDesc effect;
+    String error;
+    if(!EffectJson::parse(request, effect, error)) {
+        ConfigApi::setError(response, "bad_request", error);
+        return;
+    }
+
+    JsonVariantConst target = request["target"];
+    bool self = target.isNull() || target == "self" || target == "all";
+    bool allPods = target == "pods" || target == "all";
+    int onePod = target.is<int>() ? target.as<int>() : -1;
+    if(!self && !allPods && (onePod < 0 || onePod >= this->network.podCount())) {
+        ConfigApi::setError(response, "bad_request", "'target' must be \"self\", \"pods\", \"all\" or a connected pod id");
+        return;
+    }
+    if((allPods || onePod >= 0) && !this->network.isStarted()) {
+        ConfigApi::setError(response, "not_ready", "radio is off (select a program first)");
+        return;
+    }
+
+    // pods need a common start time in the future to run in step
+    uint32_t delayMs = request["delayMs"] | (allPods || onePod >= 0 ? 50u : 0u);
+    int64_t startAtUs = delayMs != 0 ? this->network.nowUs() + (int64_t)delayMs * 1000 : 0;
+
+    JsonArray sent = response["sent"].to<JsonArray>();
+    JsonArray skipped = response["skipped"].to<JsonArray>();
+    for(uint8_t i = 0; i < this->network.podCount(); i++) {
+        if(allPods || i == onePod) {
+            if(this->network.effect(i, effect, startAtUs)) {
+                sent.add(i);
+            } else {
+                skipped.add(i);     // older firmware: no effects
+            }
+        }
+    }
+    if(self) {
+        LEDManager::getManager()->playEffect(effect, startAtUs);   // network time = local time on the central
+    }
+    response["ok"] = true;
+    response["effect"] = LEDManager::effectName(effect.effect);
+    response["startAtUs"] = startAtUs;
 }
 
 void CentralRole::opStart(JsonDocument& response) {

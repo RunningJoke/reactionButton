@@ -15,13 +15,20 @@
  *   CLAIM_ACK ──────────────────────►
  *   PING (every 200 ms, t1) ────────►                 heartbeat + clock sync
  *                                ◄─── PONG (t1, t2, t3)
- *                                ◄─── ARM (cmdSeq, mode, colours, start time)
+ *                                ◄─── ARM (cmdSeq, mode, colours, start time [, waiting effect])
  *   PRESSED (cmdSeq, reaction µs) ──►
  *                                ◄─── RESET
+ *                                ◄─── EFFECT (effect, start time)   only to pods with LINK_FEATURE_EFFECTS
  *
  * Program store sync (see StoreSync): PING and PONG carry the store generation and hash.
  * The pod with the older store reads the other pod's manifest and changed files with
  * SYNC_READ requests, one chunk at a time.
+ *
+ * Extensions keep VERSION (a new version would make older pods invisible). New fields are
+ * appended at the end of a frame and frameSize() stays the size without them, so older
+ * firmware accepts the longer frame and ignores the tail. A receiver checks the length
+ * before it reads an appended field. Unknown message types are ignored by every version.
+ * What a peripheral understands is announced in CLAIM_ACK (linkFeatures).
  *
  *   SYNC_READ_REQ (path, offset) ───►
  *                                ◄─── SYNC_READ_RESP (offset, total, data)
@@ -43,7 +50,11 @@ namespace Protocol {
         PRESSED,
         SYNC_READ_REQ,
         SYNC_READ_RESP,
+        EFFECT,             // firmware >= 2.8, only sent to pods with LINK_FEATURE_EFFECTS
     };
+
+    // ClaimAck::linkFeatures (firmware >= 2.8; a shorter CLAIM_ACK means 0)
+    const uint8_t LINK_FEATURE_EFFECTS = 0x01;     // EFFECT frames and the ARM waiting effect
 
     enum class PodMode : uint8_t {
         HIT = 1,    // pod should be pressed
@@ -59,8 +70,45 @@ namespace Protocol {
     namespace Color {
         const uint8_t RED = 0;
         const uint8_t GREEN = 1;
+        const uint8_t BLUE = 2;
+        const uint8_t YELLOW = 3;
+        const uint8_t MAGENTA = 4;
+        const uint8_t CYAN = 5;
+        const uint8_t WHITE = 6;
         const uint8_t OFF = 255;
     }
+
+    // Ring effects played by LEDManager (see link-protocol.md §2.1)
+    enum class EffectId : uint8_t {
+        NONE = 0,           // no effect (EFFECT frame: stop, LEDs off)
+        SOLID,              // color at brightness
+        FILL,               // LEDs light one by one over durationMs
+        DRAIN,              // LEDs go out one by one over durationMs
+        DIM,                // brightness param -> brightness over durationMs
+        COLOR_SHIFT,        // color -> color2 over durationMs
+        TRAFFIC_LIGHT,      // green, yellow, red, one third of durationMs each
+        BLINK,              // color / color2 alternating, periodMs per cycle
+        PULSE,              // brightness -> 0 -> brightness, periodMs per cycle
+        SPIN,               // segment of param LEDs, one revolution per periodMs
+        LEVEL,              // gauge: param % of the ring (0..100)
+        COUNT_              // number of ids, not an effect
+    };
+
+    const uint8_t EFFECT_FLAG_REVERSE = 0x01;      // fill / drain / spin / level run counter-clockwise
+    const uint8_t EFFECT_FLAG_END_OFF = 0x02;      // LEDs off when durationMs has passed (else the end frame stays)
+
+    // 12 bytes. Colours are colour indices (see Color), blends are computed on the pod.
+    struct __attribute__((packed)) EffectDesc {
+        EffectId effect;
+        uint8_t color;          // main colour
+        uint8_t color2;         // second colour: target of COLOR_SHIFT, background of the others (OFF = dark)
+        uint8_t brightness;     // 0..255 (DIM: end brightness)
+        uint32_t durationMs;    // timed effects: length; periodic effects: 0 = endless
+        uint16_t periodMs;      // BLINK, PULSE, SPIN; 0 = 1000
+        uint8_t param;          // SPIN: segment length (0 = 3), DIM: start brightness, LEVEL: percent
+        uint8_t flags;          // EFFECT_FLAG_*
+    };
+    static_assert(sizeof(EffectDesc) == 12, "EffectDesc must stay 12 bytes");
 
     struct __attribute__((packed)) Header {
         uint8_t magic;
@@ -87,6 +135,7 @@ namespace Protocol {
     struct __attribute__((packed)) ClaimAck {
         Header header;
         uint8_t podId;
+        uint8_t linkFeatures;   // LINK_FEATURE_*, firmware >= 2.8 (appended)
     };
 
     // Program store state of the sender (for sync)
@@ -122,6 +171,14 @@ namespace Protocol {
         uint8_t colorActive;    // colour while waiting for the press
         uint8_t colorAfter;     // colour after the press
         int64_t startAtUs;      // central clock; 0 = light up immediately
+        EffectDesc waiting;     // appended, optional: played instead of colorActive while waiting for the press
+    };
+
+    // central -> peripheral: play an effect on the ring. Does not change the activation state.
+    struct __attribute__((packed)) Effect {
+        Header header;
+        EffectDesc effect;
+        int64_t startAtUs;      // central clock; 0 = now. A late frame joins the running animation
     };
 
     // central -> peripheral
@@ -167,6 +224,7 @@ namespace Protocol {
     static_assert(sizeof(SyncReadResp) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Arm) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Pressed) <= MAX_FRAME, "frame too large");
+    static_assert(sizeof(Effect) <= MAX_FRAME, "frame too large");
 
     inline void fillHeader(Header& header, MsgType type, uint32_t setId) {
         header.magic = MAGIC;
@@ -188,19 +246,20 @@ namespace Protocol {
         return header;
     }
 
-    // Minimum size a frame of the given type must have
+    // Minimum size a frame of the given type must have (without appended optional fields)
     inline size_t frameSize(MsgType type) {
         switch(type) {
             case MsgType::HELLO: return sizeof(Hello);
             case MsgType::CLAIM: return sizeof(Claim);
-            case MsgType::CLAIM_ACK: return sizeof(ClaimAck);
+            case MsgType::CLAIM_ACK: return offsetof(ClaimAck, linkFeatures);
             case MsgType::PING: return sizeof(Ping);
             case MsgType::PONG: return sizeof(Pong);
-            case MsgType::ARM: return sizeof(Arm);
+            case MsgType::ARM: return offsetof(Arm, waiting);
             case MsgType::RESET: return sizeof(Reset);
             case MsgType::PRESSED: return sizeof(Pressed);
             case MsgType::SYNC_READ_REQ: return sizeof(SyncReadReq);
             case MsgType::SYNC_READ_RESP: return offsetof(SyncReadResp, data);   // + len bytes
+            case MsgType::EFFECT: return sizeof(Effect);
         }
         return 0;
     }
