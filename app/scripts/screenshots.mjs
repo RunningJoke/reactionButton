@@ -52,5 +52,34 @@ await desk.locator(".rp-card", { hasText: "CentralPress" }).click();
 await desk.waitForTimeout(300);
 await desk.screenshot({ path: `${out}/view-duo-desktop.png` });
 
+// Athletes and results (#47): demo pod with sample reports
+const coach = await browser.newPage({ viewport: { width: 360, height: 760 }, locale: "en-US" });
+await coach.goto(`${base}#/results`);
+await coach.getByRole("button", { name: "Add athlete" }).click();
+await coach.getByLabel("Name or nickname").fill("Mia");
+await coach.getByRole("button", { name: "Save" }).click();
+await coach.screenshot({ path: `${out}/results-athletes.png` });
+await coach.goto(`${base}#/pod`);
+await coach.getByRole("button", { name: "Connect", exact: true }).click();
+await coach.getByRole("button", { name: /Demo pod/ }).click();
+await coach.getByText("/prog/solo.json").first().waitFor();
+await coach.getByLabel("Who trains now").selectOption({ label: "Mia" });
+for (let i = 0; i < 3; i++) {
+  await coach.getByRole("button", { name: "Demo: send a report" }).click();
+  await coach.waitForTimeout(150);
+  if (i === 1) await coach.getByRole("button", { name: "Repeat" }).click();
+  else await coach.getByRole("button", { name: "Continue" }).click();
+  await coach.waitForTimeout(150);
+}
+await coach.locator("section", { hasText: "Who trains now" }).screenshot({ path: `${out}/pod-training.png` });
+await coach.getByRole("link", { name: "Open session" }).click();
+await coach.locator("details summary").first().click();
+await coach.screenshot({ path: `${out}/results-session.png`, fullPage: true });
+await coach.getByRole("link", { name: "Mia" }).click();
+await coach.screenshot({ path: `${out}/results-athlete.png`, fullPage: true });
+await coach.goto(`${base}#/settings`);
+await coach.getByLabel("Server").fill("https://api.example.org");
+await coach.screenshot({ path: `${out}/settings-platform.png`, fullPage: true });
+
 await browser.close();
 console.log(`screenshots written to ${out}`);

@@ -23,7 +23,16 @@ export type SimulatedPodOptions = {
   setName?: string;
   /** a PIN makes put / delete / setName need `auth` (like BLE, firmware ≥ 2.6) */
   pin?: string;
+  /**
+   * Demo of the planned reports and remote control (#41, #42; not in the firmware yet): adds the
+   * features "reports" and "remote", the ops `reports`, `ack`, `session`, `command` and
+   * `emitSampleReport()`. Off by default, so the simulated pod behaves like today's firmware.
+   */
+  results?: boolean;
 };
+
+/** Reports the central keeps until they are acknowledged (#41). */
+const REPORT_BUFFER = 8;
 
 type Json = Record<string, unknown>;
 
@@ -51,8 +60,23 @@ export class SimulatedPod {
   /** answers the next n requests with `overflow`, like a BLE receive buffer overrun */
   overflowNext = 0;
 
+  /** demo results (#41 / #42), see SimulatedPodOptions.results */
+  readonly results: boolean;
+  /** athlete id from `session` ("" = none) */
+  athlete = "";
+  /** a communicate block waits for `command` (after a sample report) */
+  waiting = false;
+  /** reports not acknowledged yet, oldest first */
+  readonly pendingReports: Json[] = [];
+  droppedReports = 0;
+  /** receives event lines (without "\n"); set by the transport */
+  onEvent: ((line: string) => void) | null = null;
+
   private upload: { path: string; data: string; bytes: number } | null = null;
   private authenticated = false;
+  private nextReportId = 1;
+  private cycle = 0;
+  private readonly bootAt = Date.now();
 
   constructor(options: SimulatedPodOptions = {}) {
     for (const [path, text] of Object.entries(options.files ?? {})) this.files.set(path, text);
@@ -64,6 +88,7 @@ export class SimulatedPod {
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
     this.pin = options.pin ?? "";
+    this.results = options.results ?? false;
   }
 
   /** A new client connected: it has to authenticate again, an unfinished upload is dropped. */
@@ -123,7 +148,10 @@ export class SimulatedPod {
   private dispatch(op: string, req: Json): Json {
     switch (op) {
       case "help":
-        return { ops: ["help", "status", "info", "list", "get", "put", "delete", "validate", "setName", "auth"], transport: "simulated" };
+        return {
+          ops: ["help", "status", "info", "list", "get", "put", "delete", "validate", "setName", "auth", ...(this.results ? ["reports", "ack", "session", "command"] : [])],
+          transport: "simulated",
+        };
       case "info":
         return this.info();
       case "status":
@@ -144,6 +172,12 @@ export class SimulatedPod {
         return this.storeSetName(req);
       case "setPin":
         throw new ApiFailure("bad_request", "the PIN can only be set or cleared over USB serial");
+      case "reports":
+      case "ack":
+      case "session":
+      case "command":
+        if (this.results) return this.resultOp(op, req);
+        throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
       default:
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
     }
@@ -165,7 +199,7 @@ export class SimulatedPod {
       maxGetChunk: MAX_GET_CHUNK,
       transport: "simulated",
       programFormat: PROGRAM_FORMAT,
-      features: ["validateInline", "listMeta"],
+      features: this.results ? ["validateInline", "listMeta", "reports", "remote"] : ["validateInline", "listMeta"],
       blockTypes: this.blockTypes,
     };
   }
@@ -178,7 +212,96 @@ export class SimulatedPod {
       uptimeMs: 1000,
       setId: this.setId,
       store: { generation: this.generation, hash: this.storeHash },
+      ...(this.results ? { athlete: this.athlete, reports: { pending: this.pendingReports.length, dropped: this.droppedReports } } : {}),
     };
+  }
+
+  private resultOp(op: string, req: Json): Json {
+    switch (op) {
+      case "reports":
+        return { reports: this.pendingReports.map((r) => structuredClone(r)) };
+      case "ack": {
+        // `reportId`, not `id`: `id` is the request id that every response echoes (config-api §3)
+        const reportId = req.reportId;
+        if (typeof reportId !== "number") throw new ApiFailure("bad_request", "'reportId' (number) missing");
+        // removes this report and the older ones
+        while (this.pendingReports.length > 0 && (this.pendingReports[0]!.id as number) <= reportId) this.pendingReports.shift();
+        return {};
+      }
+      case "session": {
+        if (typeof req.athlete !== "string" || byteLength(req.athlete) > 40) {
+          throw new ApiFailure("bad_request", "'athlete' must be a string of at most 40 bytes");
+        }
+        if (this.state !== "MENU" && !this.waiting) {
+          throw new ApiFailure("busy", "the athlete can change in the menu or while a communicate block waits");
+        }
+        this.athlete = req.athlete;
+        return { athlete: this.athlete };
+      }
+      default: {
+        if (!["continue", "repeat", "stop"].includes(String(req.name))) {
+          throw new ApiFailure("bad_request", "'name' must be continue, repeat or stop");
+        }
+        if (!this.waiting) throw new ApiFailure("not_ready", "no communicate block is waiting");
+        this.waiting = false;
+        return {};
+      }
+    }
+  }
+
+  /**
+   * Demo: a `communicate` block was reached. Builds a report with random reaction times for the
+   * first menu program, keeps it until `ack`, sends it as an event and waits for `command`.
+   */
+  emitSampleReport(random: () => number = Math.random): Json {
+    if (!this.results) throw new Error("the results demo is off");
+    let program = "/prog/solo.json";
+    try {
+      const index = JSON.parse(this.files.get(INDEX_PATH) ?? "") as Json;
+      if (Array.isArray(index.programs) && typeof index.programs[0] === "string") program = index.programs[0];
+    } catch {
+      // keep the default
+    }
+    const count = 5 + Math.floor(random() * 4);
+    const startMs = Math.max(0, Date.now() - this.bootAt);
+    let t = startMs;
+    const values: Json[] = [];
+    for (let i = 0; i < count; i++) {
+      t += 900 + Math.floor(random() * 600);
+      values.push({ t, metric: "reaction", pod: 1 + Math.floor(random() * 3), ms: 240 + Math.floor(random() * 220) });
+    }
+    const endMs = t + 120;
+    values.push({ t: endMs, metric: "lap", pod: 0, ms: endMs - startMs });
+    const reaction = values.filter((v) => v.metric === "reaction").map((v) => v.ms as number);
+    this.cycle++;
+    const report: Json = {
+      event: "report",
+      id: this.nextReportId++,
+      program,
+      setId: this.setId,
+      ...(this.athlete ? { athlete: this.athlete } : {}),
+      cycle: this.cycle,
+      startMs,
+      endMs,
+      values,
+      stats: {
+        reaction: {
+          count: reaction.length,
+          average: Math.round(reaction.reduce((a, b) => a + b, 0) / reaction.length),
+          best: Math.min(...reaction),
+          worst: Math.max(...reaction),
+        },
+      },
+      vars: { RUNS: count, MAX_LOOPS: 12 },
+    };
+    this.pendingReports.push(report);
+    if (this.pendingReports.length > REPORT_BUFFER) {
+      this.pendingReports.shift();
+      this.droppedReports++;
+    }
+    this.waiting = true;
+    this.onEvent?.(JSON.stringify(report));
+    return report;
   }
 
   private list(): Json {

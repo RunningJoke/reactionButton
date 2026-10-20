@@ -65,6 +65,21 @@ Needs firmware ≥ 2.1 (change request CR-0, archived in `docs/archive/changereq
 | AT-M4 | Same seed twice | identical block sequence |
 | AT-M5 | Compare: run `solo.json` on the pod with `trace on` (serial) and in the simulator with the same presses | same block sequence |
 
+## R – Athletes and results (#47, #48)
+
+AT-R1 … AT-R5 run with the demo pod (it emits sample reports: **Demo: send a report** on the Pod
+tab). On real pods they need the firmware features `reports` (#41) and `remote` (#42); pods without
+them must work exactly as before (AT-R6).
+
+| ID | Steps | Expected |
+|---|---|---|
+| AT-R1 | Results: add an athlete. Pod: connect, choose the athlete under *Training*, send 3 reports, **Repeat** after the 2nd | one session with 3 reports, the 2nd marked discarded and not counted in the statistics |
+| AT-R2 | Reload the app, then restart the phone | athletes, sessions and reports are still there |
+| AT-R3 | Results → athlete → **Export CSV**, open it in a spreadsheet (de: `;`, en: `,`) | one row per measurement, umlauts readable |
+| AT-R4 | A report arrives while IndexedDB is blocked (private window) | warning on the Results tab; the pod keeps the report (no `ack`) |
+| AT-R5 | Settings → Platform: server of a test platform, sign in with the mail code, choose a club; link the athlete (new profile, consent); go offline, record reports, go online | the reports appear in the profile once; **Upload now** again creates no duplicates; discarding a report later updates only its flag |
+| AT-R6 | Real central without `reports` (firmware 2.7) | Pod tab says it sends no results yet; sync, push and all programs work as before |
+
 ## U – Usability and platform
 
 | ID | Steps | Expected |
@@ -90,3 +105,4 @@ Needs firmware ≥ 2.1 (change request CR-0, archived in `docs/archive/changereq
 | AT-B1 … AT-B7 | – | – | 2.7 | open | firmware with CR-0 … CR-7 builds, not yet run |
 | AT-P1 … AT-P13 | 2026-10-19 | – | 2.7 | accepted | P5 confirmed as implemented by Patrick Stähle |
 | AT-M1 … AT-M5 | 2026-10-19 | – | 2.7 | accepted | P6 confirmed as implemented by Patrick Stähle |
+| AT-R1 … AT-R6 | – | – | – | open | P7; real pods wait for #41 / #42 |

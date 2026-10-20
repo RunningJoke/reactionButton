@@ -25,7 +25,18 @@ export class SimulatedTransport implements Transport {
   constructor(
     readonly pod: SimulatedPod = new SimulatedPod(),
     private readonly options: SimulatedTransportOptions = {},
-  ) {}
+  ) {
+    // events of the pod (demo reports) arrive like responses, unasked
+    pod.onEvent = (line) => {
+      if (!this.isConnected) return;
+      const deliver = () => {
+        if (this.isConnected) this.receive(`${line}\n`);
+      };
+      const latency = this.options.latencyMs ?? 0;
+      if (latency > 0) setTimeout(deliver, latency);
+      else queueMicrotask(deliver);
+    };
+  }
 
   get connected() {
     return this.isConnected;

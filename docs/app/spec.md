@@ -112,6 +112,9 @@ app/
 │   │   ├── sync.ts              compare local vs pod, push / restore plan, push execution
 │   │   └── syncActions.ts       sync for the UI: states of the connected set, keep pod / mine, push, delete
 │   ├── store/                   local persistence (Storage interface + IndexedDB adapter), workspace (local programs + menu)
+│   ├── results/                 athletes, training sessions, reports (#47): report model of #41, IndexedDB "reactpod-results",
+│   │                            ReportFeed (`report` events → store → `ack`), statistics, CSV
+│   ├── platform/                typed client of the platform API, sign-in settings, upload queue (#48)
 │   ├── editor/                  column view + layout, editing operations (ops.ts), undo / redo, inspector, fields, palette, program settings
 │   ├── programs/                catalog, sources (pod / shipped / local), program actions (new, edit copy, export, delete)
 │   ├── pages/                   one component per screen (Pod, Programs, program view, Editor, Menu, Settings)
@@ -171,8 +174,8 @@ unit tests and demos without hardware.
 
 ## 5. Screens (mobile first)
 
-Bottom tab bar on phones (Pod, Programs, Editor, Simulate, Menu; Settings is the gear
-icon in the header), side rail with all six on wide screens (≥ 900 px). Icon first, short
+Bottom tab bar on phones (Pod, Programs, Editor, Simulate, Menu, Results; Settings is the gear
+icon in the header), side rail with all seven on wide screens (≥ 900 px). Icon first, short
 label below.
 
 | Tab | Icon | Content |
@@ -182,7 +185,8 @@ label below.
 | **Editor** | workflow | graph of one program (§7) |
 | **Simulate** | play | pods + graph + controls (§8) |
 | **Menu** | circle-dot | order of programs in `/programs.json`, LED ring picker per program |
-| **Settings** | settings | language, about, advanced (delete files, see §9.4) |
+| **Results** | trophy | athletes on this phone; per athlete statistics (counted reports only), training sessions → reports → single values, discard / count again, CSV export (one row per measurement); link to a platform athlete profile. The Pod tab gets a *Training* section: who trains now, the live report, continue / repeat / stop (only with the pod features `reports` / `remote`, #41 / #42) |
+| **Settings** | settings | language, platform (preview: server, sign-in by mail code or token, club, upload queue), about, advanced (delete files, see §9.4) |
 
 UX rules:
 - Touch targets ≥ 44 px. Primary action in the thumb zone (bottom right floating button).
@@ -524,6 +528,7 @@ Implementation notes (`src/pod/sync.ts`):
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | done |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | done (accepted 2026-10-19) |
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
+| P7 | Athletes, result history, platform upload (#47, #48 app side) | AT-R* pass | implemented, waiting for approval; with the demo pod until the firmware has `reports` / `remote` (#41, #42) |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](acceptance-tests.md).
 **Firmware / API changes the app needs** are requested as **GitHub issues** in this repository
