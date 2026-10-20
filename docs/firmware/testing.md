@@ -144,3 +144,155 @@ output. Do not add `ARDUINO_USB_CDC_ON_BOOT`/`ARDUINO_USB_MODE` to `platformio.i
 With "arduino, espidf" they only reach `src/`, so `Serial` would mean two different
 objects. Crash dumps of the panic handler still go to UART0; the `[boot]` line with
 reset reason and last step replaces them for normal use.
+
+## 8. Hardware test: BLE connected while ESP-NOW runs (#38)
+
+Question: can the central keep a phone connected over BLE during the game (epic #37) without
+hurting the game? The numbers go into [ADR 0005](../decisions/0005-live-results-over-ble.md).
+
+### 8.1 Test firmware
+
+PlatformIO env `BleEspNowTest` = `NewBoard` + build flag `REACTPOD_BLE_ESPNOW_TEST`
+([src/TestHw/BleEspNowTest.h](../../firmware/src/TestHw/BleEspNowTest.h)). The `NewBoard` build
+does not change. Only in the test build:
+
+- `select` / long press keeps BLE on (`keepBle`, default on), ESP-NOW starts as usual.
+  Advertising stops while a client is connected and restarts after a disconnect, also in the game.
+- About 1 s after a connect during the game, the central requests a connection interval of
+  `intervalMs` (default 75 ms).
+- The config API stays available over BLE in every state. A separate task sends the
+  indications, so the game loop never waits for a confirmation.
+- While a client is connected, `{"event":"load","seq":…,"t":…,"pad":"…"}` lines of `loadBytes`
+  are sent every `loadPeriodMs` (stand-in for one live report per round).
+- `status` has `testBuild`, `heap {free, minFree, largest}`, on the central also
+  `ble {on, connected, intervalMs, latency, timeoutMs}` and `bleTest {…}`: connects/disconnects,
+  indication results, queue and send times, longest loop pass gap (`loopGapUsMax`).
+  On peripherals, `bleTest` counts scheduled ARMs that arrived late (`lateArms`), the smallest lead
+  before the start time (`armLeadUsMin`) and how late the LEDs went on (`startLateUsMax`).
+- Op `bleTest` (USB or BLE): `{"op":"bleTest","keepBle":true,"intervalMs":75,"loadBytes":1024,
+  "loadPeriodMs":2000,"reset":true,"brief":false}`. All fields are optional, and the values reset
+  on every restart. The script sets them.
+
+Never release this build. Flash `NewBoard` again when the test is done.
+
+### 8.2 What you need
+
+- **3 pods** (1 central + 2 peripherals; `dreieck` and `run` each need 2 peripherals), all
+  charged, plus 3 USB data cables (and a hub, or extension cables for the distance).
+- A Windows PC with Bluetooth LE. It plays the phone. Note the adapter (built-in / dongle).
+- `pip install pyserial bleak`
+- Optional: a logic analyser with ≥ 3 channels and ≥ 1 MHz for the start spread (§8.5). Without
+  one, the script gives an estimate.
+- Optional: an Android phone with nRF Connect (§8.6).
+
+### 8.3 Flash and set up
+
+Use PowerShell (in Git Bash put `MSYS_NO_PATHCONV=1` in front of commands with `/prog/...`).
+For **each pod** (COM port of that pod):
+
+```sh
+pio run -d firmware -e BleEspNowTest                                     # once; note the flash use in %
+pio run -d firmware -e BleEspNowTest -t upload   --upload-port COM4
+pio run -d firmware -e BleEspNowTest -t uploadfs --upload-port COM4      # programs, if not current
+python tools/reactpod_serial.py --port COM4 wait-boot                    # press RESET if asked
+python tools/reactpod_serial.py --port COM4 status                       # must show "testBuild": "bleEspNowTest"
+```
+
+Set up:
+
+1. Central (COM4 in the examples) on the table, the PC 1–2 m away.
+2. The peripherals at **3–5 m** from the central (as far as the USB cables reach), line of sight,
+   about 1 m high. Write the distances down.
+3. Note the 2.4 GHz environment: `netsh wlan show networks` (number of networks), place, time.
+4. Close every other serial monitor. Switch the peripherals on normally (no button held: yellow).
+   The script restarts the central into the program menu itself.
+
+### 8.4 Runs
+
+Each run takes 30 minutes plus about 1 minute to set up. The script selects and starts the
+program, simulates every press (central through `trace`, peripherals when they light up), and in
+the end returns the central to the menu (the pod restarts). Between two runs, wait until the
+peripherals are yellow again. Example for run 3:
+
+```sh
+python tools/ble_espnow_test.py --port COM4 --peripheral-port COM5 --peripheral-port COM6 --program /prog/dreieck.json --mode phone --minutes 30 --out results/3-dreieck-phone --log results/3-dreieck-phone.log
+```
+
+| Run | `--program` | `--mode` | Needed |
+|---|---|---|---|
+| 1 | `/prog/dreieck.json` (remotePress) | `off` (BLE off at select, as today) | yes: baseline |
+| 2 | `/prog/dreieck.json` | `advertise` (BLE on, nobody connected) | recommended |
+| 3 | `/prog/dreieck.json` | `phone` (PC connected, ping 1/s, 1 KB per 2 s) | yes |
+| 4 | `/prog/run.json` (remoteMultiPress, `syncStartMs` 20 ms) | `off` | yes: baseline |
+| 5 | `/prog/run.json` | `advertise` | recommended |
+| 6 | `/prog/run.json` | `phone` | yes |
+| 7 | `/prog/run.json` | `phone --interval-ms 15 --minutes 10` (short interval = more BLE air time) | optional: worst case |
+| 8 | `/prog/run.json` | `phone --interval-ms 100 --minutes 10` | optional: choice of the interval for #39 |
+
+Do not move the pods between runs. If a run is disturbed (someone unplugs a cable, the PC goes to
+sleep), repeat it. Set the PC so it does not sleep for the whole test.
+
+What the script prints every minute: free heap, PAUSED count, results, BLE pings and disconnects.
+At the end it prints the summary and `PASS`/`FAIL` per criterion and writes:
+
+| File | Content |
+|---|---|
+| `<out>-summary.json` | all numbers below + checks |
+| `<out>-central.csv` | 1/s: heap, BLE connection + interval, indication queue / times, loop gaps |
+| `<out>-links.csv` | every 10 s, per pod: `txFrames`, `txRetries`, `txLost`, `ackUsAvg`, `ackUsMax`, … |
+| `<out>-peripherals.csv` | 1/s per peripheral: clock offset, late ARMs, start error |
+| `<out>-ble.csv` | each ping (round trip), load line (seq, delay), connect / disconnect |
+| `<out>-events.csv` | state changes (PAUSED!), restarts, results |
+
+### 8.5 Start spread with a logic analyser (runs 4–6)
+
+1. Connect the WS2812 data line (GPIO 7) of the central and of both peripherals to three channels,
+   and all grounds together. Sample at ≥ 1 MHz.
+2. In `run`, every round starts after a 3 s pause (`lib/multi.json`), so the start frame is the
+   first LED frame after a gap of more than 2.5 s on each channel.
+3. Measure the time between the earliest and the latest start frame per round, for ≥ 50 rounds,
+   in run 4 and in run 6. Write down the maximum and the 95th percentile.
+
+Without an analyser, the summary gives `startSpreadEstimateMs` = 2 × clock offset jitter +
+the latest LED start. It is a rough upper bound, not a measurement. The ADR must say which one was used.
+
+### 8.6 Optional: Android phone
+
+The PC's Bluetooth stack is not a phone. For a 10 min run with a real phone, run
+`--mode advertise` and connect the phone by hand **before** `select` (nRF Connect: connect to
+"ReactPod xxxx", enable indications on `…90b2`). The phone then gets the load lines. In
+`<out>-central.csv` check `ble_connected` and `ble_interval_ms` (the interval the phone accepted).
+When the config app supports it, repeat this with the PWA.
+
+### 8.7 What to record
+
+Copy the table into ADR 0005 (one column per run) and attach the `results/` folder to #38.
+
+| Value | Where |
+|---|---|
+| date, firmware commit, flash use %, distances, WiFi networks, PC BT adapter | by hand |
+| `txLost`, `txRetries` (total and per pod), `ackUsAvg`, `ackUsMax` | summary `espnow` |
+| minimum free heap, largest free block | summary `heap` |
+| PAUSED count, restarts | summary |
+| BLE disconnects (in the game / at select), negotiated interval | summary `bleClient`, `ble` |
+| ping round trip avg / p95 / max, load lines lost, load delay p95 / max | summary `bleClient` |
+| indication timeouts, lines dropped, `txSendUsMax` | summary `central` |
+| longest loop gap, gaps > 2 ms / > 10 ms | summary `central` |
+| late ARMs, `armLeadUsMin`, offset jitter, `startLateUsMax` | summary `peripheralClock` |
+| start spread: analyser max / p95, or the estimate | §8.5 |
+
+### 8.8 Pass / fail (from #38)
+
+| Criterion | Runs | Pass |
+|---|---|---|
+| no frame lost | every run | `txLost` = 0 over 30 min |
+| synchronous start | 4–6 | start spread < 5 ms (analyser; estimate only if none is available) and `lateArms` = 0 |
+| memory | 3, 6 | minimum free heap > 40 KB |
+| no PAUSED caused by the phone | 3, 6 | PAUSED = 0. If a phone run pauses, check if the baseline pauses as well; repeat both |
+
+Also record these for the decision; they are not pass criteria of #38: BLE stays connected
+(0 disconnects, including at `select`), no load line lost, `txRetries` and `ackUsAvg` of the phone run
+compared with the baseline, ping round trip, longest loop gap.
+
+All criteria pass → ADR 0005 "accepted" (option A), go on with #39. A criterion fails → try once
+with `--interval-ms 100`. If it still fails, use the fallback in the ADR.
