@@ -7,6 +7,8 @@ import { ConnectionChip } from "./ConnectionChip";
 import { ConnectDialog } from "./ConnectDialog";
 import { UpdatePrompt } from "./UpdatePrompt";
 import { useWorkspace } from "../store/workspace";
+import { useResults } from "../results/results";
+import { useAutoUpload } from "../platform/useAutoUpload";
 import styles from "./Layout.module.css";
 
 export function Layout() {
@@ -15,6 +17,9 @@ export function Layout() {
   const current = NAV_ITEMS.find((item) => pathname.startsWith(item.path));
   const load = useWorkspace((s) => s.load);
   useEffect(() => void load(), [load]);
+  const loadResults = useResults((s) => s.load);
+  useEffect(() => void loadResults(), [loadResults]);
+  useAutoUpload();
 
   return (
     <div className={styles.shell}>

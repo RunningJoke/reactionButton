@@ -1,4 +1,4 @@
-import { Radio, Layers, Workflow, Play, ListOrdered, Settings, type LucideIcon } from "lucide-react";
+import { Radio, Layers, Workflow, Play, ListOrdered, Trophy, Settings, type LucideIcon } from "lucide-react";
 
 export type NavItem = {
   path: string;
@@ -14,6 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: "/editor", labelKey: "nav.editor", icon: Workflow, primary: true },
   { path: "/simulate", labelKey: "nav.simulate", icon: Play, primary: true },
   { path: "/menu", labelKey: "nav.menu", icon: ListOrdered, primary: true },
+  { path: "/results", labelKey: "nav.results", icon: Trophy, primary: true },
   { path: "/settings", labelKey: "nav.settings", icon: Settings, primary: false },
 ];
 

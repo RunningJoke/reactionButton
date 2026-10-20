@@ -32,6 +32,13 @@ describe("App shell", () => {
     expect(screen.getByRole("button", { name: "Not connected" }).getAttribute("aria-haspopup")).toBe("dialog");
   });
 
+  it("has a results tab with the athletes", async () => {
+    window.location.hash = "#/results";
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Results" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Add athlete" })).toBeTruthy();
+  });
+
   it("switches to German", async () => {
     await i18n.changeLanguage("de");
     render(<App />);

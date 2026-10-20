@@ -147,3 +147,27 @@ describe("SimulatedPod (config API)", () => {
     expect(pod.manifest()).toBe(`/prog/a.json\t2\t${crcHex("[]")}\n`);
   });
 });
+
+describe("SimulatedPod (demo of reports and remote control, #41 / #42)", () => {
+  it("is off by default, like today's firmware", () => {
+    const pod = new SimulatedPod();
+    expect(call(pod, { op: "reports" })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(() => pod.emitSampleReport()).toThrow();
+  });
+
+  it("keeps 8 reports until ack, tags the athlete, answers commands only while waiting", () => {
+    const pod = new SimulatedPod({ results: true });
+    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "reports", "remote"]);
+    expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ error: "not_ready" });
+    expect(call(pod, { op: "session", athlete: "ath_42" })).toMatchObject({ ok: true, athlete: "ath_42" });
+    for (let i = 0; i < 9; i++) pod.emitSampleReport(() => 0.5);
+    const { reports } = call(pod, { op: "reports" }) as { reports: Json[] };
+    expect(reports.map((r) => r.id)).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(reports[0]).toMatchObject({ event: "report", athlete: "ath_42", program: "/prog/solo.json", setId: pod.setId });
+    expect(call(pod, { op: "status" })).toMatchObject({ reports: { pending: 8, dropped: 1 } });
+    expect(call(pod, { op: "ack", id: "req-1", reportId: 5 })).toMatchObject({ ok: true });
+    expect(pod.pendingReports.map((r) => r.id)).toEqual([6, 7, 8, 9]);
+    expect(call(pod, { op: "command", name: "repeat" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "command", name: "repeat" })).toMatchObject({ error: "not_ready" });
+  });
+});
