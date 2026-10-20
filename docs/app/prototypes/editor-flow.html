@@ -1,0 +1,1005 @@
+<title>ReactPod Block Builder Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: phone-sized prototype on the left, notes and flow map on the right; stacked on phones.
+   Tokens copied from app/src/app/theme.css so the prototype looks like the app. */
+:root {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius-s: 8px; --radius-m: 12px; --radius-l: 20px; --touch: 44px;
+  --bg: #f5f7f9; --surface: #ffffff; --surface-2: #eef1f4; --border: #dde2e8;
+  --text: #15191e; --text-muted: #5d6874; --accent: #2563eb; --accent-contrast: #ffffff;
+  --accent-soft: #dbe6fd; --ok: #15803d; --warn: #b45309; --error: #b91c1c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.06);
+  --page: #e7ebef; --frame: #1b2026; --scrim: rgb(10 14 20 / 0.42);
+  --led-off: #3a424e; --led-red: #ef4444; --led-green: #22c55e; --led-blue: #3b82f6;
+  --led-yellow: #eab308; --led-magenta: #d946ef; --led-cyan: #06b6d4; --led-white: #f8fafc;
+  --cat-light: #d97706; --cat-wait: #64748b; --cat-input: #2563eb; --cat-logic: #7c3aed;
+  --cat-remote: #0d9488; --cat-stats: #db2777;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101418; --surface: #181d23; --surface-2: #222830; --border: #2c333c; --text: #e8ecf0;
+    --text-muted: #96a1ad; --accent: #60a5fa; --accent-contrast: #0b1220; --accent-soft: #1d2b42;
+    --ok: #4ade80; --warn: #fbbf24; --error: #f87171; --page: #0a0d10; --frame: #000000;
+    --scrim: rgb(0 0 0 / 0.55); --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+    --cat-light: #fbbf24; --cat-wait: #94a3b8; --cat-input: #60a5fa; --cat-logic: #a78bfa;
+    --cat-remote: #2dd4bf; --cat-stats: #f472b6; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101418; --surface: #181d23; --surface-2: #222830; --border: #2c333c; --text: #e8ecf0;
+  --text-muted: #96a1ad; --accent: #60a5fa; --accent-contrast: #0b1220; --accent-soft: #1d2b42;
+  --ok: #4ade80; --warn: #fbbf24; --error: #f87171; --page: #0a0d10; --frame: #000000;
+  --scrim: rgb(0 0 0 / 0.55); --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+  --cat-light: #fbbf24; --cat-wait: #94a3b8; --cat-input: #60a5fa; --cat-logic: #a78bfa;
+  --cat-remote: #2dd4bf; --cat-stats: #f472b6; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--text); font: 15px/1.45 var(--font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3, h4 { text-wrap: balance; margin: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+.top h1 { font-size: 22px; letter-spacing: -0.01em; }
+.top p { margin: 0; color: var(--text-muted); max-width: 62ch; }
+.paths { display: flex; flex-wrap: wrap; gap: 8px; }
+.pathbtn { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: 14px; }
+.pathbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.stage { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- device ---------- */
+.device { width: 100%; max-width: 400px; height: 760px; margin: 0 auto; border-radius: 34px; padding: 10px; background: var(--frame); box-shadow: 0 20px 50px rgb(0 0 0 / 0.18); position: sticky; top: 16px; }
+@media (max-width: 860px) { .device { position: relative; top: 0; height: min(760px, calc(100dvh - 40px)); min-height: 600px; } }
+.app { position: relative; height: 100%; border-radius: 26px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+.appbar { flex: none; height: 52px; display: flex; align-items: center; gap: 2px; padding: 0 6px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.appbar h2 { font-size: 17px; flex: 1; min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titlebtn { flex: 1; min-width: 0; min-height: 44px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border: 0; background: none; padding: 0 6px; text-align: left; border-radius: var(--radius-s); }
+.titlebtn strong { font-size: 16px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titlebtn span { font-size: 12px; color: var(--text-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: var(--radius-s); background: none; position: relative; }
+.ib:disabled { opacity: 0.35; cursor: default; }
+.ib .count { position: absolute; top: 5px; right: 3px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--error); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+.ib.okstate { color: var(--ok); }
+.content { flex: 1; overflow-y: auto; padding: 14px 14px 96px; display: flex; flex-direction: column; gap: 14px; }
+.content.nofab { padding-bottom: 20px; }
+.tabbar { flex: none; height: 60px; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--border); }
+.tab { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--text-muted); }
+.tab[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.fab { position: absolute; right: 16px; bottom: 76px; width: 56px; height: 56px; border-radius: 18px; border: 0; background: var(--accent); color: var(--accent-contrast); display: grid; place-items: center; box-shadow: var(--shadow); z-index: 3; }
+.fab.nobar { bottom: 18px; }
+.wizbar { flex: none; display: flex; gap: 10px; padding: 10px 14px 14px; background: var(--surface); border-top: 1px solid var(--border); }
+.progress { display: flex; gap: 6px; }
+.progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.progress i.on { background: var(--accent); }
+
+/* ---------- shared bits ---------- */
+.btn { min-height: 48px; padding: 0 16px; border-radius: var(--radius-m); border: 1px solid var(--border); background: var(--surface); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.btn.grow { flex: 1; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.small { min-height: 44px; padding: 0 12px; font-size: 14px; }
+.muted { color: var(--text-muted); }
+.small { font-size: 13px; }
+.section-h { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin: 4px 2px -4px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); }
+.lead { font-size: 21px; line-height: 1.25; font-weight: 700; }
+.row { display: flex; align-items: center; gap: 12px; }
+.grow { flex: 1; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); font-size: 12px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+.chip.rec { background: color-mix(in srgb, var(--cat-stats) 16%, transparent); color: var(--cat-stats); }
+.chip.err { background: color-mix(in srgb, var(--error) 14%, transparent); color: var(--error); }
+.chip.exp { font-family: var(--font-mono); font-weight: 500; }
+
+.prog { display: flex; align-items: center; gap: 12px; padding: 10px 12px; min-height: 64px; }
+.prog .open { border: 0; background: none; text-align: left; display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; min-height: 44px; padding: 0; }
+.prog strong { display: block; }
+.prog .open span { font-size: 13px; color: var(--text-muted); }
+
+.choice { display: flex; gap: 14px; align-items: center; padding: 14px; text-align: left; width: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-m); min-height: 72px; }
+.choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.choice strong { display: block; font-size: 16px; }
+.choice .grow > span { display: block; font-size: 13px; color: var(--text-muted); }
+.choice .tag { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 999px; }
+.choice .tag.ex { color: var(--text-muted); background: var(--surface-2); }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field > .lbl { font-weight: 600; font-size: 14px; }
+.input { min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); padding: 8px 10px; width: 100%; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button { width: 44px; height: 44px; border-radius: var(--radius-s); border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; font-size: 22px; line-height: 1; }
+.stepper output { min-width: 72px; text-align: center; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-2); padding: 3px; border-radius: var(--radius-m); gap: 3px; }
+.seg button { min-height: 40px; border: 0; border-radius: 9px; background: none; font-weight: 600; font-size: 14px; color: var(--text-muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.sw { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw button { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--border); display: grid; place-items: center; }
+.sw button[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
+.sw button span { width: 10px; height: 10px; border-radius: 50%; background: var(--surface); }
+.picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: 14px; }
+.pick[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* toggle rows: the main idea – optional things behind one switch */
+.tg { border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); }
+.tg + .tg { margin-top: -6px; }
+.tg-head { display: flex; align-items: center; gap: 12px; padding: 10px 12px; min-height: 60px; width: 100%; border: 0; background: none; text-align: left; border-radius: var(--radius-m); }
+.tg-head:disabled { cursor: default; }
+.tg-head strong { display: block; font-size: 15px; }
+.tg-head .grow > span { display: block; font-size: 13px; color: var(--text-muted); }
+.tg-head strong, .choice strong, .recipe strong, .prog strong { color: var(--text); }
+.switch { flex: none; width: 46px; height: 28px; border-radius: 14px; background: var(--border); position: relative; transition: background 0.15s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: transform 0.15s; }
+[aria-checked="true"] > .switch { background: var(--accent); }
+[aria-checked="true"] > .switch::after { transform: translateX(18px); }
+.tg-head:disabled .switch { opacity: 0.4; }
+.tg-body { padding: 4px 12px 14px; display: flex; flex-direction: column; gap: 12px; border-top: 1px dashed var(--border); }
+.more { border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); }
+.more > summary { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-weight: 600; cursor: pointer; list-style: none; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: "›"; margin-left: auto; font-size: 20px; color: var(--text-muted); transition: transform 0.15s; }
+.more[open] > summary::after { transform: rotate(90deg); }
+.more .tg-body { border-top: 1px solid var(--border); padding-top: 12px; }
+.expert { border: 1px dashed var(--cat-logic); border-radius: var(--radius-m); padding: 12px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--cat-logic) 6%, var(--surface)); }
+.expert h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cat-logic); }
+pre.json { margin: 0; font: 12px/1.45 var(--font-mono); background: var(--surface-2); padding: 10px; border-radius: var(--radius-s); overflow-x: auto; max-height: 220px; }
+
+/* ---------- editor step list ---------- */
+.summary { display: flex; align-items: center; gap: 12px; padding: 10px 12px; width: 100%; text-align: left; min-height: 60px; }
+.bracket { border: 2px solid var(--border); border-radius: var(--radius-l); padding: 8px 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.bracket-h { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+.bracket-h strong { font-size: 15px; }
+.bracket-h .edit { margin-left: auto; }
+.step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 10px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); border-left: 4px solid var(--c, var(--border)); }
+.step[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.step .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+.step .txt { font-weight: 600; font-size: 15px; }
+.step .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.branches { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.branch { font-size: 13px; color: var(--text-muted); display: flex; gap: 6px; align-items: baseline; }
+.branch b { color: var(--text); font-weight: 600; }
+.addline { min-height: 44px; border: 1px dashed var(--border); border-radius: var(--radius-m); background: none; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.ports { font: 12px/1.5 var(--font-mono); color: var(--cat-logic); margin-top: 6px; }
+
+/* ---------- sheets ---------- */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 82%; z-index: 6; background: var(--bg); border-radius: 20px 20px 0 0; display: flex; flex-direction: column; box-shadow: 0 -8px 30px rgb(0 0 0 / 0.2); }
+.sheet.tall { max-height: 92%; }
+.sheet-h { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface); border-radius: 20px 20px 0 0; }
+.sheet-h .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c, var(--accent)) 16%, transparent); color: var(--c, var(--accent)); flex: none; }
+.sheet-h h3 { font-size: 16px; }
+.sheet-h p { margin: 0; font-size: 12px; color: var(--text-muted); }
+.sheet-b { overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.issue { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-m); background: color-mix(in srgb, var(--error) 10%, var(--surface)); color: var(--error); font-size: 14px; font-weight: 600; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.actions .danger { color: var(--error); }
+.palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ptile { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 10px; min-height: 92px; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); border-top: 3px solid var(--c); }
+.ptile svg { color: var(--c); }
+.ptile strong { font-size: 14px; }
+.ptile span { font-size: 12px; color: var(--text-muted); line-height: 1.3; }
+.recipe { display: flex; gap: 10px; align-items: center; padding: 10px 12px; min-height: 56px; width: 100%; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); }
+.recipe span { display: block; font-size: 12px; color: var(--text-muted); }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 78px; z-index: 8; background: var(--text); color: var(--bg); border-radius: var(--radius-m); padding: 10px 10px 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; box-shadow: var(--shadow); }
+.toast button { margin-left: auto; min-height: 36px; border: 0; background: none; color: var(--bg); font-weight: 700; text-decoration: underline; }
+
+/* ---------- set drawing / simulator ---------- */
+.set { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; padding: 6px 0; }
+.dot { width: 22px; height: 22px; border-radius: 50%; background: var(--led-off); border: 2px solid var(--border); }
+.dot.big { width: 34px; height: 34px; }
+.dot.lit { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { filter: brightness(1.35); transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .dot.lit { animation: none; } .switch, .switch::after { transition: none; } }
+.pods { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.pod { border: 0; background: var(--surface); border-radius: var(--radius-m); border: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.pod:active { transform: scale(0.97); }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+.stats div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-s); padding: 8px 4px; }
+.stats strong { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 11px; color: var(--text-muted); }
+ol.story { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- notes ---------- */
+.notes { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.note { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.note .who { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.note h2 { font-size: 19px; }
+.note p { margin: 0; max-width: 65ch; }
+.note ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.fix { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
+.fix b { flex: none; min-width: 26px; height: 22px; border-radius: 6px; background: var(--surface-2); display: inline-grid; place-items: center; font-size: 12px; }
+.map { display: flex; flex-direction: column; gap: 12px; }
+.map h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.map ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.map button { min-height: 36px; padding: 0 12px; border-radius: var(--radius-s); border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; }
+.map button[aria-current="step"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.legend { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 14px; }
+.legend b { font-size: 12px; padding: 1px 8px; border-radius: 6px; background: var(--surface-2); align-self: center; justify-self: start; }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Block builder: simple by default</h1>
+      <p>Clickable prototype for docs/app/editor-ux.md. Everything runs in this page: try the game wizard, adjust a drill, flip the switches in a step and watch the step text change, or turn on expert mode to see the blocks behind it.</p>
+    </div>
+    <div class="paths" role="group" aria-label="Jump to a path">
+      <button class="pathbtn" data-act="path" data-v="first">First-timer</button>
+      <button class="pathbtn" data-act="path" data-v="coach">Coach</button>
+      <button class="pathbtn" data-act="path" data-v="step">Step sheet</button>
+      <button class="pathbtn" data-act="path" data-v="expert">Expert mode</button>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="device"><div class="app" id="app"></div></div>
+    <div class="notes" id="notes"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+// ---------- icons (lucide-style strokes) ----------
+const P = {
+  plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  back: '<path d="m15 18-6-6 6-6"/>', next: '<path d="m9 18 6-6-6-6"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+  play: '<path d="M7 4v16l13-8z"/>', stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+  alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  more: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
+  led: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
+  pause: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',
+  press: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
+  pod: '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/>',
+  race: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>', off: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
+  results: '<path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/>', count: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+  decide: '<path d="M6 3v6a6 6 0 0 0 6 6h6"/><path d="m15 12 3 3-3 3"/><path d="M6 21v-6"/>',
+  repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>', up: '<path d="m18 15-6-6-6 6"/>', down: '<path d="m6 9 6 6 6-6"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  wand: '<path d="m15 4 5 5L9 20H4v-5z"/><path d="M13 6l5 5"/>', file: '<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>',
+  code: '<path d="m8 6-6 6 6 6M16 6l6 6-6 6"/>', home: '<path d="M3 11 12 3l9 8v10H3z"/>', list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  menu: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>', flag: '<path d="M4 22V4h13l-2 4 2 4H4"/>'
+};
+const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// ---------- domain ----------
+const COLORS = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"];
+const cvar = (c) => `var(--led-${c === "black" ? "off" : c})`;
+const num = (x) => (+x).toFixed(1).replace(/\.0$/, "");
+const sec = (x) => `${num(x)} s`;
+const range = (a, b) => `${num(a)}–${num(b)} s`;
+const STEP = {
+  led: { cat: "light", icon: "led", name: "Light up the central", block: "led" },
+  pause: { cat: "wait", icon: "pause", name: "Pause", block: "delay" },
+  press: { cat: "input", icon: "press", name: "Wait for a press", block: "button" },
+  pod: { cat: "remote", icon: "pod", name: "Light a pod", block: "remotePress" },
+  race: { cat: "remote", icon: "race", name: "Race: all pods at once", block: "remoteMultiPress" },
+  off: { cat: "remote", icon: "off", name: "Turn all pods off", block: "remoteResetAll" },
+  count: { cat: "logic", icon: "count", name: "Count or remember", block: "setVariable" },
+  decide: { cat: "logic", icon: "decide", name: "Decide", block: "if" },
+  results: { cat: "stats", icon: "results", name: "Show results", block: "summary" },
+};
+const GAMES = {
+  solo: { name: "Solo reaction", line: "Only the central. Blue = get ready, green = press.", min: 0, def: 0 },
+  star: { name: "Star", line: "Central and a random pod take turns.", min: 1, def: 3 },
+  random: { name: "Random pod", line: "One random pod lights up, never the same twice.", min: 1, def: 3 },
+  run: { name: "All at once", line: "All pods light up. Hit the green ones, leave the red.", min: 2, def: 4 },
+  duo: { name: "Duo", line: "Two pods take turns after a random pause.", min: 1, def: 1 },
+};
+let uid = 1;
+const mk = (type, props = {}) => ({ id: "s" + uid++, type, ...props });
+const timed = (w, extra = {}) => ({ limitOn: w.limitOn, limit: w.limit, tooSlow: w.misses ? "miss" : "next", record: w.record, storeAs: "", ...extra });
+
+function generate(w) {
+  const pause = () => mk("pause", w.pauseMode === "random" ? { mode: "random", min: w.pauseMin, max: w.pauseMax, fixed: w.pauseMin } : { mode: "fixed", fixed: w.pauseFixed, min: 1, max: 3 });
+  const press = () => mk("press", timed(w));
+  const ledOn = (c) => mk("led", { color: c, leds: "all" });
+  const ledOff = () => mk("led", { color: "off", leds: "all" });
+  let round;
+  switch (w.game) {
+    case "solo": { const p = pause(); p.catchEarly = w.falseStart; p.earlyMiss = w.misses; round = [ledOn("blue"), p, ledOn(w.color), press(), ledOff()]; break; }
+    case "star": { const p = pause(); p.catchEarly = w.falseStart; p.earlyMiss = w.misses; round = [p, ledOn(w.color), press(), ledOff(), mk("pod", timed(w, { target: "random", color: w.color, avoid: false, colorAfter: "off" }))]; break; }
+    case "random": round = [pause(), mk("pod", timed(w, { target: "randomOther", color: w.color, avoid: false, colorAfter: "off" }))]; break;
+    case "run": round = [pause(), mk("race", timed(w, { color: w.color, avoidOn: w.avoidOn, avoidCount: w.avoidCount, avoidColor: "red", includeCentral: true, syncStart: 20, avoidMiss: w.misses })), mk("off")]; break;
+    case "duo": { const p = pause(); p.catchEarly = w.falseStart; p.earlyMiss = w.misses; const p2 = pause(); round = [p, ledOn(w.color), press(), ledOff(), p2, mk("pod", timed(w, { target: 0, color: w.color, avoid: false, colorAfter: "off" }))]; break; }
+  }
+  const end = [mk("led", { color: "blue", leds: "all" }), mk("pause", { mode: "fixed", fixed: 3, min: 1, max: 3 })];
+  if (w.results) end.push(mk("results", { avg: true, best: true, worst: false, count: true }));
+  return { id: "p" + uid++, game: w.game, name: w.name || defaultName(w), desc: GAMES[w.game].line, pods: w.pods, rounds: w.rounds, menuColor: w.color, round, end };
+}
+const defaultName = (w) => `${GAMES[w.game].name} · ${w.pods + 1} pods`;
+
+function podLabel(t) { return t === "random" ? "a random pod" : t === "randomOther" ? "a random pod (central too), never the same twice" : `pod ${t + 1}`; }
+function describe(s) {
+  switch (s.type) {
+    case "led": return s.color === "off" ? "Turn the central's LEDs off" : `Light ${s.leds === "all" ? "all LEDs" : s.leds.length + " LEDs"} ${s.color} on the central`;
+    case "pause": return (s.mode === "random" ? `Pause ${range(s.min, s.max)} at random` : `Pause ${sec(s.fixed)}`) + (s.catchEarly ? ", pressing now is a false start" : "");
+    case "press": return "Wait for a press on the central";
+    case "pod": return s.avoid ? `Light ${podLabel(s.target)} red: don't touch it` : `Light ${podLabel(s.target)} ${s.color}, wait for the press`;
+    case "race": return `Light all pods${s.includeCentral ? " and the central" : ""} at once` + (s.avoidOn ? `, ${s.avoidCount} of them red` : "") + ", wait until every " + s.color + " one is pressed";
+    case "off": return "Turn all pods off";
+    case "count": return s.op === "+" ? `Add ${s.value} to ${label(s.var)}` : `Set ${label(s.var)} to ${s.value}`;
+    case "decide": return `Decide: is ${label(s.left)} at least ${s.right}?`;
+    case "results": { const w = [s.avg && "average", s.best && "best", s.worst && "worst", s.count && "count"].filter(Boolean); return w.length ? `Show results: ${w.join(", ")}` : "Show results (nothing chosen)"; }
+  }
+}
+const LABELS = { MISSES: "Misses", ROUNDS: "Rounds", STREAK: "Streak" };
+const label = (v) => LABELS[v] || v;
+function metaChips(s) {
+  const c = [];
+  if ("limitOn" in s && s.limitOn) c.push(`<span class="chip">${ic("pause", 12)} max ${sec(s.limit)}</span>`);
+  if (s.record) c.push(`<span class="chip rec">${ic("results", 12)} records time</span>`);
+  if (s.type === "press" && s.longOn) c.push(`<span class="chip">long press ≥ ${sec(s.longMs)}</span>`);
+  return c.join("");
+}
+function branches(s) {
+  const b = [];
+  if ("limitOn" in s && s.limitOn) b.push(["If too slow", s.tooSlow === "miss" ? "count a miss, go on" : "just go on"]);
+  if (s.type === "pause" && s.catchEarly) b.push(["If pressed too early", "flash red" + (s.earlyMiss ? ", count a miss" : "") + ", next round"]);
+  if (s.type === "race" && s.avoidOn) b.push(["If a red pod is hit", "flash red" + (s.avoidMiss ? ", count a miss" : "") + ", next round"]);
+  if (s.type === "press" && s.longOn) b.push(["If held long", "skip to the next round"]);
+  if (s.type === "decide") b.push(["If yes", "go on"], ["If no", "skip the next step"]);
+  return b;
+}
+function issues(s, prog) {
+  const out = [];
+  if (s.type === "pause" && s.mode === "random" && s.min >= s.max) out.push("The shortest pause must be shorter than the longest.");
+  if (s.type === "pod" && typeof s.target === "number" && s.target >= prog.pods) out.push(`Pod ${s.target + 1} is not part of this program. It uses ${prog.pods} pod${prog.pods === 1 ? "" : "s"} besides the central.`);
+  if ((s.type === "pod" || s.type === "race") && prog.pods === 0) out.push("This step needs at least one pod besides the central.");
+  if (s.type === "race" && s.avoidOn && s.avoidCount >= prog.pods + (s.includeCentral ? 1 : 0)) out.push("At least one pod must stay green.");
+  if (s.type === "results" && !(s.avg || s.best || s.worst || s.count)) out.push("Choose at least one result to show.");
+  return out;
+}
+const allSteps = (p) => [...p.round, ...p.end];
+const issueCount = (p) => allSteps(p).reduce((n, s) => n + issues(s, p).length, 0);
+
+// ---------- compile to firmware blocks (what expert mode shows) ----------
+function compile(p) {
+  const blocks = [], owner = {};
+  const vars = { MAX_LOOPS: p.rounds, RUNS: 0 };
+  const steps = allSteps(p);
+  const used = new Set();
+  const nm = (base) => { let n = base, i = 2; while (used.has(n)) n = base + i++; used.add(n); return n; };
+  const names = steps.map((s) => nm({ led: "Light", pause: "Pause", press: "Press", pod: "Pod", race: "Race", off: "PodsOff", count: "Count", decide: "Decide", results: "Results" }[s.type]));
+  const roundStart = p.round.length ? names[0] : "NextRound";
+  const after = (i) => (i === p.round.length - 1 ? "NextRound" : i === steps.length - 1 ? undefined : names[i + 1]);
+  const add = (s, b) => { blocks.push(b); (owner[s.id] ||= []).push(b.name); return b; };
+  const missTo = (s, i, next) => { vars.MISSES = 0; const m = add(s, { name: nm(names[i] + "Miss"), type: "setVariable", var: "MISSES", op: "+", value: 1 }); if (next) m.next = next; return m.name; };
+  steps.forEach((s, i) => {
+    const name = names[i], nx = after(i);
+    const rec = s.record ? { record: "reaction" } : {};
+    const lim = s.limitOn ? { timeoutMs: Math.round(s.limit * 1000) } : {};
+    const slow = s.limitOn && s.tooSlow === "miss" ? { timeout: missTo(s, i, nx) } : {};
+    const withNext = (b) => (nx ? { ...b, next: nx } : b);
+    switch (s.type) {
+      case "led": add(s, withNext({ name, type: "led", color: s.color, ...(s.leds === "all" ? {} : { leds: s.leds }) })); break;
+      case "pause":
+        if (s.catchEarly) {
+          const fs = name + "Early";
+          add(s, { name, type: "button", ...(s.mode === "random" ? { minTimeoutMs: s.min * 1000, maxTimeoutMs: s.max * 1000 } : { timeoutMs: s.fixed * 1000 }), pressed: fs, timeout: nx });
+          add(s, { name: fs, type: "led", color: "red", next: fs + "Wait" });
+          add(s, { name: fs + "Wait", type: "delay", ms: 600, next: s.earlyMiss ? missTo(s, i, "NextRound") : "NextRound" });
+        } else add(s, withNext({ name, type: "delay", ...(s.mode === "random" ? { minMs: s.min * 1000, maxMs: s.max * 1000 } : { ms: s.fixed * 1000 }) }));
+        break;
+      case "press": add(s, withNext({ name, type: "button", ...lim, ...slow, ...rec, ...(s.storeAs ? { storeAs: s.storeAs } : {}), ...(s.longOn ? { shortMs: s.longMs * 1000, long: "NextRound" } : {}) })); break;
+      case "pod": {
+        let pod = s.target;
+        if (typeof s.target !== "number") {
+          vars.TARGET = 0; pod = "TARGET";
+          add(s, { name: name + "Pick", type: "setVariable", var: "TARGET", op: s.target === "random" ? "random" : "randomOther", value: s.target === "random" ? "REQUIRED_PERIPHERALS" : "NODE_COUNT", next: name });
+        }
+        add(s, withNext({ name, type: "remotePress", pod, ...(s.avoid ? { mode: "avoid" } : s.color !== "green" ? { color: s.color } : {}), ...(s.colorAfter !== "off" ? { colorAfter: s.colorAfter } : {}), ...lim, ...slow, ...rec }));
+        break;
+      }
+      case "race": {
+        const hit = s.avoidOn ? name + "RedHit" : null;
+        add(s, withNext({ name, type: "remoteMultiPress", ...(s.color !== "green" ? { hitColor: s.color } : {}), ...(s.avoidOn ? { avoid: s.avoidCount, avoidHit: hit } : {}), ...(s.includeCentral ? {} : { includeCentral: false }), ...(s.syncStart !== 20 ? { syncStartMs: s.syncStart } : {}), ...lim, ...slow, ...rec }));
+        if (hit) { add(s, { name: hit, type: "led", color: "red", next: hit + "Wait" }); add(s, { name: hit + "Wait", type: "delay", ms: 1000, next: s.avoidMiss ? missTo(s, i, "NextRound") : "NextRound" }); }
+        break;
+      }
+      case "off": add(s, withNext({ name, type: "remoteResetAll" })); break;
+      case "count": vars[s.var] ??= 0; add(s, withNext({ name, type: "setVariable", var: s.var, op: s.op === "+" ? "+" : "=", value: s.value })); break;
+      case "decide": add(s, { name, type: "if", left: s.left, op: ">=", right: s.right, true: nx, false: steps[i + 2] ? names[i + 2] : nx }); break;
+      case "results": {
+        const st = {};
+        if (s.avg) { st.storeAverage = "AVG_REACTION"; vars.AVG_REACTION = 0; }
+        if (s.best) { st.storeBest = "BEST_REACTION"; vars.BEST_REACTION = 0; }
+        if (s.worst) { st.storeWorst = "WORST_REACTION"; vars.WORST_REACTION = 0; }
+        if (s.count) { st.storeCount = "COUNT_REACTION"; vars.COUNT_REACTION = 0; }
+        add(s, withNext({ name, type: "summary", metric: "reaction", ...st }));
+        break;
+      }
+    }
+  });
+  const firstEnd = p.end.length ? names[p.round.length] : undefined;
+  blocks.unshift({ name: "Start", type: "setVariable", var: "RUNS", op: "=", value: 0, next: roundStart });
+  blocks.push({ name: "NextRound", type: "setVariable", var: "RUNS", op: "+", value: 1, next: "CheckRound" });
+  blocks.push({ name: "CheckRound", type: "if", left: "RUNS", op: ">=", right: "MAX_LOOPS", ...(firstEnd ? { true: firstEnd } : {}), false: roundStart });
+  const json = { version: 1, name: p.name, description: p.desc, peripherals: p.pods, start: "Start", variables: vars, menu: [{ color: p.menuColor, leds: [0, 3, 6, 9, 12, 15] }], blocks };
+  return { json, owner, size: JSON.stringify(json).length };
+}
+
+// ---------- state ----------
+const wizDefaults = () => ({ game: "star", pods: 3, rounds: 12, pauseMode: "random", pauseMin: 1, pauseMax: 3, pauseFixed: 2, limitOn: true, limit: 2, color: "green", avoidOn: true, avoidCount: 1, record: true, misses: true, results: true, falseStart: false, name: "" });
+const shipped = [
+  generate({ ...wizDefaults(), game: "solo", pods: 0, color: "green", limitOn: false, misses: false, falseStart: true, pauseMin: 0.8, pauseMax: 5, rounds: 10, name: "Solo" }),
+  generate({ ...wizDefaults(), game: "star", pods: 4, name: "Star" }),
+  generate({ ...wizDefaults(), game: "random", pods: 3, limitOn: false, misses: false, name: "Square" }),
+  generate({ ...wizDefaults(), game: "run", pods: 4, avoidCount: 2, name: "Run 5" }),
+  generate({ ...wizDefaults(), game: "duo", pods: 1, pauseMin: 0.5, pauseMax: 2, limit: 5, rounds: 10, name: "Duo" }),
+];
+const S = { screen: "programs", wizStep: 0, wiz: wizDefaults(), mine: [], prog: null, sheet: null, selected: null, expert: false, hist: [], fut: [], toast: null, sim: null, from: null, origin: "shipped" };
+
+function setProg(p, origin) { S.prog = structuredClone(p); S.origin = origin; S.hist = []; S.fut = []; S.selected = null; }
+function edit(fn) { S.hist.push(JSON.stringify(S.prog)); if (S.hist.length > 100) S.hist.shift(); S.fut = []; fn(S.prog); saveMine(); render(); }
+function saveMine() { if (S.origin !== "mine") return; const i = S.mine.findIndex((m) => m.id === S.prog.id); if (i >= 0) S.mine[i] = structuredClone(S.prog); }
+const findStep = (id) => { const p = S.prog; for (const list of [p.round, p.end]) { const i = list.findIndex((s) => s.id === id); if (i >= 0) return { list, i, s: list[i] }; } return null; };
+let toastTimer;
+function toast(text, undo) { S.toast = { text, undo }; clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; render(); }, 5000); }
+
+// ---------- small components ----------
+function ring(color, size = 40, leds = "all") {
+  let c = "";
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2 - Math.PI / 2, r = size * 0.4;
+    const on = color !== "off" && (leds === "all" || leds.includes(i));
+    c += `<circle cx="${(size / 2 + Math.cos(a) * r).toFixed(1)}" cy="${(size / 2 + Math.sin(a) * r).toFixed(1)}" r="${(size * 0.055).toFixed(1)}" fill="${on ? cvar(color) : "var(--led-off)"}"/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">${c}</svg>`;
+}
+function setDrawing(pods, lit = {}) {
+  let h = `<span class="dot big ${lit.c ? "lit" : ""}" style="${lit.c ? "background:" + cvar(lit.c) : ""}" title="Central"></span>`;
+  for (let i = 0; i < pods; i++) { const c = lit[i]; h += `<span class="dot ${c ? "lit" : ""}" style="${c ? "background:" + cvar(c) : ""}" title="Pod ${i + 1}"></span>`; }
+  return `<div class="set" aria-label="Central and ${pods} pods">${h}</div>`;
+}
+const stepper = (lbl, val, act, extra = "") => `<div class="field"><span class="lbl">${lbl}</span><div class="stepper"><button data-act="${act}" data-d="-1" aria-label="Less: ${esc(lbl)}">−</button><output>${val}</output><button data-act="${act}" data-d="1" aria-label="More: ${esc(lbl)}">+</button>${extra}</div></div>`;
+const seg = (opts, val, act) => `<div class="seg" role="group">${opts.map(([v, t]) => `<button data-act="${act}" data-v="${v}" aria-pressed="${String(val) === String(v)}">${t}</button>`).join("")}</div>`;
+const swatches = (val, act, withOff = false) => `<div class="sw" role="group" aria-label="Colour">${(withOff ? ["off", ...COLORS] : COLORS).map((c) => `<button data-act="${act}" data-v="${c}" aria-pressed="${val === c}" aria-label="${c}" style="background:${cvar(c)}">${val === c ? "<span></span>" : ""}</button>`).join("")}</div>`;
+function toggle(key, title, desc, on, body = "", disabled = false) {
+  return `<div class="tg"><button class="tg-head" role="switch" aria-checked="${on}" data-act="tg" data-k="${key}" ${disabled ? "disabled" : ""}><span class="grow"><strong>${title}</strong><span>${desc}</span></span><span class="switch"></span></button>${on && body ? `<div class="tg-body">${body}</div>` : ""}</div>`;
+}
+function catVar(type) { return `var(--cat-${STEP[type].cat})`; }
+
+// ---------- screens ----------
+function tabbar(cur) {
+  const t = [["home", "Pod", "pod"], ["list", "Programs", "programs"], ["wand", "Editor", "editor"], ["play", "Simulate", "simulate"], ["menu", "Menu", "menu"]];
+  return `<nav class="tabbar">${t.map(([i, l, k]) => `<button class="tab" data-act="tab" data-v="${k}" ${cur === k ? 'aria-current="page"' : ""}>${ic(i, 20)}${l}</button>`).join("")}</nav>`;
+}
+function progRow(p, origin) {
+  return `<div class="card prog"><button class="open" data-act="openProg" data-id="${p.id}" data-o="${origin}">${ring(p.menuColor, 40, [0, 3, 6, 9, 12, 15])}<span class="grow"><strong>${esc(p.name)}</strong><span>${p.pods + 1} pods · ${p.rounds} rounds</span></span></button><button class="btn small" data-act="adjust" data-id="${p.id}" data-o="${origin}">${ic("sliders", 18)} Adjust</button></div>`;
+}
+function scrPrograms() {
+  const mine = S.mine.length ? S.mine.map((p) => progRow(p, "mine")).join("") : `<p class="muted small" style="margin:0 2px">Nothing yet. Tap + to make your first game.</p>`;
+  return `<header class="appbar"><h2>Programs</h2><button class="ib" aria-label="Settings">${ic("sliders")}</button></header>
+  <main class="content"><h3 class="section-h">My programs</h3>${mine}<h3 class="section-h">Shipped</h3>${shipped.map((p) => progRow(p, "shipped")).join("")}</main>
+  <button class="fab" data-act="newProg" aria-label="New program">${ic("plus", 26)}</button>${tabbar("programs")}`;
+}
+function scrChooser() {
+  return `<header class="appbar"><button class="ib" data-act="go" data-v="programs" aria-label="Back">${ic("back")}</button><h2>New program</h2></header>
+  <main class="content nofab"><p class="lead">How do you want to start?</p>
+  <button class="choice" data-act="startWizard">${ic("wand", 30)}<span class="grow"><strong>Start from a game</strong><span>Answer five questions. The app builds the program, you can try it right away.</span><span class="tag">Recommended</span></span></button>
+  <button class="choice" data-act="startCopy">${ic("copy", 30)}<span class="grow"><strong>Copy a program</strong><span>Take a shipped program or one of yours and change it.</span></span></button>
+  <button class="choice" data-act="startEmpty">${ic("file", 30)}<span class="grow"><strong>Start empty</strong><span>Build it step by step.</span><span class="tag ex">For people who know blocks</span></span></button></main>`;
+}
+const WIZ = ["Game", "Pods", "Rounds and timing", "Colours", "Measure"];
+function wizFrame(body, canNext = true, nextLabel = "Next") {
+  const n = S.wizStep;
+  return `<header class="appbar"><button class="ib" data-act="wizBack" aria-label="Back">${ic("back")}</button><h2>${WIZ[n]} <span class="muted small">· step ${n + 1} of 5</span></h2><button class="ib" data-act="go" data-v="programs" aria-label="Cancel">${ic("x")}</button></header>
+  <main class="content nofab"><div class="progress" aria-hidden="true">${WIZ.map((_, i) => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</div>${body}</main>
+  <div class="wizbar"><button class="btn grow" data-act="wizBack">Back</button><button class="btn primary grow" data-act="wizNext" ${canNext ? "" : "disabled"}>${nextLabel}</button></div>`;
+}
+function gameArt(g, pods) {
+  const lit = {};
+  if (g === "solo") lit.c = "green";
+  if (g === "star" || g === "duo") { lit.c = "green"; }
+  if (g === "random") lit[1] = "green";
+  if (g === "run") { lit.c = "green"; for (let i = 0; i < pods; i++) lit[i] = i === 1 ? "red" : "green"; }
+  return setDrawing(Math.min(pods, g === "solo" ? 0 : g === "duo" ? 1 : pods), lit);
+}
+function scrWizard() {
+  const w = S.wiz, g = GAMES[w.game];
+  switch (S.wizStep) {
+    case 0:
+      return wizFrame(`<p class="lead">What do you want to play?</p>${Object.entries(GAMES).map(([k, d]) => `<button class="choice" data-act="wizGame" data-v="${k}" aria-pressed="${w.game === k}"><span style="width:96px;flex:none">${gameArt(k, 3)}</span><span class="grow"><strong>${d.name}</strong><span>${d.line}</span><span class="tag ex">${d.min ? `needs ${d.min}+ pod${d.min > 1 ? "s" : ""} besides the central` : "central only"}</span></span></button>`).join("")}`);
+    case 1: {
+      const ok = w.pods >= g.min;
+      return wizFrame(`<p class="lead">How many pods do you have?</p><p class="muted" style="margin:0">Count the pods besides the central (the one you set up with the app).</p>
+      <div class="card" style="padding:16px">${setDrawing(w.pods)}<div style="display:flex;justify-content:center">${stepper("", `${w.pods}`, "wizPods")}</div><p class="muted small" style="text-align:center;margin:6px 0 0">Central + ${w.pods} pod${w.pods === 1 ? "" : "s"}</p></div>
+      ${ok ? "" : `<div class="issue">${ic("alert", 18)} ${g.name} needs at least ${g.min} pod${g.min > 1 ? "s" : ""} besides the central. Add pods or go back and pick another game.</div>`}`, ok);
+    }
+    case 2:
+      return wizFrame(`${stepper("Rounds", w.rounds, "wizRounds")}
+      <div class="field"><span class="lbl">Pause before each light</span>${seg([["fixed", "Always the same"], ["random", "Random between"]], w.pauseMode, "wizPauseMode")}</div>
+      ${w.pauseMode === "random" ? `<div class="row" style="flex-wrap:wrap">${stepper("Shortest", sec(w.pauseMin), "wizPauseMin")}${stepper("Longest", sec(w.pauseMax), "wizPauseMax")}</div>${w.pauseMin >= w.pauseMax ? `<div class="issue">${ic("alert", 18)} The shortest pause must be shorter than the longest.</div>` : ""}` : stepper("Pause", sec(w.pauseFixed), "wizPauseFixed")}
+      ${toggle("wiz.limitOn", "Time limit", w.limitOn ? `Too slow after ${sec(w.limit)}` : "Wait as long as it takes", w.limitOn, stepper("Seconds to press", sec(w.limit), "wizLimit"))}`, !(w.pauseMode === "random" && w.pauseMin >= w.pauseMax));
+    case 3:
+      return wizFrame(`<div class="field"><span class="lbl">Colour of the light to hit</span>${swatches(w.color, "wizColor")}</div>
+      ${w.game === "run" ? toggle("wiz.avoidOn", "Red pods: don't touch", w.avoidOn ? `${w.avoidCount} red pod${w.avoidCount > 1 ? "s" : ""} per round` : "All pods light up in the target colour", w.avoidOn, stepper("Red pods per round", w.avoidCount, "wizAvoid")) : `<p class="muted small" style="margin:0">Pods besides the central can show 8 named colours. The central can show any colour; you can change that later in the steps.</p>`}
+      <div class="card" style="padding:14px">${gameArt(w.game, w.pods).replace(/var\(--led-green\)/g, cvar(w.color))}</div>`);
+    case 4: {
+      const canMiss = w.limitOn || (w.game === "run" && w.avoidOn) || w.falseStart;
+      const fsOk = ["solo", "star", "duo"].includes(w.game);
+      return wizFrame(`<p class="lead">What should the pods measure?</p><p class="muted" style="margin:0">All of this is optional. You can change it later with the same switches.</p>
+      ${toggle("wiz.record", "Record reaction times", "Each press is measured, from light on to press", w.record)}
+      ${fsOk ? toggle("wiz.falseStart", "Catch false starts", "Pressing during the pause flashes red and ends the round", w.falseStart) : ""}
+      ${toggle("wiz.misses", "Count misses", canMiss ? "Too slow" + (w.game === "run" && w.avoidOn ? ", red pod hit" : "") + (w.falseStart && fsOk ? ", false start" : "") + " adds 1" : "Turn on a time limit first", w.misses && canMiss, "", !canMiss)}
+      ${toggle("wiz.results", "Show results at the end", "Average and best time, number of presses", w.results)}`, true, "Build my game");
+    }
+  }
+}
+function story(p) {
+  return `<ol class="story">${p.round.map((s) => `<li>${esc(describe(s))}${s.limitOn ? ` (max ${sec(s.limit)})` : ""}</li>`).join("")}</ol><p class="small muted" style="margin:6px 0 0">Repeats ${p.rounds} times. At the end: ${p.end.map((s) => describe(s).toLowerCase()).join(", then ")}.</p>`;
+}
+function scrReady() {
+  const p = S.prog, c = compile(p);
+  return `<header class="appbar"><button class="ib" data-act="wizBack" aria-label="Back">${ic("back")}</button><h2>Your game is ready</h2></header>
+  <main class="content nofab">
+    <div class="field"><label for="pname">Name</label><input id="pname" class="input" value="${esc(p.name)}" data-in="progName"></div>
+    <div class="card" style="padding:14px;display:flex;gap:14px;align-items:center">${ring(p.menuColor, 56, [0, 3, 6, 9, 12, 15])}<span class="small muted">This is how it shows in the pod's program menu. Central + ${p.pods} pod${p.pods === 1 ? "" : "s"}, uses ${Math.max(1, Math.round((c.size / 16384) * 100))} % of the space for one program.</span></div>
+    <div class="card" style="padding:14px"><strong>What happens</strong>${story(p)}</div>
+    <button class="btn primary" data-act="trySim">${ic("play", 18)} Try it in the simulator</button>
+    <div class="row"><button class="btn grow" data-act="toEditor">${ic("wand", 18)} Change steps</button><button class="btn grow" data-act="saveMenu">${ic("menu", 18)} Save and add to menu</button></div>
+  </main>`;
+}
+function stepCard(s, n) {
+  const sel = S.selected === s.id, iss = issues(s, S.prog);
+  const br = branches(s).map(([k, v]) => `<div class="branch">↳ <span>${k}: <b>${v}</b></span></div>`).join("");
+  let ex = "";
+  if (S.expert) {
+    const c = compile(S.prog), names = c.owner[s.id] || [];
+    const bl = c.json.blocks.filter((b) => names.includes(b.name));
+    ex = `<div class="ports">${bl.map((b) => `${b.name} · ${b.type}${["next", "timeout", "pressed", "avoidHit", "true", "false", "long"].filter((k) => b[k]).map((k) => `<br>&nbsp;&nbsp;${k} → ${b[k]}`).join("")}`).join("<br>")}</div>`;
+  }
+  return `<button class="step" style="--c:${catVar(s.type)}" data-act="selStep" data-id="${s.id}" aria-pressed="${sel}"><span class="num">${ic(STEP[s.type].icon, 16)}</span><span><span class="txt">${n}. ${esc(describe(s))}</span>
+  ${metaChips(s) || iss.length ? `<span class="meta">${iss.length ? `<span class="chip err">${ic("alert", 12)} ${iss.length} problem${iss.length > 1 ? "s" : ""}</span>` : ""}${metaChips(s)}</span>` : ""}
+  ${br ? `<span class="branches">${br}</span>` : ""}${ex}</span></button>`;
+}
+function scrEditor() {
+  const p = S.prog;
+  if (!p) return `<header class="appbar"><h2>Editor</h2></header><main class="content"><p class="muted">No program open.</p><button class="btn primary" data-act="newProg">New program</button></main>${tabbar("editor")}`;
+  const n = issueCount(p);
+  return `<header class="appbar"><button class="ib" data-act="go" data-v="programs" aria-label="Back">${ic("back")}</button>
+  <button class="titlebtn" data-act="sheet" data-v="program"><strong>${esc(p.name)}</strong><span>Central + ${p.pods} pods · settings</span></button>
+  <button class="ib" data-act="undo" ${S.hist.length ? "" : "disabled"} aria-label="Undo">${ic("undo", 20)}</button><button class="ib" data-act="redo" ${S.fut.length ? "" : "disabled"} aria-label="Redo">${ic("redo", 20)}</button>
+  <button class="ib ${n ? "" : "okstate"}" data-act="sheet" data-v="issues" aria-label="${n ? n + " problems" : "No problems"}">${ic(n ? "alert" : "check", 20)}${n ? `<span class="count">${n}</span>` : ""}</button>
+  <button class="ib" data-act="sheet" data-v="more" aria-label="More">${ic("more", 20)}</button></header>
+  <main class="content">
+    ${S.expert ? `<div class="chip exp" style="align-self:flex-start">expert mode · block names and ports shown</div>` : ""}
+    <section class="bracket" aria-label="Round"><div class="bracket-h">${ic("repeat", 18)}<strong>Repeat ${p.rounds} rounds</strong><button class="btn small edit" data-act="sheet" data-v="program">Change</button></div>
+    ${p.round.map((s, i) => stepCard(s, i + 1)).join("")}
+    <button class="addline" data-act="addTo" data-v="round">${ic("plus", 18)} Add a step to each round</button></section>
+    <h3 class="section-h">After the last round</h3>
+    ${p.end.map((s, i) => stepCard(s, i + 1)).join("")}
+    <button class="addline" data-act="addTo" data-v="end">${ic("plus", 18)} Add a step at the end</button>
+  </main>
+  <button class="fab" data-act="trySim" aria-label="Try it">${ic("play", 24)}</button>${tabbar("editor")}`;
+}
+function scrSim() {
+  const p = S.prog;
+  if (!p) return `<header class="appbar"><h2>Simulate</h2></header><main class="content"><p class="muted">Open a program first.</p></main>${tabbar("simulate")}`;
+  const sim = S.sim || { rings: {}, times: [], misses: 0, round: 0, log: "Tap Start. Then tap a pod when it lights up.", running: false, done: false };
+  const ids = [-1, ...Array.from({ length: p.pods }, (_, i) => i)];
+  const t = sim.times, avg = t.length ? Math.round(t.reduce((a, b) => a + b, 0) / t.length) : "–", best = t.length ? Math.min(...t) : "–";
+  return `<header class="appbar"><button class="ib" data-act="simBack" aria-label="Back">${ic("back")}</button><h2>${esc(p.name)} <span class="muted small">· simulator</span></h2></header>
+  <main class="content nofab">
+    <div class="row"><strong class="grow">Round ${sim.round || "–"} of ${p.rounds}</strong>${sim.running ? `<button class="btn small" data-act="simStop">${ic("stop", 16)} Stop</button>` : `<button class="btn small primary" data-act="simStart">${ic("play", 16)} ${sim.done ? "Again" : "Start"}</button>`}</div>
+    <div class="pods">${ids.map((id) => { const r = sim.rings[id] || "off"; return `<button class="pod" data-act="podTap" data-v="${id}" aria-label="${id < 0 ? "Central" : "Pod " + (id + 1)}">${ring(r, 76)}${id < 0 ? "Central" : "Pod " + (id + 1)}</button>`; }).join("")}</div>
+    <p class="muted small" style="margin:0" aria-live="polite">${esc(sim.log)}</p>
+    <div class="stats"><div><strong>${t.length}</strong><span>presses</span></div><div><strong>${avg}</strong><span>avg ms</span></div><div><strong>${best}</strong><span>best ms</span></div><div><strong>${sim.misses}</strong><span>misses</span></div></div>
+    ${sim.done && sim.result ? `<div class="card" style="padding:14px"><strong>Results shown at the end</strong><p class="small" style="margin:6px 0 0">${sim.result}</p></div>` : ""}
+    <p class="muted small" style="margin:0">The real simulator also has speed, step, breakpoints and a seed (spec §8). This one runs the same steps you see in the editor.</p>
+  </main>`;
+}
+function scrMenu() { return `<header class="appbar"><h2>Menu</h2></header><main class="content"><p class="muted">The pod's program menu (unchanged by this redesign).</p>${[...S.mine, ...shipped].map((p, i) => `<div class="card prog">${ring(p.menuColor, 36, [0, 3, 6, 9, 12, 15])}<span class="grow"><strong>${i + 1}. ${esc(p.name)}</strong></span></div>`).join("")}</main>${tabbar("menu")}`; }
+function scrPod() { return `<header class="appbar"><h2>Pod</h2></header><main class="content"><div class="card" style="padding:14px"><strong>Demo set</strong><p class="muted small" style="margin:4px 0 0">Not part of this prototype. Push to the pods happens here, as today.</p></div></main>${tabbar("pod")}`; }
+
+// ---------- sheets ----------
+function sheetFrame(icon, title, sub, body, c = "var(--accent)", tall = false) {
+  return `<div class="scrim" data-act="closeSheet"></div><section class="sheet ${tall ? "tall" : ""}" role="dialog" aria-label="${esc(title)}"><div class="sheet-h" style="--c:${c}"><span class="ic">${ic(icon, 18)}</span><span class="grow"><h3>${esc(title)}</h3>${sub ? `<p>${sub}</p>` : ""}</span><button class="ib" data-act="closeSheet" aria-label="Close">${ic("x")}</button></div><div class="sheet-b">${body}</div></section>`;
+}
+function timeLimitBlock(s) {
+  return toggle("st.limitOn", "Time limit", s.limitOn ? `Too slow after ${sec(s.limit)}` : "Wait as long as it takes", s.limitOn,
+    `${stepper("Seconds", sec(s.limit), "stLimit")}<div class="field"><span class="lbl">If too slow</span>${seg([["next", "Just go on"], ["miss", "Count a miss"]], s.tooSlow, "stTooSlow")}</div>`);
+}
+const recordBlock = (s) => toggle("st.record", "Record reaction time", s.record ? "Measured from light on to press" : "Not measured", s.record);
+function sheetStep() {
+  const f = findStep(S.sheet.id); if (!f) return "";
+  const s = f.s, p = S.prog, def = STEP[s.type], iss = issues(s, p);
+  let body = iss.map((m) => `<div class="issue">${ic("alert", 18)} ${esc(m)}</div>`).join("");
+  switch (s.type) {
+    case "led":
+      body += `<div class="field"><span class="lbl">Colour</span>${swatches(s.color, "stColor", true)}</div>
+      <div class="field"><span class="lbl">Which LEDs</span>${seg([["all", "All 18"], ["half", "Every second"], ["top", "Top 6"]], s.leds === "all" ? "all" : s.leds.length === 9 ? "half" : "top", "stLeds")}</div>`;
+      break;
+    case "pause":
+      body += `<div class="field"><span class="lbl">How long</span>${seg([["fixed", "Always the same"], ["random", "Random between"]], s.mode, "stPauseMode")}</div>
+      ${s.mode === "random" ? `<div class="row" style="flex-wrap:wrap">${stepper("Shortest", sec(s.min), "stMin")}${stepper("Longest", sec(s.max), "stMax")}</div>` : stepper("Seconds", sec(s.fixed), "stFixed")}
+      ${toggle("st.catchEarly", "Catch early presses", s.catchEarly ? "Pressing the central now is a false start" : "Presses during the pause are ignored", !!s.catchEarly,
+        toggle("st.earlyMiss", "Count it as a miss", "Adds 1 to Misses", !!s.earlyMiss))}`;
+      break;
+    case "press":
+      body += `<p class="muted small" style="margin:0">Waits until someone presses the central's button.</p>${timeLimitBlock(s)}${recordBlock(s)}
+      ${toggle("st.longOn", "Long press does something else", s.longOn ? `Held ${sec(s.longMs)} or longer skips to the next round` : "Short and long presses do the same", !!s.longOn, stepper("Long press from", sec(s.longMs || 1), "stLong"))}
+      <details class="more"><summary>${ic("sliders", 18)} More options</summary><div class="tg-body"><div class="field"><label for="storeas">Keep the last time in a setting</label><input id="storeas" class="input" placeholder="not kept" value="${esc(s.storeAs)}" data-in="stStoreAs"><span class="muted small">Use it later in a Decide step, e.g. "if the last time is under 300 ms".</span></div></div></details>`;
+      break;
+    case "pod": {
+      const t = [["random", "Random pod"], ["randomOther", "Random, never twice"], ...Array.from({ length: Math.max(p.pods, typeof s.target === "number" ? s.target + 1 : 0) }, (_, i) => [i, `Pod ${i + 1}`])];
+      body += `<div class="field"><span class="lbl">Which pod</span><div class="picks">${t.map(([v, l]) => `<button class="pick" data-act="stTarget" data-v="${v}" aria-pressed="${String(s.target) === String(v)}">${l}</button>`).join("")}</div></div>
+      ${s.avoid ? "" : `<div class="field"><span class="lbl">Colour</span>${swatches(s.color, "stColor")}<span class="muted small">Pods show 8 named colours.</span></div>`}
+      ${toggle("st.avoid", "Don't touch (red)", s.avoid ? "Pressing it is a miss, leaving it alone is right" : "The pod has to be pressed", !!s.avoid)}
+      ${timeLimitBlock(s)}${s.avoid ? "" : recordBlock(s)}
+      <details class="more"><summary>${ic("sliders", 18)} More options</summary><div class="tg-body"><div class="field"><span class="lbl">Colour after the press</span>${swatches(s.colorAfter, "stAfter", true)}</div></div></details>`;
+      break;
+    }
+    case "race":
+      body += `<div class="field"><span class="lbl">Colour to hit</span>${swatches(s.color, "stColor")}</div>
+      ${toggle("st.avoidOn", "Red pods: don't touch", s.avoidOn ? `${s.avoidCount} red pod${s.avoidCount > 1 ? "s" : ""}, chosen at random` : "Every pod has to be pressed", s.avoidOn,
+        `${stepper("Red pods", s.avoidCount, "stAvoid")}${toggle("st.avoidMiss", "Count a red hit as a miss", "Adds 1 to Misses", !!s.avoidMiss)}`)}
+      ${timeLimitBlock(s)}${recordBlock(s)}
+      <details class="more"><summary>${ic("sliders", 18)} More options</summary><div class="tg-body">${toggle("st.includeCentral", "The central takes part", "Its LEDs light up like a pod", s.includeCentral)}${stepper("Sync start (ms)", s.syncStart, "stSync")}<span class="muted small">Pods wait this long so they light up together.</span></div></details>`;
+      break;
+    case "results":
+      body += `<p class="muted small" style="margin:0">Shows the recorded reaction times of this run. Each choice also keeps the value in a setting.</p>
+      ${toggle("st.avg", "Average", "AVG_REACTION", s.avg)}${toggle("st.best", "Best (fastest)", "BEST_REACTION", s.best)}${toggle("st.worst", "Worst (slowest)", "WORST_REACTION", s.worst)}${toggle("st.count", "Number of presses", "COUNT_REACTION", s.count)}`;
+      break;
+    case "count":
+      body += `<div class="field"><span class="lbl">Setting</span><div class="picks">${["MISSES", "STREAK"].map((v) => `<button class="pick" data-act="stVar" data-v="${v}" aria-pressed="${s.var === v}">${label(v)}</button>`).join("")}<button class="pick" data-act="noop">+ New setting…</button></div></div>
+      <div class="field"><span class="lbl">What to do</span>${seg([["+", "Add"], ["=", "Set to"]], s.op, "stOp")}</div>${stepper("Value", s.value, "stValue")}`;
+      break;
+    case "decide":
+      body += `<div class="field"><span class="lbl">Question</span><div class="picks"><button class="pick" aria-pressed="true">${label(s.left)}</button><button class="pick" aria-pressed="true">is at least</button></div></div>${stepper("Value", s.right, "stRight")}`;
+      break;
+    case "off": body += `<p class="muted small" style="margin:0">Turns off every pod's LEDs and stops waiting for them.</p>`; break;
+  }
+  body += `<div class="actions"><button class="btn small" data-act="addAfter">${ic("plus", 18)} Add after</button><button class="btn small" data-act="dupStep">${ic("copy", 18)} Duplicate</button>
+  <button class="btn small" data-act="moveStep" data-d="-1" ${f.i === 0 ? "disabled" : ""}>${ic("up", 18)} Move up</button><button class="btn small" data-act="moveStep" data-d="1" ${f.i === f.list.length - 1 ? "disabled" : ""}>${ic("down", 18)} Move down</button>
+  <button class="btn small danger" data-act="delStep" style="grid-column:1/-1">${ic("trash", 18)} Delete step</button></div>`;
+  if (S.expert) {
+    const c = compile(p), names = c.owner[s.id] || [];
+    const bl = c.json.blocks.filter((b) => names.includes(b.name));
+    body += `<div class="expert"><h4>Expert · blocks behind this step</h4><div class="field"><label for="bname">Block name</label><input id="bname" class="input" value="${esc(names[0] || "")}" style="font-family:var(--font-mono)" readonly></div><pre class="json">${esc(JSON.stringify(bl, null, 2))}</pre><span class="muted small">Port selects, block type change and raw keys live here, as in today's inspector.</span></div>`;
+  }
+  return sheetFrame(def.icon, def.name, f.list === p.round ? `Step ${f.i + 1} of each round` : `Step ${f.i + 1} after the last round`, body, catVar(s.type), true);
+}
+function sheetAdd() {
+  const where = S.sheet.where;
+  const intents = S.expert ? Object.entries(STEP) : Object.entries(STEP);
+  const recipes = [["miss", "Count a miss when too slow", "Adds a time limit and a Misses counter to every press in the round"], ["breath", "Pause between rounds", "A fixed 2 s pause at the end of each round"], ["flash", "Flash red on a false start", "Catch early presses in the first pause"]];
+  return sheetFrame("plus", "Add a step", where.after ? "Inserted after the selected step" : where.list === "end" ? "Added after the last round" : "Added at the end of each round",
+    `<h3 class="section-h">Recipes</h3>${recipes.map(([k, t, d]) => `<button class="recipe" data-act="recipe" data-v="${k}">${ic("wand", 20)}<span class="grow"><strong>${t}</strong><span>${d}</span></span></button>`).join("")}
+    <h3 class="section-h">Single steps</h3><div class="palette">${intents.map(([k, d]) => `<button class="ptile" style="--c:${catVar(k)}" data-act="addStep" data-v="${k}">${ic(d.icon, 20)}<strong>${d.name}</strong><span>${S.expert ? `<code>${d.block}</code>` : HELP[k]}</span></button>`).join("")}</div>
+    ${S.expert ? `<h3 class="section-h">Library parts (expert)</h3><div class="recipe">${ic("file", 20)}<span class="grow"><strong>loop · star · random · multi</strong><span>Insert as a copy, or link as a preset in program settings</span></span></div>` : ""}`, "var(--accent)", true);
+}
+const HELP = { led: "Colour and which LEDs", pause: "Fixed or random, can catch early presses", press: "On the central, with optional time limit", pod: "One pod, chosen or at random", race: "Every pod lights, some can be red", off: "All pods dark again", count: "Add to a setting like Misses", decide: "Two ways, e.g. if Misses ≥ 3", results: "Average, best, worst, count" };
+function sheetProgram() {
+  const p = S.prog, c = compile(p);
+  return sheetFrame("sliders", "Program", "Name, pods and the settings you change most", `
+    <div class="field"><label for="pn2">Name</label><input id="pn2" class="input" value="${esc(p.name)}" data-in="progName"></div>
+    <div class="field"><label for="pd2">Description</label><textarea id="pd2" class="input" rows="2" data-in="progDesc">${esc(p.desc)}</textarea></div>
+    <div class="field"><span class="lbl">Pods besides the central</span>${setDrawing(p.pods)}<div style="display:flex;justify-content:center">${stepper("", p.pods, "pPods")}</div></div>
+    <div class="field"><span class="lbl">In the pod's menu</span><div class="row">${ring(p.menuColor, 48, [0, 3, 6, 9, 12, 15])}${swatches(p.menuColor, "pMenu")}</div></div>
+    <h3 class="section-h">Settings you can tweak</h3>
+    ${stepper("Rounds", p.rounds, "pRounds")}
+    ${S.expert ? `<div class="expert"><h4>Expert</h4><div class="field"><span class="lbl">Start block</span><select class="input" disabled><option>Start</option></select></div><div class="field"><span class="lbl">Library parts</span><span class="muted small">None linked. This program is self-contained.</span></div><span class="lbl">Variables</span><pre class="json">${esc(JSON.stringify(c.json.variables, null, 2))}</pre></div>` : ""}`, "var(--accent)", true);
+}
+function sheetIssues() {
+  const p = S.prog, list = allSteps(p).flatMap((s) => issues(s, p).map((m) => [s, m])), c = compile(p);
+  return sheetFrame(list.length ? "alert" : "check", "Check", `Uses ${Math.max(1, Math.round((c.size / 16384) * 100))} % of the space for one program`,
+    list.length ? list.map(([s, m]) => `<button class="recipe" data-act="selStep" data-id="${s.id}">${ic(STEP[s.type].icon, 20)}<span class="grow"><strong>${esc(describe(s))}</strong><span style="color:var(--error)">${esc(m)}</span></span></button>`).join("") : `<p style="margin:0">No problems. The program can be pushed to the pods.</p>`, list.length ? "var(--error)" : "var(--ok)");
+}
+function sheetMore() {
+  return sheetFrame("more", "More", "", `${toggle("expert", "Expert mode", "Show block names, ports, raw values and library parts. Remembered on this device.", S.expert)}
+  <button class="recipe" data-act="dupProg">${ic("copy", 20)}<span class="grow"><strong>Duplicate program</strong></span></button>
+  <button class="recipe" data-act="noop">${ic("file", 20)}<span class="grow"><strong>Export as .json</strong></span></button>
+  <button class="recipe" data-act="noop" style="color:var(--error)">${ic("trash", 20)}<span class="grow"><strong>Delete program</strong></span></button>`);
+}
+function sheetAdjust() {
+  const p = S.prog, pauses = p.round.filter((s) => s.type === "pause"), pz = pauses[0], timed = allSteps(p).filter((s) => "limitOn" in s);
+  const lim = timed.find((s) => s.limitOn), rec = timed.some((s) => s.record), res = p.end.some((s) => s.type === "results");
+  return sheetFrame("sliders", `Adjust: ${p.name}`, S.origin === "shipped" ? "Saving makes your own copy. The shipped program stays as it is." : "Changes apply to the whole program", `
+    ${stepper("Rounds", p.rounds, "pRounds")}
+    ${pz ? `<div class="field"><span class="lbl">Pause before each light</span>${seg([["fixed", "Always the same"], ["random", "Random between"]], pz.mode, "aPauseMode")}</div>
+    ${pz.mode === "random" ? `<div class="row" style="flex-wrap:wrap">${stepper("Shortest", sec(pz.min), "aMin")}${stepper("Longest", sec(pz.max), "aMax")}</div>` : stepper("Pause", sec(pz.fixed), "aFixed")}` : ""}
+    ${timed.length ? toggle("a.limitOn", "Time limit", lim ? `Too slow after ${sec(lim.limit)}` : "Wait as long as it takes", !!lim, stepper("Seconds to press", sec(lim ? lim.limit : 2), "aLimit")) : ""}
+    ${timed.length ? toggle("a.record", "Record reaction times", "Each press is measured", rec) : ""}
+    ${toggle("a.results", "Show results at the end", "Average, best and number of presses", res)}
+    <div class="row"><button class="btn grow" data-act="trySim">${ic("play", 18)} Try it</button><button class="btn primary grow" data-act="saveAdjust">Save</button></div>
+    <button class="btn" data-act="toEditor">${ic("wand", 18)} Change the steps instead</button>`, "var(--accent)", true);
+}
+
+// ---------- notes ----------
+const NOTES = {
+  programs: ["Everyone", "Programs", "Each row gets an <b>Adjust</b> button: the coach changes rounds, pause and time limit without opening the editor. <b>+</b> no longer opens an empty program but asks how to start.", [10]],
+  chooser: ["First-timer", "New program: three ways in", "Starting from a game is first and recommended. Starting empty is still there, marked for people who know blocks. Today this dialog only asks for a name and opens an empty program.", [10]],
+  wiz0: ["First-timer", "Wizard 1/5: pick a game", "The five shipped game structures, in words and with a picture of the set. The pod count each game needs is said up front.", [4, 10]],
+  wiz1: ["First-timer", "Wizard 2/5: how many pods", "Counted as \"pods besides the central\" with a drawing, instead of the word peripherals. A game that needs more pods explains why Next is off.", [4]],
+  wiz2: ["First-timer", "Wizard 3/5: rounds and timing", "Seconds, not milliseconds. Fixed or random is one switch, so ms and minMs/maxMs never show side by side. The time limit is a toggle: off means \"wait as long as it takes\".", [2, 4]],
+  wiz3: ["First-timer", "Wizard 4/5: colours", "Only the 8 colours the pods can show. Red \"don't touch\" pods are a switch with a count, only for the game where they apply.", [1]],
+  wiz4: ["First-timer", "Wizard 5/5: measure", "Measuring is optional and off unless switched on. One switch each for times, misses and results, in place of record, storeAs, summary and a hand-built setVariable counter.", [1, 5]],
+  ready: ["First-timer", "Ready: try, change or save", "The program as a short story. Three ways on: try it in the simulator, change the steps, or save it and add it to the menu. Size shows as a percentage, not bytes.", [4, 10]],
+  editor: ["Coach", "Editor: steps in plain language", "Numbered steps in sentences, a <b>Repeat N rounds</b> bracket in place of the counter and if blocks, branches as \"If too slow: …\" lines, badges for problems and \"records time\". No block names or port names unless expert mode is on.", [3, 6, 8]],
+  step: ["Coach", "Step sheet: essentials first, the rest behind switches", "Problems for this step at the top, then 1–3 big controls. Optional features are switches: <b>Time limit</b>, <b>Record reaction time</b>, <b>Catch early presses</b>, <b>Don't touch</b>, <b>Long press</b>. Turning one off removes its fields and its branch. Rare tuning sits under <b>More options</b>. Try a switch and watch the step text behind the sheet.", [1, 2, 3, 5, 8]],
+  add: ["Coach", "Add a step by what it does", "Tiles say what the step does, with one line each. Recipes add several blocks at once (for example a miss counter). In expert mode the tiles show block types and library parts.", [9, 10]],
+  program: ["Coach", "Program sheet", "Basics and the settings you change most. Start block, library parts and the raw variables table move to expert mode.", [4]],
+  adjust: ["Coach", "Adjust: the weekly change in one sheet", "Rounds, pause, time limit, record and results for the whole program, then Try or Save. On a shipped program this saves a copy, as Edit does today.", [1, 10]],
+  issues: ["Everyone", "Check", "Problems in words, each linked to its step. The same text shows inside the step sheet and as a badge on the card.", [8]],
+  more: ["Tinkerer", "Expert mode", "One switch brings back everything: block names and port arrows on the cards, the blocks and raw JSON behind each step, block types in the palette. Nothing from today's editor is removed.", [3, 6]],
+  simulate: ["Everyone", "Simulator", "Runs the steps you see. Tap a pod when it lights. False starts, misses and the results step all work.", []],
+  menu: ["Everyone", "Menu", "Out of scope here. Save and add to menu puts new games at the top.", []],
+  pod: ["Everyone", "Pod", "Out of scope here.", []],
+};
+const FIXES = { 1: "All fields and ports always shown", 2: "Fields that exclude each other side by side", 3: "Raw keys and port names", 4: "Jargon: peripherals, ms, bytes, metric", 5: "Placeholder values create variables", 6: "Connecting by picking generated names", 8: "Problems only in the Check sheet", 9: "Palette without descriptions", 10: "No guided start" };
+const MAP = [["First-timer", [["programs", "Programs"], ["chooser", "New program"], ["wiz0", "Game"], ["wiz1", "Pods"], ["wiz2", "Timing"], ["wiz3", "Colours"], ["wiz4", "Measure"], ["ready", "Ready"], ["simulate", "Try it"]]],
+  ["Coach", [["adjust", "Adjust sheet"], ["editor", "Step list"], ["step", "Step sheet"], ["add", "Add a step"], ["program", "Program sheet"], ["issues", "Check"]]], ["Tinkerer", [["more", "Expert mode"]]]];
+function noteKey() { if (S.sheet) return { step: "step", add: "add", program: "program", adjust: "adjust", issues: "issues", more: "more" }[S.sheet.kind]; return S.screen === "wizard" ? "wiz" + S.wizStep : S.screen; }
+function renderNotes() {
+  const k = noteKey(), [who, title, text, fixes] = NOTES[k] || NOTES.programs;
+  document.getElementById("notes").innerHTML = `<div class="note"><span class="who">${who}</span><h2>${title}</h2><p>${text}</p>${fixes.length ? `<div><strong class="small">Fixes from the list of today's problems</strong>${fixes.map((f) => `<div class="fix"><b>${f}</b>${FIXES[f]}</div>`).join("")}</div>` : ""}</div>
+  <div class="note map"><h2>Flow map</h2>${MAP.map(([h, items]) => `<div><h3>${h}</h3><ol>${items.map(([key, l]) => `<li><button data-act="jump" data-v="${key}" ${key === k ? 'aria-current="step"' : ""}>${l}</button></li>`).join("")}</ol></div>`).join("")}</div>
+  <div class="note"><h2>Three levels</h2><div class="legend"><b>Essentials</b><span>Always in the step sheet, as big controls.</span><b>Switch</b><span>Optional features: time limit, measuring, red pods, early presses. Off removes their fields.</span><b>More options</b><span>Rare tuning, collapsed.</span><b>Expert</b><span>Block names, ports, raw JSON, library parts. One switch under More.</span></div></div>`;
+}
+
+// ---------- render ----------
+function render() {
+  const scr = { programs: scrPrograms, chooser: scrChooser, wizard: scrWizard, ready: scrReady, editor: scrEditor, simulate: scrSim, menu: scrMenu, pod: scrPod }[S.screen]();
+  let sh = "";
+  if (S.sheet) sh = { step: sheetStep, add: sheetAdd, program: sheetProgram, issues: sheetIssues, more: sheetMore, adjust: sheetAdjust }[S.sheet.kind]();
+  const t = S.toast ? `<div class="toast" role="status">${esc(S.toast.text)}${S.toast.undo ? `<button data-act="toastUndo">Undo</button>` : ""}</div>` : "";
+  const app = document.getElementById("app");
+  const scroll = app.querySelector(".content")?.scrollTop, sscroll = app.querySelector(".sheet-b")?.scrollTop;
+  const openMore = [...app.querySelectorAll("details.more")].map((d) => d.open);
+  app.innerHTML = scr + sh + t;
+  if (scroll != null && app.querySelector(".content")) app.querySelector(".content").scrollTop = scroll;
+  if (sscroll != null && app.querySelector(".sheet-b")) app.querySelector(".sheet-b").scrollTop = sscroll;
+  app.querySelectorAll("details.more").forEach((d, i) => { if (openMore[i]) d.open = true; });
+  document.querySelectorAll(".pathbtn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === S.path)));
+  renderNotes();
+}
+
+// ---------- simulator ----------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let simToken = 0, waiter = null;
+function waitPress(ids, ms) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    const timer = ms ? setTimeout(() => { waiter = null; resolve(null); }, ms) : null;
+    waiter = { ids, hit: (id) => { if (timer) clearTimeout(timer); waiter = null; resolve({ id, ms: Math.round(performance.now() - t0) }); } };
+  });
+}
+async function runSim() {
+  const tok = ++simToken, p = S.prog, sim = (S.sim = { rings: {}, times: [], misses: 0, round: 0, log: "Get ready…", running: true, done: false, last: null });
+  const alive = () => tok === simToken;
+  const show = (log) => { if (log) sim.log = log; if (S.screen === "simulate") render(); };
+  const ring = (id, c) => { sim.rings[id] = c; show(); };
+  const pick = (t) => {
+    if (typeof t === "number") return t;
+    const opts = t === "random" ? [...Array(p.pods).keys()] : [-1, ...Array(p.pods).keys()].filter((x) => x !== sim.last);
+    const v = opts[Math.floor(Math.random() * opts.length)]; sim.last = v; return v;
+  };
+  const dur = (s) => (s.mode === "random" ? s.min + Math.random() * (s.max - s.min) : s.fixed) * 1000;
+  const miss = (why) => { sim.misses++; show(why); };
+  async function exec(s) {
+    if (!alive()) return "stop";
+    switch (s.type) {
+      case "led": ring(-1, s.color); return;
+      case "pause": {
+        if (!s.catchEarly) { await sleep(dur(s)); return; }
+        const r = await waitPress([-1], dur(s));
+        if (r) { ring(-1, "red"); s.earlyMiss ? miss("False start: pressed during the pause.") : show("False start: pressed during the pause."); await sleep(600); ring(-1, "off"); return "endRound"; }
+        return;
+      }
+      case "press": {
+        show("Press the central now.");
+        const r = await waitPress([-1], s.limitOn ? s.limit * 1000 : null);
+        if (!alive()) return "stop";
+        if (r) { if (s.record) sim.times.push(r.ms); show(`Central: ${r.ms} ms`); } else s.tooSlow === "miss" ? miss("Too slow.") : show("Too slow, going on.");
+        return;
+      }
+      case "pod": {
+        const id = pick(s.target);
+        ring(id, s.avoid ? "red" : s.color); show(s.avoid ? `${id < 0 ? "Central" : "Pod " + (id + 1)} is red: don't touch.` : `Press ${id < 0 ? "the central" : "pod " + (id + 1)}.`);
+        const r = await waitPress([id], s.limitOn ? s.limit * 1000 : s.avoid ? 2000 : null);
+        if (!alive()) return "stop";
+        ring(id, s.colorAfter || "off");
+        if (s.avoid) { r ? miss("Touched the red pod.") : show("Left it alone. Good."); return; }
+        if (r) { if (s.record) sim.times.push(r.ms); show(`${id < 0 ? "Central" : "Pod " + (id + 1)}: ${r.ms} ms`); } else s.tooSlow === "miss" ? miss("Too slow.") : show("Too slow, going on.");
+        return;
+      }
+      case "race": {
+        const ids = [...(s.includeCentral ? [-1] : []), ...Array(p.pods).keys()];
+        const red = new Set(s.avoidOn ? [...ids].sort(() => Math.random() - 0.5).slice(0, Math.min(s.avoidCount, ids.length - 1)) : []);
+        const green = new Set(ids.filter((i) => !red.has(i)));
+        ids.forEach((i) => (sim.rings[i] = red.has(i) ? "red" : s.color)); show(`Hit every ${s.color} pod.`);
+        const t0 = performance.now();
+        while (green.size) {
+          const left = s.limitOn ? s.limit * 1000 - (performance.now() - t0) : null;
+          if (left !== null && left <= 0) { s.tooSlow === "miss" ? miss("Too slow.") : show("Too slow."); break; }
+          const r = await waitPress(ids, left);
+          if (!alive()) return "stop";
+          if (!r) { s.tooSlow === "miss" ? miss("Too slow.") : show("Too slow."); break; }
+          if (red.has(r.id)) { ids.forEach((i) => (sim.rings[i] = "red")); s.avoidMiss ? miss("Red pod hit.") : show("Red pod hit."); await sleep(1000); ids.forEach((i) => (sim.rings[i] = "off")); return "endRound"; }
+          if (green.has(r.id)) { green.delete(r.id); sim.rings[r.id] = "off"; if (s.record) sim.times.push(Math.round(performance.now() - t0)); show(`${r.id < 0 ? "Central" : "Pod " + (r.id + 1)} after ${Math.round(performance.now() - t0)} ms`); }
+        }
+        return;
+      }
+      case "off": Object.keys(sim.rings).forEach((k) => (sim.rings[k] = "off")); show(); return;
+      case "count": sim[s.var] = (s.op === "+" ? sim[s.var] || 0 : 0) + s.value; if (s.var === "MISSES") sim.misses = sim.MISSES; return;
+      case "results": {
+        const t = sim.times, parts = [];
+        if (s.count) parts.push(`${t.length} presses`);
+        if (s.avg && t.length) parts.push(`average ${Math.round(t.reduce((a, b) => a + b, 0) / t.length)} ms`);
+        if (s.best && t.length) parts.push(`best ${Math.min(...t)} ms`);
+        if (s.worst && t.length) parts.push(`worst ${Math.max(...t)} ms`);
+        sim.result = parts.join(", ") || "No times recorded."; return;
+      }
+    }
+  }
+  for (let r = 1; r <= p.rounds && alive(); r++) {
+    sim.round = r; show();
+    for (const s of p.round) { const res = await exec(s); if (res === "endRound" || res === "stop") break; }
+  }
+  for (const s of p.end) { if (!alive()) return; await exec(s); }
+  if (!alive()) return;
+  sim.running = false; sim.done = true; Object.keys(sim.rings).forEach((k) => (sim.rings[k] = "off")); show("Done.");
+}
+function stopSim() { simToken++; waiter = null; if (S.sim) S.sim.running = false; }
+
+// ---------- actions ----------
+const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const half = (v, d, lo = 0, hi = 30) => clampN(Math.round((v + d * 0.5) * 10) / 10, lo, hi);
+function cur() { return findStep(S.sheet.id)?.s; }
+function stepEdit(fn) { edit(() => fn(cur())); }
+function go(screen) { if (screen !== "simulate") stopSim(); S.screen = screen; S.sheet = null; render(); }
+function openEditor(p, origin) { setProg(p, origin); go("editor"); }
+const lookup = (id, o) => (o === "mine" ? S.mine : shipped).find((p) => p.id === id);
+function applyAdjust(fn) { edit((p) => fn(p)); }
+const ACT = {
+  noop() { toast("Not part of this prototype."); render(); },
+  path(d) {
+    S.path = d.v; S.expert = false; stopSim();
+    if (d.v === "first") { S.wiz = wizDefaults(); S.wizStep = 0; S.screen = "chooser"; S.sheet = null; }
+    if (d.v === "coach") { setProg(shipped[1], "shipped"); S.screen = "programs"; S.sheet = { kind: "adjust" }; }
+    if (d.v === "step") { setProg(shipped[1], "shipped"); S.screen = "editor"; const s = S.prog.round.find((x) => x.type === "press"); S.selected = s.id; S.sheet = { kind: "step", id: s.id }; }
+    if (d.v === "expert") { setProg(shipped[3], "shipped"); S.expert = true; S.screen = "editor"; S.sheet = { kind: "more" }; }
+    render();
+  },
+  jump(d) {
+    const k = d.v; stopSim(); S.sheet = null;
+    if (k.startsWith("wiz")) { S.screen = "wizard"; S.wizStep = +k.slice(3); }
+    else if (["programs", "chooser", "editor", "simulate"].includes(k)) { if (k !== "programs" && k !== "chooser" && !S.prog) setProg(shipped[1], "shipped"); S.screen = k; }
+    else if (k === "ready") { if (!S.prog) setProg(generate(S.wiz), "new"); S.screen = "ready"; }
+    else { if (!S.prog) setProg(shipped[1], "shipped"); if (k === "adjust") S.screen = "programs"; else S.screen = "editor";
+      if (k === "step") { const s = S.prog.round.find((x) => x.type === "press") || S.prog.round[0]; S.selected = s.id; S.sheet = { kind: "step", id: s.id }; }
+      else if (k === "add") S.sheet = { kind: "add", where: { list: "round" } };
+      else S.sheet = { kind: k }; }
+    render();
+  },
+  tab(d) { if (d.v === "editor" && !S.prog) setProg(shipped[1], "shipped"); go(d.v); },
+  go(d) { go(d.v); },
+  newProg() { go("chooser"); },
+  startWizard() { S.wiz = wizDefaults(); S.wizStep = 0; go("wizard"); },
+  startCopy() { go("programs"); toast("Pick a program and tap Adjust, or open it and duplicate it."); render(); },
+  startEmpty() { const p = generate(S.wiz); p.round = []; p.end = []; p.name = "New program"; p.rounds = 1; S.mine.unshift(p); S.expert = true; openEditor(p, "mine"); toast("Expert mode is on for an empty program."); render(); },
+  wizBack() { if (S.screen === "ready") { S.screen = "wizard"; S.wizStep = 4; render(); return; } if (S.wizStep === 0) go("chooser"); else { S.wizStep--; render(); } },
+  wizNext() { if (S.wizStep < 4) { S.wizStep++; render(); } else { setProg(generate(S.wiz), "new"); go("ready"); } },
+  wizGame(d) { S.wiz.game = d.v; S.wiz.pods = Math.max(S.wiz.pods, GAMES[d.v].min); if (d.v === "solo") S.wiz.pods = 0; if (d.v === "duo") S.wiz.pods = 1; S.wiz.falseStart = d.v === "solo"; render(); },
+  wizPods(d) { S.wiz.pods = clampN(S.wiz.pods + +d.d, 0, 7); render(); },
+  wizRounds(d) { S.wiz.rounds = clampN(S.wiz.rounds + +d.d, 1, 99); render(); },
+  wizPauseMode(d) { S.wiz.pauseMode = d.v; render(); },
+  wizPauseMin(d) { S.wiz.pauseMin = half(S.wiz.pauseMin, +d.d); render(); },
+  wizPauseMax(d) { S.wiz.pauseMax = half(S.wiz.pauseMax, +d.d); render(); },
+  wizPauseFixed(d) { S.wiz.pauseFixed = half(S.wiz.pauseFixed, +d.d); render(); },
+  wizLimit(d) { S.wiz.limit = half(S.wiz.limit, +d.d, 0.5); render(); },
+  wizColor(d) { S.wiz.color = d.v; render(); },
+  wizAvoid(d) { S.wiz.avoidCount = clampN(S.wiz.avoidCount + +d.d, 1, Math.max(1, S.wiz.pods)); render(); },
+  tg(d) {
+    const [scope, key] = d.k.includes(".") ? d.k.split(".") : ["", d.k];
+    if (d.k === "expert") { S.expert = !S.expert; render(); return; }
+    if (scope === "wiz") { S.wiz[key] = !S.wiz[key]; render(); return; }
+    if (scope === "st") {
+      stepEdit((s) => {
+        s[key] = !s[key];
+        if (key === "longOn" && s.longOn && !s.longMs) s.longMs = 1;
+        if (key === "avoid" && s.avoid) s.record = false;
+        if (key === "limitOn" && !s.limitOn) s.tooSlow = "next";
+      });
+      return;
+    }
+    if (scope === "a") {
+      applyAdjust((p) => {
+        const timedSteps = allSteps(p).filter((s) => "limitOn" in s);
+        if (key === "limitOn") { const on = !timedSteps.some((s) => s.limitOn); timedSteps.forEach((s) => { s.limitOn = on; s.limit ||= 2; }); }
+        if (key === "record") { const on = !timedSteps.some((s) => s.record); timedSteps.forEach((s) => { if (!s.avoid) s.record = on; }); }
+        if (key === "results") { const i = p.end.findIndex((s) => s.type === "results"); i >= 0 ? p.end.splice(i, 1) : p.end.push(mk("results", { avg: true, best: true, worst: false, count: true })); }
+      });
+    }
+  },
+  progName(d, el) { if (S.prog) { edit((p) => (p.name = el.value || p.name)); } },
+  progDesc(d, el) { edit((p) => (p.desc = el.value)); },
+  trySim() { if (!S.prog) return; S.from = S.sheet?.kind === "adjust" ? "programs" : S.screen; S.sim = null; go("simulate"); },
+  simBack() { stopSim(); go(S.from || "editor"); },
+  simStart() { runSim(); },
+  simStop() { stopSim(); S.sim.log = "Stopped."; render(); },
+  podTap(d) { const id = +d.v; if (waiter && waiter.ids.includes(id)) waiter.hit(id); else if (S.sim?.running) { S.sim.log = "Not now: that pod is not waiting for a press."; render(); } },
+  toEditor() { if (S.origin === "new") { S.mine.unshift(S.prog); S.origin = "mine"; } else if (S.origin === "shipped" && S.sheet?.kind === "adjust") { /* keep */ } go("editor"); },
+  saveMenu() { if (S.origin === "new") { S.mine.unshift(structuredClone(S.prog)); S.origin = "mine"; } go("programs"); toast(`"${S.prog.name}" is in the menu. Push it on the Pod page.`); render(); },
+  openProg(d) { const p = lookup(d.id, d.o); openEditor(p, d.o); if (d.o === "shipped") { toast("Shipped program: your first change makes your own copy."); render(); } },
+  adjust(d) { const p = lookup(d.id, d.o); setProg(p, d.o); S.sheet = { kind: "adjust" }; render(); },
+  saveAdjust() {
+    if (S.origin === "shipped") { const c = structuredClone(S.prog); c.id = "p" + uid++; c.name += " (my copy)"; S.mine.unshift(c); S.prog = c; S.origin = "mine"; toast(`Saved as "${c.name}".`); }
+    else { saveMine(); toast("Saved."); }
+    S.sheet = null; render();
+  },
+  sheet(d) { S.sheet = { kind: d.v }; render(); },
+  closeSheet() { S.sheet = null; render(); },
+  selStep(d) { S.selected = d.id; S.sheet = { kind: "step", id: d.id }; render(); },
+  undo() { if (!S.hist.length) return; S.fut.push(JSON.stringify(S.prog)); S.prog = JSON.parse(S.hist.pop()); saveMine(); if (S.sheet?.id && !findStep(S.sheet.id)) S.sheet = null; render(); },
+  redo() { if (!S.fut.length) return; S.hist.push(JSON.stringify(S.prog)); S.prog = JSON.parse(S.fut.pop()); saveMine(); render(); },
+  toastUndo() { const u = S.toast?.undo; S.toast = null; if (u) ACT.undo(); else render(); },
+  addTo(d) { S.sheet = { kind: "add", where: { list: d.v } }; render(); },
+  addAfter() { const f = findStep(S.sheet.id); S.sheet = { kind: "add", where: { list: f.list === S.prog.round ? "round" : "end", after: f.s.id } }; render(); },
+  addStep(d) {
+    const w = S.sheet.where, prev = S.prog.round.find((s) => s.limitOn);
+    const defs = {
+      led: { color: S.prog.menuColor, leds: "all" }, pause: { mode: "fixed", fixed: 1, min: 1, max: 3 },
+      press: { limitOn: !!prev, limit: prev?.limit || 2, tooSlow: prev?.tooSlow || "next", record: true, storeAs: "" },
+      pod: { target: "random", color: S.prog.menuColor, avoid: false, limitOn: !!prev, limit: prev?.limit || 2, tooSlow: "next", record: true, colorAfter: "off", storeAs: "" },
+      race: { color: S.prog.menuColor, avoidOn: false, avoidCount: 1, avoidColor: "red", includeCentral: true, limitOn: false, limit: 2, tooSlow: "next", record: true, syncStart: 20 },
+      off: {}, count: { var: "MISSES", op: "+", value: 1 }, decide: { left: "MISSES", right: 3 }, results: { avg: true, best: true, worst: false, count: true },
+    };
+    const s = mk(d.v, structuredClone(defs[d.v]));
+    edit((p) => { const list = w.list === "end" ? p.end : p.round; const i = w.after ? list.findIndex((x) => x.id === w.after) + 1 : list.length; list.splice(i, 0, s); });
+    S.selected = s.id; S.sheet = { kind: "step", id: s.id }; render();
+  },
+  recipe(d) {
+    if (d.v === "miss") edit((p) => p.round.forEach((s) => { if ("limitOn" in s && !s.avoid) { s.limitOn = true; s.limit ||= 2; s.tooSlow = "miss"; } }));
+    if (d.v === "breath") edit((p) => p.round.push(mk("pause", { mode: "fixed", fixed: 2, min: 1, max: 3 })));
+    if (d.v === "flash") edit((p) => { const s = p.round.find((x) => x.type === "pause"); if (s) { s.catchEarly = true; s.earlyMiss = true; } });
+    S.sheet = null; toast("Recipe added.", true); render();
+  },
+  dupStep() { const f = findStep(S.sheet.id); const c = { ...structuredClone(f.s), id: "s" + uid++ }; edit(() => f.list.splice(f.i + 1, 0, c)); S.selected = c.id; S.sheet = { kind: "step", id: c.id }; render(); },
+  moveStep(d) { const id = S.sheet.id; edit(() => { const f = findStep(id), j = f.i + +d.d; [f.list[f.i], f.list[j]] = [f.list[j], f.list[f.i]]; }); },
+  delStep() { const f = findStep(S.sheet.id), t = describe(f.s); edit(() => f.list.splice(f.i, 1)); S.sheet = null; S.selected = null; toast(`Deleted "${t}".`, true); render(); },
+  dupProg() { const c = structuredClone(S.prog); c.id = "p" + uid++; c.name += " (copy)"; S.mine.unshift(c); setProg(c, "mine"); S.sheet = null; toast("Duplicated."); render(); },
+  stColor(d) { stepEdit((s) => (s.color = d.v)); },
+  stAfter(d) { stepEdit((s) => (s.colorAfter = d.v)); },
+  stLeds(d) { stepEdit((s) => (s.leds = d.v === "all" ? "all" : d.v === "half" ? [0, 2, 4, 6, 8, 10, 12, 14, 16] : [15, 16, 17, 0, 1, 2])); },
+  stPauseMode(d) { stepEdit((s) => (s.mode = d.v)); },
+  stMin(d) { stepEdit((s) => (s.min = half(s.min, +d.d))); },
+  stMax(d) { stepEdit((s) => (s.max = half(s.max, +d.d))); },
+  stFixed(d) { stepEdit((s) => (s.fixed = half(s.fixed, +d.d))); },
+  stLimit(d) { stepEdit((s) => (s.limit = half(s.limit, +d.d, 0.5))); },
+  stLong(d) { stepEdit((s) => (s.longMs = half(s.longMs || 1, +d.d, 0.5, 5))); },
+  stTooSlow(d) { stepEdit((s) => (s.tooSlow = d.v)); },
+  stTarget(d) { stepEdit((s) => (s.target = /^\d+$/.test(d.v) ? +d.v : d.v)); },
+  stAvoid(d) { stepEdit((s) => (s.avoidCount = clampN(s.avoidCount + +d.d, 1, 7))); },
+  stSync(d) { stepEdit((s) => (s.syncStart = clampN(s.syncStart + +d.d * 10, 0, 200))); },
+  stVar(d) { stepEdit((s) => (s.var = d.v)); },
+  stOp(d) { stepEdit((s) => (s.op = d.v)); },
+  stValue(d) { stepEdit((s) => (s.value = clampN(s.value + +d.d, 0, 99))); },
+  stRight(d) { stepEdit((s) => (s.right = clampN(s.right + +d.d, 0, 99))); },
+  stStoreAs(d, el) { stepEdit((s) => (s.storeAs = el.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))); },
+  pPods(d) { edit((p) => (p.pods = clampN(p.pods + +d.d, 0, 7))); },
+  pRounds(d) { applyAdjust((p) => (p.rounds = clampN(p.rounds + +d.d, 1, 99))); },
+  pMenu(d) { edit((p) => (p.menuColor = d.v)); },
+  aPauseMode(d) { applyAdjust((p) => p.round.filter((s) => s.type === "pause").forEach((s) => (s.mode = d.v))); },
+  aMin(d) { applyAdjust((p) => p.round.filter((s) => s.type === "pause").forEach((s) => (s.min = half(s.min, +d.d)))); },
+  aMax(d) { applyAdjust((p) => p.round.filter((s) => s.type === "pause").forEach((s) => (s.max = half(s.max, +d.d)))); },
+  aFixed(d) { applyAdjust((p) => p.round.filter((s) => s.type === "pause").forEach((s) => (s.fixed = half(s.fixed, +d.d)))); },
+  aLimit(d) { applyAdjust((p) => allSteps(p).filter((s) => "limitOn" in s).forEach((s) => (s.limit = half(s.limit || 2, +d.d, 0.5)))); },
+};
+document.addEventListener("click", (e) => { const el = e.target.closest("[data-act]"); if (!el || el.disabled) return; const f = ACT[el.dataset.act]; if (f) { e.preventDefault(); f(el.dataset, el); } });
+document.addEventListener("change", (e) => { const el = e.target.closest("[data-in]"); if (el && ACT[el.dataset.in]) ACT[el.dataset.in](el.dataset, el); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S.sheet) { S.sheet = null; render(); } });
+render();
+})();
+</script>

@@ -240,6 +240,9 @@ type SyncState = {            // per pod set (setId), remembered after each sync
 
 ## 7. Editor
 
+> Proposed redesign for untrained users and coaches (simple step view, switches for optional
+> features, game wizard, expert mode): [editor-ux.md](editor-ux.md). Not implemented yet.
+
 ### 7.1 Graph
 
 - All blocks in **one column**, one card per block. Header: icon + type colour + block name + type.
