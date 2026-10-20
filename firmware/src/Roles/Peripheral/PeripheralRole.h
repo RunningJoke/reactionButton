@@ -14,9 +14,13 @@
  *              central, if unpaired) claims it. Holding the button 3 s clears the pairing.
  *   READY      off. Sends PING every 200 ms (heartbeat + clock sync).
  *   SCHEDULED  armed with a start time; lights up when the synchronised clock reaches it.
- *   ACTIVE     lit, waiting for a press. The reaction time is measured locally from the
- *              moment the LEDs were updated to the button edge.
+ *   ACTIVE     lit (colorActive, or the ARM's waiting effect), waiting for a press. The
+ *              reaction time is measured locally from the moment the LEDs were updated to
+ *              the button edge.
  *   DONE       pressed and reported, waiting for RESET or the next ARM.
+ *
+ * EFFECT frames play an effect on the ring in any claimed state; they do not change the
+ * state. Effect start times are converted to the local clock with ClockSync.
  *
  * Without PONG from the central for 2 s the pod goes back to UNCLAIMED and can be
  * claimed again (e.g. after a central reboot).
@@ -44,7 +48,9 @@ class PeripheralRole : public IRole {
 
         void handleFrame(const RxFrame& frame);
         void handleClaim(const RxFrame& frame);
-        void handleArm(const Protocol::Arm& arm);
+        void handleArm(const RxFrame& frame);
+        void handleEffect(const Protocol::Effect& effect);
+        int64_t localStartUs(int64_t centralUs) const;
         void activate();
         void becomeUnclaimed();
         void sendPing();
@@ -70,6 +76,9 @@ class PeripheralRole : public IRole {
         uint8_t colorActive = Protocol::Color::GREEN;
         uint8_t colorAfter = Protocol::Color::OFF;
         int64_t scheduledLocalUs = 0;
+        bool hasWaitingEffect = false;
+        Protocol::EffectDesc waitingEffect;
+        int64_t waitingEffectStartUs = 0;      // local; 0 = at activation
         int64_t activatedUs = 0;
         uint32_t pressCountAtActivation = 0;
 };

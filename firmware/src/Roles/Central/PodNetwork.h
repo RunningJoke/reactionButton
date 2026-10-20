@@ -16,6 +16,8 @@
  * - A peripheral that rebooted announces itself again; it is re-claimed with its old id.
  * - Answers PINGs (heartbeat + clock sync). A pod without PING for POD_TIMEOUT_US is lost.
  * - The central's esp_timer is the network time base.
+ * - Remembers which pods play effects (CLAIM_ACK linkFeatures); older pods get no EFFECT
+ *   frames and a plain ARM.
  * - Runs the program store sync with the peripherals (StoreSync), only while allowed.
  */
 class PodNetwork : public IPodNetwork {
@@ -36,7 +38,7 @@ class PodNetwork : public IPodNetwork {
         bool isStarted() const { return this->link.isStarted(); }
         bool isSyncing() const { return this->sync.isPulling(); }
 
-        // Connection data of every pod: id, mac, alive, lastSeenMs, link statistics
+        // Connection data of every pod: id, mac, alive, lastSeenMs, effects, link statistics
         void describe(JsonArray out) const;
 
         uint8_t podCount() const override { return (uint8_t)this->pods.size(); }
@@ -45,6 +47,8 @@ class PodNetwork : public IPodNetwork {
         void reset(uint8_t podId) override;
         bool pollEvent(PodEvent& event) override;
         int64_t nowUs() const override { return esp_timer_get_time(); }
+        bool supportsEffects(uint8_t podId) const override;
+        bool effect(uint8_t podId, const Protocol::EffectDesc& effect, int64_t startAtUs) override;
 
     private:
         static const int64_t POD_TIMEOUT_US = 1500000;
@@ -54,6 +58,7 @@ class PodNetwork : public IPodNetwork {
             uint8_t mac[6];
             int64_t lastSeenUs = 0;
             uint8_t cmdSeq = 0;
+            uint8_t linkFeatures = 0;   // Protocol::LINK_FEATURE_*
         };
 
         int16_t findPod(const uint8_t* mac) const;

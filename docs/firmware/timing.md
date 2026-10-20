@@ -32,6 +32,11 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
 - **No blocking calls** in the game path. Delays, waiting for presses and waiting for
   radio frames all return to the loop. The only blocking spots are the 2 s boot animation
   and a 0.5 s white flash when pairing is cleared.
+- **Effects** (firmware ≥ 2.8) are computed on each pod from the synchronised clock, so pods
+  with the same start time change their LEDs in the same loop pass (± clock sync error).
+  Without a running effect `LEDManager::service()` returns at once. While a smooth effect
+  runs on an armed pod, a press can be seen up to one `show()` (~0.6 ms) later; the
+  reaction time is still measured from the first LED update of the activation.
 - **LEDs are only rewritten on changes.** The peripheral no longer refreshes its LEDs every
   pass, so its loop runs in the µs range and polls the button and the radio queue very often.
 - **Busy loop**: `loop()` still never sleeps. WiFi power save is off, so the radio is
@@ -43,6 +48,8 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
 |---|---|---|
 | Peripheral, idle / waiting for press | button read + empty queues | a few µs |
 | Peripheral, pass with an LED change | one `NeoPixel::show()` (18 LEDs ≈ 0.54 ms + latch) | ~0.6–1 ms |
+| Any pod, effect animating, frame unchanged | compute one frame (18 LEDs, a few colour scalings) | a few µs more |
+| Any pod, effect animating, new frame | one `show()`, at most every 16 ms (smooth effects: `dim`, `colorShift`, `pulse`) | ~0.6–1 ms |
 | Central, RUN, waiting block | button, `network.service()`, one `execute()` | µs range |
 | Central, RUN, block chain | instant blocks in one pass (max 32), one `show()` per LED block | ~0.6–1 ms per LED block |
 | Any `Serial.print` / `ESP_LOGx` | USB-CDC output (log level DEBUG) | variable |
@@ -60,7 +67,7 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
 | PodNetwork | pod timeout | 1.5 s without frames | game PAUSED |
 | | claim timeout | 0.5 s | try the next HELLO |
 | EspNowLink | tx timeout | 100 ms without send callback | counted as failed attempt |
-| | retries | ARM/RESET 5, PRESSED 8, CLAIM 3, PING/PONG 0 | |
+| | retries | ARM/RESET/EFFECT 5, PRESSED 8, CLAIM 3, PING/PONG 0 | |
 | | queue | 8 frames per peer | oldest non-sent frame dropped when full |
 | ClockSync | window | 8 samples (1.6 s), min-delay sample used | |
 | `remoteMultiPress` | `syncStartMs` | 20 ms (per block) | lead time for synchronous start |
@@ -72,6 +79,8 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
 | `main.cpp` | boot animation | 2000 ms, refresh every 10 ms | role decision at the end |
 | `BootupAnimation.h` | step | 50 ms per LED → 900 ms per revolution | |
 | `ErrorAnimation.h` | blink | 1000 ms on / 1000 ms off | |
+| `LEDManager` | `MIN_FRAME_US` | 16 ms | minimum time between two effect frames |
+| | default period | 1000 ms | `blink`, `pulse`, `spin` with `periodMs` 0 |
 | `CentralRole::runModelSelector` | ramp step | counter +1 every ~10 ms while held | |
 | | short press | release after ≤ 1.0 s | next program |
 | | dead zone | release after 1.0 … 1.8 s | nothing |
