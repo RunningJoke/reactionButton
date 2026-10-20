@@ -166,7 +166,8 @@ the central ([StoreSync](../../firmware/src/Store/StoreSync.cpp), [ProgramStore]
 
 Only on the central, only in the program menu. When a program is selected, BLE is shut
 down, and then ESP-NOW starts. The two radios never run at the same time. The program
-upload/download API is described in [config-api.md](config-api.md).
+upload/download API is described in [config-api.md](config-api.md). (Only the test build of
+#38 keeps BLE on during the game, see [testing.md](testing.md) §8 and ADR 0005.)
 
 | Characteristic | UUID | Props | Meaning |
 |---|---|---|---|
