@@ -11,9 +11,8 @@ import { isObject } from "@reactpod/program-model";
 import { resolveProgram, validateProgram } from "@reactpod/program-model";
 import { AdjustSheet } from "../programs/AdjustSheet";
 import { useEditCopy } from "../programs/actions";
-import { usePodSession } from "../pod/session";
 import { fileName } from "../programs/catalog";
-import { simulateUrl, useProgramSource, viewUrl, type SourceId } from "../programs/sources";
+import { simulateUrl, useProgramSource, validateOptionsOf, viewUrl, type SourceId } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import styles from "./ProgramViewPage.module.css";
 
@@ -29,8 +28,6 @@ export function ProgramViewPage() {
   const editCopy = useEditCopy();
   const localCopy = useWorkspace((s) => s.programs.some((p) => p.path === path));
   const [adjusting, setAdjusting] = useState(false);
-  // the connected pod's program format (missing on old firmware → 1); no pod → no limit
-  const programFormat = usePodSession((s) => (s.state === "connected" ? (s.info?.programFormat ?? 1) : undefined));
 
   const view = useMemo(() => {
     const read = source.read;
@@ -44,10 +41,10 @@ export function ProgramViewPage() {
     }
     const isProgram = isObject(doc) && typeof doc.name === "string" && !isLibraryPath(path);
     const resolved = isProgram
-      ? validateProgram(path, read, { supportedTypes: source.supportedTypes, programFormat })
+      ? validateProgram(path, read, validateOptionsOf(source))
       : resolveProgram(path, read);
     return { resolved, isProgram, graph: buildGraph(resolved) };
-  }, [path, source.read, source.supportedTypes, programFormat]);
+  }, [path, source]);
 
   if (!view) {
     return (

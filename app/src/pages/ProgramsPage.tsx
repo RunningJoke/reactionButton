@@ -7,7 +7,7 @@ import { buildCatalog, type CatalogEntry } from "../programs/catalog";
 import { AdjustSheet, type AdjustTarget } from "../programs/AdjustSheet";
 import { NewProgramModal, useTakenPaths } from "../programs/actions";
 import { SetArchiveButtons } from "../programs/SetArchiveButtons";
-import { editorUrl, useProgramSource, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
+import { editorUrl, useProgramSource, validateOptionsOf, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
 import { parseProgramText, useWorkspace } from "../store/workspace";
 import { usePodSession } from "../pod/session";
 import page from "./Page.module.css";
@@ -147,8 +147,8 @@ function ImportButton() {
 
 function useCatalog(source: ProgramSource) {
   return useMemo(
-    () => buildCatalog(Object.keys(source.files), source.read, { supportedTypes: source.supportedTypes }),
-    [source.files, source.read, source.supportedTypes],
+    () => buildCatalog(Object.keys(source.files), source.read, validateOptionsOf(source)),
+    [source.files, source.read, source.supportedTypes, source.programFormat],
   );
 }
 
