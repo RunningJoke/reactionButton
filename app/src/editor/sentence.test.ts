@@ -64,12 +64,20 @@ describe("step sentences", () => {
   it("describes counting, choosing and deciding in words", () => {
     expect(en_({ type: "setVariable", var: "MISSES", op: "+", value: 1 })).toBe("Add 1 to MISSES");
     expect(en_({ type: "setVariable", var: "MISSES", value: 0 })).toBe("Set MISSES to 0");
-    expect(en_({ type: "setVariable", var: "SEL", op: "random", value: "REQUIRED_PERIPHERALS" })).toBe("Choose a random pod (SEL)");
-    expect(en_({ type: "setVariable", var: "SEL", op: "randomOther", value: "NODE_COUNT" })).toBe("Choose a random pod or the central (SEL), never the same twice");
+    expect(en_({ type: "setVariable", var: "SEL", op: "random", value: "REQUIRED_PERIPHERALS" })).toBe("Choose a random pod");
+    expect(en_({ type: "setVariable", var: "SEL", op: "randomOther", value: "NODE_COUNT" })).toBe("Choose a random pod or the central, never the same twice");
     expect(en_({ type: "if", left: "MISSES", op: ">=", right: 3 })).toBe("Check: is MISSES at least 3?");
     expect(en_({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" })).toBe("Check: is SEL equal to the number of pods?");
     expect(en_({ type: "summary", metric: "reaction", storeAverage: "A", storeBest: "B" })).toBe("Show the results: average, best");
     expect(en_({ type: "summary", metric: "reaction" })).toBe("Show the results");
+  });
+
+  it("shows fixed settings as their values", () => {
+    const values = { PAUSE_MS: 2000, AVOID_COUNT: 2, TARGET: 1 };
+    expect(en_({ type: "delay", ms: "PAUSE_MS" }, { values })).toBe("Wait 2 s");
+    expect(en_({ type: "remoteMultiPress", avoid: "AVOID_COUNT" }, { values })).toBe("Light all pods green at once, wait until each one is pressed · 2 of them red: don't touch");
+    expect(en_({ type: "remoteMultiPress", avoid: "AVOID_COUNT" }, { values: { AVOID_COUNT: 0 } })).toBe("Light all pods green at once, wait until each one is pressed");
+    expect(en_({ type: "remotePress", pod: "TARGET" }, { values })).toBe("Light pod 2 green, wait for the press");
   });
 
   it("uses a label function for settings", () => {

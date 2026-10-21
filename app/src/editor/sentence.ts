@@ -13,7 +13,7 @@ export type SentenceOptions = {
   label?: (name: string) => string;
   /** variables picked at random as a pod ("the chosen pod") */
   chosenPods?: ReadonlySet<string>;
-  /** start values of the variables, to show a round count as a number */
+  /** values of settings no step changes: shown as numbers ("Wait 2 s" for PAUSE_MS = 2000) */
   values?: Readonly<Record<string, number>>;
 };
 
@@ -36,18 +36,28 @@ function makeLabel(t: TFunction, options: SentenceOptions) {
 /** One sentence for a block. */
 export function stepSentence(block: Block, t: TFunction, options: SentenceOptions = {}): string {
   const label = makeLabel(t, options);
-  const value = (v: unknown) => (typeof v === "number" ? String(v) : typeof v === "string" ? label(v) : "?");
-  const time = (v: unknown) => (typeof v === "number" ? t("sentence.seconds", { value: seconds(v, t) }) : value(v));
-  const range = (min: unknown, max: unknown) =>
-    typeof min === "number" && typeof max === "number"
+  const known = (v: unknown) => (typeof v === "string" && typeof options.values?.[v] === "number" ? options.values[v] : v);
+  const value = (raw: unknown) => {
+    const v = known(raw);
+    return typeof v === "number" ? String(v) : typeof v === "string" ? label(v) : "?";
+  };
+  const time = (raw: unknown) => {
+    const v = known(raw);
+    return typeof v === "number" ? t("sentence.seconds", { value: seconds(v, t) }) : value(v);
+  };
+  const range = (rawMin: unknown, rawMax: unknown) => {
+    const [min, max] = [known(rawMin), known(rawMax)];
+    return typeof min === "number" && typeof max === "number"
       ? t("sentence.secondsRange", { min: seconds(min, t), max: seconds(max, t) })
       : t("sentence.range", { min: value(min), max: value(max) });
+  };
   const color = (c: unknown, fallback = "green") => {
     if (Array.isArray(c)) return t("sentence.customColor");
     const name = namedColor(c ?? fallback);
     return name ? t(`colors.${name}`) : value(c);
   };
-  const pod = (p: unknown) => {
+  const pod = (raw: unknown) => {
+    const p = known(raw);
     if (typeof p === "number") return t("sentence.pod", { n: p + 1 });
     if (typeof p === "string" && options.chosenPods?.has(p)) return t("sentence.chosenPod");
     if (typeof p === "string") return t("sentence.podIn", { name: label(p) });
@@ -65,7 +75,7 @@ export function stepSentence(block: Block, t: TFunction, options: SentenceOption
       return some ? t("sentence.ledSome", { count, color: color(block.color) }) : t("sentence.ledAll", { color: color(block.color) });
     }
     case "delay":
-      if (block.ms === 0) return t("sentence.noWait");
+      if (known(block.ms) === 0) return t("sentence.noWait");
       if (block.ms !== undefined) return t("sentence.wait", { time: time(block.ms) });
       if (block.minMs !== undefined || block.maxMs !== undefined) return t("sentence.waitRandom", { time: range(block.minMs, block.maxMs) });
       return t("sentence.wait", { time: "?" });
@@ -91,13 +101,14 @@ export function stepSentence(block: Block, t: TFunction, options: SentenceOption
     }
     case "remoteMultiPress": {
       const c = color(block.hitColor, "green");
-      const all = block.pods === undefined || block.pods === "REQUIRED_PERIPHERALS";
+      const pods = known(block.pods);
+      const all = pods === undefined || pods === "REQUIRED_PERIPHERALS";
       const base =
         all ? t("sentence.multiAll", { color: c })
-        : typeof block.pods === "number" ? t("sentence.multiSome", { count: block.pods, color: c })
+        : typeof pods === "number" ? t("sentence.multiSome", { count: pods, color: c })
         : t("sentence.multiVar", { value: value(block.pods), color: c });
       const parts: string[] = [];
-      if (block.avoid !== undefined && block.avoid !== 0) parts.push(t("sentence.multiAvoid", { value: value(block.avoid), color: color(block.avoidColor, "red") }));
+      if (block.avoid !== undefined && known(block.avoid) !== 0) parts.push(t("sentence.multiAvoid", { value: value(block.avoid), color: color(block.avoidColor, "red") }));
       if (block.includeCentral === false) parts.push(t("sentence.withoutCentral"));
       parts.push(...limit(block));
       return join(base, parts);

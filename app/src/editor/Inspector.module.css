@@ -330,6 +330,14 @@ textarea.input {
   cursor: pointer;
 }
 
+/* step list: move and delete at the top of the sheet */
+.stepActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
 .action[data-danger] {
   color: var(--error);
   border-color: color-mix(in srgb, var(--error) 50%, var(--border));

@@ -234,7 +234,9 @@
       "addEndOfRound": "added at the end of the round",
       "addEnd": "added at the end",
       "addAfter": "added after step {{n}}",
-      "empty": "This program has no steps yet. Add the first one with +."
+      "empty": "This program has no steps yet. Add the first one with +.",
+      "count_one": "{{count}} step",
+      "count_other": "{{count}} steps"
     }
   },
   "simulate": {
@@ -837,10 +839,10 @@
     "add": "Add {{value}} to {{var}}",
     "subtract": "Subtract {{value}} from {{var}}",
     "set": "Set {{var}} to {{value}}",
-    "randomPod": "Choose a random pod ({{var}})",
-    "randomPodOther": "Choose a random pod ({{var}}), never the same twice",
-    "randomNode": "Choose a random pod or the central ({{var}})",
-    "randomNodeOther": "Choose a random pod or the central ({{var}}), never the same twice",
+    "randomPod": "Choose a random pod",
+    "randomPodOther": "Choose a random pod, never the same twice",
+    "randomNode": "Choose a random pod or the central",
+    "randomNodeOther": "Choose a random pod or the central, never the same twice",
     "randomNumber": "Set {{var}} to a random number below {{value}}",
     "randomNumberOther": "Set {{var}} to a new random number below {{value}}",
     "if": "Check: is {{left}} {{op}} {{right}}?",

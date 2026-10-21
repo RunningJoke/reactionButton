@@ -234,7 +234,9 @@
       "addEndOfRound": "kommt ans Ende der Runde",
       "addEnd": "kommt ans Ende",
       "addAfter": "kommt nach Schritt {{n}}",
-      "empty": "Dieses Programm hat noch keine Schritte. Füge den ersten mit + hinzu."
+      "empty": "Dieses Programm hat noch keine Schritte. Füge den ersten mit + hinzu.",
+      "count_one": "{{count}} Schritt",
+      "count_other": "{{count}} Schritte"
     }
   },
   "simulate": {
@@ -837,10 +839,10 @@
     "add": "{{value}} zu {{var}} addieren",
     "subtract": "{{value}} von {{var}} abziehen",
     "set": "{{var}} auf {{value}} setzen",
-    "randomPod": "Zufälligen Pod wählen ({{var}})",
-    "randomPodOther": "Zufälligen Pod wählen ({{var}}), nie zweimal derselbe",
-    "randomNode": "Zufälligen Pod oder die Zentrale wählen ({{var}})",
-    "randomNodeOther": "Zufälligen Pod oder die Zentrale wählen ({{var}}), nie zweimal derselbe",
+    "randomPod": "Zufälligen Pod wählen",
+    "randomPodOther": "Zufälligen Pod wählen, nie zweimal derselbe",
+    "randomNode": "Zufälligen Pod oder die Zentrale wählen",
+    "randomNodeOther": "Zufälligen Pod oder die Zentrale wählen, nie zweimal derselbe",
     "randomNumber": "{{var}} auf eine Zufallszahl unter {{value}} setzen",
     "randomNumberOther": "{{var}} auf eine neue Zufallszahl unter {{value}} setzen",
     "if": "Prüfen: ist {{left}} {{op}} {{right}}?",

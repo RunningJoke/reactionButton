@@ -1,23 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, Lock, MoreVertical, Play, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow } from "lucide-react";
+import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, ListOrdered, Lock, MoreVertical, Play, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
 import { Sheet } from "../components/Sheet";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
 import { BlockInspector, type InspectorContext } from "../editor/BlockInspector";
 import { columnLayout } from "../editor/columnLayout";
 import { lastOpenedProgram, useEditor } from "../editor/editorStore";
-import { addBlock, deleteBlock, flattenIncludes, insertTemplate, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
+import { addBlock, addStep, deleteBlock, deleteStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
 import { Palette } from "../editor/Palette";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
 import { ProgramSettings } from "../editor/ProgramSettings";
+import { StepListView } from "../editor/StepListView";
+import { flatProgram, stepList, type Step } from "../editor/structure";
+import { UndoToast } from "../editor/UndoToast";
 import { DEFAULT_FILES } from "../defaults";
 import { blockType } from "@reactpod/program-model";
 import { formatProgram } from "@reactpod/program-model";
 import { buildGraph } from "../model/graph";
 import { isLibraryPath } from "@reactpod/program-model";
-import { BUILTIN_VARIABLES, isObject } from "@reactpod/program-model";
+import { BUILTIN_VARIABLES, isObject, type Block } from "@reactpod/program-model";
 import { validateProgram } from "@reactpod/program-model";
 import { DeleteProgramModal, downloadProgram, NewProgramModal } from "../programs/actions";
 import { useProgramSource } from "../programs/sources";
@@ -85,6 +88,23 @@ function NoProgram() {
 }
 
 type Panel = "palette" | "settings" | "issues" | null;
+/** simple view (step list) or today's block column; the toggle is temporary until expert mode (P8e) */
+type View = "steps" | "blocks";
+
+/** The step a new step goes after: the selected one, or the last step of the (first) round. */
+function insertionPoint(steps: readonly Step[], selected: string | null, own: ReadonlySet<string>): { after: string | null; where: "selected" | "round" | "end"; number?: string } {
+  const picked = steps.find((s) => s.block === selected && !s.loop);
+  if (picked && own.has(picked.block)) return { after: picked.block, where: "selected", number: picked.number };
+  const loop = steps.findIndex((s) => s.loop && !s.unreachable);
+  if (loop >= 0) {
+    const depth = steps[loop]!.depth + 1;
+    let last: Step | undefined;
+    for (let i = loop + 1; i < steps.length && steps[i]!.depth >= depth; i++) if (steps[i]!.depth === depth && !steps[i]!.loop) last = steps[i];
+    if (last && own.has(last.block)) return { after: last.block, where: "round" };
+  }
+  const top = steps.filter((s) => s.depth === 0 && !s.loop && !s.unreachable).pop();
+  return { after: top && own.has(top.block) ? top.block : null, where: "end" };
+}
 
 function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const { t } = useTranslation();
@@ -97,6 +117,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [deleting, setDeleting] = useState<ProgramDoc | null>(null);
+  const [view, setView] = useState<View>("steps");
+  const [toast, setToast] = useState<{ text: string; at: number } | null>(null);
   const json = doc.json;
 
   const model = useMemo(() => {
@@ -120,7 +142,12 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     }
     const variables = [...new Set([...Object.keys(resolved.variables), ...written, ...BUILTIN_VARIABLES])];
     const library = [...new Set([...Object.keys(DEFAULT_FILES), ...Object.keys(podFiles ?? {})])].filter(isLibraryPath).sort();
-    return { resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read };
+    const blocks = resolved.blocks.filter((b) => isObject(b.block) && typeof b.block.name === "string").map((b) => b.block as Block);
+    const flat = flatProgram(json, blocks, graph.start);
+    const steps = stepList(flat);
+    const blockMap = new Map(blocks.map((b) => [b.name, b]));
+    const own = new Set(graph.nodes.filter((n) => n.own && !n.external).map((n) => n.id));
+    return { resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
   }, [json, doc.path, source, podFiles]);
 
   const { resolved, graph } = model;
@@ -128,6 +155,14 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const warnings = resolved.issues.length - errors;
   const selectedNode = graph.nodes.find((n) => n.id === selected) ?? null;
   const taken = useMemo(() => new Set(model.names), [model.names]);
+
+  const remove = (name: string) => {
+    const next = view === "steps" ? deleteStep(json, name, model.flat) : deleteBlock(json, name);
+    if (next === json) return;
+    apply(next, { select: null });
+    setToast({ text: t("editor.step.deleted"), at: useEditor.getState().past.length });
+  };
+  const move = (name: string, direction: "up" | "down") => moveStep(json, name, direction, model.flat);
 
   const ctx: InspectorContext = {
     json,
@@ -150,7 +185,17 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
       setPending({ from, port });
       setPanel("palette");
     },
+    remove,
+    step:
+      view === "steps" && selected
+        ? {
+            canUp: move(selected, "up") !== json,
+            canDown: move(selected, "down") !== json,
+            move: (direction) => apply(move(selected, direction), { select: selected }),
+          }
+        : undefined,
   };
+  const insertAt = insertionPoint(model.steps, selected, model.own);
 
   const pick = (type: string) => {
     let next: ProgramJson;
@@ -158,6 +203,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     if (pending) {
       ({ doc: next, name } = addBlock(json, type, taken, null));
       next = setBlockField(next, pending.from, pending.port, name);
+    } else if (view === "steps") {
+      ({ doc: next, name } = addStep(json, type, taken, insertAt.after));
     } else {
       const after = selectedNode?.own && !selectedNode.external ? selectedNode.id : null;
       ({ doc: next, name } = addBlock(json, type, taken, after));
@@ -189,12 +236,12 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
         e.preventDefault();
         redo();
       } else if (e.key === "Delete" && selectedNode?.own && !selectedNode.external && !model.lockedBy.has(selectedNode.id)) {
-        apply(deleteBlock(json, selectedNode.id), { select: null });
+        remove(selectedNode.id);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, apply, json, selectedNode, model.lockedBy]);
+  });
 
   const name = typeof json.name === "string" && json.name ? json.name : t("editor.untitled");
   const ownBlock = selectedNode?.own && !selectedNode.external ? (json.blocks as ProgramJson[] | undefined)?.find((b) => b.name === selectedNode.id) : undefined;
@@ -205,8 +252,14 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
         <button className={styles.title} onClick={() => setPanel(panel === "settings" ? null : "settings")} aria-label={t("editor.settings")}>
           <h2>{name}</h2>
           <span className={styles.sub}>
-            <Users size={13} aria-hidden /> {t("programs.pods", { count: Number(json.peripherals ?? 0) + 1 })} · {t("programs.blocks", { count: resolved.blocks.length })} ·{" "}
-            <code>{doc.path}</code>
+            <Users size={13} aria-hidden /> {t("programs.pods", { count: Number(json.peripherals ?? 0) + 1 })} ·{" "}
+            {view === "steps" ? (
+              t("editor.step.count", { count: model.steps.filter((s) => !s.loop).length })
+            ) : (
+              <>
+                {t("programs.blocks", { count: resolved.blocks.length })} · <code>{doc.path}</code>
+              </>
+            )}
           </span>
         </button>
         <button className={styles.icon} onClick={undo} disabled={past.length === 0} aria-label={t("editor.undo")} title={t("editor.undo")}>
@@ -237,8 +290,19 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
       <div className={styles.graph}>
         {graph.nodes.length === 0 ? (
           <div className={page.empty}>
-            <p>{t("editor.emptyProgram")}</p>
+            <p>{view === "steps" ? t("editor.step.empty") : t("editor.emptyProgram")}</p>
           </div>
+        ) : view === "steps" ? (
+          <StepListView
+            steps={model.steps}
+            blocks={model.blockMap}
+            own={model.own}
+            issues={resolved.issues}
+            supportedTypes={source.supportedTypes}
+            values={resolved.variables}
+            selected={panel ? null : selected}
+            onSelect={ctx.select}
+          />
         ) : (
           <ProgramColumnView graph={graph} selected={panel ? null : selected} onSelect={ctx.select} />
         )}
@@ -249,15 +313,27 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             setPending(null);
             setPanel("palette");
           }}
-          aria-label={t("editor.addBlock")}
-          title={t("editor.addBlock")}
+          aria-label={view === "steps" ? t("editor.step.addToRound") : t("editor.addBlock")}
+          title={view === "steps" ? t("editor.step.addToRound") : t("editor.addBlock")}
         >
           <Plus size={26} aria-hidden />
         </button>
 
         {panel === "palette" && (
           <Palette
-            context={pending ? `${pending.from} · ${t(`ports.${pending.port}`)} →` : (selectedNode?.own && !selectedNode.external ? t("editor.addAfter", { name: selectedNode.id }) : null)}
+            context={
+              pending
+                ? `${pending.from} · ${t(`ports.${pending.port}`)} →`
+                : view === "steps"
+                  ? insertAt.where === "selected"
+                    ? t("editor.step.addAfter", { n: insertAt.number })
+                    : insertAt.after
+                      ? t(insertAt.where === "round" ? "editor.step.addEndOfRound" : "editor.step.addEnd")
+                      : null
+                  : selectedNode?.own && !selectedNode.external
+                    ? t("editor.addAfter", { name: selectedNode.id })
+                    : null
+            }
             templates={model.library}
             supportedTypes={source.supportedTypes}
             onPick={pick}
@@ -285,6 +361,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           </Sheet>
         )}
         {!panel && ownBlock && <BlockInspector key={ownBlock.name as string} block={ownBlock as never} ctx={ctx} />}
+        {toast && past.length === toast.at && <UndoToast text={toast.text} onUndo={undo} onClose={() => setToast(null)} />}
         {!panel && selectedNode && !ownBlock && (
           <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select}>
             {!selectedNode.external && (
@@ -298,6 +375,10 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
 
       <Modal open={menuOpen} title={name} onClose={() => setMenuOpen(false)}>
         <div className={styles.menu}>
+          <button onClick={() => (setMenuOpen(false), setView(view === "steps" ? "blocks" : "steps"))} aria-pressed={view === "blocks"}>
+            {view === "steps" ? <Workflow size={18} aria-hidden /> : <ListOrdered size={18} aria-hidden />} {t("editor.step.view")}:{" "}
+            {view === "steps" ? t("editor.step.viewBlocks") : t("editor.step.viewSteps")}
+          </button>
           <button onClick={() => (setMenuOpen(false), setPanel("settings"))}>
             <Settings2 size={18} aria-hidden /> {t("editor.settings")}
           </button>

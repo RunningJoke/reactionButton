@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Flag, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Flag, Plus, Trash2 } from "lucide-react";
 import { Sheet } from "../components/Sheet";
 import { BLOCK_TYPES, blockType, SET_OPS, type FieldDef } from "@reactpod/program-model";
 import type { Block } from "@reactpod/program-model";
@@ -26,6 +26,10 @@ export type InspectorContext = {
   addConnected: (from: string, port: string) => void;
   /** opens the palette to insert a block after this one */
   addAfter: (name: string) => void;
+  /** deletes a block (the editor offers undo); default: deleteBlock without asking */
+  remove?: (name: string) => void;
+  /** step list (simple view): move the step within its list */
+  step?: { canUp: boolean; canDown: boolean; move: (direction: "up" | "down") => void };
 };
 
 /** Editable block: name, type, parameters, connections, actions. */
@@ -35,6 +39,7 @@ export function BlockInspector({ block, ctx }: { block: Block; ctx: InspectorCon
   const Icon = blockIcon(block.type);
   const locked = ctx.lockedBy.get(block.name);
   const isStart = ctx.isProgram && ctx.json.start === block.name;
+  const remove = () => (ctx.remove ? ctx.remove(block.name) : ctx.apply(deleteBlock(ctx.json, block.name), { select: null }));
   const set = (field: string, value: unknown, merge = true) =>
     ctx.apply(setBlockField(ctx.json, block.name, field, value), merge ? { mergeKey: `${block.name}.${field}` } : undefined);
 
@@ -56,6 +61,19 @@ export function BlockInspector({ block, ctx }: { block: Block; ctx: InspectorCon
       }
       onClose={() => ctx.select(null)}
     >
+      {ctx.step && (
+        <div className={styles.stepActions}>
+          <button className={styles.action} disabled={!ctx.step.canUp} onClick={() => ctx.step!.move("up")}>
+            <ArrowUp size={18} aria-hidden /> {t("editor.step.moveUp")}
+          </button>
+          <button className={styles.action} disabled={!ctx.step.canDown} onClick={() => ctx.step!.move("down")}>
+            <ArrowDown size={18} aria-hidden /> {t("editor.step.moveDown")}
+          </button>
+          <button className={styles.action} data-danger disabled={!!locked} onClick={() => remove()} aria-label={t("editor.step.deleteStep")} title={t("editor.step.deleteStep")}>
+            <Trash2 size={18} aria-hidden />
+          </button>
+        </div>
+      )}
       <NameField block={block} ctx={ctx} locked={locked} />
       <div className={styles.field}>
         <label className={styles.label} htmlFor="block-type">
@@ -110,7 +128,7 @@ export function BlockInspector({ block, ctx }: { block: Block; ctx: InspectorCon
         >
           <Copy size={18} aria-hidden /> {t("editor.duplicate")}
         </button>
-        <button className={styles.action} data-danger disabled={!!locked} onClick={() => ctx.apply(deleteBlock(ctx.json, block.name), { select: null })}>
+        <button className={styles.action} data-danger disabled={!!locked} onClick={remove}>
           <Trash2 size={18} aria-hidden /> {t("editor.delete")}
         </button>
       </div>
