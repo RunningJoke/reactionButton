@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isLibraryPath, isValidPath, PROGRAM_FORMAT, validateProgram, type Issue } from "@reactpod/program-model";
+import { isLibraryPath, isValidPath, programFormatOf, validateProgram, type Issue } from "@reactpod/program-model";
 import type { Ports } from "../../core/ports";
 import { AppError, invalidInput } from "../../core/errors";
 
@@ -10,6 +10,7 @@ export type CheckedProgram = {
   issues: Issue[];
   errors: number;
   warnings: number;
+  /** the program format revision the program needs, with its includes (programs.md §6) */
   programFormat: number;
 };
 
@@ -42,7 +43,7 @@ export function checkProgram(ports: Ports, path: string, text: string): CheckedP
     issues: resolved.issues,
     errors,
     warnings: resolved.issues.length - errors,
-    programFormat: PROGRAM_FORMAT,
+    programFormat: programFormatOf(resolved),
   };
 }
 

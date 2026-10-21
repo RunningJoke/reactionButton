@@ -372,7 +372,24 @@
     "unknownField": "Unknown setting {{field}} is ignored by the pod",
     "indexInvalid": "The menu file is invalid",
     "indexDuplicate": "{{path}} is in the menu twice",
-    "indexNotProgram": "{{path}} is a library part, not a program"
+    "indexNotProgram": "{{path}} is a library part, not a program",
+    "tooManyTimers": "{{count}} different stopwatches, the pod allows {{max}}",
+    "fieldNeedsFormat": "The connected pod ignores {{field}} (needs program format {{format}}, firmware update needed)",
+    "timerNeverStopped": "Stopwatch {{name}} is started but never stopped",
+    "timerNeverStarted": "Stopwatch {{name}} is stopped but never started",
+    "repeatNoLoop": "No step of the round leads back to this repeat"
+  },
+  "portRoles": {
+    "then": "Then",
+    "ifTooSlow": "If too slow",
+    "ifLeftAlone": "If left alone",
+    "shortPress": "Short press",
+    "longPress": "Long press",
+    "ifRedHit": "If a red pod is hit",
+    "ifYes": "If yes",
+    "ifNo": "If no",
+    "eachRound": "Each round",
+    "afterLast": "After the last round"
   },
   "view": {
     "back": "Back",
@@ -421,7 +438,9 @@
     "timeout": "timeout",
     "true": "true",
     "false": "false",
-    "avoidHit": "red hit"
+    "avoidHit": "red hit",
+    "body": "round",
+    "done": "done"
   },
   "blocks": {
     "led": {
@@ -459,6 +478,10 @@
     "summary": {
       "name": "Summary",
       "help": "Average, best and worst of a measurement, printed on the serial console."
+    },
+    "repeat": {
+      "name": "Repeat",
+      "help": "Runs the round (body) a number of times, then continues at done. The last step of the round leads back here."
     }
   },
   "common": {
@@ -577,6 +600,21 @@
     },
     "reset": {
       "label": "Reset measurements afterwards"
+    },
+    "count": {
+      "label": "Rounds",
+      "help": "How many times the round runs."
+    },
+    "storeIndex": {
+      "label": "Keep round number in"
+    },
+    "timerStart": {
+      "label": "Start stopwatch",
+      "help": "Starts this stopwatch when the step begins."
+    },
+    "timerStop": {
+      "label": "Stop stopwatch",
+      "help": "When the step ends, records the time since the start under this name."
     }
   },
   "ops": {

@@ -372,7 +372,24 @@
     "unknownField": "Unbekannte Angabe {{field}} wird vom Pod ignoriert",
     "indexInvalid": "Die Menüdatei ist ungültig",
     "indexDuplicate": "{{path}} steht doppelt im Menü",
-    "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Programm"
+    "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Programm",
+    "tooManyTimers": "{{count}} verschiedene Stoppuhren, der Pod erlaubt {{max}}",
+    "fieldNeedsFormat": "Der verbundene Pod ignoriert {{field}} (braucht Programmformat {{format}}, Firmware-Update nötig)",
+    "timerNeverStopped": "Stoppuhr {{name}} wird gestartet, aber nie gestoppt",
+    "timerNeverStarted": "Stoppuhr {{name}} wird gestoppt, aber nie gestartet",
+    "repeatNoLoop": "Kein Schritt der Runde führt zu dieser Wiederholung zurück"
+  },
+  "portRoles": {
+    "then": "Dann",
+    "ifTooSlow": "Wenn zu langsam",
+    "ifLeftAlone": "Wenn nicht gedrückt",
+    "shortPress": "Kurz gedrückt",
+    "longPress": "Lang gedrückt",
+    "ifRedHit": "Wenn ein roter Pod gedrückt wird",
+    "ifYes": "Wenn ja",
+    "ifNo": "Wenn nein",
+    "eachRound": "Jede Runde",
+    "afterLast": "Nach der letzten Runde"
   },
   "view": {
     "back": "Zurück",
@@ -421,7 +438,9 @@
     "timeout": "Zeit um",
     "true": "wahr",
     "false": "falsch",
-    "avoidHit": "rot gedrückt"
+    "avoidHit": "rot gedrückt",
+    "body": "Runde",
+    "done": "fertig"
   },
   "blocks": {
     "led": {
@@ -459,6 +478,10 @@
     "summary": {
       "name": "Auswertung",
       "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
+    },
+    "repeat": {
+      "name": "Wiederholen",
+      "help": "Führt die Runde (body) mehrmals aus und macht dann bei „fertig“ weiter. Der letzte Schritt der Runde führt hierher zurück."
     }
   },
   "common": {
@@ -577,6 +600,21 @@
     },
     "reset": {
       "label": "Messungen danach zurücksetzen"
+    },
+    "count": {
+      "label": "Runden",
+      "help": "Wie oft die Runde läuft."
+    },
+    "storeIndex": {
+      "label": "Rundennummer speichern in"
+    },
+    "timerStart": {
+      "label": "Stoppuhr starten",
+      "help": "Startet diese Stoppuhr, wenn der Schritt beginnt."
+    },
+    "timerStop": {
+      "label": "Stoppuhr stoppen",
+      "help": "Speichert am Ende des Schritts die Zeit seit dem Start unter diesem Namen."
     }
   },
   "ops": {

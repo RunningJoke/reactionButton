@@ -1,6 +1,7 @@
 /**
  * The block engine, ported from the firmware (src/BlockManager, src/Block/*) for the simulator
- * (docs/app/spec.md §8). Semantics: docs/firmware/programs.md §7. Deterministic: simulated time in whole ms, random
+ * (docs/app/spec.md §8). Semantics: docs/firmware/programs.md §7, program format 2 (timers §7.9,
+ * `repeat` §7.10). Deterministic: simulated time in whole ms, random
  * numbers from a seeded generator, one engine pass per simulated ms.
  *
  * Pod ids as on the pod (programs.md §1.3): peripherals 0 … n−1, the central n.
@@ -217,6 +218,11 @@ type SimBlock = {
   targets: Record<string, string | undefined>;
   /** port 0 is the fallback when it is "next" */
   ports: readonly string[];
+  /** timer names of `timerStart` / `timerStop` (programs.md §7.9) */
+  timerStart?: string;
+  timerStop?: string;
+  /** state kept across entries is reset when the program starts (Block::onProgramStart) */
+  programStart?: () => void;
   enter: (ctx: Ctx) => void;
   execute: (ctx: Ctx) => PortResult;
   /** time at which the block ends by itself (delay, timeout), for "skip wait" */
@@ -245,7 +251,7 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
   if (!def || typeof raw.name !== "string") return null;
   const targets: Record<string, string | undefined> = {};
   for (const port of def.ports) targets[port] = typeof raw[port] === "string" ? (raw[port] as string) : undefined;
-  const base = { name: raw.name, type: def.type, targets, ports: def.ports };
+  const base = { name: raw.name, type: def.type, targets, ports: def.ports, timerStart: str(raw.timerStart), timerStop: str(raw.timerStop) };
   const v = (field: string) => raw[field] as Value;
 
   switch (def.type) {
@@ -543,6 +549,28 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
         },
       };
     }
+
+    case "repeat": {
+      // RepeatBlock.cpp, programs.md §7.10: counted on execute (once per entry), not on enter
+      let counter = 0;
+      const storeIndex = str(raw.storeIndex);
+      return {
+        ...base,
+        programStart: () => {
+          counter = 0;
+        },
+        enter: () => undefined,
+        execute: (ctx) => {
+          counter++;
+          if (counter <= ctx.vars.read(v("count"))) {
+            if (storeIndex) ctx.vars.set(storeIndex, counter);
+            return "body";
+          }
+          counter = 0;
+          return "done";
+        },
+      };
+    }
   }
   return null;
 }
@@ -580,6 +608,8 @@ export type Snapshot = {
   measurements: Measurement[];
   log: LogEntry[];
   steps: number;
+  /** like `status.timers` (config-api.md §5): `timerStop`s without a running timer since the start */
+  timers: { orphanStops: number };
 };
 
 export type SimulatorOptions = { seed?: number; logLimit?: number };
@@ -602,6 +632,9 @@ export class Simulator {
   private entered = 0;
   private logEntries: LogEntry[] = [];
   private version = 0;
+  /** running timers: name → start time (programs.md §7.9) */
+  private readonly timers = new Map<string, number>();
+  private orphanStops = 0;
 
   constructor(program: ResolvedProgram, options: SimulatorOptions = {}) {
     const doc = program.doc ?? {};
@@ -647,6 +680,10 @@ export class Simulator {
       log: (kind, text) => this.log(kind, text),
     };
     this.stepsInPass = 0;
+    // BlockManager::start: onProgramStart of every block, all timers stopped, no orphan stops
+    for (const block of this.blocks.values()) block.programStart?.();
+    this.timers.clear();
+    this.orphanStops = 0;
     this.current = this.startName && this.blocks.has(this.startName) ? this.startName : null;
     this.running = this.current !== null;
     if (this.current) this.enter(this.current);
@@ -766,7 +803,19 @@ export class Simulator {
       measurements: [...results.all],
       log: [...this.logEntries],
       steps: this.entered,
+      timers: { orphanStops: this.orphanStops },
     };
+  }
+
+  /**
+   * A pause on the pod (a peripheral was lost, BlockManager::restartCurrentBlock): the current
+   * block is entered again, its times and random values are taken anew. The block is not left,
+   * so its timers are neither started nor stopped and keep running.
+   */
+  restartCurrentBlock() {
+    if (!this.running || !this.current) return;
+    this.enter(this.current, false);
+    this.version++;
   }
 
   /** Text of the log, like the pod's serial output with `trace on` (block events + RESULT / SUMMARY). */
@@ -807,6 +856,7 @@ export class Simulator {
   private leave(block: SimBlock, port: string): string | null {
     let next = block.targets[port];
     if (next === undefined && port !== block.ports[0] && block.ports[0] === "next") next = block.targets.next;
+    this.stopTimer(block); // after exit, before the next block's start, also when the program ends here
     if (next === undefined || !this.blocks.has(next)) {
       this.running = false;
       this.midPass = false;
@@ -819,8 +869,27 @@ export class Simulator {
     return next;
   }
 
-  private enter(name: string) {
-    this.blocks.get(name)!.enter(this.ctx);
+  /** BlockManager::stopTimer: records now − start for the central, or counts an orphan stop. */
+  private stopTimer(block: SimBlock) {
+    const name = block.timerStop;
+    if (name === undefined) return;
+    const start = this.timers.get(name);
+    if (start === undefined) {
+      this.orphanStops++;
+      this.log("info", `timer '${name}' stopped in '${block.name}' but not running`);
+      return;
+    }
+    this.timers.delete(name);
+    const ms = this.time - start;
+    this.ctx.results.record(this.time, name, this.centralId, ms);
+    this.log("result", `RESULT,${this.time},${name},${this.centralId},${ms}`);
+  }
+
+  /** BlockManager::enterCurrent; `applyTimers` = false after a pause (the block was not left). */
+  private enter(name: string, applyTimers = true) {
+    const block = this.blocks.get(name)!;
+    if (applyTimers && block.timerStart !== undefined) this.timers.set(block.timerStart, this.time); // restarts a running one
+    block.enter(this.ctx);
     this.entered++;
     this.logEntries.push({ t: this.time, kind: "enter", text: name, block: name });
     this.trimLog();
