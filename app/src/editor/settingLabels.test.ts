@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import i18next from "i18next";
 import en from "../i18n/en.json";
 import de from "../i18n/de.json";
-import { isMsSetting, settingLabel } from "./settingLabels";
+import { isMsSetting, settingLabel, settingRange, stepSetting, tweakableSettings } from "./settingLabels";
 import { VARS } from "../wizard/generate";
 
 const i18n = i18next.createInstance();
@@ -37,6 +37,27 @@ describe("setting labels", () => {
     expect(custom.fromDisplay(2)).toBe(2000);
     expect(isMsSetting("FLASH_MS")).toBe(true);
     expect(isMsSetting("ROUNDS")).toBe(false);
+  });
+
+  it("offers start values no block changes, without built-ins", () => {
+    const blocks = [
+      { name: "A", type: "setVariable", var: "RUNS", op: "+", value: 1 },
+      { name: "B", type: "repeat", count: "ROUNDS", storeIndex: "IDX", body: "A" },
+      { name: "C", type: "summary", metric: "reaction", storeAverage: "AVG_REACTION" },
+    ];
+    const variables = { ROUNDS: 12, RUNS: 0, IDX: 0, AVG_REACTION: 0, PAUSE_MS: 1000, NODE_COUNT: 3, BAD: "x" };
+    expect(tweakableSettings(variables, blocks)).toEqual(["ROUNDS", "PAUSE_MS"]);
+  });
+
+  it("steps times on a 0.5 s grid and keeps counts in range", () => {
+    const time = settingRange("PAUSE_MS", 0);
+    expect(stepSetting(1000, time, 1)).toBe(1500);
+    expect(stepSetting(800, time, 1)).toBe(1000);
+    expect(stepSetting(800, time, -1)).toBe(500);
+    expect(stepSetting(0, time, -1)).toBe(0);
+    const rounds = settingRange("MAX_LOOPS", 0);
+    expect(stepSetting(1, rounds, -1)).toBe(1);
+    expect(settingRange("AVOID_COUNT", 4).max).toBe(4);
   });
 
   it("labels every variable the wizard writes, in both languages", async () => {

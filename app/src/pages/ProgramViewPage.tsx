@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowLeft, CircleAlert, Info, Lock, Pencil, Play, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CircleAlert, Info, Lock, Pencil, Play, SlidersHorizontal, Users } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
@@ -9,7 +9,9 @@ import { buildGraph } from "../model/graph";
 import { isLibraryPath } from "@reactpod/program-model";
 import { isObject } from "@reactpod/program-model";
 import { resolveProgram, validateProgram } from "@reactpod/program-model";
+import { AdjustSheet } from "../programs/AdjustSheet";
 import { useEditCopy } from "../programs/actions";
+import { usePodSession } from "../pod/session";
 import { fileName } from "../programs/catalog";
 import { simulateUrl, useProgramSource, viewUrl, type SourceId } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
@@ -26,6 +28,9 @@ export function ProgramViewPage() {
   const [panel, setPanel] = useState<"info" | "issues" | null>(null);
   const editCopy = useEditCopy();
   const localCopy = useWorkspace((s) => s.programs.some((p) => p.path === path));
+  const [adjusting, setAdjusting] = useState(false);
+  // the connected pod's program format (missing on old firmware → 1); no pod → no limit
+  const programFormat = usePodSession((s) => (s.state === "connected" ? (s.info?.programFormat ?? 1) : undefined));
 
   const view = useMemo(() => {
     const read = source.read;
@@ -39,10 +44,10 @@ export function ProgramViewPage() {
     }
     const isProgram = isObject(doc) && typeof doc.name === "string" && !isLibraryPath(path);
     const resolved = isProgram
-      ? validateProgram(path, read, { supportedTypes: source.supportedTypes })
+      ? validateProgram(path, read, { supportedTypes: source.supportedTypes, programFormat })
       : resolveProgram(path, read);
     return { resolved, isProgram, graph: buildGraph(resolved) };
-  }, [path, source.read, source.supportedTypes]);
+  }, [path, source.read, source.supportedTypes, programFormat]);
 
   if (!view) {
     return (
@@ -101,6 +106,11 @@ export function ProgramViewPage() {
           </Link>
         )}
         {isProgram && (
+          <button className={styles.icon} onClick={() => setAdjusting(true)} aria-label={t("adjust.actionFor", { name })} title={t("adjust.action")}>
+            <SlidersHorizontal size={20} aria-hidden />
+          </button>
+        )}
+        {isProgram && (
           <button className={styles.edit} onClick={() => void editCopy(path, source.read(path)!, sourceId === "pod" ? "pod" : "default")}>
             <Pencil size={18} aria-hidden /> {localCopy ? t("view.openCopy") : t("view.edit")}
           </button>
@@ -118,6 +128,7 @@ export function ProgramViewPage() {
         <ProgramColumnView graph={graph} selected={selected} onSelect={setSelected} />
         {selectedNode && <BlockDetailsSheet node={selectedNode} known={new Set(graph.nodes.map((n) => n.id))} onSelect={setSelected} />}
       </div>
+      {adjusting && <AdjustSheet target={{ source: sourceId, path }} onClose={() => setAdjusting(false)} />}
     </div>
   );
 }
