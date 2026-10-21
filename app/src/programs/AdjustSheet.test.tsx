@@ -8,6 +8,10 @@ import { usePodSession } from "../pod/session";
 import { MemoryStorage } from "../store/programStore";
 import { useWorkspace } from "../store/workspace";
 import { AdjustSheet, type AdjustTarget } from "./AdjustSheet";
+import { ProgramSettings } from "../editor/ProgramSettings";
+import { useExpertModeStore } from "../editor/expertMode";
+import { generateProgram } from "../wizard/generate";
+import { defaultAnswers } from "../wizard/answers";
 
 const STERN = "/prog/stern.json";
 const POD_PROGRAM = { name: "Pod drill", peripherals: 1, variables: { MAX_LOOPS: 5, PAUSE_MS: 1000 }, include: ["/prog/lib/loop.json", "/prog/lib/star.json"], start: "StartLoop" };
@@ -73,6 +77,50 @@ describe("Adjust sheet", () => {
     expect((doc!.json.variables as Record<string, number>).MAX_LOOPS).toBe(4);
     // the pod's program is untouched
     expect(JSON.parse(usePodSession.getState().files["/prog/drill.json"]!).variables.MAX_LOOPS).toBe(5);
+  });
+
+  it("switches results off and a time limit on for my own program", async () => {
+    const json = generateProgram({ ...defaultAnswers("star", 3), timeLimit: null }, "repeat");
+    await useWorkspace.getState().add(json, "local", { path: "/prog/mine.json" });
+    show({ source: "local", path: "/prog/mine.json" });
+    expect(screen.getByText("Changes apply to the whole program.")).toBeTruthy();
+    const results = screen.getByRole("switch", { name: /Show results at the end/ }) as HTMLInputElement;
+    expect(results.checked).toBe(true);
+    fireEvent.click(results);
+    fireEvent.click(screen.getByRole("switch", { name: /Time limit/ }));
+    expect(screen.getByRole("group", { name: "Seconds to press" }).textContent).toContain("2 s");
+    fireEvent.click(screen.getByRole("radio", { name: "Count a miss and go on" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
+    await waitFor(() => expect(useWorkspace.getState().programs[0]!.json).not.toBe(json));
+    const saved = useWorkspace.getState().programs[0]!.json;
+    const blocks = saved.blocks as { type: string; timeoutMs?: unknown; var?: string }[];
+    expect(blocks.some((b) => b.type === "summary")).toBe(false);
+    expect(blocks.filter((b) => b.timeoutMs === 2000).length).toBeGreaterThan(0);
+    expect(blocks.some((b) => b.type === "setVariable" && b.var === "MISSES")).toBe(true);
+  });
+
+  it("says when a program built from library parts has nothing to switch", () => {
+    show({ source: "shipped", path: STERN });
+    expect(screen.getByText(/built from library parts/)).toBeTruthy();
+    expect(screen.queryByRole("switch")).toBeNull();
+  });
+
+  it("program sheet: expert section only in expert mode", () => {
+    const json = JSON.parse(DEFAULT_FILES[STERN]!);
+    const sheet = () => render(<ProgramSettings json={json} path={STERN} names={["StartLoop"]} library={[]} apply={() => {}} onFlatten={() => {}} onClose={() => {}} />);
+    useExpertModeStore.setState({ on: false });
+    sheet();
+    expect(screen.getByText("Settings you can tweak")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Rounds" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Pods besides the central" }).textContent).toContain("4");
+    expect(screen.queryByLabelText("Start block")).toBeNull();
+    cleanup();
+    useExpertModeStore.setState({ on: true });
+    sheet();
+    expect(screen.getByLabelText("Start block")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Convert to editable copy" })).toBeTruthy();
+    expect(screen.getByLabelText("Start value of MAX_LOOPS")).toBeTruthy();
+    useExpertModeStore.setState({ on: false });
   });
 
   it("changes my existing copy instead of making another one", async () => {

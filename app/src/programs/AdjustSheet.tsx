@@ -15,6 +15,17 @@ import { isReadOnly, usePodSession } from "../pod/session";
 import { useWorkspace } from "../store/workspace";
 import { saveAdjusted } from "./actions";
 import { editorUrl, simulateUrl, useProgramSource, type SourceId } from "./sources";
+import { OptionList, Stepper, SwitchRow } from "../wizard/controls";
+import { LIMITS } from "../wizard/answers";
+import {
+  programSwitchApplies,
+  programSwitchState,
+  programTimeLimit,
+  programTimeoutAction,
+  setProgramSwitch,
+  setProgramTimeLimit,
+  type ProgramSwitch,
+} from "./programSwitches";
 import styles from "./AdjustSheet.module.css";
 
 export type AdjustTarget = { source: SourceId; path: string };
@@ -99,7 +110,7 @@ export function AdjustSheet({ target, onClose }: { target: AdjustTarget; onClose
 
           <section className={styles.section} aria-label={t("adjust.wholeProgram")}>
             <h4 className={styles.heading}>{t("adjust.wholeProgram")}</h4>
-            <ProgramSwitches json={draft} path={target.path} read={source.read} apply={apply} />
+            <ProgramSwitches json={draft} apply={apply} />
           </section>
 
           <div className={styles.actions}>
@@ -139,10 +150,68 @@ export function AdjustSheet({ target, onClose }: { target: AdjustTarget; onClose
 }
 
 /** Time limit, record times, results at the end – for every press of the program (programSwitches.ts). */
-function ProgramSwitches(_: { json: ProgramJson; path: string; read: (path: string) => string | undefined; apply: (json: ProgramJson) => void }) {
-  // filled in once editor/switches.ts (agent B) is merged
-  return null;
+function ProgramSwitches({ json, apply }: { json: ProgramJson; apply: (json: ProgramJson) => void }) {
+  const { t } = useTranslation();
+  const locale = t("wizard.numberLocale");
+  const sec = (ms: number) => `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ms / 1000)} s`;
+  const applies = (["timeLimit", "record", "results"] as const).filter((id) => programSwitchApplies(json, id));
+  if (applies.length === 0) return <p className={styles.muted}>{t("adjust.noSwitches")}</p>;
+
+  const state = (id: ProgramSwitch) => programSwitchState(json, id);
+  const hint = (id: ProgramSwitch, on: string, off: string) => (state(id) === "mixed" ? t("adjust.mixed") : state(id) ? on : off);
+  const limit = programTimeLimit(json);
+  const action = programTimeoutAction(json);
+  const limitMs = typeof limit === "number" ? limit : undefined;
+
+  return (
+    <>
+      {applies.includes("timeLimit") && (
+        <SwitchRow
+          label={t("adjust.timeLimit")}
+          hint={hint("timeLimit", limitMs !== undefined ? t("adjust.timeLimitOn", { s: sec(limitMs) }) : t("adjust.timeLimitSetting"), t("adjust.timeLimitOff"))}
+          checked={state("timeLimit") === true}
+          onChange={(on) => apply(setProgramSwitch(json, "timeLimit", on))}
+        >
+          {limitMs !== undefined && (
+            <Stepper
+              label={t("adjust.secondsToPress")}
+              value={limitMs}
+              min={LIMITS.timeLimitMs.min}
+              max={LIMITS.timeLimitMs.max}
+              step={LIMITS.timeLimitMs.step}
+              format={sec}
+              onChange={(ms) => apply(setProgramTimeLimit(json, ms))}
+            />
+          )}
+          <OptionList<TimeoutChoice>
+            label={t("wizard.timing.tooSlow")}
+            value={action === "goOn" || action === "countMiss" || action === "endRound" ? action : ("" as TimeoutChoice)}
+            options={(["goOn", "countMiss", "endRound"] as const).map((v) => ({ value: v, label: t(`wizard.timing.onTimeout.${v}`) }))}
+            onChange={(v) => apply(setProgramSwitch(json, "timeLimit", true, { onTimeout: v }))}
+          />
+        </SwitchRow>
+      )}
+      {applies.includes("record") && (
+        <SwitchRow
+          label={t("adjust.record")}
+          hint={hint("record", t("adjust.recordHint"), t("adjust.recordHint"))}
+          checked={state("record") === true}
+          onChange={(on) => apply(setProgramSwitch(json, "record", on))}
+        />
+      )}
+      {applies.includes("results") && (
+        <SwitchRow
+          label={t("adjust.results")}
+          hint={t("adjust.resultsHint")}
+          checked={state("results") === true}
+          onChange={(on) => apply(setProgramSwitch(json, "results", on))}
+        />
+      )}
+    </>
+  );
 }
+
+type TimeoutChoice = "goOn" | "countMiss" | "endRound";
 
 /** Dims the page; the sheet sits at the bottom of the screen (or on the right on wide screens). */
 function Overlay({ onClose, children }: { onClose?: () => void; children: ReactNode }) {

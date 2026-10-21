@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 vi.mock("virtual:pwa-register/react", () => ({
   useRegisterSW: () => ({ needRefresh: [false, () => {}], offlineReady: [false, () => {}], updateServiceWorker: async () => {} }),
@@ -32,7 +32,8 @@ describe("New program chooser and game wizard", () => {
     expect(screen.getByRole("button", { name: /Copy one of my programs/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start empty/ }).textContent).toContain("For people who know blocks");
     fireEvent.click(screen.getByRole("button", { name: /Copy one of my programs/ }));
-    expect(await screen.findByRole("button", { name: /Solo/ })).toBeTruthy(); // shipped programs to copy
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("button", { name: /Solo/ })).toBeTruthy(); // shipped programs to copy
   });
 
   it("walks through the five questions to the Ready screen", async () => {
