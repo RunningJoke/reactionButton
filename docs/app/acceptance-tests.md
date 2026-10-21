@@ -80,6 +80,28 @@ them must work exactly as before (AT-R6).
 | AT-R5 | Settings → Platform: server of a test platform, sign in with the mail code, choose a club; link the athlete (new profile, consent); go offline, record reports, go online | the reports appear in the profile once; **Upload now** again creates no duplicates; discarding a report later updates only its flag |
 | AT-R6 | Real central without `reports` (firmware 2.7) | Pod tab says it sends no results yet; sync, push and all programs work as before |
 
+## E – Block builder (P8, [editor-ux.md](editor-ux.md))
+
+Demo pod or no pod unless stated; phone width (360 px) unless stated. "Format 1 pod" = a
+central with firmware before 2.8 (or the demo pod set to `programFormat` 1).
+
+| ID | Steps | Expected |
+|---|---|---|
+| AT-E1 | (P8a) Simulate a program with a `repeat` block (count 3) and a `timerStart` / `timerStop` pair; run the same program on a pod with firmware 2.8 and `trace on` | 3 passes through `body`, then `done`; one timer measurement per pass; same block sequence as the pod |
+| AT-E2 | (P8a) Editor: open a `button` step | only essentials and the switches *Time limit*, *Record reaction time*, *Long press*; no raw keys, no port selects |
+| AT-E3 | (P8a) Turn *Time limit* on, set 2 s, choose "If too slow → count a miss"; turn it off again | fields and the miss branch appear; turning off removes the fields and the branch; undo brings them back |
+| AT-E4 | (P8a) Set a random pause with shortest > longest | the problem shows in words on the card and at the top of the step sheet |
+| AT-E5 | (P8b) Open `solo.json`, `stern.json`, `run5.json` in the editor | numbered steps in sentences, the round loop as one "Repeat … rounds" bracket, branches as chips; no block or port names |
+| AT-E6 | (P8b) Move a step up and down inside the round, delete a step, tap Undo on the toast | links follow the move; the program still validates and simulates; undo restores the step and its links |
+| AT-E7 | (P8c) Programs → + → Start from a game: make each of the 5 games with the defaults | each finishes in ≤ 6 screens, the Ready screen tells the program as a short story, Try it runs it in the simulator |
+| AT-E8 | (P8c) Wizard with a format-2 pod connected, then with a format-1 pod | format 2: a `repeat` block; format 1: the `lib/loop` counter pattern; both show the same Repeat bracket in the editor and run the same in the simulator |
+| AT-E9 | (P8c) Save and add to menu, push to a real set, play a round | the program is in the pod's menu and runs like in the simulator |
+| AT-E10 | (P8d) + in the step list: add "Wait for a press" after a light, and the recipe "Count a miss when too slow" | the step gets values from the round (colour, time limit), never a placeholder variable; the recipe adds the counter and its branch |
+| AT-E11 | (P8e) Program sheet: change "Rounds" and "Shortest pause" | labelled steppers in seconds, not raw variable names; values in the file change |
+| AT-E12 | (P8e) Programs → Adjust on a local, a shipped and a pod program (also on a read-only pod), change rounds, Try it, Save | a local copy with the same path; the read-only case says the copy stays on this phone; the pod's program is unchanged until a push |
+| AT-E13 | (P8e) Turn on expert mode (Settings → Advanced), reload | today's block view, port selects and raw keys are back; the switch is remembered |
+| AT-E14 | Language de ↔ en on every new screen | all texts translated |
+
 ## U – Usability and platform
 
 | ID | Steps | Expected |
@@ -106,3 +128,4 @@ them must work exactly as before (AT-R6).
 | AT-P1 … AT-P13 | 2026-10-19 | – | 2.7 | accepted | P5 confirmed as implemented by Patrick Stähle |
 | AT-M1 … AT-M5 | 2026-10-19 | – | 2.7 | accepted | P6 confirmed as implemented by Patrick Stähle |
 | AT-R1 … AT-R6 | – | – | – | open | P7; real pods wait for #41 / #42 |
+| AT-E1 … AT-E14 | – | – | – | open | P8 in progress |

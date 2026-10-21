@@ -1,6 +1,6 @@
 # Block builder UX – simple by default, everything still reachable
 
-Status: **proposal**, for review. No app code has changed yet. The clickable prototype is
+Status: **approved as phase P8** (2026-10-21, [spec.md §13](spec.md#13-phases)). The clickable prototype is
 [`prototypes/editor-flow.html`](prototypes/editor-flow.html). It is a page fragment (no
 `<html>` wrapper) that opens in any browser and runs on its own: a game wizard, the step list, step
 sheets with working switches, expert mode and a small simulator.
@@ -8,7 +8,7 @@ sheets with working switches, expert mode and a small simulator.
 This document lists everything the block builder must let people do, who uses it and for what,
 and a redesigned flow. The flow hides optional things (measuring, storing, tuning) behind plain
 toggles and keeps the block-level view for people who want it. It extends
-[spec.md §7](spec.md#7-editor). Once the user approves it, it becomes phase P8 (§6 below).
+[spec.md §7](spec.md#7-editor) and is phase P8 (§6 below).
 
 ## 1. Today (what the code does)
 
@@ -251,8 +251,8 @@ read-only pod) and shipped (decision 3). Anything that is not already a local pr
 as a local copy with the same path, as Edit does today; the program on the pod stays as it is
 until the next push. The coach never has to open the editor for the weekly change.
 
-To review later: how Adjust on a read-only pod should end (the copy can't be pushed to that
-pod).
+On a read-only pod the sheet says so before saving: the copy is kept on this phone and can be
+tried in the simulator or pushed to another set (decision 3).
 
 ### H. Expert mode
 
@@ -287,7 +287,7 @@ Implementation: add `level: "essential" | "more" | "expert"` and an optional `gr
 to `FieldDef` in `packages/program-model/src/blockTypes.ts`, plus port labels per type. The app
 and the platform then read the same table.
 
-## 6. Proposed phase P8 (for approval)
+## 6. Phase P8
 
 | Step | Content |
 |---|---|
@@ -298,8 +298,9 @@ and the platform then read the same table.
 | P8e | Program sheet split, settings label table in the app (en + de), Adjust sheet on Programs for every source, expert mode switch |
 
 Each step gets acceptance tests in [acceptance-tests.md](acceptance-tests.md) before it is
-marked done. The demo pod and the simulator do not change: the redesign only changes how
-programs are edited. Generated programs use only blocks the firmware already has.
+marked done (AT-E*). Generated programs use only blocks the firmware already has. The
+simulator and the demo pod get format 2 (`repeat`, timers, programs.md §7.9, §7.10) in P8a;
+they do not have it yet, and the firmware does since 2.8.
 
 ## 7. Decisions (2026-10-21)
 
@@ -307,5 +308,5 @@ programs are edited. Generated programs use only blocks the firmware already has
    units. The program file gets no new key, so no firmware change is needed.
 2. **The wizard uses the `repeat` block** when the pod reports `programFormat` 2 or newer, and
    the `lib/loop` pattern otherwise.
-3. **Adjust is offered for programs on a read-only pod too.** It saves a local copy. The
-   behaviour will be reviewed later.
+3. **Adjust is offered for programs on a read-only pod too.** It saves a local copy and says
+   that the copy cannot be pushed to that pod. Implemented in P8e (confirmed 2026-10-21).
