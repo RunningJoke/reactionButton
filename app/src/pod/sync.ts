@@ -154,6 +154,8 @@ export type PlanOptions = {
   podFiles: Readonly<Record<string, string>>;
   list: ListResponse;
   supportedTypes?: readonly string[];
+  /** `info.programFormat` of the pod (missing → 1): newer blocks are errors, newer fields warnings */
+  programFormat?: number;
   /** paths to push; default: every file that needs a push */
   selected?: ReadonlySet<string>;
 };
@@ -205,7 +207,7 @@ function completePlan(uploads: Map<string, Upload>, skipped: FileSync[], options
     const found = issues.filter((i) => i.severity === "error");
     if (found.length) errors.set(path, found);
   };
-  const validateOptions = { supportedTypes: options.supportedTypes };
+  const validateOptions = { supportedTypes: options.supportedTypes, programFormat: options.programFormat };
   if (menuUpload) {
     for (const [path, issues] of validateStore(read, validateOptions)) keep(path, issues);
   }

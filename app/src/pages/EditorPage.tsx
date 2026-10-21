@@ -8,12 +8,13 @@ import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
 import type { InspectorContext } from "../editor/BlockInspector";
 import { columnLayout } from "../editor/columnLayout";
 import { lastOpenedProgram, useEditor } from "../editor/editorStore";
-import { addBlock, addStep, deleteBlock, deleteStep, duplicateStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
+import { addBlock, deleteBlock, deleteStep, duplicateStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
 import { useExpertMode } from "../editor/expertMode";
 import { sentenceOptions } from "../editor/sentence";
 import { settingLabel } from "../editor/settingLabels";
 import { RoundSheet, StepSheet } from "../editor/StepSheet";
 import { Palette } from "../editor/Palette";
+import { AddStepSheet } from "../editor/AddStepSheet";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
 import { ProgramSettings } from "../editor/ProgramSettings";
 import { StepListView } from "../editor/StepListView";
@@ -27,7 +28,7 @@ import { isLibraryPath } from "@reactpod/program-model";
 import { BUILTIN_VARIABLES, isObject, type Block } from "@reactpod/program-model";
 import { validateProgram } from "@reactpod/program-model";
 import { DeleteProgramModal, downloadProgram, NewProgramModal } from "../programs/actions";
-import { useProgramSource } from "../programs/sources";
+import { useProgramSource, validateOptionsOf } from "../programs/sources";
 import { usePodSession } from "../pod/session";
 import type { ProgramDoc } from "../store/programStore";
 import { useWorkspace } from "../store/workspace";
@@ -129,9 +130,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const model = useMemo(() => {
     const text = formatProgram(json);
     const read = (p: string) => (p === doc.path ? text : source.read(p));
-    // TODO(agent A): ProgramSource.programFormat; read through a cast until it is in this branch
-    const programFormat = (source as { programFormat?: number }).programFormat;
-    const resolved = validateProgram(doc.path, read, { supportedTypes: source.supportedTypes, programFormat });
+    const resolved = validateProgram(doc.path, read, validateOptionsOf(source));
     const graph = buildGraph(resolved);
     const order = columnLayout(graph).order;
     const defined = new Set(graph.nodes.filter((n) => !n.external).map((n) => n.id));
@@ -155,7 +154,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     const blockMap = new Map(blocks.map((b) => [b.name, b]));
     const own = new Set(graph.nodes.filter((n) => n.own && !n.external).map((n) => n.id));
     const sentence = sentenceOptions(blocks, resolved.variables, (n) => settingLabel(n, t).label);
-    return { programFormat, sentence, resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
+    return { sentence, resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
   }, [json, doc.path, source, podFiles, t]);
 
   const { resolved, graph } = model;
@@ -209,19 +208,11 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   };
   const insertAt = insertionPoint(model.steps, selected, model.own);
 
+  /** expert: a new block of `type` on the port that asked for it ("new block…") */
   const pick = (type: string) => {
-    let next: ProgramJson;
-    let name: string;
-    if (pending) {
-      ({ doc: next, name } = addBlock(json, type, taken, null));
-      next = setBlockField(next, pending.from, pending.port, name);
-    } else if (view === "steps") {
-      ({ doc: next, name } = addStep(json, type, taken, insertAt.after));
-    } else {
-      const after = selectedNode?.own && !selectedNode.external ? selectedNode.id : null;
-      ({ doc: next, name } = addBlock(json, type, taken, after));
-    }
-    apply(next, { select: name });
+    if (!pending) return;
+    const { doc: added, name } = addBlock(json, type, taken, null);
+    apply(setBlockField(added, pending.from, pending.port, name), { select: name });
     setPending(null);
     setPanel(null);
   };
@@ -333,20 +324,25 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           <Plus size={26} aria-hidden />
         </button>
 
-        {/* SWAP(agent A): replace this Palette with <AddStepSheet doc={json} after={insertAt.after ?? undefined} supportedTypes={source.supportedTypes} programFormat={model.programFormat} onAdd={(next, focus) => (apply(next, { select: focus }), setPanel(null))} onClose={() => setPanel(null)} /> */}
-        {panel === "palette" && (
+        {panel === "palette" && !pending && (
+          <AddStepSheet
+            doc={json}
+            after={(view === "steps" ? insertAt.after : selectedNode?.own && !selectedNode.external ? selectedNode.id : null) ?? undefined}
+            supportedTypes={source.supportedTypes}
+            programFormat={source.programFormat}
+            taken={taken}
+            library={{ paths: model.library, read: model.read }}
+            onAdd={(next, focus) => {
+              apply(next, { select: focus });
+              setPanel(null);
+            }}
+            onClose={() => setPanel(null)}
+          />
+        )}
+        {/* expert: "new block…" in a port select connects a block of the chosen type to that port */}
+        {panel === "palette" && pending && (
           <Palette
-            context={
-              pending
-                ? `${pending.from} · ${t(`ports.${pending.port}`)} →`
-                : view === "steps"
-                  ? insertAt.where === "selected"
-                    ? t("editor.step.addAfter", { n: insertAt.number })
-                    : t(insertAt.where === "round" ? "editor.step.addEndOfRound" : "editor.step.addEnd")
-                  : selectedNode?.own && !selectedNode.external
-                    ? t("editor.addAfter", { name: selectedNode.id })
-                    : null
-            }
+            context={`${pending.from} · ${t(`ports.${pending.port}`)} →`}
             templates={model.library}
             supportedTypes={source.supportedTypes}
             onPick={pick}

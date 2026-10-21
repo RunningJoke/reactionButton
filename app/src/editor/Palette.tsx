@@ -44,22 +44,29 @@ export function Palette({ context, templates, supportedTypes, onPick, onTemplate
           </div>
         </section>
       ))}
-      {templates.length > 0 && (
-        <section className={styles.paletteGroup}>
-          <h4>{t("editor.templates")}</h4>
-          <p className={styles.fieldHelp}>{t("editor.templatesHelp")}</p>
-          <div className={styles.paletteGrid}>
-            {templates.map((path) => (
-              <button key={path} type="button" className={styles.paletteItem} onClick={() => onTemplate(path)}>
-                <BookLock size={20} aria-hidden />
-                <span>
-                  <strong>{path.split("/").pop()!.replace(/\.json$/, "")}</strong>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+      <LibraryParts paths={templates} onPick={onTemplate} />
     </Sheet>
+  );
+}
+
+/** Library parts to copy into the program (templates); nothing without parts. Also used by AddStepSheet in expert mode. */
+export function LibraryParts({ paths, title, help, onPick }: { paths: readonly string[]; title?: string; help?: string; onPick: (path: string) => void }) {
+  const { t } = useTranslation();
+  if (paths.length === 0) return null;
+  return (
+    <section className={styles.paletteGroup}>
+      <h4>{title ?? t("editor.templates")}</h4>
+      <p className={styles.fieldHelp}>{help ?? t("editor.templatesHelp")}</p>
+      <div className={styles.paletteGrid}>
+        {paths.map((path) => (
+          <button key={path} type="button" className={styles.paletteItem} onClick={() => onPick(path)}>
+            <BookLock size={20} aria-hidden />
+            <span>
+              <strong>{path.split("/").pop()!.replace(/\.json$/, "")}</strong>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

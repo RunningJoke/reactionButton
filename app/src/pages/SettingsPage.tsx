@@ -7,6 +7,8 @@ import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
 import { isReadOnly, needsPin, usePodSession } from "../pod/session";
 import { deleteFiles } from "../pod/syncActions";
+import { useExpertMode } from "../editor/expertMode";
+import { SwitchRow } from "../wizard/controls";
 import { PlatformSettings } from "./PlatformSettings";
 import styles from "./Page.module.css";
 
@@ -65,9 +67,11 @@ function DebugConsole() {
   const { t } = useTranslation();
   const log = usePodSession((s) => s.log);
   const clearLog = usePodSession((s) => s.clearLog);
+  const [expert, setExpert] = useExpertMode();
   return (
     <section className={styles.section}>
       <h2>{t("settings.advanced")}</h2>
+      <SwitchRow label={t("settings.expertMode")} hint={t("settings.expertModeHint")} checked={expert} onChange={setExpert} />
       <details className={styles.details}>
         <summary>{t("settings.console")}</summary>
         <p className={styles.muted}>{t("settings.consoleHint")}</p>

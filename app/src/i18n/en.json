@@ -329,6 +329,81 @@
       "roundLocked": "{{count}} rounds, set in a library part",
       "addToEachRound": "Add a step to each round"
     },
+    "add": {
+      "title": "Add a step",
+      "afterStep": "Inserted after step {{n}}",
+      "endOfRound": "Added at the end of the round",
+      "end": "Added at the end",
+      "first": "The first step of the program",
+      "recipes": "Recipes",
+      "steps": "Single steps",
+      "library": "Library parts",
+      "libraryHint": "Inserted as a copy. To link a part as a preset, use the program settings.",
+      "intent": {
+        "light": {
+          "name": "Light up the central",
+          "hint": "Colour and which LEDs"
+        },
+        "pause": {
+          "name": "Pause",
+          "hint": "Fixed or random, can catch early presses"
+        },
+        "press": {
+          "name": "Wait for a press",
+          "hint": "On the central, with optional time limit"
+        },
+        "pod": {
+          "name": "Light a pod",
+          "hint": "One pod lights up and waits for its press"
+        },
+        "race": {
+          "name": "Race: all pods at once",
+          "hint": "Every pod lights, then all go off"
+        },
+        "count": {
+          "name": "Count or remember",
+          "hint": "Add to a setting like Misses"
+        },
+        "decide": {
+          "name": "Decide",
+          "hint": "Two ways, e.g. if Misses ≥ 3"
+        },
+        "repeat": {
+          "name": "Repeat",
+          "hint": "Steps that run several times"
+        },
+        "results": {
+          "name": "Show results",
+          "hint": "Average, best, worst, count"
+        },
+        "off": {
+          "name": "Turn all pods off",
+          "hint": "All pods dark again"
+        }
+      },
+      "recipe": {
+        "countMiss": {
+          "name": "Count a miss when too slow",
+          "hint": "Adds a time limit and a Misses counter to every press in the round"
+        },
+        "pauseBetweenRounds": {
+          "name": "Pause between rounds",
+          "hint": "A fixed 2 s pause at the end of each round"
+        },
+        "flashFalseStart": {
+          "name": "Flash red on a false start",
+          "hint": "The first pause of the round catches early presses"
+        }
+      },
+      "reason": {
+        "noPods": "The program uses no pods. Set the number of pods in the program settings.",
+        "noMetric": "Nothing records a time yet. Turn on “Record reaction time” on a press first.",
+        "needsFormat": "Your pod needs newer firmware for this step.",
+        "unsupported": "Your pod cannot run this step.",
+        "noPress": "No press in the round that does not count misses yet.",
+        "noPause": "No pause before a press in the round."
+      }
+    },
     "switch": {
       "timeLimit": "Time limit",
       "timeLimitOn": "Too slow after {{time}}",
@@ -447,7 +522,9 @@
     "deleteSelected_other": "Delete {{count}} files…",
     "deleteTitle": "Delete files",
     "deleteText": "These files are deleted from the pod. This cannot be undone.",
-    "holdToDelete": "Hold to delete"
+    "holdToDelete": "Hold to delete",
+    "expertMode": "Expert mode",
+    "expertModeHint": "The editor shows block names, block types, ports and every field, like before. Remembered on this device."
   },
   "update": {
     "available": "A new version is available.",
