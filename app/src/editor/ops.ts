@@ -8,6 +8,7 @@
 import { blockType, type BlockTypeDef } from "@reactpod/program-model";
 import { isObject, type Block } from "@reactpod/program-model";
 import type { ResolvedProgram } from "@reactpod/program-model";
+import { entryOf, mainPort, portsOf, stepFamily, stepList, stepNeighbours } from "./structure";
 
 export type ProgramJson = Record<string, unknown>;
 
@@ -232,6 +233,133 @@ export function namesUsedByIncludes(resolved: ResolvedProgram): Map<string, stri
     }
   }
   return used;
+}
+
+/**
+ * Moves a step of the step list one place up or down within its list (the round, a branch, the
+ * steps after the last round). The step's branch steps move with it, and the links are rewired so
+ * the flow follows the new order: what came before the pair now leads to the other step, a branch
+ * that rejoined "after this step" still does. `flat` is the program with the blocks of its includes
+ * (default: `doc`); only own blocks are changed. Returns `doc` unchanged when the move is not
+ * possible (first / last in its list, past a Repeat bracket, or a library block would have to change).
+ */
+export function moveStep(doc: ProgramJson, name: string, direction: "up" | "down", flat: ProgramJson = doc): ProgramJson {
+  const steps = stepList(flat);
+  const { step, before, after } = stepNeighbours(steps, name);
+  if (!step) return doc;
+  const other = direction === "down" ? after : before;
+  if (!other || other.loop) return doc;
+  // always move the upper step (b) down past the lower one (c)
+  const [b, c] = direction === "down" ? [step, other] : [other, step];
+  const all = new Map(flatBlocks(flat).map((x) => [x.name, x]));
+  const B = all.get(b.block);
+  const C = all.get(c.block);
+  if (!B || !C) return doc;
+  const mainB = mainPort(B);
+  if (!mainB || B[mainB] !== c.block) return doc;
+  const mainC = mainPort(C);
+  const { after: afterC } = stepNeighbours(steps, c.block);
+  const D = mainC ? (C[mainC] as string) : afterC ? entryOf(afterC) : undefined;
+  const groupB = new Set(stepFamily(steps, b.block));
+  const groupC = new Set(stepFamily(steps, c.block));
+
+  const own = new Set(ownBlocks(doc).map((x) => x.name));
+  const rewire = (x: Block, port: string, t: string): string | undefined | typeof KEEP => {
+    if (x.name === B.name && port === mainB) return D;
+    if (x.name === C.name && port === mainC) return B.name;
+    if (groupB.has(x.name) && t === C.name) return D;
+    if (groupC.has(x.name) && t === D) return B.name;
+    if (!groupB.has(x.name) && !groupC.has(x.name)) {
+      if (t === B.name) return C.name;
+      if (t === C.name) return B.name;
+    }
+    return KEEP;
+  };
+
+  let blocked = false;
+  const blocks = ownBlocks(doc).map((x) => ({ ...x }));
+  for (const x of flatBlocks(flat)) {
+    const target = own.has(x.name) ? blocks.find((y) => y.name === x.name)! : null;
+    for (const port of portsOf(x)) {
+      const t = x[port];
+      if (typeof t !== "string") continue;
+      const to = rewire(x, port, t);
+      if (to === KEEP || to === t) continue;
+      if (!target) blocked = true;
+      else if (to === undefined) delete target[port];
+      else target[port] = to;
+    }
+  }
+  if (blocked) return doc;
+  const next = withBlocks(doc, blocks);
+  if (doc.start === B.name) next.start = C.name;
+  else if (doc.start === C.name) next.start = B.name;
+  return next;
+}
+
+const KEEP = Symbol("keep");
+
+function flatBlocks(flat: ProgramJson): Block[] {
+  return ownBlocks(flat);
+}
+
+/**
+ * Deletes a step and the steps of its branches; links into the step continue with the step after
+ * it, so the flow stays connected. Returns `doc` unchanged if a library block points into it.
+ */
+export function deleteStep(doc: ProgramJson, name: string, flat: ProgramJson = doc): ProgramJson {
+  const steps = stepList(flat);
+  const { step, after } = stepNeighbours(steps, name);
+  const all = flatBlocks(flat);
+  const B = all.find((x) => x.name === name);
+  if (!B) return doc;
+  const main = mainPort(B);
+  const D = main ? (B[main] as string) : after ? entryOf(after) : undefined;
+  const group = new Set(step ? stepFamily(steps, name) : [name]);
+  const own = new Set(ownBlocks(doc).map((x) => x.name));
+  if ([...group].some((g) => !own.has(g))) return doc;
+  for (const x of all) {
+    if (own.has(x.name) || group.has(x.name)) continue;
+    if (portsOf(x).some((p) => typeof x[p] === "string" && group.has(x[p] as string))) return doc;
+  }
+  const blocks = ownBlocks(doc)
+    .filter((x) => !group.has(x.name))
+    .map((x) => {
+      const next = { ...x };
+      for (const port of portsOf(x)) {
+        const t = next[port];
+        if (typeof t !== "string" || !group.has(t)) continue;
+        if (t === name && D !== undefined && !group.has(D)) next[port] = D;
+        else delete next[port];
+      }
+      return next;
+    });
+  const next = withBlocks(doc, blocks);
+  if (typeof doc.start === "string" && group.has(doc.start)) {
+    if (D !== undefined && !group.has(D)) next.start = D;
+    else delete next.start;
+  }
+  return next;
+}
+
+/**
+ * Adds a step of `type` after the step `after` (on the port that leads to the next step), or
+ * unconnected at the end when `after` is missing or a library block. Like `addBlock`, but knows
+ * that a press continues at `pressed` and a pause that catches early presses at `timeout`.
+ */
+export function addStep(doc: ProgramJson, type: string, taken: ReadonlySet<string>, after?: string | null): { doc: ProgramJson; name: string } {
+  const anchor = after ? ownBlocks(doc).find((b) => b.name === after) : undefined;
+  const port = anchor ? (mainPort(anchor) ?? (portsOf(anchor)[0] === "next" ? "next" : undefined)) : undefined;
+  if (!anchor || !port || port === "next") return addBlock(doc, type, taken, anchor && port ? after : null);
+  const def = blockType(type);
+  if (!def) throw new Error(`unknown block type ${type}`);
+  const name = newBlockName(type, taken);
+  const block = createBlock(def, name);
+  const oldNext = anchor[port];
+  if (typeof oldNext === "string" && def.ports.includes("next")) block.next = oldNext;
+  const blocks = ownBlocks(doc).map((b) => (b === anchor ? { ...b, [port]: name } : b));
+  blocks.splice(blocks.findIndex((b) => b.name === after) + 1, 0, block);
+  return { doc: withBlocks(doc, blocks), name };
 }
 
 /** The empty document of a new program. */
