@@ -90,6 +90,7 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
       const long = typeof block.long === "string" || typeof block.short === "string";
       if (long) parts.push(t("sentence.longFrom", { time: time(block.shortMs ?? 1000) }));
       if (isCatchEarly(block)) {
+        if (block.minTimeoutMs === block.maxTimeoutMs) return join(t("sentence.catchEarlyFixed", { time: time(block.minTimeoutMs) }), parts);
         return join(t("sentence.catchEarly", { time: range(block.minTimeoutMs, block.maxTimeoutMs) }), parts);
       }
       if (block.timeoutMs !== undefined) parts.unshift(...limit(block));
@@ -148,6 +149,12 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
     case "if": {
       const op = typeof block.op === "string" ? block.op : "==";
       const words = IF_WORDS[op] ?? "eq";
+      // the central's id is REQUIRED_PERIPHERALS: "is the chosen pod the central?" (lib/random.json)
+      const chosen = (v: unknown) => typeof v === "string" && !!options.chosenPods?.has(v);
+      const central = (v: unknown) => v === "REQUIRED_PERIPHERALS";
+      if ((words === "eq" || words === "ne") && ((chosen(block.left) && central(block.right)) || (chosen(block.right) && central(block.left)))) {
+        return t(words === "eq" ? "sentence.isCentral" : "sentence.isNotCentral");
+      }
       return t("sentence.if", { left: value(block.left), op: t(`sentence.op.${words}`), right: value(block.right) });
     }
     case "summary": {
@@ -169,4 +176,23 @@ export function repeatSentence(count: unknown, t: TFunction, options: SentenceOp
   const n = typeof count === "number" ? count : typeof count === "string" && isObject(options.values) ? options.values[count] : undefined;
   if (typeof n === "number") return t("sentence.repeat", { count: n });
   return t("sentence.repeatVar", { value: typeof count === "string" ? makeLabel(t, options)(count) : "?" });
+}
+
+/** fields that write a variable: such a variable is not a fixed setting */
+const WRITES = ["var", "storeAs", "storeIndex", "storeAverage", "storeBest", "storeWorst", "storeCount"];
+
+/**
+ * Sentence options for the blocks of a program: variables picked at random as a pod, the values
+ * of settings no step changes, and labels for setting names.
+ */
+export function sentenceOptions(blocks: Iterable<Block>, values: Readonly<Record<string, number>>, label?: (name: string) => string): SentenceOptions {
+  const chosenPods = new Set<string>();
+  const written = new Set<string>();
+  for (const b of blocks) {
+    if (b.type === "setVariable" && typeof b.var === "string" && ["random", "randomOther", "?", "!"].includes(String(b.op))) chosenPods.add(b.var);
+    for (const field of WRITES) if (typeof b[field] === "string") written.add(b[field] as string);
+  }
+  // settings no step changes read as their numbers ("2 of them red" for AVOID_COUNT = 2)
+  const constants = Object.fromEntries(Object.entries(values).filter(([k]) => !written.has(k)));
+  return { chosenPods, values: constants, ...(label ? { label } : {}) };
 }

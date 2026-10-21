@@ -30,6 +30,8 @@ export type InspectorContext = {
   remove?: (name: string) => void;
   /** step list (simple view): move the step within its list */
   step?: { canUp: boolean; canDown: boolean; move: (direction: "up" | "down") => void };
+  /** duplicates a step right after it (step sheet) */
+  duplicate?: (name: string) => void;
 };
 
 /** Editable block: name, type, parameters, connections, actions. */
@@ -40,8 +42,6 @@ export function BlockInspector({ block, ctx }: { block: Block; ctx: InspectorCon
   const locked = ctx.lockedBy.get(block.name);
   const isStart = ctx.isProgram && ctx.json.start === block.name;
   const remove = () => (ctx.remove ? ctx.remove(block.name) : ctx.apply(deleteBlock(ctx.json, block.name), { select: null }));
-  const set = (field: string, value: unknown, merge = true) =>
-    ctx.apply(setBlockField(ctx.json, block.name, field, value), merge ? { mergeKey: `${block.name}.${field}` } : undefined);
 
   return (
     <Sheet
@@ -74,6 +74,49 @@ export function BlockInspector({ block, ctx }: { block: Block; ctx: InspectorCon
           </button>
         </div>
       )}
+      <BlockExpertFields block={block} ctx={ctx} />
+
+      <div className={styles.actions}>
+        {def?.ports[0] === "next" && (
+          <button className={styles.action} onClick={() => ctx.addAfter(block.name)}>
+            <Plus size={18} aria-hidden /> {t("editor.addAfterAction")}
+          </button>
+        )}
+        {ctx.isProgram && !isStart && (
+          <button className={styles.action} onClick={() => ctx.apply(setProgramField(ctx.json, "start", block.name))}>
+            <Flag size={18} aria-hidden /> {t("editor.setStart")}
+          </button>
+        )}
+        <button
+          className={styles.action}
+          onClick={() => {
+            const { doc, name } = duplicateBlock(ctx.json, block.name, new Set(ctx.names));
+            ctx.apply(doc, { select: name });
+          }}
+        >
+          <Copy size={18} aria-hidden /> {t("editor.duplicate")}
+        </button>
+        <button className={styles.action} data-danger disabled={!!locked} onClick={remove}>
+          <Trash2 size={18} aria-hidden /> {t("editor.delete")}
+        </button>
+      </div>
+      {locked && <p className={styles.muted}>{t("editor.lockedBy", { file: locked })}</p>}
+    </Sheet>
+  );
+}
+
+/**
+ * Today's inspector fields: block name, type, one "go to" select per port and every parameter
+ * with its raw key. The step sheet shows them in expert mode.
+ */
+export function BlockExpertFields({ block, ctx }: { block: Block; ctx: InspectorContext }) {
+  const { t } = useTranslation();
+  const def = blockType(block.type);
+  const locked = ctx.lockedBy.get(block.name);
+  const set = (field: string, value: unknown, merge = true) =>
+    ctx.apply(setBlockField(ctx.json, block.name, field, value), merge ? { mergeKey: `${block.name}.${field}` } : undefined);
+  return (
+    <>
       <NameField block={block} ctx={ctx} locked={locked} />
       <div className={styles.field}>
         <label className={styles.label} htmlFor="block-type">
@@ -108,32 +151,7 @@ export function BlockInspector({ block, ctx }: { block: Block; ctx: InspectorCon
         </section>
       )}
 
-      <div className={styles.actions}>
-        {def?.ports[0] === "next" && (
-          <button className={styles.action} onClick={() => ctx.addAfter(block.name)}>
-            <Plus size={18} aria-hidden /> {t("editor.addAfterAction")}
-          </button>
-        )}
-        {ctx.isProgram && !isStart && (
-          <button className={styles.action} onClick={() => ctx.apply(setProgramField(ctx.json, "start", block.name))}>
-            <Flag size={18} aria-hidden /> {t("editor.setStart")}
-          </button>
-        )}
-        <button
-          className={styles.action}
-          onClick={() => {
-            const { doc, name } = duplicateBlock(ctx.json, block.name, new Set(ctx.names));
-            ctx.apply(doc, { select: name });
-          }}
-        >
-          <Copy size={18} aria-hidden /> {t("editor.duplicate")}
-        </button>
-        <button className={styles.action} data-danger disabled={!!locked} onClick={remove}>
-          <Trash2 size={18} aria-hidden /> {t("editor.delete")}
-        </button>
-      </div>
-      {locked && <p className={styles.muted}>{t("editor.lockedBy", { file: locked })}</p>}
-    </Sheet>
+    </>
   );
 }
 

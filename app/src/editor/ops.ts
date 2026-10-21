@@ -362,6 +362,22 @@ export function addStep(doc: ProgramJson, type: string, taken: ReadonlySet<strin
   return { doc: withBlocks(doc, blocks), name };
 }
 
+/**
+ * Duplicates a step: the copy keeps every link of the original (so its branches are shared) and
+ * comes right after it in the flow. A step without a way on (an `if`) is copied unconnected.
+ */
+export function duplicateStep(doc: ProgramJson, name: string, taken: ReadonlySet<string>): { doc: ProgramJson; name: string } {
+  const blocks = ownBlocks(doc);
+  const at = blocks.findIndex((b) => b.name === name);
+  const source = blocks[at];
+  const port = source && mainPort(source);
+  if (!source || !port) return duplicateBlock(doc, name, taken);
+  const copyName = uniqueName(`${source.name}Copy`, taken);
+  const next = blocks.map((b) => (b === source ? { ...b, [port]: copyName } : b));
+  next.splice(at + 1, 0, { ...source, name: copyName });
+  return { doc: withBlocks(doc, next), name: copyName };
+}
+
 /** The empty document of a new program. */
 export function newProgram(name: string): ProgramJson {
   return { version: 1, name, peripherals: 0, menu: [], blocks: [] };

@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, CircleAlert, CornerDownRight, Lock, OctagonX, Repeat, Timer, Unplug } from "lucide-react";
 import type { Block, Issue } from "@reactpod/program-model";
 import { blockCategory } from "./blockStyle";
-import { repeatSentence, stepSentence, type SentenceOptions } from "./sentence";
+import { repeatSentence, sentenceOptions, stepSentence, type SentenceOptions } from "./sentence";
+import { settingLabel } from "./settingLabels";
 import { portsOf, type Step, type StepBranch } from "./structure";
 import styles from "./StepList.module.css";
 import "./editor.css";
@@ -24,9 +25,6 @@ type Props = {
 };
 
 type Node = { step: Step; children: Node[] };
-
-/** fields that write a variable: such a variable is not a fixed setting */
-const WRITES = ["var", "storeAs", "storeIndex", "storeAverage", "storeBest", "storeWorst", "storeCount"];
 
 /** Flat list (depth first) → tree: a bracket holds its round, a step holds its branch steps. */
 function tree(steps: readonly Step[]): Node[] {
@@ -52,17 +50,7 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
   const nodes = useMemo(() => tree(steps), [steps]);
   const byBlock = useMemo(() => new Map(steps.filter((s) => !s.loop).map((s) => [s.block, s])), [steps]);
   const loops = useMemo(() => steps.filter((s) => s.loop).map((s) => s.loop!), [steps]);
-  const options = useMemo<SentenceOptions>(() => {
-    const chosenPods = new Set<string>();
-    const written = new Set<string>();
-    for (const b of blocks.values()) {
-      if (b.type === "setVariable" && typeof b.var === "string" && ["random", "randomOther", "?", "!"].includes(String(b.op))) chosenPods.add(b.var);
-      for (const field of WRITES) if (typeof b[field] === "string") written.add(b[field] as string);
-    }
-    // settings no step changes read as their numbers ("2 of them red" for AVOID_COUNT = 2)
-    const constants = Object.fromEntries(Object.entries(values).filter(([k]) => !written.has(k)));
-    return { chosenPods, values: constants };
-  }, [blocks, values]);
+  const options = useMemo<SentenceOptions>(() => sentenceOptions(blocks.values(), values, (name) => settingLabel(name, t).label), [blocks, values, t]);
   const problems = useMemo(() => {
     const map = new Map<string, Issue[]>();
     for (const issue of issues) if (issue.block) map.set(issue.block, [...(map.get(issue.block) ?? []), issue]);

@@ -54,12 +54,15 @@ export function ValueField({
   variables,
   placeholder,
   label,
+  labelOf = (name) => name,
 }: {
   value: unknown;
   onChange: (value: number | string | undefined) => void;
   variables: readonly string[];
   placeholder?: string;
   label: string;
+  /** how a variable is shown in the list (default: its name) */
+  labelOf?: (name: string) => string;
 }) {
   const { t } = useTranslation();
   const isVar = typeof value === "string";
@@ -82,10 +85,10 @@ export function ValueField({
       </div>
       {isVar ? (
         <select className={styles.input} value={value} aria-label={label} onChange={(e) => onChange(e.target.value)}>
-          {!variables.includes(value) && <option value={value}>{value}</option>}
+          {!variables.includes(value) && <option value={value}>{labelOf(value)}</option>}
           {variables.map((v) => (
             <option key={v} value={v}>
-              {v}
+              {labelOf(v)}
             </option>
           ))}
         </select>

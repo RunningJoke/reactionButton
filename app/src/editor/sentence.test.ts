@@ -80,6 +80,17 @@ describe("step sentences", () => {
     expect(en_({ type: "remotePress", pod: "TARGET" }, { values })).toBe("Light pod 2 green, wait for the press");
   });
 
+  it("asks whether the chosen pod is the central (lib/random.json)", () => {
+    const chosenPods = new Set(["SEL"]);
+    expect(en_({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" }, { chosenPods })).toBe("Is the chosen pod the central?");
+    expect(en_({ type: "if", left: "REQUIRED_PERIPHERALS", op: "!=", right: "SEL" }, { chosenPods })).toBe("Is the chosen pod one of the pods, not the central?");
+    expect(stepSentence(b({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" }), tDe, { chosenPods })).toBe("Ist der gewählte Pod die Zentrale?");
+  });
+
+  it("describes a fixed false-start pause", () => {
+    expect(en_({ type: "button", minTimeoutMs: 2000, maxTimeoutMs: 2000, pressed: "F", timeout: "G" })).toBe("Wait 2 s, pressing now is a false start");
+  });
+
   it("uses a label function for settings", () => {
     expect(en_({ type: "setVariable", var: "MISSES", op: "+", value: 1 }, { label: (n: string) => (n === "MISSES" ? "Misses" : n) })).toBe("Add 1 to Misses");
   });
