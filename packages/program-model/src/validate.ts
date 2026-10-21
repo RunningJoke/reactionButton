@@ -2,7 +2,7 @@
  * Program checks. Mirrors tools/validate_programs.py and the firmware loader
  * (src/BlockManager/BlockManager.cpp). Errors stop a push, warnings do not.
  */
-import { blockType, COMMON_FIELDS, type BlockTypeDef } from "./blockTypes";
+import { blockType, COMMON_FIELDS, MAX_TIMERS, TIMER_FIELDS, type BlockTypeDef } from "./blockTypes";
 import { isColor, isNamedColor } from "./colors";
 import {
   INDEX_PATH,
@@ -55,11 +55,16 @@ export const ISSUE_CODES = [
   "ledOutOfRange",
   "portNotText",
   "portUnknownTarget",
+  "tooManyTimers",
   // warnings
   "noOutgoing",
   "unreachable",
   "unknownVariable",
   "unknownField",
+  "fieldNeedsFormat",
+  "timerNeverStopped",
+  "timerNeverStarted",
+  "repeatNoLoop",
   // index
   "indexInvalid",
   "indexDuplicate",
@@ -98,6 +103,11 @@ export type ResolvedProgram = {
 export type ValidateOptions = {
   /** `info.blockTypes` of the connected pod; types outside it are errors */
   supportedTypes?: readonly string[];
+  /**
+   * `info.programFormat` of the connected pod (missing = 1 on old firmware). Block types of a newer
+   * revision are errors (the pod rejects them), fields of a newer revision warnings (it ignores them).
+   */
+  programFormat?: number;
 };
 
 class Collector {
@@ -219,6 +229,8 @@ export function validateProgram(path: string, source: FileSource, options: Valid
   }
 
   checkReachability(resolved, path, out);
+  checkTimers(resolved, path, out);
+  checkRepeats(resolved, path, out);
   return resolved;
 }
 
@@ -274,7 +286,11 @@ function checkBlock(
     out.error("unknownType", file, at("type", { type: block.type }));
     return;
   }
-  if (options.supportedTypes && !options.supportedTypes.includes(def.type)) {
+  const format = options.programFormat;
+  if (
+    (options.supportedTypes && !options.supportedTypes.includes(def.type)) ||
+    (format !== undefined && (def.minFormat ?? 1) > format)
+  ) {
     out.error("unsupportedType", file, at("type", { type: def.type }));
   }
 
@@ -285,6 +301,9 @@ function checkBlock(
       continue;
     }
     checkField(def, field.name, value, file, at, out, knownVars);
+    if (format !== undefined && (field.minFormat ?? 1) > format && (def.minFormat ?? 1) <= format) {
+      out.warn("fieldNeedsFormat", file, at(field.name, { field: field.name, format: field.minFormat ?? 1 }));
+    }
   }
   checkTypeRules(def, block, file, at, out);
 
@@ -398,6 +417,58 @@ function checkReachability(resolved: ResolvedProgram, path: string, out: Collect
     if (file === path && isObject(block) && typeof block.name === "string" && !seen.has(block.name)) {
       out.warn("unreachable", file, { block: block.name });
     }
+  }
+}
+
+/** At most MAX_TIMERS timer names; a timer that is only started or only stopped is a warning. */
+function checkTimers(resolved: ResolvedProgram, path: string, out: Collector) {
+  const first = new Map<string, { file: string; block: string; field: string }>();
+  const started = new Set<string>();
+  const stopped = new Set<string>();
+  for (const { file, block } of resolved.blocks) {
+    if (!isObject(block) || typeof block.name !== "string") continue;
+    for (const { name: field } of TIMER_FIELDS) {
+      const timer = block[field];
+      if (typeof timer !== "string" || timer === "") continue;
+      (field === "timerStart" ? started : stopped).add(timer);
+      if (!first.has(`${field}:${timer}`)) first.set(`${field}:${timer}`, { file, block: block.name, field });
+    }
+  }
+  const names = new Set([...started, ...stopped]);
+  if (names.size > MAX_TIMERS) out.error("tooManyTimers", path, { params: { count: names.size, max: MAX_TIMERS } });
+  for (const timer of [...names].sort()) {
+    if (started.has(timer) && stopped.has(timer)) continue;
+    const onlyStarted = started.has(timer);
+    const where = first.get(`${onlyStarted ? "timerStart" : "timerStop"}:${timer}`)!;
+    out.warn(onlyStarted ? "timerNeverStopped" : "timerNeverStarted", where.file, {
+      block: where.block,
+      field: where.field,
+      params: { name: timer },
+    });
+  }
+}
+
+/** Warns when no path from a repeat block's body leads back to it (like tools/validate_programs.py). */
+function checkRepeats(resolved: ResolvedProgram, path: string, out: Collector) {
+  const byName = new Map<string, Block>();
+  for (const { block } of resolved.blocks) {
+    if (isObject(block) && typeof block.name === "string" && !byName.has(block.name)) byName.set(block.name, block);
+  }
+  for (const { file, block } of resolved.blocks) {
+    if (file !== path || !isObject(block) || block.type !== "repeat" || typeof block.name !== "string") continue;
+    const first = typeof block.body === "string" ? block.body : block.next;
+    const seen = new Set<string>();
+    const queue = typeof first === "string" ? [first] : [];
+    while (queue.length > 0 && !seen.has(block.name)) {
+      const name = queue.pop()!;
+      const current = byName.get(name);
+      if (seen.has(name) || !current) continue;
+      seen.add(name);
+      for (const port of blockType(current.type)?.ports ?? []) {
+        if (typeof current[port] === "string") queue.push(current[port] as string);
+      }
+    }
+    if (!seen.has(block.name)) out.warn("repeatNoLoop", file, { block: block.name, field: "body" });
   }
 }
 
