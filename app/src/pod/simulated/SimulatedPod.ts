@@ -29,6 +29,12 @@ export type SimulatedPodOptions = {
    * `emitSampleReport()`. Off by default, so the simulated pod behaves like today's firmware.
    */
   results?: boolean;
+  /**
+   * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
+   * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
+   * defaults to "2.7" instead of "2.8", and `status` has no `timers`.
+   */
+  programFormat?: number;
 };
 
 /** Reports the central keeps until they are acknowledged (#41). */
@@ -53,7 +59,10 @@ export class SimulatedPod {
   readonly setId: string;
   generation: number;
   firmware: string;
+  readonly programFormat: number;
   blockTypes: string[];
+  /** `status.timers.orphanStops` while a game runs (RUN / PAUSED, programs.md §7.9); set by tests and demos */
+  orphanStops = 0;
   freeBytes: number;
   setName: string;
   pin: string;
@@ -83,8 +92,9 @@ export class SimulatedPod {
     this.role = options.role ?? "central";
     this.setId = options.setId ?? "5f3a91c2";
     this.generation = options.generation ?? 1;
-    this.firmware = options.firmware ?? "2.7";
-    this.blockTypes = options.blockTypes ?? BLOCK_TYPES.map((t) => t.type);
+    this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
+    this.firmware = options.firmware ?? (this.programFormat >= 2 ? "2.8" : "2.7");
+    this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
     this.pin = options.pin ?? "";
@@ -198,7 +208,7 @@ export class SimulatedPod {
       maxRequest: MAX_REQUEST,
       maxGetChunk: MAX_GET_CHUNK,
       transport: "simulated",
-      programFormat: PROGRAM_FORMAT,
+      programFormat: this.programFormat,
       features: this.results ? ["validateInline", "listMeta", "reports", "remote"] : ["validateInline", "listMeta"],
       blockTypes: this.blockTypes,
     };
@@ -212,6 +222,10 @@ export class SimulatedPod {
       uptimeMs: 1000,
       setId: this.setId,
       store: { generation: this.generation, hash: this.storeHash },
+      // central in a game, firmware ≥ 2.8 (config-api.md §5)
+      ...(this.role === "central" && (this.state === "RUN" || this.state === "PAUSED") && this.programFormat >= 2
+        ? { timers: { orphanStops: this.orphanStops } }
+        : {}),
       ...(this.results ? { athlete: this.athlete, reports: { pending: this.pendingReports.length, dropped: this.droppedReports } } : {}),
     };
   }
@@ -457,7 +471,7 @@ export class SimulatedPod {
       throw new ApiFailure("not_found", "program file not found");
     }
     const source = (p: string) => (p === path && typeof data === "string" ? data : this.files.get(p));
-    const resolved = validateProgram(path, source, { supportedTypes: this.blockTypes });
+    const resolved = validateProgram(path, source, { supportedTypes: this.blockTypes, programFormat: this.programFormat });
     const error = resolved.issues.find((issue) => issue.severity === "error");
     if (error) throw new ApiFailure("invalid_program", describe(error));
     return { path, blocks: resolved.blocks.length };

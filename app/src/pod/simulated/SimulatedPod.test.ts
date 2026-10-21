@@ -84,10 +84,64 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.7 fields in info", () => {
+  it("reports the firmware 2.8 fields in info: program format 2", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.7", setName: "Halle 2", pinRequired: false, programFormat: 1 });
+    expect(info).toMatchObject({ firmware: "2.8", setName: "Halle 2", pinRequired: false, programFormat: 2 });
     expect(info.features).toEqual(["validateInline", "listMeta"]);
+    expect(info.blockTypes).toContain("repeat");
+  });
+
+  it("simulates an older central with programFormat 1", () => {
+    const info = call(new SimulatedPod({ programFormat: 1 }), { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.7", programFormat: 1 });
+    expect(info.blockTypes).not.toContain("repeat");
+  });
+
+  const format2 = JSON.stringify({
+    name: "Laps",
+    blocks: [
+      { name: "R", type: "repeat", count: 3, body: "Go", done: "End" },
+      { name: "Go", type: "led", color: "green", timerStart: "lap", next: "Wait" },
+      { name: "Wait", type: "button", timerStop: "lap", next: "R" },
+      { name: "End", type: "summary", metric: "lap" },
+    ],
+  });
+  const timersOnly = JSON.stringify({
+    name: "Lap",
+    blocks: [
+      { name: "Go", type: "led", color: "green", timerStart: "lap", next: "Wait" },
+      { name: "Wait", type: "button", timerStop: "lap", next: "Go" },
+    ],
+  });
+
+  it("accepts format-2 programs (repeat, timers)", () => {
+    const pod = new SimulatedPod({ files: { "/prog/laps.json": format2 } });
+    expect(call(pod, { op: "validate", path: "/prog/laps.json" })).toMatchObject({ ok: true, blocks: 4 });
+    expect(call(pod, { op: "validate", path: "/prog/x.json", data: timersOnly })).toMatchObject({ ok: true, blocks: 2 });
+  });
+
+  it("a format-1 central rejects repeat but ignores timer fields, like older firmware", () => {
+    const pod = new SimulatedPod({ programFormat: 1 });
+    const repeat = call(pod, { op: "validate", path: "/prog/x.json", data: format2 });
+    expect(repeat).toMatchObject({ ok: false, error: "invalid_program" });
+    expect(repeat.message).toContain("unsupportedType");
+    expect(call(pod, { op: "validate", path: "/prog/x.json", data: timersOnly })).toMatchObject({ ok: true });
+  });
+
+  it("reports status.timers.orphanStops on a central in a game (format 2)", () => {
+    const pod = new SimulatedPod();
+    expect(call(pod, { op: "status" })).not.toHaveProperty("timers");
+    pod.state = "RUN";
+    pod.orphanStops = 2;
+    expect(call(pod, { op: "status" })).toMatchObject({ timers: { orphanStops: 2 } });
+    pod.state = "PAUSED";
+    expect(call(pod, { op: "status" })).toMatchObject({ timers: { orphanStops: 2 } });
+    const old = new SimulatedPod({ programFormat: 1 });
+    old.state = "RUN";
+    expect(call(old, { op: "status" })).not.toHaveProperty("timers");
+    const peripheral = new SimulatedPod({ role: "peripheral" });
+    peripheral.state = "RUN";
+    expect(call(peripheral, { op: "status" })).not.toHaveProperty("timers");
   });
 
   it("reports program metadata in list (listMeta)", () => {
