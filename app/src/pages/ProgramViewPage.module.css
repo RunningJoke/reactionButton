@@ -211,3 +211,17 @@
   font-size: 14px;
   cursor: pointer;
 }
+
+/* phones: Edit as an icon, so the title keeps its room next to Adjust */
+@media (max-width: 419px) {
+  .edit {
+    justify-content: center;
+    min-width: var(--touch);
+    min-height: var(--touch);
+    padding: 0;
+  }
+
+  .editLabel {
+    display: none;
+  }
+}

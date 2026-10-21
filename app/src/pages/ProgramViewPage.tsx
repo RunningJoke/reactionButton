@@ -111,8 +111,13 @@ export function ProgramViewPage() {
           </button>
         )}
         {isProgram && (
-          <button className={styles.edit} onClick={() => void editCopy(path, source.read(path)!, sourceId === "pod" ? "pod" : "default")}>
-            <Pencil size={18} aria-hidden /> {localCopy ? t("view.openCopy") : t("view.edit")}
+          <button
+            className={styles.edit}
+            aria-label={localCopy ? t("view.openCopy") : t("view.edit")}
+            title={localCopy ? t("view.openCopy") : t("view.edit")}
+            onClick={() => void editCopy(path, source.read(path)!, sourceId === "pod" ? "pod" : "default")}
+          >
+            <Pencil size={18} aria-hidden /> <span className={styles.editLabel}>{localCopy ? t("view.openCopy") : t("view.edit")}</span>
           </button>
         )}
       </div>
