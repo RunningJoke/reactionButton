@@ -128,4 +128,4 @@ central with firmware before 2.8 (or the demo pod set to `programFormat` 1).
 | AT-P1 … AT-P13 | 2026-10-19 | – | 2.7 | accepted | P5 confirmed as implemented by Patrick Stähle |
 | AT-M1 … AT-M5 | 2026-10-19 | – | 2.7 | accepted | P6 confirmed as implemented by Patrick Stähle |
 | AT-R1 … AT-R6 | – | – | – | open | P7; real pods wait for #41 / #42 |
-| AT-E1 … AT-E14 | – | – | – | open | P8 in progress |
+| AT-E1 … AT-E14 | – | – | – | open | P8 implemented; walk-through on the demo pod (format 2) passed, user test pending |

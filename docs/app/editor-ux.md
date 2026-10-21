@@ -1,6 +1,7 @@
 # Block builder UX – simple by default, everything still reachable
 
-Status: **approved as phase P8** (2026-10-21, [spec.md §13](spec.md#13-phases)). The clickable prototype is
+Status: **implemented** (phase P8, approved 2026-10-21, [spec.md §13](spec.md#13-phases)); acceptance tests AT-E*
+are open. Deviations from this text: §8. The clickable prototype is
 [`prototypes/editor-flow.html`](prototypes/editor-flow.html). It is a page fragment (no
 `<html>` wrapper) that opens in any browser and runs on its own: a game wizard, the step list, step
 sheets with working switches, expert mode and a small simulator.
@@ -310,3 +311,18 @@ they do not have it yet, and the firmware does since 2.8.
    the `lib/loop` pattern otherwise.
 3. **Adjust is offered for programs on a read-only pod too.** It saves a local copy and says
    that the copy cannot be pushed to that pod. Implemented in P8e (confirmed 2026-10-21).
+
+## 8. As built (2026-10-21)
+
+Where the app differs from the text above, and why:
+
+| Topic | As built | Reason |
+|---|---|---|
+| Port role "If pressed too early" | The false-start press (button used as a pause) has its own role `ifPressedEarly`, app only | The model's roles describe the block, not this pattern |
+| Time limit of a press | Fixed only; existing random limits still show both values | A random limit without a recorded time is how the step list recognises a false-start pause |
+| "Don't touch" on a single pod | Turning it on also sets a time limit and stops recording; turning it off does not restore the old values exactly | A red pod without a time limit waits forever |
+| "End the round" when too slow | Not offered for "all at once" (also not in the wizard) | Its pods stay lit after a timeout, so the round goes on anyway |
+| Adjust, Try it | With unsaved changes the button is "Save and try" | The simulator opens saved programs only |
+| Adjust, switches | Shipped programs built only from library parts (Stern, Run5) show no program switches; Duo has no results switch | Switches change the program's own steps; library parts are read-only until converted |
+| Add a step | "Light a pod" and "Race" are off while the program uses no pods; "Race" also adds "Turn all pods off"; "Repeat" adds 3 rounds with a 1 s pause; recipes do not reset Misses between series | Keep the program valid and runnable after every single tap |
+| Reversed range | New validator warning `rangeReversed` (app and `tools/validate_programs.py`): shortest time above longest, variables with their start value | The firmware then always uses the shortest time (programs.md §7.3), so "random" is silently fixed |
