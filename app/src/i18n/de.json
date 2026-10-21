@@ -237,6 +237,81 @@
       "empty": "Dieses Programm hat noch keine Schritte. Füge den ersten mit + hinzu.",
       "count_one": "{{count}} Schritt",
       "count_other": "{{count}} Schritte"
+    },
+    "add": {
+      "title": "Schritt hinzufügen",
+      "afterStep": "Wird nach Schritt {{n}} eingefügt",
+      "endOfRound": "Wird am Ende der Runde angefügt",
+      "end": "Wird am Ende angefügt",
+      "first": "Der erste Schritt des Programms",
+      "recipes": "Rezepte",
+      "steps": "Einzelne Schritte",
+      "library": "Bibliotheksteile",
+      "libraryHint": "Wird als Kopie eingefügt. Als verknüpfte Vorlage geht es über die Programmeinstellungen.",
+      "intent": {
+        "light": {
+          "name": "Zentrale leuchten lassen",
+          "hint": "Farbe und welche LEDs"
+        },
+        "pause": {
+          "name": "Pause",
+          "hint": "Fest oder zufällig, kann zu frühes Drücken erkennen"
+        },
+        "press": {
+          "name": "Auf Drücken warten",
+          "hint": "An der Zentrale, mit optionalem Zeitlimit"
+        },
+        "pod": {
+          "name": "Einen Pod leuchten lassen",
+          "hint": "Ein Pod leuchtet und wartet aufs Drücken"
+        },
+        "race": {
+          "name": "Wettlauf: alle Pods auf einmal",
+          "hint": "Alle Pods leuchten, danach gehen alle aus"
+        },
+        "count": {
+          "name": "Zählen oder merken",
+          "hint": "Zu einer Einstellung wie Fehler addieren"
+        },
+        "decide": {
+          "name": "Entscheiden",
+          "hint": "Zwei Wege, z. B. wenn Fehler ≥ 3"
+        },
+        "repeat": {
+          "name": "Wiederholen",
+          "hint": "Schritte, die mehrmals laufen"
+        },
+        "results": {
+          "name": "Ergebnisse zeigen",
+          "hint": "Durchschnitt, beste, schlechteste, Anzahl"
+        },
+        "off": {
+          "name": "Alle Pods ausschalten",
+          "hint": "Alle Pods wieder dunkel"
+        }
+      },
+      "recipe": {
+        "countMiss": {
+          "name": "Fehler zählen, wenn zu langsam",
+          "hint": "Gibt jedem Drücken der Runde ein Zeitlimit und einen Fehlerzähler"
+        },
+        "pauseBetweenRounds": {
+          "name": "Pause zwischen den Runden",
+          "hint": "Eine feste Pause von 2 s am Ende jeder Runde"
+        },
+        "flashFalseStart": {
+          "name": "Rot blinken bei Fehlstart",
+          "hint": "Die erste Pause der Runde erkennt zu frühes Drücken"
+        }
+      },
+      "reason": {
+        "noPods": "Das Programm nutzt keine Pods. Stelle die Anzahl der Pods in den Programmeinstellungen ein.",
+        "noMetric": "Noch nichts misst eine Zeit. Schalte zuerst bei einem Drücken „Reaktionszeit messen“ ein.",
+        "needsFormat": "Dein Pod braucht für diesen Schritt eine neuere Firmware.",
+        "unsupported": "Dein Pod kann diesen Schritt nicht ausführen.",
+        "noPress": "Kein Drücken in der Runde, das noch keine Fehler zählt.",
+        "noPause": "Keine Pause vor einem Drücken in der Runde."
+      }
     }
   },
   "simulate": {
@@ -323,7 +398,9 @@
     "deleteSelected_other": "{{count}} Dateien löschen…",
     "deleteTitle": "Dateien löschen",
     "deleteText": "Diese Dateien werden vom Pod gelöscht. Das lässt sich nicht rückgängig machen.",
-    "holdToDelete": "Gedrückt halten zum Löschen"
+    "holdToDelete": "Gedrückt halten zum Löschen",
+    "expertMode": "Expertenmodus",
+    "expertModeHint": "Der Editor zeigt Blocknamen, Blocktypen, Anschlüsse und alle Felder, wie bisher. Wird auf diesem Gerät gespeichert."
   },
   "update": {
     "available": "Eine neue Version ist verfügbar.",
