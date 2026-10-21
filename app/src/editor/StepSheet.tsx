@@ -123,7 +123,7 @@ export function StepSheet({ block, step, issues, sentence, expert, ctx }: StepSh
   const { t } = useTranslation();
   const doc = ctx.json;
   const name = block.name;
-  const Icon = blockIcon(block.type);
+  const Icon = blockIcon(isCatchEarly(block) ? "delay" : block.type);
   const locked = ctx.lockedBy.get(name);
   const apply: Apply = (next, mergeKey) => ctx.apply(next, mergeKey ? { mergeKey } : undefined);
   const set = (field: string, value: unknown, merge = true) => apply(setBlockField(doc, name, field, value), merge ? `${name}.${field}` : undefined);
@@ -535,7 +535,9 @@ function FeatureSwitch({ id, block, doc, set, apply, toggle, inLoop }: FieldProp
         return <SwitchRow label={s("avoidPod")} hint={on ? s("avoidPodOn") : s("avoidPodOff")} checked={on} onChange={(v) => toggle("avoid", v)} />;
       }
       const miss = on && branchCountsMiss(doc, name, "avoidHit");
-      const count = typeof block.avoid === "number" ? String(block.avoid) : settingLabel(String(block.avoid), t).label;
+      const vars = isObject(doc.variables) ? (doc.variables as Record<string, number>) : {};
+      const n = typeof block.avoid === "number" ? block.avoid : vars[String(block.avoid)];
+      const count = typeof n === "number" ? String(n) : settingLabel(String(block.avoid), t).label;
       return (
         <SwitchRow label={s("avoidMulti")} hint={on ? s("avoidMultiOn", { count }) : s("avoidMultiOff")} checked={on} onChange={(v) => toggle("avoid", v)}>
           <CountValue label={s("redPods")} value={block.avoid} doc={doc} min={1} max={31} onField={(n) => set("avoid", n)} apply={apply} />
