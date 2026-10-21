@@ -793,5 +793,185 @@
     "linkInvalid": "Dieser Anmeldelink ist unvollständig.",
     "noServer": "Trage zuerst den Server in den Plattform-Einstellungen ein und öffne den Link dann erneut.",
     "signingIn": "Melde an…"
+  },
+  "wizard": {
+    "numberLocale": "de",
+    "cancel": "Abbrechen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "build": "Spiel bauen",
+    "stepOf": "Schritt {{n}} von {{total}}",
+    "less": "Weniger: {{label}}",
+    "more": "Mehr: {{label}}",
+    "steps": {
+      "game": "Spiel",
+      "pods": "Pods",
+      "timing": "Runden und Zeiten",
+      "colors": "Farben",
+      "measure": "Messen"
+    },
+    "games": {
+      "solo": {
+        "name": "Solo-Reaktion",
+        "line": "Nur der Central. Blau = bereit machen, dann drücken, sobald er leuchtet."
+      },
+      "star": {
+        "name": "Stern",
+        "line": "Der Central und ein zufälliger Pod sind abwechselnd dran."
+      },
+      "random": {
+        "name": "Zufalls-Pod",
+        "line": "Ein zufälliger Pod leuchtet, auch der Central, nie zweimal derselbe."
+      },
+      "multi": {
+        "name": "Alle auf einmal",
+        "line": "Alle Pods leuchten gleichzeitig. Alle treffen, die roten nicht berühren."
+      },
+      "duo": {
+        "name": "Duo",
+        "line": "Zwei Pods sind abwechselnd dran, nach einer zufälligen Pause."
+      }
+    },
+    "game": {
+      "question": "Was möchtest du spielen?",
+      "centralOnly": "nur der Central",
+      "needs_one": "Central + mind. {{count}} Pod",
+      "needs_other": "Central + mind. {{count}} Pods"
+    },
+    "problems": {
+      "notEnoughPods_one": "{{game}} braucht mindestens {{count}} Pod außer dem Central. Nimm einen Pod dazu oder geh zurück und wähle ein anderes Spiel.",
+      "notEnoughPods_other": "{{game}} braucht mindestens {{count}} Pods außer dem Central. Nimm Pods dazu oder geh zurück und wähle ein anderes Spiel.",
+      "pauseOrder": "Die kürzeste Pause muss kürzer sein als die längste.",
+      "redTarget": "Rot ist für die „nicht berühren“-Pods reserviert. Wähle eine andere Farbe für das Licht zum Treffen."
+    },
+    "pods": {
+      "question": "Wie viele Pods hast du?",
+      "hint": "Zähle die Pods außer dem Central (dem Pod, mit dem sich die App verbindet).",
+      "label": "Pods außer dem Central",
+      "total_one": "Central + {{count}} Pod",
+      "total_other": "Central + {{count}} Pods",
+      "soloUses": "Solo nutzt nur den Central. Die anderen Pods bleiben aus.",
+      "duoUses": "Duo nutzt den Central und einen Pod. Die anderen Pods bleiben aus."
+    },
+    "timing": {
+      "rounds": "Runden",
+      "pause": "Pause vor jedem Licht",
+      "fixed": "Immer gleich",
+      "random": "Zufällig zwischen",
+      "pauseFixed": "Pause",
+      "shortest": "Kürzeste Pause",
+      "longest": "Längste Pause",
+      "timeLimit": "Zeitlimit",
+      "timeLimitOn": "Zu langsam nach {{s}}",
+      "timeLimitOff": "Warten, so lange es dauert",
+      "secondsToPress": "Zeit zum Drücken",
+      "tooSlow": "Wenn zu langsam",
+      "onTimeout": {
+        "goOn": "Weitermachen",
+        "countMiss": "Fehler zählen und weitermachen",
+        "endRound": "Runde beenden"
+      }
+    },
+    "colors": {
+      "target": "Farbe des Lichts zum Treffen",
+      "redPods": "Rote Pods: nicht berühren",
+      "redPodsOn_one": "{{count}} roter Pod pro Runde",
+      "redPodsOn_other": "{{count}} rote Pods pro Runde",
+      "redPodsOff": "Alle Pods leuchten in der Zielfarbe",
+      "redCount": "Rote Pods pro Runde",
+      "hint": "Pods außer dem Central können 8 Farben zeigen. Die Farben einzelner Schritte kannst du später ändern.",
+      "preview": "Vorschau des Sets"
+    },
+    "measure": {
+      "question": "Was sollen die Pods messen?",
+      "hint": "Alles hier ist freiwillig. Du kannst es später ändern.",
+      "record": "Reaktionszeiten aufzeichnen",
+      "recordHint": "Jeder Druck wird gemessen, vom Aufleuchten bis zum Drücken.",
+      "falseStart": "Fehlstarts erkennen",
+      "falseStartHint": "Drücken während der Pause blinkt rot und beendet die Runde.",
+      "countMisses": "Fehler zählen",
+      "countMissesHint": "Zählt 1 für: {{what}}",
+      "countMissesOff": "Schalte zuerst ein Zeitlimit ein.",
+      "missTooSlow": "zu langsam",
+      "missRed": "roter Pod getroffen",
+      "missFalseStart": "Fehlstart",
+      "results": "Ergebnis am Ende zeigen",
+      "resultsHint": "Durchschnitt und Bestzeit nach der letzten Runde.",
+      "resultsOff": "Braucht „Reaktionszeiten aufzeichnen“."
+    },
+    "ready": {
+      "title": "Dein Spiel ist fertig",
+      "name": "Name",
+      "menu": "Menü-Muster",
+      "menuHint": "So erscheint es im Programm-Menü des Pods. Tippe auf LEDs, um es zu ändern.",
+      "size": "Belegt {{percent}} % des Platzes für ein Programm.",
+      "story": "Was passiert",
+      "try": "Im Simulator ausprobieren",
+      "change": "Schritte ändern",
+      "saveToMenu": "Speichern und ins Menü",
+      "saved": "In „Meine Programme“ gespeichert. Änderungen hier aktualisieren es.",
+      "centralOnly": "Nur der Central."
+    },
+    "chooser": {
+      "question": "Wie möchtest du anfangen?",
+      "game": "Mit einem Spiel anfangen",
+      "gameLine": "Beantworte fünf Fragen. Die App baut das Programm, du kannst es gleich ausprobieren.",
+      "recommended": "Empfohlen",
+      "copy": "Eines meiner Programme kopieren",
+      "copyLine": "Nimm eines deiner Programme oder ein mitgeliefertes und ändere es.",
+      "empty": "Leer anfangen",
+      "emptyLine": "Block für Block selbst bauen.",
+      "expert": "Für Leute, die Blöcke kennen",
+      "copyTitle": "Programm kopieren",
+      "noneMine": "Noch keine eigenen Programme."
+    },
+    "story": {
+      "rounds_one": "{{count}} Runde:",
+      "rounds_other": "{{count}} Runden, jede so:",
+      "ready": "Der Central leuchtet blau: bereit machen",
+      "pauseFixed": "Pause {{s}} s",
+      "pauseRandom": "Pause {{min}}–{{max}} s, zufällig",
+      "falseStart": "{{pause}}; wer jetzt drückt, macht einen Fehlstart: rot, die Runde ist vorbei",
+      "andMiss": ", und es zählt als Fehler",
+      "lightCentral": "Den Central {{color}} leuchten lassen",
+      "pressCentral": "Auf den Druck am Central warten",
+      "limit": " (max. {{s}} s)",
+      "podRandom": "Einen zufälligen Pod {{color}} leuchten lassen und auf seinen Druck warten",
+      "podRandomOther": "Einen zufälligen Pod {{color}} leuchten lassen, auch den Central, nie zweimal denselben, und auf seinen Druck warten",
+      "podDuo": "Den Pod {{color}} leuchten lassen und auf seinen Druck warten",
+      "allAtOnce_one": "Beide Pods gleichzeitig leuchten lassen",
+      "allAtOnce_other": "Alle {{count}} Pods gleichzeitig leuchten lassen",
+      "redPods_one": ", {{count}} davon rot: nicht berühren",
+      "redPods_other": ", {{count}} davon rot: nicht berühren",
+      "untilPressed": ", warten, bis alle Pods in {{color}} gedrückt sind",
+      "redHit": "Wenn ein roter Pod getroffen wird: rot blinken, die Runde ist vorbei",
+      "allOff": "Alle Pods ausschalten",
+      "tooSlow": {
+        "goOn": "Wenn zu langsam: mit dem nächsten Schritt weitermachen",
+        "countMiss": "Wenn zu langsam: Fehler zählen und weitermachen",
+        "endRound": "Wenn zu langsam: die Runde ist vorbei",
+        "endRoundMiss": "Wenn zu langsam: Fehler zählen, die Runde ist vorbei"
+      },
+      "record": "Jede Reaktionszeit wird aufgezeichnet.",
+      "misses": "Fehler werden in der Einstellung „Fehler“ gezählt.",
+      "endResults": "Am Ende: Durchschnitt und Bestzeit werden gezeigt, dann beginnt das Spiel von vorn.",
+      "endPlain": "Am Ende: der Central leuchtet 3 s blau, dann beginnt das Spiel von vorn."
+    }
+  },
+  "settingLabels": {
+    "rounds": "Runden",
+    "runs": "Rundenzähler",
+    "pause": "Pause",
+    "pauseMin": "Kürzeste Pause",
+    "pauseMax": "Längste Pause",
+    "timeLimit": "Zeitlimit",
+    "redPods": "Rote Pods",
+    "misses": "Fehler",
+    "selectedPod": "Gewählter Pod",
+    "avgReaction": "Durchschnittliche Reaktionszeit",
+    "bestReaction": "Beste Reaktionszeit",
+    "lastReaction": "Letzte Reaktionszeit",
+    "requiredPeripherals": "Pods außer dem Central",
+    "nodeCount": "Pods mit dem Central"
   }
 }
