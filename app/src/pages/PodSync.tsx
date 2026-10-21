@@ -9,7 +9,7 @@ import { PodError } from "../pod/protocol";
 import { needsPin, usePodSession } from "../pod/session";
 import { planPush, planRestore, type FileSync, type PodIssue, type PushPlan, type PushResult, type PushStep, type SyncStatus } from "../pod/sync";
 import { keepMine, keepPod, runPush } from "../pod/syncActions";
-import { editorUrl, viewUrl } from "../programs/sources";
+import { editorUrl, podProgramFormat, viewUrl } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import page from "./Page.module.css";
 import styles from "./PodSync.module.css";
@@ -118,7 +118,7 @@ function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; state
   const candidates = useMemo(() => states.filter((s) => s.status === "new" || s.status === "localNewer"), [states]);
   const plan: PushPlan | null = useMemo(() => {
     if (!session.list) return null;
-    const options = { podFiles: session.files, list: session.list, supportedTypes: session.info?.blockTypes };
+    const options = { podFiles: session.files, list: session.list, supportedTypes: session.info?.blockTypes, programFormat: podProgramFormat(session.info) };
     if (mode === "restore") return planRestore(options);
     return planPush(states, { ...options, selected: new Set(candidates.map((s) => s.path).filter((p) => !deselected.has(p))) });
   }, [mode, states, candidates, deselected, session.files, session.list, session.info]);

@@ -1,0 +1,121 @@
+/* "Add a step" sheet: recipes and intent tiles (docs/app/prototypes/editor-flow.html). */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.group h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.recipe {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.recipe > svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.text strong {
+  font-size: 14px;
+}
+
+.text span {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-height: 92px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--cat, var(--border));
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tile > svg {
+  color: var(--cat, var(--text-muted));
+}
+
+.tile strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.tile span,
+.tile code {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.tile[data-category="light"] { --cat: var(--cat-light); }
+.tile[data-category="wait"] { --cat: var(--cat-wait); }
+.tile[data-category="input"] { --cat: var(--cat-input); }
+.tile[data-category="logic"] { --cat: var(--cat-logic); }
+.tile[data-category="remote"] { --cat: var(--cat-remote); }
+.tile[data-category="stats"] { --cat: var(--cat-stats); }
+
+.recipe:hover:not(:disabled),
+.tile:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.recipe:disabled,
+.tile:disabled {
+  cursor: not-allowed;
+}
+
+.recipe:disabled > svg,
+.recipe:disabled strong,
+.tile:disabled > svg,
+.tile:disabled strong {
+  opacity: 0.5;
+}
+
+.text .reason,
+.tile .reason {
+  color: var(--warn);
+}

@@ -1,5 +1,7 @@
 import { useMemo } from "react";
+import type { ValidateOptions } from "@reactpod/program-model";
 import { DEFAULT_FILES } from "../defaults";
+import type { InfoResponse } from "../pod/protocol";
 import { usePodSession } from "../pod/session";
 import { localFiles, useWorkspace } from "../store/workspace";
 import { menuOf } from "./catalog";
@@ -15,8 +17,23 @@ export type ProgramSource = {
   read: (path: string) => string | undefined;
   /** block types the target can run (pod only) */
   supportedTypes?: readonly string[];
+  /**
+   * `info.programFormat` of the connected pod (missing → 1, firmware before 2.3); undefined
+   * without a pod (no limit). Blocks of a newer format are errors, fields of a newer one warnings.
+   */
+  programFormat?: number;
   available: boolean;
 };
+
+/** The program format a connected pod runs: `info.programFormat`, 1 when the firmware does not report it. */
+export function podProgramFormat(info: Pick<InfoResponse, "programFormat"> | null | undefined): number | undefined {
+  return info ? (info.programFormat ?? 1) : undefined;
+}
+
+/** What `validateProgram` needs to check a program against the source's target pod. */
+export function validateOptionsOf(source: Pick<ProgramSource, "supportedTypes" | "programFormat">): ValidateOptions {
+  return { supportedTypes: source.supportedTypes, programFormat: source.programFormat };
+}
 
 export function useProgramSource(id: SourceId): ProgramSource {
   const files = usePodSession((s) => s.files);
@@ -25,13 +42,15 @@ export function useProgramSource(id: SourceId): ProgramSource {
   const programs = useWorkspace((s) => s.programs);
   const local = useMemo(() => localFiles(programs), [programs]);
   return useMemo(() => {
-    if (id === "pod") return { id, files, read: (p) => files[p], supportedTypes: info?.blockTypes, available: connected };
+    const programFormat = connected ? podProgramFormat(info) : undefined;
+    if (id === "pod") return { id, files, read: (p) => files[p], supportedTypes: info?.blockTypes, programFormat, available: connected };
     if (id === "local") {
       return {
         id,
         files: local,
         read: (p) => local[p] ?? (connected ? files[p] : undefined) ?? DEFAULT_FILES[p],
         supportedTypes: connected ? info?.blockTypes : undefined,
+        programFormat,
         available: true,
       };
     }
