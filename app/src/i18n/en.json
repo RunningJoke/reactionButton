@@ -755,5 +755,184 @@
     "linkInvalid": "This sign-in link is incomplete.",
     "noServer": "Enter the server in the platform settings first, then open the link again.",
     "signingIn": "Signing in…"
+  },
+  "wizard": {
+    "numberLocale": "en",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "build": "Build my game",
+    "stepOf": "Step {{n}} of {{total}}",
+    "less": "Less: {{label}}",
+    "more": "More: {{label}}",
+    "steps": {
+      "game": "Game",
+      "pods": "Pods",
+      "timing": "Rounds and timing",
+      "colors": "Colours",
+      "measure": "Measure"
+    },
+    "games": {
+      "solo": {
+        "name": "Solo reaction",
+        "line": "Only the central. Blue = get ready, then press as soon as it lights up."
+      },
+      "star": {
+        "name": "Star",
+        "line": "The central and a random pod take turns."
+      },
+      "random": {
+        "name": "Random pod",
+        "line": "One random pod lights up, the central too, never the same twice."
+      },
+      "multi": {
+        "name": "All at once",
+        "line": "All pods light up at once. Hit every one, leave the red ones."
+      },
+      "duo": {
+        "name": "Duo",
+        "line": "Two pods take turns after a random pause."
+      }
+    },
+    "game": {
+      "question": "What do you want to play?",
+      "centralOnly": "central only",
+      "needs_one": "needs {{count}} pod besides the central",
+      "needs_other": "needs {{count}} pods besides the central"
+    },
+    "problems": {
+      "notEnoughPods_one": "{{game}} needs at least {{count}} pod besides the central. Add a pod or go back and pick another game.",
+      "notEnoughPods_other": "{{game}} needs at least {{count}} pods besides the central. Add pods or go back and pick another game.",
+      "pauseOrder": "The shortest pause must be shorter than the longest.",
+      "redTarget": "Red is taken by the “don't touch” pods. Pick another colour for the light to hit."
+    },
+    "pods": {
+      "question": "How many pods do you have?",
+      "hint": "Count the pods besides the central (the pod the app connects to).",
+      "label": "Pods besides the central",
+      "total_one": "Central + {{count}} pod",
+      "total_other": "Central + {{count}} pods",
+      "soloUses": "Solo uses only the central. Other pods stay off.",
+      "duoUses": "Duo uses the central and one pod. Other pods stay off."
+    },
+    "timing": {
+      "rounds": "Rounds",
+      "pause": "Pause before each light",
+      "fixed": "Always the same",
+      "random": "Random between",
+      "pauseFixed": "Pause",
+      "shortest": "Shortest pause",
+      "longest": "Longest pause",
+      "timeLimit": "Time limit",
+      "timeLimitOn": "Too slow after {{s}}",
+      "timeLimitOff": "Wait as long as it takes",
+      "secondsToPress": "Time to press",
+      "tooSlow": "If too slow",
+      "onTimeout": {
+        "goOn": "Go on",
+        "countMiss": "Count a miss and go on",
+        "endRound": "End the round"
+      }
+    },
+    "colors": {
+      "target": "Colour of the light to hit",
+      "redPods": "Red pods: don't touch",
+      "redPodsOn_one": "{{count}} red pod per round",
+      "redPodsOn_other": "{{count}} red pods per round",
+      "redPodsOff": "All pods light up in the target colour",
+      "redCount": "Red pods per round",
+      "hint": "Pods besides the central can show 8 colours. You can change the colours of single steps later.",
+      "preview": "Preview of the set"
+    },
+    "measure": {
+      "question": "What should the pods measure?",
+      "hint": "All of this is optional. You can change it later.",
+      "record": "Record reaction times",
+      "recordHint": "Each press is measured, from light on to press.",
+      "falseStart": "Catch false starts",
+      "falseStartHint": "Pressing during the pause flashes red and ends the round.",
+      "countMisses": "Count misses",
+      "countMissesHint": "Adds 1 for: {{what}}",
+      "countMissesOff": "Turn on a time limit first.",
+      "missTooSlow": "too slow",
+      "missRed": "red pod hit",
+      "missFalseStart": "false start",
+      "results": "Show results at the end",
+      "resultsHint": "Average and best time after the last round.",
+      "resultsOff": "Needs “Record reaction times”."
+    },
+    "ready": {
+      "title": "Your game is ready",
+      "name": "Name",
+      "menu": "Menu pattern",
+      "menuHint": "This is how it shows in the pod's program menu. Tap LEDs to change it.",
+      "size": "Uses {{percent}} % of the space for one program.",
+      "story": "What happens",
+      "try": "Try it in the simulator",
+      "change": "Change steps",
+      "saveToMenu": "Save and add to menu",
+      "saved": "Saved in My programs. Changes here update it."
+    },
+    "chooser": {
+      "question": "How do you want to start?",
+      "game": "Start from a game",
+      "gameLine": "Answer five questions. The app builds the program, you can try it right away.",
+      "recommended": "Recommended",
+      "copy": "Copy one of my programs",
+      "copyLine": "Take one of your programs or a shipped one and change it.",
+      "empty": "Start empty",
+      "emptyLine": "Build it block by block.",
+      "expert": "For people who know blocks",
+      "copyTitle": "Copy a program",
+      "noneMine": "No programs of your own yet."
+    },
+    "story": {
+      "rounds_one": "{{count}} round:",
+      "rounds_other": "{{count}} rounds, each one:",
+      "ready": "The central lights blue: get ready",
+      "pauseFixed": "Pause {{s}} s",
+      "pauseRandom": "Pause {{min}}–{{max}} s, at random",
+      "falseStart": "{{pause}}; pressing now is a false start: red, the round is over",
+      "andMiss": ", and it counts as a miss",
+      "lightCentral": "Light the central {{color}}",
+      "pressCentral": "Wait for the press on the central",
+      "limit": " (max {{s}} s)",
+      "podRandom": "Light a random pod {{color}} and wait for its press",
+      "podRandomOther": "Light a random pod {{color}}, the central too, never the same twice, and wait for its press",
+      "podDuo": "Light the pod {{color}} and wait for its press",
+      "allAtOnce_one": "Light both pods at once",
+      "allAtOnce_other": "Light all {{count}} pods at once",
+      "redPods_one": ", {{count}} of them red: don't touch",
+      "redPods_other": ", {{count}} of them red: don't touch",
+      "untilPressed": ", wait until every {{color}} one is pressed",
+      "redHit": "If a red pod is hit: flash red, the round is over",
+      "allOff": "Turn all pods off",
+      "tooSlow": {
+        "goOn": "If too slow: go on with the next step",
+        "countMiss": "If too slow: count a miss and go on",
+        "endRound": "If too slow: the round is over",
+        "endRoundMiss": "If too slow: count a miss, the round is over"
+      },
+      "record": "Every reaction time is recorded.",
+      "misses": "Misses are counted in the setting “Misses”.",
+      "endResults": "At the end: the average and best time are shown, then the game starts again.",
+      "endPlain": "At the end: the central lights blue for 3 s, then the game starts again."
+    }
+  },
+  "settingLabels": {
+    "rounds": "Rounds",
+    "runs": "Round counter",
+    "pause": "Pause",
+    "pauseMin": "Shortest pause",
+    "pauseMax": "Longest pause",
+    "timeLimit": "Time limit",
+    "redPods": "Red pods",
+    "misses": "Misses",
+    "selectedPod": "Selected pod",
+    "avgReaction": "Average reaction time",
+    "bestReaction": "Best reaction time",
+    "lastReaction": "Last reaction time",
+    "requiredPeripherals": "Pods besides the central",
+    "nodeCount": "Pods including the central"
   }
 }
