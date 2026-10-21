@@ -35,6 +35,12 @@ function makeLabel(t: TFunction, options: SentenceOptions) {
 
 /** One sentence for a block. */
 export function stepSentence(block: Block, t: TFunction, options: SentenceOptions = {}): string {
+  const text = sentenceOf(block, t, options);
+  // "den gewählten Pod …" (de) starts with a placeholder: a sentence still starts upper case
+  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+}
+
+function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): string {
   const label = makeLabel(t, options);
   const known = (v: unknown) => (typeof v === "string" && typeof options.values?.[v] === "number" ? options.values[v] : v);
   const value = (raw: unknown) => {

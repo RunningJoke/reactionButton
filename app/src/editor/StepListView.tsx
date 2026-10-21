@@ -72,7 +72,13 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
   // keep the selected step in view (also when picked from a branch line or the check sheet)
   useEffect(() => {
     if (!selected) return;
-    root.current?.querySelector<HTMLElement>(`[data-step="${CSS.escape(selected)}"]`)?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    const card = root.current?.querySelector<HTMLElement>(`[data-step="${CSS.escape(selected)}"]`);
+    const box = root.current?.parentElement;
+    if (!card || !box) return;
+    // on phones the sheet covers the lower 70 %: the step's top goes into the free part above it
+    const free = window.matchMedia?.("(min-width: 900px)").matches ? box.clientHeight : box.clientHeight * 0.3;
+    const top = card.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    if (top < 8 || top > free - 48) box.scrollTo?.({ top: box.scrollTop + top - 8, behavior: "smooth" });
   }, [selected]);
 
   /** words for where a branch goes */
