@@ -195,6 +195,14 @@ describe("step list operations", () => {
       ["B", "A"],
       ["End", undefined],
     ]);
+    // the program model knows repeat (format 2): still valid, and the simulator runs B, A three times
+    const path = "/prog/r.json";
+    const resolved = validateProgram(path, read({ [path]: formatProgram(moved) }));
+    expect(resolved.issues.filter((i) => i.severity === "error")).toEqual([]);
+    const sim = new Simulator(resolved, { seed: 1 });
+    sim.advance(1000);
+    const entered = sim.snapshot().log.filter((e) => e.kind === "enter").map((e) => e.text);
+    expect(entered.filter((n) => n !== "Rounds").slice(0, 7)).toEqual(["B", "A", "B", "A", "B", "A", "End"]);
   });
 
   it("deletes a step with its branch and keeps the flow connected", () => {

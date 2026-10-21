@@ -9,9 +9,9 @@
  *   other port leads back to the setVariable. An optional `setVariable X = 0` that leads to the
  *   setVariable ("start again") belongs to the loop too.
  *
- * The `repeat` type is detected by its name only, so this works before the program model knows it.
+ * Port roles come from the program model (`portRole`), plus "ifPressedEarly" for the false-start pause.
  */
-import { blockType, isObject, type Block } from "@reactpod/program-model";
+import { blockType, isObject, portRole as modelPortRole, type Block, type PortRole as ModelPortRole } from "@reactpod/program-model";
 import type { ProgramJson } from "./ops";
 
 export type LoopInfo = {
@@ -31,20 +31,11 @@ export type LoopInfo = {
   hidden: string[];
 };
 
-/** Words for a port, independent of its raw name (editor-ux.md §5 "Port names"). */
-export type PortRole =
-  | "then"
-  | "ifTooSlow"
-  | "ifLeftAlone"
-  | "shortPress"
-  | "longPress"
-  | "ifRedHit"
-  | "ifYes"
-  | "ifNo"
-  | "eachRound"
-  | "afterLast"
-  /** the pause of a "catch early presses" step (button with a random time limit) was pressed */
-  | "ifPressedEarly";
+/**
+ * Words for a port (editor-ux.md §5 "Port names"): the model's roles, plus one the step list
+ * adds: the pause of a "catch early presses" step (button with a random time limit) was pressed.
+ */
+export type PortRole = ModelPortRole | "ifPressedEarly";
 
 export type StepBranch = { port: string; role: string; target?: string };
 
@@ -68,22 +59,9 @@ export type Step = {
   unreachable?: boolean;
 };
 
-/** Until the program model has `portRoles` (P8a): the roles of the known block types. */
-const FALLBACK_ROLES: Record<string, Record<string, PortRole>> = {
-  button: { pressed: "then", next: "then", short: "shortPress", long: "longPress", timeout: "ifTooSlow" },
-  remotePress: { next: "then", timeout: "ifTooSlow" },
-  remoteMultiPress: { next: "then", avoidHit: "ifRedHit", timeout: "ifTooSlow" },
-  if: { true: "ifYes", false: "ifNo" },
-  repeat: { body: "eachRound", done: "afterLast", next: "then" },
-};
-
-const REPEAT_PORTS = ["body", "done", "next"] as const;
-
-/** Output ports of a block in firmware order (also for `repeat`, which the model may not know yet). */
+/** Output ports of a block in firmware order; none for an unknown type. */
 export function portsOf(block: Block): readonly string[] {
-  const def = blockType(block.type);
-  if (def) return def.ports;
-  return block.type === "repeat" ? REPEAT_PORTS : [];
+  return blockType(block.type)?.ports ?? [];
 }
 
 const target = (block: Block, port: string) => (typeof block[port] === "string" ? (block[port] as string) : undefined);
@@ -102,11 +80,9 @@ export function isCatchEarly(block: Block): boolean {
   );
 }
 
-export function portRole(block: Block, port: string): string {
+export function portRole(block: Block, port: string): PortRole {
   if (isCatchEarly(block)) return port === "timeout" ? "then" : port === "long" ? "longPress" : "ifPressedEarly";
-  if (block.type === "remotePress" && block.mode === "avoid" && port === "timeout") return "ifLeftAlone";
-  const def = blockType(block.type) as { portRoles?: Partial<Record<string, string>> } | undefined;
-  return def?.portRoles?.[port] ?? FALLBACK_ROLES[block.type]?.[port] ?? "then";
+  return modelPortRole(block, port) ?? "then";
 }
 
 /**

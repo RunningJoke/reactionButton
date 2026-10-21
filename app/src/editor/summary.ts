@@ -67,6 +67,11 @@ export function blockSummary(block: Block, t: (key: string, options?: Record<str
       return [text(block.pods === undefined ? t("summary.allPods") : `${t("summary.pods")} ${v(block.pods)}`)];
     case "summary":
       return [text(`Σ ${v(block.metric)}`)];
+    case "repeat": {
+      const parts: SummaryPart[] = [text(`↻ ${v(block.count)}×`)];
+      if (typeof block.storeIndex === "string") parts.push(text(`# ${block.storeIndex}`));
+      return parts;
+    }
     default:
       return [];
   }
