@@ -91,6 +91,8 @@ class Validator:
         for name, value in doc.get("variables", {}).items():
             if not isinstance(value, int):
                 self.error(fs_path, f"variable '{name}' must be an integer")
+            else:
+                self.variables[name] = value
         for block in doc.get("blocks", []):
             blocks.append((fs_path, block))
         return doc
@@ -186,7 +188,20 @@ class Validator:
             if name not in seen:
                 self.warning(f"{file} block '{name}'", "no path from 'body' leads back to this repeat block")
 
+    def check_ranges(self, blocks):
+        # with max <= min the firmware always uses min (programs.md 7.3); variables count with their start value
+        def value(v):
+            return v if isinstance(v, int) else self.variables.get(v) if isinstance(v, str) else None
+        for file, block in blocks:
+            fields = {"delay": ("minMs", "maxMs"), "button": ("minTimeoutMs", "maxTimeoutMs")}.get(block.get("type"))
+            if not fields:
+                continue
+            low, high = value(block.get(fields[0])), value(block.get(fields[1]))
+            if low is not None and high is not None and high < low:
+                self.warning(f"{file} block '{block.get('name')}'", f"'{fields[1]}' is below '{fields[0]}': the pod always uses '{fields[0]}'")
+
     def check_program(self, fs_path):
+        self.variables = {}
         blocks = []
         doc = self.collect(fs_path, blocks)
         if doc is None:
@@ -202,6 +217,7 @@ class Validator:
 
         self.check_timers(fs_path, blocks)
         self.check_repeats(blocks)
+        self.check_ranges(blocks)
 
         start = doc.get("start")
         if start is not None and start not in names:

@@ -42,12 +42,16 @@ export function secondsText(ms: number, t: TFunction): string {
 
 const LIMIT = { min: 0, max: 600_000, step: 500 };
 
+const SELF_DESCRIBING: ReadonlySet<string> = new Set(["rangeReversed"]);
+
 /** Words for an issue, without raw field and setting names. */
 export function issueText(issue: Issue, t: TFunction): string {
   const params: Record<string, string | number> = { ...(issue.params ?? {}) };
   for (const key of ["name", "var"]) if (typeof params[key] === "string") params[key] = settingLabel(params[key] as string, t).label;
   const text = t(`issues.${issue.code}`, params);
-  return issue.field ? `${text} (${fieldWords(issue.field, t)})` : text;
+  // these texts already say which value is meant
+  if (!issue.field || SELF_DESCRIBING.has(issue.code)) return text;
+  return `${text} (${fieldWords(issue.field, t)})`;
 }
 
 export function fieldWords(field: string, t: TFunction): string {

@@ -322,7 +322,15 @@
         "pods": "Anzahl Pods",
         "ledsOff": "Zentrale auch ausschalten",
         "reset": "Zeiten danach löschen",
-        "storeIndex": "Rundennummer merken in"
+        "storeIndex": "Rundennummer merken in",
+        "ms": "Zeit",
+        "minMs": "Kürzeste Zeit",
+        "maxMs": "Längste Zeit",
+        "timeoutMs": "Zeitlimit",
+        "minTimeoutMs": "Kürzeste Zeit",
+        "maxTimeoutMs": "Längste Zeit",
+        "shortMs": "Langer Druck ab",
+        "count": "Runden"
       },
       "help": {
         "storeAs": "Später in einem Entscheiden-Schritt nutzbar, z. B. „wenn die letzte Zeit unter 0,3 s liegt“.",
@@ -591,7 +599,8 @@
     "fieldNeedsFormat": "Der verbundene Pod ignoriert {{field}} (braucht Programmformat {{format}}, Firmware-Update nötig)",
     "timerNeverStopped": "Stoppuhr {{name}} wird gestartet, aber nie gestoppt",
     "timerNeverStarted": "Stoppuhr {{name}} wird gestoppt, aber nie gestartet",
-    "repeatNoLoop": "Kein Schritt der Runde führt zu dieser Wiederholung zurück"
+    "repeatNoLoop": "Kein Schritt der Runde führt zu dieser Wiederholung zurück",
+    "rangeReversed": "Die kürzeste Zeit ist länger als die längste: der Pod nimmt immer die kürzeste"
   },
   "portRoles": {
     "then": "Dann",

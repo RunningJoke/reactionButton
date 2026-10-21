@@ -322,7 +322,15 @@
         "pods": "Number of pods",
         "ledsOff": "Turn the central off too",
         "reset": "Clear the times afterwards",
-        "storeIndex": "Keep the round number in"
+        "storeIndex": "Keep the round number in",
+        "ms": "Time",
+        "minMs": "Shortest time",
+        "maxMs": "Longest time",
+        "timeoutMs": "Time limit",
+        "minTimeoutMs": "Shortest time",
+        "maxTimeoutMs": "Longest time",
+        "shortMs": "Long press from",
+        "count": "Rounds"
       },
       "help": {
         "storeAs": "Use it later in a Decide step, e.g. “if the last time is under 0.3 s”.",
@@ -591,7 +599,8 @@
     "fieldNeedsFormat": "The connected pod ignores {{field}} (needs program format {{format}}, firmware update needed)",
     "timerNeverStopped": "Stopwatch {{name}} is started but never stopped",
     "timerNeverStarted": "Stopwatch {{name}} is stopped but never started",
-    "repeatNoLoop": "No step of the round leads back to this repeat"
+    "repeatNoLoop": "No step of the round leads back to this repeat",
+    "rangeReversed": "The shortest time is longer than the longest: the pod always uses the shortest"
   },
   "portRoles": {
     "then": "Then",

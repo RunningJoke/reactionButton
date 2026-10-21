@@ -190,6 +190,7 @@ paths:
                             - timerNeverStopped
                             - timerNeverStarted
                             - repeatNoLoop
+                            - rangeReversed
                             - indexInvalid
                             - indexDuplicate
                             - indexNotProgram

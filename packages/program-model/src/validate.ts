@@ -65,6 +65,7 @@ export const ISSUE_CODES = [
   "timerNeverStopped",
   "timerNeverStarted",
   "repeatNoLoop",
+  "rangeReversed",
   // index
   "indexInvalid",
   "indexDuplicate",
@@ -231,6 +232,7 @@ export function validateProgram(path: string, source: FileSource, options: Valid
   checkReachability(resolved, path, out);
   checkTimers(resolved, path, out);
   checkRepeats(resolved, path, out);
+  checkRanges(resolved, out);
   return resolved;
 }
 
@@ -445,6 +447,27 @@ function checkTimers(resolved: ResolvedProgram, path: string, out: Collector) {
       field: where.field,
       params: { name: timer },
     });
+  }
+}
+
+/** The random ranges a block type has: [min field, max field] (programs.md §7.3). */
+const RANGES: Record<string, readonly [string, string]> = { delay: ["minMs", "maxMs"], button: ["minTimeoutMs", "maxTimeoutMs"] };
+
+/**
+ * Warns when a random range is reversed: with max <= min the firmware always uses min (programs.md §7.3),
+ * so the "random" pause or time limit is fixed. Variables count with their start value.
+ */
+function checkRanges(resolved: ResolvedProgram, out: Collector) {
+  const value = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? resolved.variables[v] : undefined);
+  for (const { file, block } of resolved.blocks) {
+    if (!isObject(block) || typeof block.name !== "string" || typeof block.type !== "string") continue;
+    const range = RANGES[block.type];
+    if (!range) continue;
+    const min = value(block[range[0]]);
+    const max = value(block[range[1]]);
+    if (min !== undefined && max !== undefined && max < min) {
+      out.warn("rangeReversed", file, { block: block.name, field: range[0], params: { min, max } });
+    }
   }
 }
 
