@@ -48,11 +48,14 @@ export function SimulatePage() {
   const readRef = useRef(read);
   readRef.current = read;
   const path = target?.path;
+  const { programFormat } = source;
   const model = useMemo(() => {
     if (!path || text === undefined) return null;
-    const resolved = validateProgram(path, readRef.current);
-    return { resolved, graph: buildGraph(resolved), ok: !hasErrors(resolved.issues) && resolved.doc !== null };
-  }, [path, text]);
+    // checked against the connected pod's format; the simulator itself runs every block type the app knows
+    const resolved = validateProgram(path, readRef.current, { programFormat });
+    const blocking = resolved.issues.filter((i) => i.code !== "unsupportedType");
+    return { resolved, graph: buildGraph(resolved), ok: !hasErrors(blocking) && resolved.doc !== null };
+  }, [path, text, programFormat]);
 
   const sim = useSimulation(model?.ok ? model.resolved : null);
 
