@@ -175,10 +175,18 @@ The last screen shows the name (prefilled, editable), the menu LED pattern and t
 a short story ("12 rounds: pause 1–3 s, light a random pod green, wait for the press (max 2 s)…").
 Actions: **Try it**, **Change steps**, **Save and add to menu**.
 
-The generated program is self-contained (spec §7.2: templates, not includes) and uses the same
-structure as the shipped programs (`lib/loop`, `star`, `random`, `multi`, `solo`, `duo`). The
-wizard's answers are written into variables (`ROUNDS`, `PAUSE_MIN_MS`…) and fields, so the Adjust
-sheet can change them later.
+The generated program is self-contained (spec §7.2: templates, not includes). The round steps
+follow the shipped programs (`star`, `random`, `multi`, `solo`, `duo`). The wizard's answers are
+written into variables (`ROUNDS`, `PAUSE_MIN_MS`…) and fields, so the Adjust sheet can change them
+later.
+
+The loop is a **`repeat` block** (decision 2): `count: "ROUNDS"`, `storeIndex: "RUNS"`, `body` =
+the first round step, `done` = the first step after the last round. The last round step and the
+early exits (false start, red pod hit) link back to the `repeat` block (programs.md §7.10). The
+wizard checks `info.programFormat` (`pod/session.ts` reads it already). If it is below 2 or
+missing, or no pod is connected and the program is pushed later to an older pod, the wizard
+uses the `lib/loop` pattern instead (`setVariable RUNS +1`, `if RUNS >= MAX_LOOPS`). The editor
+shows both forms as the same Repeat bracket.
 
 ### C. Editor, simple view (default)
 
@@ -228,16 +236,23 @@ library parts (as copy or linked preset) come last.
 
 - **Basics**: name, description, "pods besides the central" as a picture stepper, menu LED pattern.
 - **Settings you can tweak**: the program's variables as labelled steppers ("Rounds", "Pause min").
-  Labels come from a name table in the app (`MAX_LOOPS` → "Rounds", `PAUSE_MIN_MS` → "Shortest
-  pause", known `_MS` suffix → seconds). Unknown names show as is.
+  Labels come from a name table **in the app** (decision 1), e.g. `app/src/editor/settingLabels.ts`
+  with the texts in `i18n/en.json` and `de.json`: `MAX_LOOPS`/`ROUNDS` → "Rounds",
+  `PAUSE_MIN_MS` → "Shortest pause", a known `_MS` suffix → shown in seconds. Unknown names show
+  as is. The program file format does not change.
 - **Expert**: start block, library parts and "convert to editable copy", raw variables table.
 
 ### G. Adjust sheet (coach shortcut, on the Programs page)
 
 "Adjust" on a program row opens a sheet with the program's settings (from F) and the switches
 that apply to the whole program (time limit, record times, results at the end). **Try it**
-and **Save** sit at the bottom. On a pod or shipped program this saves a local copy, as Edit does
-today. The coach never has to open the editor for the weekly change.
+and **Save** sit at the bottom. Adjust is offered for every program: mine, on the pod (also a
+read-only pod) and shipped (decision 3). Anything that is not already a local program is saved
+as a local copy with the same path, as Edit does today; the program on the pod stays as it is
+until the next push. The coach never has to open the editor for the weekly change.
+
+To review later: how Adjust on a read-only pod should end (the copy can't be pushed to that
+pod).
 
 ### H. Expert mode
 
@@ -278,19 +293,19 @@ and the platform then read the same table.
 |---|---|
 | P8a | Program model to format 2 (`repeat`, timers); `level`/`group` metadata; step sheet with switches and More options; expert section; inline problems |
 | P8b | Sentence summaries, step list with Repeat bracket and branch chips; move up/down; delete with undo toast |
-| P8c | "New program" chooser and game wizard (generator + tests that each recipe validates and runs in the simulator) |
+| P8c | "New program" chooser and game wizard. Generator with two loop forms (`repeat` for format 2, `lib/loop` pattern for format 1); tests that each recipe in each form validates and runs in the simulator |
 | P8d | "Add a step" by intent, recipes |
-| P8e | Program sheet split, settings labels, Adjust sheet on Programs, expert mode switch |
+| P8e | Program sheet split, settings label table in the app (en + de), Adjust sheet on Programs for every source, expert mode switch |
 
 Each step gets acceptance tests in [acceptance-tests.md](acceptance-tests.md) before it is
 marked done. The demo pod and the simulator do not change: the redesign only changes how
 programs are edited. Generated programs use only blocks the firmware already has.
 
-## 7. Open questions
+## 7. Decisions (2026-10-21)
 
-1. Variable labels: keep them in an app-side name table (proposed), or add an optional
-   `labels` object to the program file? A new key needs `/fw-api-change` and a check that the
-   firmware loader ignores it.
-2. Should the wizard produce format 2 (`repeat`) when the connected pod reports `programFormat`
-   2, and the `lib/loop` pattern otherwise?
-3. Is "Adjust" also offered for programs on a read-only pod (it would only save a local copy)?
+1. **Setting labels live in the app.** A name table in the app maps variable names to labels and
+   units. The program file gets no new key, so no firmware change is needed.
+2. **The wizard uses the `repeat` block** when the pod reports `programFormat` 2 or newer, and
+   the `lib/loop` pattern otherwise.
+3. **Adjust is offered for programs on a read-only pod too.** It saves a local copy. The
+   behaviour will be reviewed later.
