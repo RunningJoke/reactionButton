@@ -213,6 +213,7 @@ export function storyOf(a: WizardAnswers, t: TFunction): Story {
           t("wizard.story.untilPressed", { color }) +
           limit,
       );
+      if (tooSlow) steps.push(tooSlow);
       if (a.redPods > 0) steps.push(t("wizard.story.redHit") + (countMisses ? t("wizard.story.andMiss") : ""));
       steps.push(t("wizard.story.allOff"));
       break;
@@ -220,7 +221,8 @@ export function storyOf(a: WizardAnswers, t: TFunction): Story {
       steps.push(pauseText, t("wizard.story.lightCentral", { color }), pressCentral, pauseText, t("wizard.story.podDuo", { color }) + limit);
       break;
   }
-  if (tooSlow) steps.push(tooSlow);
+  // the time limit is on the round's last step, except in "all at once"
+  if (tooSlow && a.game !== "multi") steps.push(tooSlow);
   const outro: string[] = [];
   if (a.measure.record) outro.push(t("wizard.story.record"));
   if (countMisses || countsTimeoutMiss(a)) outro.push(t("wizard.story.misses"));

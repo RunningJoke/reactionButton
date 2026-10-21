@@ -797,8 +797,8 @@
     "game": {
       "question": "What do you want to play?",
       "centralOnly": "central only",
-      "needs_one": "needs {{count}} pod besides the central",
-      "needs_other": "needs {{count}} pods besides the central"
+      "needs_one": "central + at least {{count}} pod",
+      "needs_other": "central + at least {{count}} pods"
     },
     "problems": {
       "notEnoughPods_one": "{{game}} needs at least {{count}} pod besides the central. Add a pod or go back and pick another game.",
@@ -871,7 +871,8 @@
       "try": "Try it in the simulator",
       "change": "Change steps",
       "saveToMenu": "Save and add to menu",
-      "saved": "Saved in My programs. Changes here update it."
+      "saved": "Saved in My programs. Changes here update it.",
+      "centralOnly": "Central only."
     },
     "chooser": {
       "question": "How do you want to start?",

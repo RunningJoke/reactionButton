@@ -797,8 +797,8 @@
     "game": {
       "question": "Was möchtest du spielen?",
       "centralOnly": "nur der Central",
-      "needs_one": "braucht {{count}} Pod außer dem Central",
-      "needs_other": "braucht {{count}} Pods außer dem Central"
+      "needs_one": "Central + mind. {{count}} Pod",
+      "needs_other": "Central + mind. {{count}} Pods"
     },
     "problems": {
       "notEnoughPods_one": "{{game}} braucht mindestens {{count}} Pod außer dem Central. Nimm einen Pod dazu oder geh zurück und wähle ein anderes Spiel.",
@@ -871,7 +871,8 @@
       "try": "Im Simulator ausprobieren",
       "change": "Schritte ändern",
       "saveToMenu": "Speichern und ins Menü",
-      "saved": "In „Meine Programme“ gespeichert. Änderungen hier aktualisieren es."
+      "saved": "In „Meine Programme“ gespeichert. Änderungen hier aktualisieren es.",
+      "centralOnly": "Nur der Central."
     },
     "chooser": {
       "question": "Wie möchtest du anfangen?",
