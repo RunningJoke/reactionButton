@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://runningjoke.github.io/reactionButton/spec/program.schema.json",
-  "x-programFormat": 1,
+  "x-programFormat": 2,
   "title": "ReactPod program",
-  "description": "ReactPod program file (/prog/*.json), program format 1. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
+  "description": "ReactPod program file (/prog/*.json), program format 2. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
   "type": "object",
   "required": [
     "name"
@@ -173,6 +173,9 @@
         },
         {
           "$ref": "#/$defs/block_summary"
+        },
+        {
+          "$ref": "#/$defs/block_repeat"
         }
       ]
     },
@@ -196,6 +199,16 @@
         },
         "leds": {
           "$ref": "#/$defs/leds"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -225,6 +238,16 @@
         },
         "maxMs": {
           "$ref": "#/$defs/value"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -266,6 +289,16 @@
         },
         "storeAs": {
           "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -324,6 +357,16 @@
         "right": {
           "$ref": "#/$defs/value"
         },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
         "true": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
@@ -370,6 +413,16 @@
         },
         "value": {
           "$ref": "#/$defs/value"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -419,6 +472,16 @@
         },
         "storeAs": {
           "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -475,6 +538,16 @@
           "minLength": 1,
           "description": "measurement metric name"
         },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
         "next": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
@@ -509,6 +582,16 @@
         "ledsOff": {
           "type": "boolean",
           "description": "default: true"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -552,7 +635,63 @@
           "type": "boolean",
           "description": "default: true"
         },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
         "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_repeat": {
+      "title": "repeat",
+      "description": "needs program format 2",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "count"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "repeat"
+        },
+        "count": {
+          "$ref": "#/$defs/value"
+        },
+        "storeIndex": {
+          "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "body": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "done": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
         }

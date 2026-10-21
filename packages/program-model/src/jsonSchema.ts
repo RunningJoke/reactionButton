@@ -3,7 +3,7 @@
  * (docs/firmware/programs.md). The schema describes the structure for other languages and editors;
  * `validateProgram` stays the authority (references between blocks, reachability, limits per pod).
  */
-import { BLOCK_TYPES, COMMON_FIELDS, type FieldDef } from "./blockTypes";
+import { BLOCK_TYPES, COMMON_FIELDS, TIMER_FIELDS, type FieldDef } from "./blockTypes";
 import { NAMED_COLORS } from "./colors";
 import { LED_COUNT, MAX_PATH, MAX_PERIPHERALS, PROGRAM_FORMAT, PROGRAM_FORMAT_VERSION } from "./limits";
 
@@ -60,6 +60,10 @@ function fieldSchema(field: FieldDef): Schema {
     case "variable":
       return { ...ref("variableName"), ...description };
     case "metric":
+      if (TIMER_FIELDS.includes(field)) {
+        const when = field.name === "timerStart" ? "when the block is entered" : "when the block is left, recorded as the metric of that name";
+        return { type: "string", minLength: 1, description: `timer name (program format ${field.minFormat}): ${when}` };
+      }
       return { type: "string", minLength: 1, description: "measurement metric name" };
     case "bool":
       return { type: "boolean", ...description };
@@ -75,6 +79,7 @@ function blockSchema(def: (typeof BLOCK_TYPES)[number]): Schema {
   for (const port of def.ports) properties[port] = { ...ref("blockName"), description: "name of the next block" };
   return {
     title: def.type,
+    ...(def.minFormat !== undefined ? { description: `needs program format ${def.minFormat}` } : {}),
     type: "object",
     required: [...COMMON_FIELDS, ...def.fields.filter((f) => f.required).map((f) => f.name)],
     properties,

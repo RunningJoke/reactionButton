@@ -62,6 +62,16 @@ describe("programs", () => {
     expect((await env.call("GET", `/v1/programs/${p.id}/revisions`, undefined, alice)).body.revisions.map((r: { n: number }) => r.n)).toEqual([2, 1]);
   });
 
+  it("stores the program format a revision needs", async () => {
+    const created = await create();
+    const timed = JSON.stringify({ ...program, blocks: [{ name: "Lap", type: "delay", ms: 100, timerStart: "lap", timerStop: "lap", next: "Lap" }] });
+    const saved = await env.call("POST", `/v1/programs/${created.program.id}/revisions`, { path: "/prog/test.json", text: timed }, alice);
+    expect(saved.status).toBe(201);
+    const format = async (n: number) => (await env.call("GET", `/v1/programs/${created.program.id}?revision=${n}`, undefined, alice)).body.revision.programFormat;
+    expect(await format(1)).toBe(1);
+    expect(await format(2)).toBe(2);
+  });
+
   it("saves invalid drafts with their issues but does not publish them", async () => {
     const created = await create({ text: BROKEN });
     expect(created.revision.errors).toBe(1);

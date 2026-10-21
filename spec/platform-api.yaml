@@ -181,10 +181,15 @@ paths:
                             - ledOutOfRange
                             - portNotText
                             - portUnknownTarget
+                            - tooManyTimers
                             - noOutgoing
                             - unreachable
                             - unknownVariable
                             - unknownField
+                            - fieldNeedsFormat
+                            - timerNeverStopped
+                            - timerNeverStarted
+                            - repeatNoLoop
                             - indexInvalid
                             - indexDuplicate
                             - indexNotProgram
