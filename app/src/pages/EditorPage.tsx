@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, ListOrdered, Lock, MoreVertical, Play, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow } from "lucide-react";
+import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, Lock, MoreVertical, Play, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow, Wrench } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
 import { Sheet } from "../components/Sheet";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
-import { BlockInspector, type InspectorContext } from "../editor/BlockInspector";
+import type { InspectorContext } from "../editor/BlockInspector";
 import { columnLayout } from "../editor/columnLayout";
 import { lastOpenedProgram, useEditor } from "../editor/editorStore";
-import { addBlock, addStep, deleteBlock, deleteStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
+import { addBlock, deleteBlock, deleteStep, duplicateStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
+import { useExpertMode } from "../editor/expertMode";
+import { sentenceOptions } from "../editor/sentence";
+import { settingLabel } from "../editor/settingLabels";
+import { RoundSheet, StepSheet } from "../editor/StepSheet";
 import { Palette } from "../editor/Palette";
+import { AddStepSheet } from "../editor/AddStepSheet";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
 import { ProgramSettings } from "../editor/ProgramSettings";
 import { StepListView } from "../editor/StepListView";
@@ -23,7 +28,7 @@ import { isLibraryPath } from "@reactpod/program-model";
 import { BUILTIN_VARIABLES, isObject, type Block } from "@reactpod/program-model";
 import { validateProgram } from "@reactpod/program-model";
 import { DeleteProgramModal, downloadProgram, NewProgramModal } from "../programs/actions";
-import { useProgramSource } from "../programs/sources";
+import { useProgramSource, validateOptionsOf } from "../programs/sources";
 import { usePodSession } from "../pod/session";
 import type { ProgramDoc } from "../store/programStore";
 import { useWorkspace } from "../store/workspace";
@@ -88,7 +93,7 @@ function NoProgram() {
 }
 
 type Panel = "palette" | "settings" | "issues" | null;
-/** simple view (step list) or today's block column; the toggle is temporary until expert mode (P8e) */
+/** simple view (step list), or today's block column in expert mode */
 type View = "steps" | "blocks";
 
 /** The step a new step goes after: the selected one, or the last step of the (first) round. */
@@ -117,14 +122,15 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [deleting, setDeleting] = useState<ProgramDoc | null>(null);
-  const [view, setView] = useState<View>("steps");
+  const [expert, setExpert] = useExpertMode();
+  const view: View = expert ? "blocks" : "steps";
   const [toast, setToast] = useState<{ text: string; at: number } | null>(null);
   const json = doc.json;
 
   const model = useMemo(() => {
     const text = formatProgram(json);
     const read = (p: string) => (p === doc.path ? text : source.read(p));
-    const resolved = validateProgram(doc.path, read, { supportedTypes: source.supportedTypes });
+    const resolved = validateProgram(doc.path, read, validateOptionsOf(source));
     const graph = buildGraph(resolved);
     const order = columnLayout(graph).order;
     const defined = new Set(graph.nodes.filter((n) => !n.external).map((n) => n.id));
@@ -147,8 +153,9 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     const steps = stepList(flat);
     const blockMap = new Map(blocks.map((b) => [b.name, b]));
     const own = new Set(graph.nodes.filter((n) => n.own && !n.external).map((n) => n.id));
-    return { resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
-  }, [json, doc.path, source, podFiles]);
+    const sentence = sentenceOptions(blocks, resolved.variables, (n) => settingLabel(n, t).label);
+    return { sentence, resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
+  }, [json, doc.path, source, podFiles, t]);
 
   const { resolved, graph } = model;
   const errors = resolved.issues.filter((i) => i.severity === "error").length;
@@ -186,8 +193,12 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
       setPanel("palette");
     },
     remove,
+    duplicate: (name) => {
+      const { doc: next, name: copy } = duplicateStep(json, name, taken);
+      apply(next, { select: copy });
+    },
     step:
-      view === "steps" && selected
+      selected
         ? {
             canUp: move(selected, "up") !== json,
             canDown: move(selected, "down") !== json,
@@ -197,19 +208,11 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   };
   const insertAt = insertionPoint(model.steps, selected, model.own);
 
+  /** expert: a new block of `type` on the port that asked for it ("new block…") */
   const pick = (type: string) => {
-    let next: ProgramJson;
-    let name: string;
-    if (pending) {
-      ({ doc: next, name } = addBlock(json, type, taken, null));
-      next = setBlockField(next, pending.from, pending.port, name);
-    } else if (view === "steps") {
-      ({ doc: next, name } = addStep(json, type, taken, insertAt.after));
-    } else {
-      const after = selectedNode?.own && !selectedNode.external ? selectedNode.id : null;
-      ({ doc: next, name } = addBlock(json, type, taken, after));
-    }
-    apply(next, { select: name });
+    if (!pending) return;
+    const { doc: added, name } = addBlock(json, type, taken, null);
+    apply(setBlockField(added, pending.from, pending.port, name), { select: name });
     setPending(null);
     setPanel(null);
   };
@@ -244,6 +247,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   });
 
   const name = typeof json.name === "string" && json.name ? json.name : t("editor.untitled");
+  // the Repeat bracket of the step list (its head may be a hidden block of the round)
+  const bracket = view === "steps" ? model.steps.find((s) => s.loop && s.block === selected) : undefined;
   const ownBlock = selectedNode?.own && !selectedNode.external ? (json.blocks as ProgramJson[] | undefined)?.find((b) => b.name === selectedNode.id) : undefined;
 
   return (
@@ -319,21 +324,25 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           <Plus size={26} aria-hidden />
         </button>
 
-        {panel === "palette" && (
+        {panel === "palette" && !pending && (
+          <AddStepSheet
+            doc={json}
+            after={(view === "steps" ? insertAt.after : selectedNode?.own && !selectedNode.external ? selectedNode.id : null) ?? undefined}
+            supportedTypes={source.supportedTypes}
+            programFormat={source.programFormat}
+            taken={taken}
+            library={{ paths: model.library, read: model.read }}
+            onAdd={(next, focus) => {
+              apply(next, { select: focus });
+              setPanel(null);
+            }}
+            onClose={() => setPanel(null)}
+          />
+        )}
+        {/* expert: "new block…" in a port select connects a block of the chosen type to that port */}
+        {panel === "palette" && pending && (
           <Palette
-            context={
-              pending
-                ? `${pending.from} · ${t(`ports.${pending.port}`)} →`
-                : view === "steps"
-                  ? insertAt.where === "selected"
-                    ? t("editor.step.addAfter", { n: insertAt.number })
-                    : insertAt.after
-                      ? t(insertAt.where === "round" ? "editor.step.addEndOfRound" : "editor.step.addEnd")
-                      : null
-                  : selectedNode?.own && !selectedNode.external
-                    ? t("editor.addAfter", { name: selectedNode.id })
-                    : null
-            }
+            context={`${pending.from} · ${t(`ports.${pending.port}`)} →`}
             templates={model.library}
             supportedTypes={source.supportedTypes}
             onPick={pick}
@@ -360,9 +369,34 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             <IssueList issues={resolved.issues} onSelect={ctx.select} />
           </Sheet>
         )}
-        {!panel && ownBlock && <BlockInspector key={ownBlock.name as string} block={ownBlock as never} ctx={ctx} />}
+        {!panel && bracket?.loop && (
+          <RoundSheet
+            key={bracket.block}
+            loop={bracket.loop}
+            blocks={model.blockMap}
+            own={model.own}
+            issues={resolved.issues.filter((i) => i.block !== undefined && bracket.loop!.hidden.includes(i.block))}
+            expert={expert}
+            ctx={ctx}
+            onAddToRound={() => {
+              select(null);
+              setPanel("palette");
+            }}
+          />
+        )}
+        {!panel && !bracket && ownBlock && (
+          <StepSheet
+            key={ownBlock.name as string}
+            block={ownBlock as never}
+            step={model.steps.find((s) => s.block === ownBlock.name && !s.loop)}
+            issues={resolved.issues.filter((i) => i.block === ownBlock.name)}
+            sentence={model.sentence}
+            expert={expert}
+            ctx={ctx}
+          />
+        )}
         {toast && past.length === toast.at && <UndoToast text={toast.text} onUndo={undo} onClose={() => setToast(null)} />}
-        {!panel && selectedNode && !ownBlock && (
+        {!panel && selectedNode && !ownBlock && !bracket && (
           <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select}>
             {!selectedNode.external && (
               <p className={styles.locked}>
@@ -375,9 +409,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
 
       <Modal open={menuOpen} title={name} onClose={() => setMenuOpen(false)}>
         <div className={styles.menu}>
-          <button onClick={() => (setMenuOpen(false), setView(view === "steps" ? "blocks" : "steps"))} aria-pressed={view === "blocks"}>
-            {view === "steps" ? <Workflow size={18} aria-hidden /> : <ListOrdered size={18} aria-hidden />} {t("editor.step.view")}:{" "}
-            {view === "steps" ? t("editor.step.viewBlocks") : t("editor.step.viewSteps")}
+          <button onClick={() => (setMenuOpen(false), setExpert(!expert))} aria-pressed={expert}>
+            <Wrench size={18} aria-hidden /> {t("editor.step.expertMode")}: {expert ? t("editor.step.on") : t("editor.step.off")}
           </button>
           <button onClick={() => (setMenuOpen(false), setPanel("settings"))}>
             <Settings2 size={18} aria-hidden /> {t("editor.settings")}
