@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { colorToRgb, validateProgram, type Block } from "@reactpod/program-model";
+import { colorToRgb, hasErrors, programFormatOf, validateProgram, type Block } from "@reactpod/program-model";
 import { Simulator } from "../simulator/engine";
-import { LOOP, generateProgram, loopFormFor, storyOf, describeAnswers } from "./generate";
+import { LOOP, generateProgram, loopFormFor, storyOf, describeAnswers, type LoopForm } from "./generate";
 import {
   GAMES,
   answerProblems,
@@ -25,9 +25,11 @@ await i18n.init({ lng: "en", fallbackLng: false, resources: { en: { translation:
 
 const PATH = "/prog/wizard.json";
 
-function resolve(a: WizardAnswers) {
-  const json = generateProgram(a, "counter");
-  return { json, resolved: validateProgram(PATH, (p) => (p === PATH ? JSON.stringify(json) : undefined)) };
+/** Generates and validates against a pod of the form's program format (counter: 1, repeat: 2). */
+function resolve(a: WizardAnswers, form: LoopForm = "counter") {
+  const json = generateProgram(a, form);
+  const programFormat = form === "counter" ? 1 : 2;
+  return { json, resolved: validateProgram(PATH, (p) => (p === PATH ? JSON.stringify(json) : undefined), { programFormat }) };
 }
 
 /** Every answer combination worth checking for a game. */
@@ -160,11 +162,11 @@ describe("wizard answers", () => {
   });
 });
 
-describe("generated programs (counter form)", () => {
+for (const form of ["counter", "repeat"] as const) describe(`generated programs (${form} form)`, () => {
   for (const game of GAMES) {
     it(`${game}: every answer combination validates without a note`, () => {
       for (const a of variants(game)) {
-        const { json, resolved } = resolve(a);
+        const { json, resolved } = resolve(a, form);
         expect(resolved.issues, JSON.stringify(a)).toEqual([]);
         expect(json.include).toBeUndefined();
         expect(json.peripherals).toBe(podsUsed(a));
@@ -175,7 +177,7 @@ describe("generated programs (counter form)", () => {
     it(`${game}: plays every combination to the end in the simulator`, () => {
       for (const a of variants(game)) {
         const short = { ...a, rounds: 3 };
-        const { json } = resolve(short);
+        const { json } = resolve(short, form);
         const { sim, rounds } = play(short, json);
         const snap = sim.snapshot();
         expect(rounds, JSON.stringify(short)).toBe(3);
@@ -190,7 +192,7 @@ describe("generated programs (counter form)", () => {
 
   it("shows the results at the end and starts again", () => {
     const a = { ...defaultAnswers("star", 3), rounds: 4 };
-    const { json } = resolve(a);
+    const { json } = resolve(a, form);
     const { sim } = play(a, json);
     sim.advance(5);
     const summary = sim.snapshot().log.filter((e) => e.kind === "summary");
@@ -203,7 +205,7 @@ describe("generated programs (counter form)", () => {
   it("counts misses when too slow and goes on", () => {
     let a: WizardAnswers = { ...defaultAnswers("duo", 1), rounds: 4 };
     expect(a.timeLimit).toEqual({ ms: 5000, onTimeout: "countMiss" });
-    const { json } = resolve(a);
+    const { json } = resolve(a, form);
     const { sim } = play(a, json, { idle: new Set([2, 3]) });
     const snap = sim.snapshot();
     expect(snap.variables.MISSES).toBe(4); // central and pod in rounds 2 and 3
@@ -214,7 +216,7 @@ describe("generated programs (counter form)", () => {
     a = setOnTimeout({ ...defaultAnswers("star", 2), rounds: 3 }, "goOn");
     a = setTimeLimit(a, true);
     a = setOnTimeout(a, "goOn");
-    const goOn = play(a, resolve(a).json, { idle: new Set([2]) }).sim.snapshot();
+    const goOn = play(a, resolve(a, form).json, { idle: new Set([2]) }).sim.snapshot();
     expect(goOn.variables.MISSES).toBeUndefined();
     expect(goOn.measurements).toHaveLength(4);
   });
@@ -223,7 +225,7 @@ describe("generated programs (counter form)", () => {
     let a: WizardAnswers = setTimeLimit({ ...defaultAnswers("star", 3), rounds: 3 }, true);
     a = setOnTimeout(a, "endRound");
     a = setCountMisses(a, true);
-    const { json } = resolve(a);
+    const { json } = resolve(a, form);
     const blocks = json.blocks as Block[];
     expect(blocks.find((b) => b.name === "CentralPress")!.timeout).toBe("CentralPressMiss");
     expect(blocks.find((b) => b.name === "CentralPressMiss")!.next).toBe("EndRound");
@@ -239,7 +241,7 @@ describe("generated programs (counter form)", () => {
     const a = { ...defaultAnswers("solo", 0), rounds: 3 };
     expect(a.measure.falseStart).toBe(true);
     const withMiss = setCountMisses(setTimeLimit(a, true), true);
-    const { json } = resolve(withMiss);
+    const { json } = resolve(withMiss, form);
     expect((json.blocks as Block[]).find((b) => b.name === "Wait")).toMatchObject({ type: "button", minTimeoutMs: "PAUSE_MIN_MS", maxTimeoutMs: "PAUSE_MAX_MS", pressed: "WaitFalseStart" });
     const { sim, rounds } = play(withMiss, json, { early: new Set([2]) });
     const snap = sim.snapshot();
@@ -252,7 +254,7 @@ describe("generated programs (counter form)", () => {
   it("multi: hitting a red pod flashes red, counts a miss and ends the round", () => {
     const a = setCountMisses({ ...defaultAnswers("multi", 3), rounds: 3, redPods: 1 }, true);
     expect(a.measure.countMisses).toBe(true);
-    const { json } = resolve(a);
+    const { json } = resolve(a, form);
     const all = (json.blocks as Block[]).find((b) => b.name === "AllAtOnce")!;
     expect(all).toMatchObject({ avoid: "RED_PODS", avoidHit: "AllAtOnceRedHit", hitColor: "green", pods: "REQUIRED_PERIPHERALS" });
     const { sim, rounds } = play(a, json, { red: new Set([1]) });
@@ -264,7 +266,7 @@ describe("generated programs (counter form)", () => {
 
   it("random: lights the central as one of the pods, never the same twice", () => {
     const a = { ...defaultAnswers("random", 2), rounds: 12 };
-    const { json } = resolve(a);
+    const { json } = resolve(a, form);
     const { sim } = play(a, json);
     const pods = sim.snapshot().measurements.map((m) => m.pod);
     expect(pods).toHaveLength(12);
@@ -285,8 +287,7 @@ describe("generated programs (counter form)", () => {
   });
 });
 
-describe("generated programs (repeat form)", () => {
-  // Validation and simulation follow in Wave 2, when the model knows `repeat`.
+describe("loop forms", () => {
   it("loops with a repeat block and links the round back to it", () => {
     const json = generateProgram({ ...defaultAnswers("star", 3), rounds: 5 }, "repeat");
     const blocks = json.blocks as Block[];
@@ -295,6 +296,30 @@ describe("generated programs (repeat form)", () => {
     expect(blocks.find((b) => b.name === "PodTarget")!.next).toBe("Rounds");
     expect(blocks.some((b) => b.name === "StartLoop" || b.name === "EndLoop" || b.name === "ResetRuns")).toBe(false);
     expect(blocks.at(-1)!.next).toBe("Rounds");
+  });
+
+  it("needs format 2 only for the repeat form", () => {
+    for (const game of GAMES) {
+      const a = defaultAnswers(game, 3);
+      expect(programFormatOf(generateProgram(a, "counter"))).toBe(1);
+      expect(programFormatOf(generateProgram(a, "repeat"))).toBe(2);
+      expect(hasErrors(resolve(a, "counter").resolved.issues)).toBe(false);
+      const json = generateProgram(a, "repeat");
+      const onOldPod = validateProgram(PATH, (p) => (p === PATH ? JSON.stringify(json) : undefined), { programFormat: 1 });
+      expect(hasErrors(onOldPod.issues)).toBe(true);
+    }
+  });
+
+  it("plays the same in both forms", () => {
+    for (const game of GAMES) {
+      const a = setTimeLimit({ ...defaultAnswers(game, 3), rounds: 4 }, true);
+      const runs = (["counter", "repeat"] as const).map((form) => {
+        const { sim } = play(a, resolve(a, form).json, { idle: new Set([2]) });
+        const snap = sim.snapshot();
+        return { measurements: snap.measurements.map((m) => [m.pod, m.ms]), misses: snap.variables.MISSES, time: snap.time };
+      });
+      expect(runs[1], game).toEqual(runs[0]);
+    }
   });
 });
 

@@ -943,7 +943,7 @@
       "allAtOnce_other": "Alle {{count}} Pods gleichzeitig leuchten lassen",
       "redPods_one": ", {{count}} davon rot: nicht berühren",
       "redPods_other": ", {{count}} davon rot: nicht berühren",
-      "untilPressed": ", warten, bis jeder {{color}} gedrückt ist",
+      "untilPressed": ", warten, bis alle Pods in {{color}} gedrückt sind",
       "redHit": "Wenn ein roter Pod getroffen wird: rot blinken, die Runde ist vorbei",
       "allOff": "Alle Pods ausschalten",
       "tooSlow": {
