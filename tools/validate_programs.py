@@ -41,7 +41,27 @@ BLOCK_TYPES = {
     # programFormat 3: ring effect; colours are named (also on the central)
     "effect":           (["next"], ["effect"], ["durationMs", "periodMs", "brightness", "syncStartMs"], [],
                          ["color", "color2"]),
+    # programFormat 3: hold to charge (pod: "central" or a pod id / variable)
+    "charge":           (["next", "released", "early", "full", "timeout"], ["maxMs"],
+                         ["maxMs", "onsetMs", "decayMs", "timeoutMs", "minTimeoutMs", "maxTimeoutMs"], [],
+                         ["color", "color2"]),
+    # programFormat 3: release as trigger or on a colour switch
+    "release":          (["next", "noHold", "falseStart", "timeout"], [],
+                         ["goMs", "minGoMs", "maxGoMs", "holdTimeoutMs", "maxHoldMs", "timeoutMs"], [],
+                         ["holdColor", "heldColor", "goColor"]),
 }
+
+# blocks with modes: mode field -> (options, default), field -> the only mode it exists in
+MODES = {
+    "charge":  ("mode", ["release", "accumulate"], "release"),
+    "release": ("mode", ["trigger", "signal"], "trigger"),
+}
+ONLY_MODE = {
+    "charge":  {"decayMs": "accumulate"},
+    "release": {"goColor": "signal", "goMs": "signal", "minGoMs": "signal", "maxGoMs": "signal",
+                "timeoutMs": "signal", "record": "signal", "maxHoldMs": "trigger", "falseStart": "signal"},
+}
+CHARGE_STYLES = {"fill", "brightness", "trafficLight", "colorShift"}
 
 # programFormat 3 (programs.md section 2 "Countdown"): optional fields of the timed blocks.
 # type -> its named colour fields (countdownFrom: only delay and button have no lit colour of their own)
@@ -50,6 +70,8 @@ COUNTDOWN_FIELDS = {
     "button":           ["countdownColor", "countdownFrom"],
     "remotePress":      ["countdownColor"],
     "remoteMultiPress": ["countdownColor"],
+    "charge":           ["countdownColor"],
+    "release":          ["countdownColor"],
 }
 COUNTDOWNS = {"secret", "drain", "fill", "dim", "colorShift", "trafficLight"}
 EFFECTS = {"solid", "fill", "drain", "dim", "colorShift", "trafficLight", "blink", "pulse", "spin", "off"}
@@ -140,7 +162,7 @@ class Validator:
 
         if btype == "delay" and "ms" not in block and not ("minMs" in block and "maxMs" in block):
             self.error(where, "needs 'ms' or 'minMs' + 'maxMs'")
-        if btype == "button" and ("minTimeoutMs" in block) != ("maxTimeoutMs" in block):
+        if btype in ("button", "charge") and ("minTimeoutMs" in block) != ("maxTimeoutMs" in block):
             self.error(where, "random timeout needs 'minTimeoutMs' and 'maxTimeoutMs'")
         if btype == "if" and block.get("op", "==") not in IF_OPS:
             self.error(where, f"unknown op '{block.get('op')}'")
@@ -175,6 +197,8 @@ class Validator:
             if isinstance(value, bool) or not isinstance(value, (int, str)) or value == "":
                 self.error(where, f"'{field}' must be {', '.join(sorted(TARGET_KEYWORDS))}, a pod id or a variable name")
 
+        if btype in MODES:
+            self.check_modes(where, btype, block, check_target)
         if btype == "effect":
             if "effect" in block and block["effect"] not in EFFECTS:
                 self.error(where, f"unknown effect '{block['effect']}' (known: {', '.join(sorted(EFFECTS))})")
@@ -189,7 +213,7 @@ class Validator:
         if not any(f in block for f in ("countdown", "countdownColor", "countdownFrom", "countdownTarget")):
             return
         if btype not in COUNTDOWN_FIELDS:
-            self.error(where, "countdown fields are only valid on delay, button, remotePress and remoteMultiPress")
+            self.error(where, "countdown fields are only valid on delay, button, remotePress, remoteMultiPress, charge and release")
             return
         for field in ("countdownColor", "countdownFrom"):
             if field not in block:
@@ -208,8 +232,44 @@ class Validator:
             self.error(where, f"unknown countdown '{countdown}' (known: {', '.join(sorted(COUNTDOWNS))})")
         elif countdown != "secret" and btype != "delay":
             random_timeout = "minTimeoutMs" in block and "maxTimeoutMs" in block
-            if "timeoutMs" not in block and not random_timeout:
-                self.error(where, f"countdown '{countdown}' needs a time limit ('timeoutMs')")
+            if btype == "release":
+                limit = "timeoutMs" if block.get("mode") == "signal" else "maxHoldMs"
+                has_limit = limit in block
+            else:
+                limit = "timeoutMs"
+                has_limit = "timeoutMs" in block or (random_timeout and btype in ("button", "charge"))
+            if not has_limit:
+                self.error(where, f"countdown '{countdown}' needs a time limit ('{limit}')")
+
+    def check_modes(self, where, btype, block, check_target):
+        """charge and release: mode, fields and ports of one mode only, the signal's switch time."""
+        field, options, default = MODES[btype]
+        mode = block.get(field, default)
+        if mode not in options:
+            self.error(where, f"unknown {field} '{mode}' (known: {', '.join(options)})")
+            mode = None
+        if "pod" in block:
+            check_target("pod")
+            if block["pod"] in ("all", "peripherals"):
+                self.error(where, "'pod' must be 'central', a pod id or a variable name (one pod only)")
+        if mode is not None:
+            for name, needs in ONLY_MODE[btype].items():
+                if name in block and needs != mode:
+                    self.error(where, f"'{name}' is only valid in {field} '{needs}' (this block has '{mode}')")
+        if btype == "charge" and block.get("style", "fill") not in CHARGE_STYLES:
+            self.error(where, f"unknown style '{block['style']}' (known: {', '.join(sorted(CHARGE_STYLES))})")
+        if btype == "release":
+            if "allowHeld" in block and not isinstance(block["allowHeld"], bool):
+                self.error(where, "'allowHeld' must be true or false")
+            if mode == "signal":
+                has_range = "minGoMs" in block and "maxGoMs" in block
+                if "goMs" in block and ("minGoMs" in block or "maxGoMs" in block):
+                    self.error(where, "use either 'goMs' or 'minGoMs' + 'maxGoMs', not both")
+                elif "goMs" not in block and not has_range:
+                    self.error(where, "signal mode needs 'goMs' or 'minGoMs' + 'maxGoMs'")
+        for name in ("storeAs", "storePercent", "record"):
+            if name in block and (not isinstance(block[name], str) or block[name] == ""):
+                self.error(where, f"'{name}' must be a name")
 
     def check_timers(self, fs_path, blocks):
         started, stopped = set(), set()
@@ -253,7 +313,8 @@ class Validator:
         def value(v):
             return v if isinstance(v, int) else self.variables.get(v) if isinstance(v, str) else None
         for file, block in blocks:
-            fields = {"delay": ("minMs", "maxMs"), "button": ("minTimeoutMs", "maxTimeoutMs")}.get(block.get("type"))
+            fields = {"delay": ("minMs", "maxMs"), "button": ("minTimeoutMs", "maxTimeoutMs"),
+                      "charge": ("minTimeoutMs", "maxTimeoutMs"), "release": ("minGoMs", "maxGoMs")}.get(block.get("type"))
             if not fields:
                 continue
             low, high = value(block.get(fields[0])), value(block.get(fields[1]))

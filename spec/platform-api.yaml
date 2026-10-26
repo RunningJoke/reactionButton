@@ -186,6 +186,10 @@ paths:
                             - effectWaitEndless
                             - countdownNeedsTimeLimit
                             - countdownTargetNotDelay
+                            - fieldWrongMode
+                            - signalNeedsGoTime
+                            - goTimeBothForms
+                            - podSingleOnly
                             - noOutgoing
                             - unreachable
                             - unknownVariable

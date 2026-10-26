@@ -2,7 +2,17 @@
  * Program checks. Mirrors tools/validate_programs.py and the firmware loader
  * (src/BlockManager/BlockManager.cpp). Errors stop a push, warnings do not.
  */
-import { blockType, COMMON_FIELDS, MAX_TIMERS, PERIODIC_EFFECTS, TARGET_KEYWORDS, TIMEOUT_TYPES, TIMER_FIELDS, type BlockTypeDef } from "./blockTypes";
+import {
+  blockType,
+  COMMON_FIELDS,
+  MAX_TIMERS,
+  PERIODIC_EFFECTS,
+  TARGET_KEYWORDS,
+  TIMEOUT_TYPES,
+  TIMER_FIELDS,
+  timeLimitFields,
+  type BlockTypeDef,
+} from "./blockTypes";
 import { isColor, isNamedColor } from "./colors";
 import {
   INDEX_PATH,
@@ -60,6 +70,10 @@ export const ISSUE_CODES = [
   "effectWaitEndless",
   "countdownNeedsTimeLimit",
   "countdownTargetNotDelay",
+  "fieldWrongMode",
+  "signalNeedsGoTime",
+  "goTimeBothForms",
+  "podSingleOnly",
   // warnings
   "noOutgoing",
   "unreachable",
@@ -402,9 +416,10 @@ function checkTypeRules(
   if (def.type === "delay" && block.ms === undefined && (block.minMs === undefined || block.maxMs === undefined)) {
     out.error("delayNeedsMs", file, at("ms"));
   }
-  if (def.type === "button" && (block.minTimeoutMs === undefined) !== (block.maxTimeoutMs === undefined)) {
+  if ((def.type === "button" || def.type === "charge") && (block.minTimeoutMs === undefined) !== (block.maxTimeoutMs === undefined)) {
     out.error("randomTimeoutPair", file, at("minTimeoutMs"));
   }
+  checkModes(def, block, file, at, out);
   // effect: wait for something that never ends (a variable duration is not known here)
   if (def.type === "effect" && block.wait === true && typeof block.effect === "string" && PERIODIC_EFFECTS.includes(block.effect)) {
     const duration = block.durationMs;
@@ -414,10 +429,47 @@ function checkTypeRules(
   }
   // countdown: needs a time limit (delay always has one)
   if (block.countdown !== undefined && block.countdown !== "secret" && (TIMEOUT_TYPES as readonly string[]).includes(def.type)) {
-    const random = block.minTimeoutMs !== undefined && block.maxTimeoutMs !== undefined;
-    if (block.timeoutMs === undefined && !random) out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown) }));
+    const alternatives = timeLimitFields(def.type, block.mode);
+    if (!alternatives.some((fields) => fields.every((f) => block[f] !== undefined))) {
+      out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown), limit: alternatives.map((f) => f.join(" + ")).join(" or ") }));
+    }
   }
   if (block.countdownTarget !== undefined && def.type !== "delay") out.error("countdownTargetNotDelay", file, at("countdownTarget"));
+  if ((def.type === "charge" || def.type === "release") && typeof block.pod === "string" && (block.pod === "all" || block.pod === "peripherals")) {
+    out.error("podSingleOnly", file, at("pod", { value: block.pod }));
+  }
+}
+
+/** Blocks with modes (charge, release): fields and ports of another mode, and the release signal's switch time. */
+function checkModes(
+  def: BlockTypeDef,
+  block: Record<string, unknown>,
+  file: string,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
+  out: Collector,
+) {
+  if (!def.modes) return;
+  const raw = block[def.modes.field];
+  const modeField = def.fields.find((f) => f.name === def.modes!.field);
+  // an invalid mode is reported as unknownOption already
+  if (raw !== undefined && !(modeField?.options ?? []).includes(raw as string)) return;
+  const mode = (raw as string | undefined) ?? def.modes.default;
+  for (const field of def.fields) {
+    if (field.onlyMode !== undefined && field.onlyMode !== mode && block[field.name] !== undefined) {
+      out.error("fieldWrongMode", file, at(field.name, { field: field.name, mode, needs: field.onlyMode }));
+    }
+  }
+  for (const [port, needs] of Object.entries(def.portOnlyMode ?? {})) {
+    if (needs !== undefined && needs !== mode && block[port] !== undefined) {
+      out.error("fieldWrongMode", file, at(port, { field: port, mode, needs }));
+    }
+  }
+  if (def.type === "release" && mode === "signal") {
+    const { goMs, minGoMs, maxGoMs } = block;
+    const range = minGoMs !== undefined && maxGoMs !== undefined;
+    if (goMs !== undefined && (minGoMs !== undefined || maxGoMs !== undefined)) out.error("goTimeBothForms", file, at("goMs"));
+    else if (goMs === undefined && !range) out.error("signalNeedsGoTime", file, at("goMs"));
+  }
 }
 
 /** Warns about own blocks that can never run. */
@@ -479,7 +531,12 @@ function checkTimers(resolved: ResolvedProgram, path: string, out: Collector) {
 }
 
 /** The random ranges a block type has: [min field, max field] (programs.md §7.3). */
-const RANGES: Record<string, readonly [string, string]> = { delay: ["minMs", "maxMs"], button: ["minTimeoutMs", "maxTimeoutMs"] };
+const RANGES: Record<string, readonly [string, string]> = {
+  delay: ["minMs", "maxMs"],
+  button: ["minTimeoutMs", "maxTimeoutMs"],
+  charge: ["minTimeoutMs", "maxTimeoutMs"],
+  release: ["minGoMs", "maxGoMs"],
+};
 
 /**
  * Warns when a random range is reversed: with max <= min the firmware always uses min (programs.md §7.3),
