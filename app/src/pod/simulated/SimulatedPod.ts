@@ -32,7 +32,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" instead of "2.8", and `status` has no `timers`.
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9"), `info.features` has no `effects`, and `status` has no `timers`.
    */
   programFormat?: number;
 };
@@ -93,7 +93,7 @@ export class SimulatedPod {
     this.setId = options.setId ?? "5f3a91c2";
     this.generation = options.generation ?? 1;
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
-    this.firmware = options.firmware ?? (this.programFormat >= 2 ? "2.8" : "2.7");
+    this.firmware = options.firmware ?? (this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -209,7 +209,12 @@ export class SimulatedPod {
       maxGetChunk: MAX_GET_CHUNK,
       transport: "simulated",
       programFormat: this.programFormat,
-      features: this.results ? ["validateInline", "listMeta", "reports", "remote"] : ["validateInline", "listMeta"],
+      features: [
+        "validateInline",
+        "listMeta",
+        ...(this.programFormat >= 2 ? ["effects"] : []), // the ring effect player, firmware >= 2.8 (config-api.md §5)
+        ...(this.results ? ["reports", "remote"] : []),
+      ],
       blockTypes: this.blockTypes,
     };
   }

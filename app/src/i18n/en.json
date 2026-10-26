@@ -263,7 +263,8 @@
         "if": "Decide",
         "summary": "Show results",
         "repeat": "Repeat",
-        "unknown": "Step"
+        "unknown": "Step",
+        "effect": "Light effect"
       },
       "colour": "Colour",
       "leds": "Which LEDs",
@@ -348,7 +349,36 @@
       "rounds": "Rounds",
       "roundHint": "The steps inside the bracket run this many times, then the steps after the last round follow.",
       "roundLocked": "{{count}} rounds, set in a library part",
-      "addToEachRound": "Add a step to each round"
+      "addToEachRound": "Add a step to each round",
+      "effect": {
+        "label": "Effect",
+        "kind": {
+          "solid": "Steady",
+          "fill": "Fill up",
+          "drain": "Drain",
+          "dim": "Fade out",
+          "colorShift": "Change colour",
+          "trafficLight": "Traffic light",
+          "blink": "Blink",
+          "pulse": "Pulse",
+          "spin": "Spin",
+          "off": "Off"
+        },
+        "where": "Where",
+        "central": "Central",
+        "all": "Everything",
+        "peripherals": "All pods",
+        "podN": "Pod {{n}}",
+        "colour2": "Second colour",
+        "colour2Hint": "The other colour of the effect. Empty: dark.",
+        "howLong": "How long",
+        "forever": "Until the next light change",
+        "limited": "Stop after a time",
+        "wait": "Wait until it is over",
+        "waitOn": "The next step starts when the effect ends",
+        "waitOff": "The next step starts at once, the effect plays on",
+        "waitNeedsTime": "Needs a time, an endless effect never ends"
+      }
     },
     "add": {
       "title": "Add a step",
@@ -400,6 +430,10 @@
         "off": {
           "name": "Turn all pods off",
           "hint": "All pods dark again"
+        },
+        "effect": {
+          "name": "Light effect",
+          "hint": "Blink, pulse, fill or spin the ring"
         }
       },
       "recipe": {
@@ -456,7 +490,28 @@
       "falseStart": "Catch early presses",
       "falseStartOn": "Pressing the central now is a false start: it flashes red, the round ends",
       "falseStartOff": "Presses during the pause are ignored",
-      "earlyMiss": "Count it as a miss"
+      "earlyMiss": "Count it as a miss",
+      "countdown": {
+        "label": "Show the time running out",
+        "on": "The ring counts down: {{style}}",
+        "off": "The ring gives no hint of the time left",
+        "needsLimit": "Switch on a time limit first",
+        "style": "Style",
+        "color": "End colour",
+        "target": "Count down on",
+        "styles": {
+          "drain": "Empties",
+          "fill": "Fills up",
+          "dim": "Gets dark",
+          "colorShift": "Changes colour",
+          "trafficLight": "Traffic light"
+        },
+        "targets": {
+          "central": "Central",
+          "all": "Everything",
+          "peripherals": "All pods"
+        }
+      }
     }
   },
   "simulate": {
@@ -705,6 +760,10 @@
     "repeat": {
       "name": "Repeat",
       "help": "Runs the round (body) a number of times, then continues at done. The last step of the round leads back here."
+    },
+    "effect": {
+      "name": "Light effect",
+      "help": "Plays an effect on the ring of the central, one pod or all pods. Continues at once, or waits until the effect is over. A later light on the same ring replaces it."
     }
   },
   "common": {
@@ -1343,6 +1402,26 @@
     },
     "isCentral": "Is the chosen pod the central?",
     "isNotCentral": "Is the chosen pod one of the pods, not the central?",
-    "catchEarlyFixed": "Wait {{time}}, pressing now is a false start"
+    "catchEarlyFixed": "Wait {{time}}, pressing now is a false start",
+    "effect": {
+      "solid": "Light {{where}} {{color}}{{time}}",
+      "fill": "Fill {{where}} with {{color}}{{time}}",
+      "drain": "Drain {{where}} of {{color}}{{time}}",
+      "dim": "Fade {{where}} out from {{color}}{{time}}",
+      "colorShift": "Change {{where}} from {{color}} to {{color2}}{{time}}",
+      "trafficLight": "Traffic light on {{where}}{{time}}",
+      "blink": "Blink {{where}} {{color}}{{time}}",
+      "pulse": "Pulse {{where}} {{color}}{{time}}",
+      "spin": "Spin {{color}} around {{where}}{{time}}",
+      "off": "Turn {{where}} off",
+      "wait": ", wait until it is over",
+      "for": " for {{time}}",
+      "central": "the central",
+      "all": "the central and all pods",
+      "peripherals": "all pods",
+      "pod": "pod {{n}}",
+      "chosenPod": "the chosen pod"
+    },
+    "withCountdown": ", the ring counts down"
   }
 }

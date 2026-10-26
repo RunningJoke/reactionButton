@@ -263,7 +263,8 @@
         "if": "Entscheiden",
         "summary": "Ergebnisse zeigen",
         "repeat": "Wiederholen",
-        "unknown": "Schritt"
+        "unknown": "Schritt",
+        "effect": "Lichteffekt"
       },
       "colour": "Farbe",
       "leds": "Welche LEDs",
@@ -348,7 +349,36 @@
       "rounds": "Runden",
       "roundHint": "Die Schritte in der Klammer laufen so oft, danach folgen die Schritte nach der letzten Runde.",
       "roundLocked": "{{count}} Runden, festgelegt in einem Bibliotheksteil",
-      "addToEachRound": "Schritt zu jeder Runde hinzufügen"
+      "addToEachRound": "Schritt zu jeder Runde hinzufügen",
+      "effect": {
+        "label": "Effekt",
+        "kind": {
+          "solid": "Dauerlicht",
+          "fill": "Füllen",
+          "drain": "Leeren",
+          "dim": "Ausblenden",
+          "colorShift": "Farbwechsel",
+          "trafficLight": "Ampel",
+          "blink": "Blinken",
+          "pulse": "Pulsieren",
+          "spin": "Drehen",
+          "off": "Aus"
+        },
+        "where": "Wo",
+        "central": "Zentrale",
+        "all": "Alles",
+        "peripherals": "Alle Pods",
+        "podN": "Pod {{n}}",
+        "colour2": "Zweite Farbe",
+        "colour2Hint": "Die andere Farbe des Effekts. Leer: dunkel.",
+        "howLong": "Wie lange",
+        "forever": "Bis zur nächsten Lichtänderung",
+        "limited": "Nach einer Zeit beenden",
+        "wait": "Warten, bis er vorbei ist",
+        "waitOn": "Der nächste Schritt startet, wenn der Effekt endet",
+        "waitOff": "Der nächste Schritt startet sofort, der Effekt läuft weiter",
+        "waitNeedsTime": "Braucht eine Zeit, ein endloser Effekt endet nie"
+      }
     },
     "add": {
       "title": "Schritt hinzufügen",
@@ -400,6 +430,10 @@
         "off": {
           "name": "Alle Pods ausschalten",
           "hint": "Alle Pods wieder dunkel"
+        },
+        "effect": {
+          "name": "Lichteffekt",
+          "hint": "Ring blinken, pulsieren, füllen oder drehen"
         }
       },
       "recipe": {
@@ -456,7 +490,28 @@
       "falseStart": "Zu frühes Drücken erkennen",
       "falseStartOn": "Wer jetzt die Zentrale drückt, startet zu früh: sie blinkt rot, die Runde endet",
       "falseStartOff": "Drücken während der Pause wird ignoriert",
-      "earlyMiss": "Als Fehler zählen"
+      "earlyMiss": "Als Fehler zählen",
+      "countdown": {
+        "label": "Ablaufende Zeit anzeigen",
+        "on": "Der Ring zählt herunter: {{style}}",
+        "off": "Der Ring zeigt nicht, wie viel Zeit bleibt",
+        "needsLimit": "Schalte zuerst ein Zeitlimit ein",
+        "style": "Art",
+        "color": "Endfarbe",
+        "target": "Herunterzählen auf",
+        "styles": {
+          "drain": "Leert sich",
+          "fill": "Füllt sich",
+          "dim": "Wird dunkel",
+          "colorShift": "Wechselt die Farbe",
+          "trafficLight": "Ampel"
+        },
+        "targets": {
+          "central": "Zentrale",
+          "all": "Alles",
+          "peripherals": "Alle Pods"
+        }
+      }
     }
   },
   "simulate": {
@@ -705,6 +760,10 @@
     "repeat": {
       "name": "Wiederholen",
       "help": "Führt die Runde (body) mehrmals aus und macht dann bei „fertig“ weiter. Der letzte Schritt der Runde führt hierher zurück."
+    },
+    "effect": {
+      "name": "Lichteffekt",
+      "help": "Spielt einen Effekt auf dem Ring der Zentrale, eines Pods oder aller Pods. Läuft sofort weiter oder wartet, bis der Effekt vorbei ist. Ein späteres Licht auf demselben Ring ersetzt ihn."
     }
   },
   "common": {
@@ -1343,6 +1402,26 @@
     },
     "isCentral": "Ist der gewählte Pod die Zentrale?",
     "isNotCentral": "Ist der gewählte Pod einer der Pods, nicht die Zentrale?",
-    "catchEarlyFixed": "{{time}} warten, wer jetzt drückt, startet zu früh"
+    "catchEarlyFixed": "{{time}} warten, wer jetzt drückt, startet zu früh",
+    "effect": {
+      "solid": "{{where}} {{color}} leuchten lassen{{time}}",
+      "fill": "{{where}} mit {{color}} füllen{{time}}",
+      "drain": "{{where}} von {{color}} leeren{{time}}",
+      "dim": "{{where}} aus {{color}} ausblenden{{time}}",
+      "colorShift": "{{where}} von {{color}} zu {{color2}} wechseln{{time}}",
+      "trafficLight": "Ampel auf {{where}}{{time}}",
+      "blink": "{{where}} {{color}} blinken lassen{{time}}",
+      "pulse": "{{where}} {{color}} pulsieren lassen{{time}}",
+      "spin": "{{color}} um {{where}} drehen{{time}}",
+      "off": "{{where}} ausschalten",
+      "wait": ", warten bis er vorbei ist",
+      "for": " für {{time}}",
+      "central": "die Zentrale",
+      "all": "die Zentrale und alle Pods",
+      "peripherals": "alle Pods",
+      "pod": "Pod {{n}}",
+      "chosenPod": "den gewählten Pod"
+    },
+    "withCountdown": ", der Ring zählt herunter"
   }
 }
