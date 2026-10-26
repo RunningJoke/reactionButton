@@ -127,6 +127,20 @@ after the LED block that lit the central, so the accuracy is similar (≤ ~1 ms)
 `remoteMultiPress` measures the central's own reaction from the moment it lit its LEDs at
 the synchronised start time.
 
+### 3.3 Holds and releases (firmware ≥ 2.9)
+
+The `charge` and `release` blocks measure on the pod that owns the button, from the button edge
+timestamps (the same `Button` code as above), not from when a frame arrives:
+
+- **Hold time** (`heldMs` in RELEASED) = release edge − press edge. Accuracy as a press: well under 1 ms plus the 20 ms
+  debounce lockout after an edge (a release within 20 ms of the press is not seen).
+- **Start reaction** (`release`, `signal`) = release edge − the moment the pod updated its LEDs to the go colour
+  (`HoldSession::doSwitch`, reference point as in §3.1). A release before the switch time is a false start.
+- The central sees PRESSED / RELEASED a few ms later (§4). The `trigger` mode leaves the block at the central's receive time of
+  RELEASED, so a `timerStart` on the next block starts a few ms after the physical release, as for remote presses.
+- Timeouts (`maxHoldMs`, signal `timeoutMs`, `noHold`) run on the central's clock and include that latency; the charge of an
+  accumulating block at its time limit is taken on the pod.
+
 ## 4. Latency between pods
 
 ESP-NOW frames are sent immediately; there is no connection interval to wait for.
