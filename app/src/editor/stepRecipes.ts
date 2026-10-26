@@ -18,6 +18,7 @@ import { detectLoops, entryOf, isCatchEarly, mainPort, stepFamily, stepList, ste
 /** Single steps, in the order of the tiles. */
 export const INTENTS = [
   { id: "light", type: "led" },
+  { id: "effect", type: "effect" },
   { id: "pause", type: "delay" },
   { id: "press", type: "button" },
   { id: "pod", type: "remotePress" },
@@ -274,6 +275,10 @@ export function createStep(intent: Intent, doc: ProgramJson, after?: string, opt
   switch (intent) {
     case "light":
       next = patch(next, name, { color: previousColor(ctx, false) });
+      break;
+    case "effect":
+      // a pulse in the previous light's colour, until the next light change
+      next = patch(next, name, { target: "central", effect: "pulse", color: previousColor(ctx, true) });
       break;
     case "pause": {
       const prev = stepsBefore(ctx)

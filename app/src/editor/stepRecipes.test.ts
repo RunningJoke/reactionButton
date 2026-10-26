@@ -35,7 +35,7 @@ const DOCS: [string, ProgramJson][] = [
 
 function validate(doc: ProgramJson) {
   const text = JSON.stringify(doc);
-  return validateProgram(PATH, (p) => (p === PATH ? text : DEFAULT_FILES[p]), { programFormat: 2 });
+  return validateProgram(PATH, (p) => (p === PATH ? text : DEFAULT_FILES[p]), { programFormat: 3 });
 }
 
 const key = (i: Issue) => `${i.code}|${i.block ?? ""}|${i.field ?? ""}`;
@@ -160,7 +160,7 @@ describe("add a step: tiles", () => {
   it("marks tiles the pod cannot run", () => {
     const doc = DOCS[1]![1];
     expect(intentUnavailable("repeat", doc, { programFormat: 1 })).toBe("needsFormat");
-    expect(intentUnavailable("repeat", doc, { programFormat: 2 })).toBeNull();
+    expect(intentUnavailable("repeat", doc, { programFormat: 3 })).toBeNull();
     expect(intentUnavailable("repeat", doc)).toBeNull();
     expect(intentUnavailable("race", doc, { supportedTypes: ["led", "delay"] })).toBe("unsupported");
     expect(intentUnavailable("pod", doc)).toBe("noPods");

@@ -1,6 +1,7 @@
 /** Program format 3 in the simulator: `effect` block and `countdown` on the timed blocks (programs.md §2, §7). */
 import { describe, expect, it } from "vitest";
 import { validateProgram } from "@reactpod/program-model";
+import { DEFAULT_FILES } from "../defaults";
 import { Simulator, type Rgb } from "./engine";
 
 function inline(program: Record<string, unknown>, seed = 1) {
@@ -397,3 +398,43 @@ describe("effect block, firmware semantics", () => {
     expect(lit(central(sim).leds)).toBe(9);
   });
 });
+
+describe("shipped effects.json", () => {
+  const load = () => validateProgram("/prog/effects.json", (p) => DEFAULT_FILES[p], { programFormat: 3 });
+
+  it("is valid for a format 3 pod and a format 2 pod rejects it", () => {
+    expect(load().issues.filter((i) => i.severity === "error")).toEqual([]);
+    const old = validateProgram("/prog/effects.json", (p) => DEFAULT_FILES[p], { programFormat: 2 });
+    expect(old.issues.some((i) => i.severity === "error")).toBe(true);
+  });
+
+  it("plays a round: pulse, spin, traffic light, then both presses end in the green fill", () => {
+    const sim = new Simulator(load(), { seed: 2 });
+    const seen = (name: string) => sim.snapshot().log.some((e) => e.kind === "enter" && e.block === name);
+    sim.advance(2100); // EnterProgram: pulse on all, 2 s + 20 ms
+    expect(seen("Spinner")).toBe(true);
+    sim.advance(1300);
+    expect(seen("GetReady")).toBe(true);
+    for (let i = 0; i < 5000 && !seen("PodGo"); i++) sim.advance(1);
+    sim.advance(100);
+    expect(lit(pod(sim, 0).leds)).toBeGreaterThan(0); // the pod counts down (drain)
+    click(sim, 0);
+    sim.advance(100);
+    expect(seen("CentralGo")).toBe(true);
+    click(sim, 1);
+    sim.advance(900);
+    expect(seen("Win")).toBe(true);
+  });
+
+  it("a miss lets the central blink red", () => {
+    const sim = new Simulator(load(), { seed: 2 });
+    sim.advance(60000);
+    expect(entered(sim)).toContain("Miss");
+  });
+});
+
+function click(sim: Simulator, id: number) {
+  sim.press(id);
+  sim.advance(30);
+  sim.release(id);
+}

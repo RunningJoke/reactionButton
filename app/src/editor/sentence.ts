@@ -3,7 +3,7 @@
  * green, wait for the press · max 2 s". Times in seconds, pods counted from 1, no field or port
  * names. Texts are under `sentence.*` in the i18n files.
  */
-import { isObject, namedColor, type Block } from "@reactpod/program-model";
+import { EFFECTS, isObject, namedColor, type Block } from "@reactpod/program-model";
 import { isCatchEarly } from "./structure";
 
 export type TFunction = (key: string, options?: Record<string, unknown>) => string;
@@ -35,7 +35,9 @@ function makeLabel(t: TFunction, options: SentenceOptions) {
 
 /** One sentence for a block. */
 export function stepSentence(block: Block, t: TFunction, options: SentenceOptions = {}): string {
-  const text = sentenceOf(block, t, options);
+  let text = sentenceOf(block, t, options);
+  // a countdown on a timed step (program format 3): one more part
+  if (countdownOn(block)) text = `${text}${JOIN}${t("sentence.withCountdown")}`;
   // "den gewählten Pod …" (de) starts with a placeholder: a sentence still starts upper case
   return text.charAt(0).toLocaleUpperCase() + text.slice(1);
 }
@@ -164,10 +166,25 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
     }
     case "repeat":
       return repeatSentence(block.count, t, options);
+    case "effect": {
+      const kind = (EFFECTS as readonly string[]).includes(String(block.effect)) ? String(block.effect) : "solid";
+      const target = known(block.target);
+      const where =
+        target === undefined || target === "central" ? t("sentence.effect.central")
+        : target === "all" || target === "peripherals" ? t(`sentence.effect.${target}`)
+        : pod(block.target);
+      const parts: string[] = [];
+      if (typeof known(block.durationMs) === "number" && (known(block.durationMs) as number) > 0) parts.push(t("sentence.effect.for", { time: time(block.durationMs) }));
+      if (block.wait === true) parts.push(t("sentence.effect.wait"));
+      return join(t(`sentence.effect.${kind}`, { where, color: color(block.color, "white"), color2: color(block.color2, "off") }), parts);
+    }
     default:
       return t("sentence.unknown", { type: String(block.type) });
   }
 }
+
+/** `countdown` other than `secret` on a block that has one */
+export const countdownOn = (block: Block) => typeof block.countdown === "string" && block.countdown !== "secret";
 
 const IF_WORDS: Record<string, string> = { "==": "eq", "=": "eq", "!=": "ne", "!": "ne", ">": "gt", "<": "lt", ">=": "ge", "<=": "le" };
 

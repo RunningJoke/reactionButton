@@ -279,7 +279,8 @@ function setTimeLimit(d: Draft, name: string, on: boolean, options: SwitchOption
   const block = d.blocks.find((b) => b.name === name)!;
   const already = switchState(block, "timeLimit");
   if (!on) {
-    for (const f of ["timeoutMs", "minTimeoutMs", "maxTimeoutMs"]) delete block[f];
+    // a countdown runs over the time limit: it goes with it
+    for (const f of ["timeoutMs", "minTimeoutMs", "maxTimeoutMs", "countdown", "countdownColor", "countdownFrom"]) delete block[f];
     cutBranch(d, name, "timeout");
     return;
   }

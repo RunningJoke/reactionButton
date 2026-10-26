@@ -32,6 +32,8 @@ export type InspectorContext = {
   step?: { canUp: boolean; canDown: boolean; move: (direction: "up" | "down") => void };
   /** duplicates a step right after it (step sheet) */
   duplicate?: (name: string) => void;
+  /** program format of the connected pod (missing: unknown, everything is offered); the effect step and countdown need 3 */
+  programFormat?: number;
 };
 
 /** Editable block: name, type, parameters, connections, actions. */

@@ -102,6 +102,19 @@ describe("step sentences", () => {
     expect(repeatSentence(1, tDe)).toBe("1 Runde wiederholen");
   });
 
+  it("light effects and countdowns (program format 3)", () => {
+    expect(en_({ type: "effect", effect: "pulse", color: "blue" })).toBe("Pulse the central blue");
+    expect(en_({ type: "effect", effect: "fill", color: "green", target: "all", durationMs: 800, wait: true })).toBe(
+      "Fill the central and all pods with green · for 0.8 s · wait until it is over",
+    );
+    expect(en_({ type: "effect", effect: "blink", color: "red", target: 1 })).toBe("Blink pod 2 red");
+    expect(en_({ type: "effect", effect: "off", target: "peripherals" })).toBe("Turn all pods off");
+    expect(stepSentence(b({ type: "effect", effect: "spin", color: "cyan", target: 0, durationMs: 1200 }), tDe)).toBe("Cyan um Pod 1 drehen · für 1,2 s");
+    expect(en_({ type: "delay", ms: 2000, countdown: "drain" })).toBe("Wait 2 s · the ring counts down");
+    expect(en_({ type: "button", timeoutMs: 1500, countdown: "fill" })).toBe("Wait for a press on the central · max 1.5 s · the ring counts down");
+    expect(en_({ type: "delay", ms: 2000, countdown: "secret" })).toBe("Wait 2 s");
+  });
+
   it("never shows raw field names, ms or pod 0 for the shipped programs", () => {
     const paths = Object.keys(DEFAULT_FILES).filter((p) => p.startsWith("/prog/") && !p.startsWith("/prog/lib/"));
     for (const path of paths) {

@@ -37,6 +37,19 @@ describe("Add a step sheet", () => {
     expect(repeat.textContent).toContain("needs newer firmware");
   });
 
+  it("adds a light effect, and marks the tile for a format 2 pod", () => {
+    const onAdd = vi.fn();
+    render(<AddStepSheet doc={solo} after="Hit" programFormat={3} onAdd={onAdd} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Light effect/ }));
+    const [doc, focus] = onAdd.mock.calls[0]!;
+    expect((doc as ProgramJson).blocks).toContainEqual(expect.objectContaining({ name: focus, type: "effect", effect: "pulse", target: "central" }));
+    cleanup();
+    render(<AddStepSheet doc={solo} programFormat={2} onAdd={() => {}} onClose={() => {}} />);
+    const tile = screen.getByRole("button", { name: /Light effect/ }) as HTMLButtonElement;
+    expect(tile.disabled).toBe(true);
+    expect(tile.textContent).toContain("needs newer firmware");
+  });
+
   it("shows block types and library parts in expert mode", () => {
     useExpertModeStore.setState({ on: true });
     const onAdd = vi.fn();

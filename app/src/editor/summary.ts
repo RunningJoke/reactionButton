@@ -72,6 +72,12 @@ export function blockSummary(block: Block, t: (key: string, options?: Record<str
       if (typeof block.storeIndex === "string") parts.push(text(`# ${block.storeIndex}`));
       return parts;
     }
+    case "effect": {
+      const parts: SummaryPart[] = [{ kind: "color", color: block.color ?? "white", label: colorLabel(block.color ?? "white") }, text(String(block.effect ?? "?"))];
+      if (typeof block.durationMs === "number" && block.durationMs > 0) parts.push(text(ms(block.durationMs)));
+      if (block.wait === true) parts.push(text("⏳"));
+      return parts;
+    }
     default:
       return [];
   }

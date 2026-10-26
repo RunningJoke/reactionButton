@@ -193,6 +193,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
       setPanel("palette");
     },
     remove,
+    programFormat: source.programFormat,
     duplicate: (name) => {
       const { doc: next, name: copy } = duplicateStep(json, name, taken);
       apply(next, { select: copy });

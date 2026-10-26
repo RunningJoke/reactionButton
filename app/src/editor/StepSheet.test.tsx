@@ -23,12 +23,13 @@ const program = (): ProgramJson => ({
     { name: "Pick", type: "setVariable", var: "SELECTED_POD", op: "random", value: "REQUIRED_PERIPHERALS", next: "Pod" },
     { name: "Pod", type: "remotePress", pod: "SELECTED_POD", next: "Rounds" },
     { name: "End", type: "led", color: "blue" },
+    { name: "Glow", type: "effect", effect: "pulse", color: "blue", next: "Pause" },
   ],
 });
 
 let current: ProgramJson;
 
-function Harness({ name, expert = false, round = false }: { name: string; expert?: boolean; round?: boolean }) {
+function Harness({ name, expert = false, round = false, format }: { name: string; expert?: boolean; round?: boolean; format?: number }) {
   const [doc, setDoc] = useState(program);
   current = doc;
   const resolved = validateProgram("/prog/t.json", (p) => (p === "/prog/t.json" ? JSON.stringify(doc) : undefined));
@@ -45,6 +46,7 @@ function Harness({ name, expert = false, round = false }: { name: string; expert
     addConnected: () => {},
     addAfter: () => {},
     remove: () => {},
+    programFormat: format,
   };
   const steps = stepList(doc);
   if (round) {
@@ -114,6 +116,58 @@ describe("step sheet", () => {
     render(<Harness name="Press" expert />);
     expect(screen.getByRole("region", { name: "Expert" })).toBeTruthy();
     expect(screen.getByLabelText("Block name")).toBeTruthy();
+  });
+
+  it("light effect: effect, colour, where, how long and wait", () => {
+    render(<Harness name="Glow" />);
+    expect(screen.getByText(/Pulse the central blue/)).toBeTruthy();
+    const kinds = within(screen.getByRole("group", { name: "Effect" }));
+    fireEvent.click(kinds.getByRole("button", { name: "Fill up" }));
+    expect(block("Glow")).toMatchObject({ effect: "fill", durationMs: 2000 });
+    const where = within(screen.getByRole("group", { name: "Where" }));
+    fireEvent.click(where.getByRole("button", { name: "Pod 2" }));
+    expect(block("Glow").target).toBe(1);
+    fireEvent.click(where.getByRole("button", { name: "Everything" }));
+    expect(block("Glow").target).toBe("all");
+    fireEvent.click(screen.getByRole("switch", { name: /Wait until it is over/ }));
+    expect(block("Glow").wait).toBe(true);
+    // a periodic effect is endless by default and cannot be waited for
+    fireEvent.click(kinds.getByRole("button", { name: "Blink" }));
+    expect(block("Glow").durationMs).toBe(2000);
+    fireEvent.click(screen.getByRole("radio", { name: "Until the next light change" }));
+    expect(block("Glow").durationMs).toBeUndefined();
+    expect(block("Glow").wait).toBeUndefined();
+    expect((screen.getByRole("switch", { name: /Wait until it is over/ }) as HTMLInputElement).disabled).toBe(true);
+    // steady and off have no length
+    fireEvent.click(kinds.getByRole("button", { name: "Steady" }));
+    expect(screen.queryByRole("switch", { name: /Wait until it is over/ })).toBeNull();
+    expect(screen.getByRole("heading", { name: /Light effect/ })).toBeTruthy();
+  });
+
+  it("countdown: a pause has one at once, a press once the time limit is on", () => {
+    render(<Harness name="Pause" />);
+    fireEvent.click(screen.getByRole("switch", { name: /Show the time running out/ }));
+    expect(block("Pause").countdown).toBe("drain");
+    expect(screen.getByText(/the ring counts down/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Changes colour" }));
+    expect(block("Pause").countdown).toBe("colorShift");
+    fireEvent.click(screen.getByRole("switch", { name: /Show the time running out/ }));
+    expect(block("Pause").countdown).toBeUndefined();
+    cleanup();
+
+    render(<Harness name="Press" />);
+    const row = screen.getByRole("switch", { name: /Show the time running out/ }) as HTMLInputElement;
+    expect(row.disabled).toBe(true); // no time limit yet
+    fireEvent.click(screen.getByRole("switch", { name: /Time limit/ }));
+    fireEvent.click(screen.getByRole("switch", { name: /Show the time running out/ }));
+    expect(block("Press").countdown).toBe("drain");
+    fireEvent.click(screen.getByRole("switch", { name: /Time limit/ })); // the countdown goes with the limit
+    expect(block("Press").countdown).toBeUndefined();
+  });
+
+  it("a pod with program format 2 gets no countdown row", () => {
+    render(<Harness name="Pause" format={2} />);
+    expect(screen.queryByRole("switch", { name: /Show the time running out/ })).toBeNull();
   });
 
   it("repeat bracket: rounds as a stepper", () => {

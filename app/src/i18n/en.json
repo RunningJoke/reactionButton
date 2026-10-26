@@ -510,7 +510,8 @@
           "central": "Central",
           "all": "Everything",
           "peripherals": "All pods"
-        }
+        },
+        "from": "Start colour"
       }
     }
   },
@@ -1449,24 +1450,24 @@
     "isNotCentral": "Is the chosen pod one of the pods, not the central?",
     "catchEarlyFixed": "Wait {{time}}, pressing now is a false start",
     "effect": {
-      "solid": "Light {{where}} {{color}}{{time}}",
-      "fill": "Fill {{where}} with {{color}}{{time}}",
-      "drain": "Drain {{where}} of {{color}}{{time}}",
-      "dim": "Fade {{where}} out from {{color}}{{time}}",
-      "colorShift": "Change {{where}} from {{color}} to {{color2}}{{time}}",
-      "trafficLight": "Traffic light on {{where}}{{time}}",
-      "blink": "Blink {{where}} {{color}}{{time}}",
-      "pulse": "Pulse {{where}} {{color}}{{time}}",
-      "spin": "Spin {{color}} around {{where}}{{time}}",
+      "solid": "Light {{where}} {{color}}",
+      "fill": "Fill {{where}} with {{color}}",
+      "drain": "Drain {{where}} of {{color}}",
+      "dim": "Fade {{where}} out from {{color}}",
+      "colorShift": "Change {{where}} from {{color}} to {{color2}}",
+      "trafficLight": "Traffic light on {{where}}",
+      "blink": "Blink {{where}} {{color}}",
+      "pulse": "Pulse {{where}} {{color}}",
+      "spin": "Spin {{color}} around {{where}}",
       "off": "Turn {{where}} off",
-      "wait": ", wait until it is over",
-      "for": " for {{time}}",
+      "wait": "wait until it is over",
+      "for": "for {{time}}",
       "central": "the central",
       "all": "the central and all pods",
       "peripherals": "all pods",
       "pod": "pod {{n}}",
       "chosenPod": "the chosen pod"
     },
-    "withCountdown": ", the ring counts down"
+    "withCountdown": "the ring counts down"
   }
 }

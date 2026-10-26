@@ -12,6 +12,8 @@ import { blockType, fieldLevel, IF_OPS, isObject, type Block, type FieldDef, typ
 import { Segmented, Stepper, SwitchRow } from "../wizard/controls";
 import { BlockExpertFields, type InspectorContext } from "./BlockInspector";
 import { blockCategory, blockIcon } from "./blockStyle";
+import { COUNTDOWN_FIELDS, COUNTDOWN_STYLES, COUNTDOWN_TARGETS, countdownKind, countdownStyle, hasCountdownTime, setCountdown } from "./countdown";
+import { EFFECTS, effectKind, hasEnd, isPeriodic, isTimed, setEffectKind, setEffectTarget, setEndless, usesColor } from "./effectStep";
 import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
 import { isValidVariableName, ownBlocks, setBlockField, setProgramField, type ProgramJson } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
@@ -146,6 +148,7 @@ export function StepSheet({ block, step, issues, sentence, expert, ctx }: StepSh
         {switches.map((id) => (
           <FeatureSwitch key={id} id={id} block={block} doc={doc} set={set} apply={apply} toggle={toggle} inLoop={!!step?.inLoop} />
         ))}
+        {countdownKind(block) !== null && (ctx.programFormat === undefined || ctx.programFormat >= 3) && <CountdownRow block={block} doc={doc} set={set} apply={apply} />}
         <MoreOptions block={block} doc={doc} set={set} apply={apply} variables={ctx.variables} metrics={ctx.metrics} />
 
         <div className={inspector.actions}>
@@ -295,6 +298,8 @@ function Essentials({ block, doc, set, apply, labelOf, variables }: FieldProps &
           ))}
         </>
       );
+    case "effect":
+      return <EffectFields block={block} doc={doc} set={set} apply={apply} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -568,11 +573,129 @@ function FeatureSwitch({ id, block, doc, set, apply, toggle, inLoop }: FieldProp
   }
 }
 
+/* ---------------------------------------------------------------- light effect */
+
+/** Essentials of the "Light effect" step: effect, colour, where, how long, wait. */
+function EffectFields({ block, doc, set, apply }: FieldProps) {
+  const { t } = useTranslation();
+  const e = (key: string, o?: Record<string, unknown>) => t(`editor.step.effect.${key}`, o);
+  const kind = effectKind(block);
+  const peripherals = typeof doc.peripherals === "number" ? doc.peripherals : 0;
+  const target = block.target;
+  const current = target === undefined || target === "central" ? "central" : target === "all" || target === "peripherals" ? target : typeof target === "number" ? target : "other";
+  const chip = (key: string, label: string, pressed: boolean, onClick: () => void, disabled?: boolean) => (
+    <button key={key} type="button" className={inspector.chip} aria-pressed={pressed} disabled={disabled} onClick={onClick}>
+      {label}
+    </button>
+  );
+  return (
+    <>
+      <Field label={e("label")}>
+        <div className={styles.chips}>
+          {EFFECTS.map((k) => chip(k, e(`kind.${k}`), kind === k, () => apply(setEffectKind(doc, block.name, k))))}
+        </div>
+      </Field>
+      {usesColor(kind) && (
+        <Field label={t("editor.step.colour")}>
+          <ColorField value={block.color} optional defaultValue="white" custom label={t("editor.step.colour")} onChange={(c) => set("color", c, false)} />
+        </Field>
+      )}
+      {kind === "colorShift" && (
+        <Field label={e("colour2")}>
+          <ColorField value={block.color2} optional defaultValue="off" custom label={e("colour2")} onChange={(c) => set("color2", c, false)} />
+        </Field>
+      )}
+      <Field label={e("where")}>
+        <div className={styles.chips}>
+          {chip("central", e("central"), current === "central", () => apply(setEffectTarget(doc, block.name, "central")))}
+          {peripherals > 0 && chip("all", e("all"), current === "all", () => apply(setEffectTarget(doc, block.name, "all")))}
+          {peripherals > 0 && chip("peripherals", e("peripherals"), current === "peripherals", () => apply(setEffectTarget(doc, block.name, "peripherals")))}
+          {Array.from({ length: peripherals }, (_, i) => chip(`pod${i}`, e("podN", { n: i + 1 }), current === i, () => apply(setEffectTarget(doc, block.name, i))))}
+          {current === "other" && typeof target === "string" && chip("other", t("editor.step.podIn", { name: settingLabel(target, t).label }), true, () => {}, true)}
+        </div>
+      </Field>
+      {isTimed(kind) && <TimeValue label={e("howLong")} value={block.durationMs ?? 0} doc={doc} apply={apply} onField={(ms) => set("durationMs", ms)} />}
+      {isPeriodic(kind) && (
+        <>
+          <Segmented
+            label={e("howLong")}
+            value={hasEnd(block) ? "limited" : "forever"}
+            options={[
+              { value: "forever", label: e("forever") },
+              { value: "limited", label: e("limited") },
+            ]}
+            onChange={(v) => apply(setEndless(doc, block.name, v === "forever"))}
+          />
+          {hasEnd(block) && <TimeValue label={e("howLong")} value={block.durationMs ?? 0} doc={doc} apply={apply} onField={(ms) => set("durationMs", ms)} />}
+        </>
+      )}
+      {kind !== "solid" && kind !== "off" && (
+        <SwitchRow
+          label={e("wait")}
+          hint={!hasEnd(block) ? e("waitNeedsTime") : block.wait === true ? e("waitOn") : e("waitOff")}
+          checked={block.wait === true}
+          disabled={!hasEnd(block)}
+          onChange={(on) => set("wait", on ? true : undefined, false)}
+        />
+      )}
+    </>
+  );
+}
+
+/* ---------------------------------------------------------------- countdown */
+
+/** "Show the time running out": the ring counts down over the step's time (program format 3). */
+function CountdownRow({ block, doc, set, apply }: FieldProps) {
+  const { t } = useTranslation();
+  const c = (key: string, o?: Record<string, unknown>) => t(`editor.switch.countdown.${key}`, o);
+  const style = countdownStyle(block);
+  const available = hasCountdownTime(block);
+  const peripherals = typeof doc.peripherals === "number" ? doc.peripherals : 0;
+  const target = block.countdownTarget === undefined ? "central" : block.countdownTarget;
+  const chip = (key: string, label: string, pressed: boolean, onClick: () => void) => (
+    <button key={key} type="button" className={inspector.chip} aria-pressed={pressed} onClick={onClick}>
+      {label}
+    </button>
+  );
+  return (
+    <SwitchRow
+      label={c("label")}
+      hint={!available ? c("needsLimit") : style ? c("on", { style: c(`styles.${style}`) }) : c("off")}
+      checked={style !== null}
+      disabled={!available}
+      onChange={(on) => apply(setCountdown(doc, block.name, on ? "drain" : null))}
+    >
+      <Field label={c("style")}>
+        <div className={styles.chips}>{COUNTDOWN_STYLES.map((k) => chip(k, c(`styles.${k}`), style === k, () => apply(setCountdown(doc, block.name, k))))}</div>
+      </Field>
+      {style === "colorShift" && (
+        <Field label={c("color")}>
+          <ColorField value={block.countdownColor} optional defaultValue="red" label={c("color")} onChange={(col) => set("countdownColor", col, false)} />
+        </Field>
+      )}
+      {(block.type === "delay" || block.type === "button") && style !== "trafficLight" && (
+        <Field label={c("from")}>
+          <ColorField value={block.countdownFrom} optional defaultValue="green" label={c("from")} onChange={(col) => set("countdownFrom", col, false)} />
+        </Field>
+      )}
+      {block.type === "delay" && peripherals > 0 && (
+        <Field label={c("target")}>
+          <div className={styles.chips}>
+            {COUNTDOWN_TARGETS.map((k) => chip(k, c(`targets.${k}`), target === k, () => set("countdownTarget", k === "central" ? undefined : k, false)))}
+            {Array.from({ length: peripherals }, (_, i) => chip(`pod${i}`, t("editor.step.effect.podN", { n: i + 1 }), target === i, () => set("countdownTarget", i, false)))}
+          </div>
+        </Field>
+      )}
+    </SwitchRow>
+  );
+}
+
 /* ---------------------------------------------------------------- more options */
 
 function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps & { variables: readonly string[]; metrics: readonly string[] }) {
   const { t } = useTranslation();
-  const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more");
+  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "effect" && block.effect === "colorShift" ? ["color2"] : [])];
+  const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name));
   if (fields.length === 0) return null;
   const used = fields.some((f) => block[f.name] !== undefined);
   return (
@@ -606,6 +729,9 @@ function MoreField({ field, block, doc, set, apply, variables, metrics }: FieldP
     case "color":
     case "remoteColor":
       input = <ColorField value={value} optional defaultValue={field.default} custom={field.kind === "color"} label={label} onChange={(c) => set(field.name, c, false)} />;
+      break;
+    case "leds":
+      input = <LedsField value={value} color={block.color} label={label} onChange={(v) => set(field.name, v)} />;
       break;
     case "bool": {
       const checked = typeof value === "boolean" ? value : field.default === true;
