@@ -11,6 +11,7 @@
 #include "Block/SummaryBlock/SummaryBlock.h"
 #include "Block/RepeatBlock/RepeatBlock.h"
 #include "Block/EffectBlock/EffectBlock.h"
+#include "Block/ChargeBlock/ChargeBlock.h"
 
 namespace {
     template<typename T>
@@ -36,6 +37,7 @@ namespace {
         {"summary",          &createBlock<SummaryBlock>},
         {"repeat",           &createBlock<RepeatBlock>},
         {"effect",           &createBlock<EffectBlock>},
+        {"charge",           &createBlock<ChargeBlock>},
     };
 }
 
