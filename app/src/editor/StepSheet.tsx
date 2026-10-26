@@ -626,7 +626,7 @@ function EffectFields({ block, doc, set, apply }: FieldProps) {
             ]}
             onChange={(v) => apply(setEndless(doc, block.name, v === "forever"))}
           />
-          {hasEnd(block) && <TimeValue label={e("howLong")} value={block.durationMs ?? 0} doc={doc} apply={apply} onField={(ms) => set("durationMs", ms)} />}
+          {hasEnd(block) && <TimeValue label={t("editor.step.seconds")} value={block.durationMs ?? 0} doc={doc} apply={apply} onField={(ms) => set("durationMs", ms)} />}
         </>
       )}
       {kind !== "solid" && kind !== "off" && (
@@ -694,7 +694,8 @@ function CountdownRow({ block, doc, set, apply }: FieldProps) {
 
 function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps & { variables: readonly string[]; metrics: readonly string[] }) {
   const { t } = useTranslation();
-  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "effect" && block.effect === "colorShift" ? ["color2"] : [])];
+  // colour shift asks for its second colour above; only blink, spin, fill and drain have a background
+  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
   const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name));
   if (fields.length === 0) return null;
   const used = fields.some((f) => block[f.name] !== undefined);
