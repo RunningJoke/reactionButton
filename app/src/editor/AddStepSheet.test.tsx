@@ -50,6 +50,22 @@ describe("Add a step sheet", () => {
     expect(tile.textContent).toContain("needs newer firmware");
   });
 
+  it("adds hold to charge and let go, greyed for a format 2 pod", () => {
+    const onAdd = vi.fn();
+    render(<AddStepSheet doc={solo} after="Hit" programFormat={3} onAdd={onAdd} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Hold to charge/ }));
+    expect((onAdd.mock.calls[0]![0] as ProgramJson).blocks).toContainEqual(expect.objectContaining({ type: "charge", maxMs: 2000 }));
+    fireEvent.click(screen.getByRole("button", { name: /Let go/ }));
+    expect((onAdd.mock.calls[1]![0] as ProgramJson).blocks).toContainEqual(expect.objectContaining({ type: "release" }));
+    cleanup();
+    render(<AddStepSheet doc={solo} programFormat={2} onAdd={() => {}} onClose={() => {}} />);
+    for (const name of [/Hold to charge/, /Let go/]) {
+      const tile = screen.getByRole("button", { name }) as HTMLButtonElement;
+      expect(tile.disabled).toBe(true);
+      expect(tile.textContent).toContain("needs newer firmware");
+    }
+  });
+
   it("shows block types and library parts in expert mode", () => {
     useExpertModeStore.setState({ on: true });
     const onAdd = vi.fn();

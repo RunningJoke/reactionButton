@@ -30,6 +30,8 @@ export function countdownKind(block: Block): "pause" | "limit" | null {
       return isCatchEarly(block) ? "pause" : "limit";
     case "remotePress":
     case "remoteMultiPress":
+    case "charge":
+    case "release":
       return "limit";
     default:
       return null;

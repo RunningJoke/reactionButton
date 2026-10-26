@@ -16,6 +16,7 @@
  * miss is counted when the program already has the miss variable.
  */
 import { blockType, isObject, type Block, type SwitchId } from "@reactpod/program-model";
+import { limitFieldOf, releaseMode } from "./holdStep";
 import { ownBlocks, uniqueName, type ProgramJson } from "./ops";
 import { isCatchEarly, mainPort, stepList, type Step } from "./structure";
 
@@ -25,6 +26,7 @@ export type TimeoutAction = "goOn" | "countMiss" | "endRound" | "other";
 const MISSES = "MISSES";
 const METRIC = "reaction";
 const DEFAULT_LIMIT_MS = 2000;
+const DEFAULT_HOLD_LIMIT_MS = 5000;
 const FLASH_MS = 1000;
 
 /** Switches that apply to this block (in the order the step sheet shows them). */
@@ -38,6 +40,10 @@ export function switchesFor(block: Block): SwitchId[] {
       return block.mode === "avoid" ? ["avoid", "timeLimit"] : ["avoid", "timeLimit", "record"];
     case "remoteMultiPress":
       return ["avoid", "timeLimit", "record"];
+    case "charge":
+      return ["timeLimit", "record"];
+    case "release":
+      return releaseMode(block) === "signal" ? ["timeLimit", "record"] : ["timeLimit"];
     default:
       return [];
   }
@@ -52,6 +58,7 @@ export function switchState(block: Block, id: SwitchId): boolean {
       if (block.type === "delay") return !has(block, "ms") && (has(block, "minMs") || has(block, "maxMs"));
       return isCatchEarly(block) && block.minTimeoutMs !== block.maxTimeoutMs;
     case "timeLimit":
+      if (block.type === "release") return has(block, limitFieldOf(block));
       return !isCatchEarly(block) && ["timeoutMs", "minTimeoutMs", "maxTimeoutMs"].some((f) => has(block, f));
     case "record":
       return typeof block.record === "string";
@@ -280,12 +287,12 @@ function setTimeLimit(d: Draft, name: string, on: boolean, options: SwitchOption
   const already = switchState(block, "timeLimit");
   if (!on) {
     // a countdown runs over the time limit: it goes with it
-    for (const f of ["timeoutMs", "minTimeoutMs", "maxTimeoutMs", "countdown", "countdownColor", "countdownFrom"]) delete block[f];
+    for (const f of ["timeoutMs", "minTimeoutMs", "maxTimeoutMs", "maxHoldMs", "countdown", "countdownColor", "countdownFrom"]) delete block[f];
     cutBranch(d, name, "timeout");
     return;
   }
   if (already && !options.onTimeout) return;
-  if (!already) block.timeoutMs = defaultLimit(d.doc, name);
+  if (!already) block[block.type === "release" ? limitFieldOf(block) : "timeoutMs"] = block.type === "release" && limitFieldOf(block) === "maxHoldMs" ? DEFAULT_HOLD_LIMIT_MS : defaultLimit(d.doc, name);
   cutBranch(d, name, "timeout");
   const action = options.onTimeout ?? (countsMiss(d.doc, options) ? "countMiss" : "goOn");
   linkTimeout(d, name, action, options.missVar ?? MISSES);

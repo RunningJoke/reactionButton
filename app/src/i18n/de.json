@@ -264,7 +264,9 @@
         "summary": "Ergebnisse zeigen",
         "repeat": "Wiederholen",
         "unknown": "Schritt",
-        "effect": "Lichteffekt"
+        "effect": "Lichteffekt",
+        "charge": "Halten zum Laden",
+        "release": "Loslassen"
       },
       "colour": "Farbe",
       "leds": "Welche LEDs",
@@ -331,13 +333,26 @@
         "minTimeoutMs": "Kürzeste Zeit",
         "maxTimeoutMs": "Längste Zeit",
         "shortMs": "Langer Druck ab",
-        "count": "Runden"
+        "count": "Runden",
+        "onsetMs": "Laden beginnt nach",
+        "decayMs": "Ladung läuft ab in",
+        "mode": "Wie es endet",
+        "heldColor": "Farbe, sobald gehalten",
+        "allowHeld": "Ein Halten von vorher zählt",
+        "holdTimeoutMs": "Niemand hält nach",
+        "storePercent": "Prozent merken in"
       },
       "help": {
         "storeAs": "Später in einem Entscheiden-Schritt nutzbar, z. B. „wenn die letzte Zeit unter 0,3 s liegt“.",
         "syncStartMs": "So lange warten die Pods, damit sie gemeinsam aufleuchten.",
         "timerStart": "Name einer Stoppuhr, die mit diesem Schritt startet.",
-        "timerStop": "Misst die Zeit seit dem Start dieser Stoppuhr."
+        "timerStop": "Misst die Zeit seit dem Start dieser Stoppuhr.",
+        "onsetMs": "Der erste Teil jedes Haltens lädt noch nicht.",
+        "decayMs": "Zeit, in der eine volle Ladung bei losgelassenem Knopf abläuft. 0 behält die Ladung.",
+        "heldColor": "Wird gezeigt, sobald das Halten erkannt ist („du bist bereit“). Standard: dieselbe Farbe.",
+        "allowHeld": "An: Ein Knopf, der beim Start des Schritts schon gedrückt ist, zählt als gehalten. Aus: Er muss losgelassen und neu gedrückt werden.",
+        "holdTimeoutMs": "Hält niemand den Knopf in dieser Zeit, nimmt der Schritt den Weg „niemand hält“.",
+        "storePercent": "Die Ladung von 0 bis 100."
       },
       "addAfterAction": "Schritt danach einfügen",
       "expert": "Experte",
@@ -378,6 +393,35 @@
         "waitOn": "Der nächste Schritt startet, wenn der Effekt endet",
         "waitOff": "Der nächste Schritt startet sofort, der Effekt läuft weiter",
         "waitNeedsTime": "Braucht eine Zeit, ein endloser Effekt endet nie"
+      },
+      "hold": {
+        "whichButton": "Welcher Knopf",
+        "fullAfter": "Voll nach Halten von",
+        "chargeHint": "Loslassen beendet den Schritt mit der erreichten Ladung. Eine volle Ladung beendet ihn sofort und der Ring blinkt.",
+        "accumulateHint": "Loslassen pausiert die Ladung nur (oder lässt sie ablaufen, siehe weitere Optionen). Nur eine volle Ladung oder das Zeitlimit beendet den Schritt.",
+        "style": "So zeigt der Ring es",
+        "styles": {
+          "fill": "Füllen",
+          "brightness": "Heller",
+          "trafficLight": "Ampel",
+          "colorShift": "Farbwechsel"
+        },
+        "mode": "Was zählt",
+        "modes": {
+          "trigger": "Loslassen startet",
+          "signal": "Loslassen beim Signal"
+        },
+        "triggerHint": "Der Sportler hält den Knopf, Loslassen geht weiter (z. B. Start eines Laufs). Die Haltezeit lässt sich merken.",
+        "signalHint": "Der Sportler hält den Knopf und lässt so schnell wie möglich los, wenn die Farbe wechselt. Zu frühes Loslassen ist ein Fehlstart.",
+        "holdColour": "Farbe, solange auf das Halten gewartet wird",
+        "goColour": "Farbe des Signals",
+        "signalAfter": "Signal nach dem Halten"
+      },
+      "enum": {
+        "mode": {
+          "release": "Loslassen beendet",
+          "accumulate": "Ladung summiert sich"
+        }
       }
     },
     "add": {
@@ -434,6 +478,14 @@
         "effect": {
           "name": "Lichteffekt",
           "hint": "Ring blinken, pulsieren, füllen oder drehen"
+        },
+        "charge": {
+          "name": "Halten zum Laden",
+          "hint": "Knopf halten, der Ring lädt sich auf"
+        },
+        "release": {
+          "name": "Loslassen",
+          "hint": "Das Loslassen ist das Ereignis, oder ein Startsignal"
         }
       },
       "recipe": {
@@ -512,7 +564,9 @@
           "peripherals": "Alle Pods"
         },
         "from": "Startfarbe"
-      }
+      },
+      "holdLimit": "Längstes Halten",
+      "holdLimitOn": "Zu lang nach {{time}}"
     }
   },
   "simulate": {
@@ -780,6 +834,14 @@
     "effect": {
       "name": "Lichteffekt",
       "help": "Spielt einen Effekt auf dem Ring der Zentrale, eines Pods oder aller Pods. Läuft sofort weiter oder wartet, bis der Effekt vorbei ist. Ein späteres Licht auf demselben Ring ersetzt ihn."
+    },
+    "charge": {
+      "name": "Halten zum Laden",
+      "help": "Der Ring zeigt, wie lange der Knopf gehalten wird. Verlassen durch Loslassen, bei voller Ladung oder nach einem Zeitlimit. Auf Pods ab Firmware 2.9."
+    },
+    "release": {
+      "name": "Loslassen",
+      "help": "Auslöser: Das Loslassen des gehaltenen Knopfs ist das Ereignis. Signal: Nach einer Zeit wechselt die Farbe und der Sportler lässt so schnell wie möglich los (Fehlstart, wenn zu früh). Auf Pods ab Firmware 2.9."
     }
   },
   "common": {
@@ -954,6 +1016,46 @@
     },
     "countdownFrom": {
       "label": "Startfarbe des Countdowns"
+    },
+    "style": {
+      "label": "Stil",
+      "help": "So zeigt der Ring die Ladung: fill, brightness, trafficLight, colorShift."
+    },
+    "onsetMs": {
+      "label": "Laden beginnt nach (ms)"
+    },
+    "decayMs": {
+      "label": "Ablaufzeit (ms)"
+    },
+    "holdColor": {
+      "label": "Farbe beim Warten"
+    },
+    "heldColor": {
+      "label": "Farbe, sobald gehalten"
+    },
+    "goColor": {
+      "label": "Signalfarbe"
+    },
+    "goMs": {
+      "label": "Zeit bis zum Signal (ms)"
+    },
+    "minGoMs": {
+      "label": "Signal frühestens (ms)"
+    },
+    "maxGoMs": {
+      "label": "Signal spätestens (ms)"
+    },
+    "allowHeld": {
+      "label": "Ein Halten von vorher zählt"
+    },
+    "holdTimeoutMs": {
+      "label": "Kein Halten innerhalb von (ms)"
+    },
+    "maxHoldMs": {
+      "label": "Längstes Halten (ms)"
+    },
+    "storePercent": {
+      "label": "Prozent in Variable speichern"
     }
   },
   "ops": {
@@ -1479,6 +1581,10 @@
       "pod": "Pod {{n}}",
       "chosenPod": "den gewählten Pod"
     },
-    "withCountdown": "der Ring zählt herunter"
+    "withCountdown": "der Ring zählt herunter",
+    "charge": "{{pod}} halten zum Laden · voll nach {{time}}",
+    "chargeAccumulate": "{{pod}} durch Halten laden, Loslassen pausiert · voll nach {{time}}",
+    "releaseTrigger": "Warten, bis {{pod}} gehalten und losgelassen wird",
+    "releaseSignal": "{{pod}} halten, loslassen wenn es {{color}} wird · Signal nach {{time}}"
   }
 }

@@ -24,6 +24,8 @@ const program = (): ProgramJson => ({
     { name: "Pod", type: "remotePress", pod: "SELECTED_POD", next: "Rounds" },
     { name: "End", type: "led", color: "blue" },
     { name: "Glow", type: "effect", effect: "pulse", color: "blue", next: "Pause" },
+    { name: "Charge", type: "charge", maxMs: 2000, next: "End" },
+    { name: "Let", type: "release", next: "End" },
   ],
 });
 
@@ -142,6 +144,47 @@ describe("step sheet", () => {
     fireEvent.click(kinds.getByRole("button", { name: "Steady" }));
     expect(screen.queryByRole("switch", { name: /Wait until it is over/ })).toBeNull();
     expect(screen.getByRole("heading", { name: /Light effect/ })).toBeTruthy();
+  });
+
+  it("hold to charge: essentials, style, mode and the options of the mode", () => {
+    render(<Harness name="Charge" />);
+    const sheet = screen.getByRole("complementary");
+    expect(sheet.textContent).not.toMatch(/maxMs|onsetMs|storePercent|accumulate\b/);
+    fireEvent.click(screen.getByRole("button", { name: "Pod 2" }));
+    expect(block("Charge").pod).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Central" }));
+    expect(block("Charge").pod).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: "Change colour" }));
+    expect(block("Charge").style).toBe("colorShift");
+    expect(screen.getByRole("group", { name: "Second colour" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Traffic light" }));
+    expect(screen.queryByRole("group", { name: "Second colour" })).toBeNull();
+    // the drain time exists only while the charge adds up
+    expect(screen.queryByText("Charge drains in")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Charge adds up" }));
+    expect(block("Charge").mode).toBe("accumulate");
+    expect(screen.getByText("Charge drains in")).toBeTruthy();
+    // time limit with the countdown
+    fireEvent.click(screen.getByRole("switch", { name: /Time limit/ }));
+    expect(block("Charge").timeoutMs).toBe(2000);
+    fireEvent.click(screen.getByRole("switch", { name: /Show the time running out/ }));
+    expect(block("Charge").countdown).toBe("drain");
+  });
+
+  it("let go: the mode switch moves between trigger and signal", () => {
+    render(<Harness name="Let" />);
+    expect(screen.queryByText("Colour of the signal")).toBeNull();
+    expect(screen.getByRole("switch", { name: /Longest hold/ })).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: /Record reaction time/ })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Let go at a signal" }));
+    expect(block("Let")).toMatchObject({ mode: "signal", minGoMs: 1500, maxGoMs: 3000 });
+    expect(screen.getByRole("group", { name: "Colour of the signal" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: /Record reaction time/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "Always the same" }));
+    expect(block("Let").goMs).toBe(1500);
+    fireEvent.click(screen.getByRole("radio", { name: "Letting go starts it" }));
+    expect(block("Let").mode).toBeUndefined();
+    expect(block("Let").goMs).toBeUndefined();
   });
 
   it("countdown: a pause has one at once, a press once the time limit is on", () => {

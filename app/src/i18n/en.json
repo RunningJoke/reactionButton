@@ -264,7 +264,9 @@
         "summary": "Show results",
         "repeat": "Repeat",
         "unknown": "Step",
-        "effect": "Light effect"
+        "effect": "Light effect",
+        "charge": "Hold to charge",
+        "release": "Let go"
       },
       "colour": "Colour",
       "leds": "Which LEDs",
@@ -331,13 +333,26 @@
         "minTimeoutMs": "Shortest time",
         "maxTimeoutMs": "Longest time",
         "shortMs": "Long press from",
-        "count": "Rounds"
+        "count": "Rounds",
+        "onsetMs": "Charging starts after",
+        "decayMs": "Charge drains in",
+        "mode": "How it ends",
+        "heldColor": "Colour once held",
+        "allowHeld": "A hold from before counts",
+        "holdTimeoutMs": "Nobody holds after",
+        "storePercent": "Keep the percentage in"
       },
       "help": {
         "storeAs": "Use it later in a Decide step, e.g. “if the last time is under 0.3 s”.",
         "syncStartMs": "Pods wait this long so they light up together.",
         "timerStart": "Name of a stopwatch that starts with this step.",
-        "timerStop": "Records the time since that stopwatch started."
+        "timerStop": "Records the time since that stopwatch started.",
+        "onsetMs": "The first part of every hold does not charge yet.",
+        "decayMs": "Time to drain a full charge while the button is released. 0 keeps the charge.",
+        "heldColor": "Shown once the hold is detected (“you are set”). Default: the same colour.",
+        "allowHeld": "On: a button that is already down when the step starts counts as held. Off: it has to be let go and pressed again.",
+        "holdTimeoutMs": "Nobody holds the button in this time: the step takes its “nobody holds” way.",
+        "storePercent": "The charge from 0 to 100."
       },
       "addAfterAction": "Add a step after",
       "expert": "Expert",
@@ -378,6 +393,35 @@
         "waitOn": "The next step starts when the effect ends",
         "waitOff": "The next step starts at once, the effect plays on",
         "waitNeedsTime": "Needs a time, an endless effect never ends"
+      },
+      "hold": {
+        "whichButton": "Which button",
+        "fullAfter": "Full after holding",
+        "chargeHint": "Letting go ends the step with the charge reached. A full charge ends it at once and the ring flashes.",
+        "accumulateHint": "Letting go only pauses the charge (or drains it, see more options). Only a full charge or the time limit ends the step.",
+        "style": "How the ring shows it",
+        "styles": {
+          "fill": "Fill up",
+          "brightness": "Brighter",
+          "trafficLight": "Traffic light",
+          "colorShift": "Change colour"
+        },
+        "mode": "What counts",
+        "modes": {
+          "trigger": "Letting go starts it",
+          "signal": "Let go at a signal"
+        },
+        "triggerHint": "The athlete holds the button, letting go goes on (e.g. the start of a run). The hold time can be kept.",
+        "signalHint": "The athlete holds the button and lets go as fast as possible when the colour changes. Letting go too early is a false start.",
+        "holdColour": "Colour while waiting for the hold",
+        "goColour": "Colour of the signal",
+        "signalAfter": "Signal after the hold"
+      },
+      "enum": {
+        "mode": {
+          "release": "Letting go ends it",
+          "accumulate": "Charge adds up"
+        }
       }
     },
     "add": {
@@ -434,6 +478,14 @@
         "effect": {
           "name": "Light effect",
           "hint": "Blink, pulse, fill or spin the ring"
+        },
+        "charge": {
+          "name": "Hold to charge",
+          "hint": "Hold a button, the ring charges up"
+        },
+        "release": {
+          "name": "Let go",
+          "hint": "Letting go is the event, or a start signal"
         }
       },
       "recipe": {
@@ -512,7 +564,9 @@
           "peripherals": "All pods"
         },
         "from": "Start colour"
-      }
+      },
+      "holdLimit": "Longest hold",
+      "holdLimitOn": "Too long after {{time}}"
     }
   },
   "simulate": {
@@ -780,6 +834,14 @@
     "effect": {
       "name": "Light effect",
       "help": "Plays an effect on the ring of the central, one pod or all pods. Continues at once, or waits until the effect is over. A later light on the same ring replaces it."
+    },
+    "charge": {
+      "name": "Hold to charge",
+      "help": "The ring shows how long the button is held. Leave by release, when the charge is full or on a time limit. Needs firmware 2.9 on pods."
+    },
+    "release": {
+      "name": "Let go",
+      "help": "Trigger: letting go of the held button is the event. Signal: the colour switches after a time and the athlete lets go as fast as possible (false start if too early). Needs firmware 2.9 on pods."
     }
   },
   "common": {
@@ -954,6 +1016,46 @@
     },
     "countdownFrom": {
       "label": "Countdown start colour"
+    },
+    "style": {
+      "label": "Style",
+      "help": "How the ring shows the charge: fill, brightness, trafficLight, colorShift."
+    },
+    "onsetMs": {
+      "label": "Charging starts after (ms)"
+    },
+    "decayMs": {
+      "label": "Drain time (ms)"
+    },
+    "holdColor": {
+      "label": "Colour while waiting"
+    },
+    "heldColor": {
+      "label": "Colour once held"
+    },
+    "goColor": {
+      "label": "Signal colour"
+    },
+    "goMs": {
+      "label": "Time until the signal (ms)"
+    },
+    "minGoMs": {
+      "label": "Signal at the earliest (ms)"
+    },
+    "maxGoMs": {
+      "label": "Signal at the latest (ms)"
+    },
+    "allowHeld": {
+      "label": "A hold from before counts"
+    },
+    "holdTimeoutMs": {
+      "label": "No hold within (ms)"
+    },
+    "maxHoldMs": {
+      "label": "Longest hold (ms)"
+    },
+    "storePercent": {
+      "label": "Store percentage in variable"
     }
   },
   "ops": {
@@ -1479,6 +1581,10 @@
       "pod": "pod {{n}}",
       "chosenPod": "the chosen pod"
     },
-    "withCountdown": "the ring counts down"
+    "withCountdown": "the ring counts down",
+    "charge": "Hold {{pod}} to charge · full after {{time}}",
+    "chargeAccumulate": "Charge {{pod}} by holding, letting go pauses · full after {{time}}",
+    "releaseTrigger": "Wait for {{pod}} to be held and let go",
+    "releaseSignal": "Hold {{pod}}, let go when it turns {{color}} · signal after {{time}}"
   }
 }

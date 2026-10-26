@@ -14,6 +14,7 @@ import { BlockExpertFields, type InspectorContext } from "./BlockInspector";
 import { blockCategory, blockIcon } from "./blockStyle";
 import { COUNTDOWN_FIELDS, COUNTDOWN_STYLES, COUNTDOWN_TARGETS, countdownKind, countdownStyle, hasCountdownTime, setCountdown } from "./countdown";
 import { EFFECTS, effectKind, hasEnd, isPeriodic, isTimed, setEffectKind, setEffectTarget, setEndless, usesColor } from "./effectStep";
+import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, limitFieldOf, releaseMode, setChargeMode, setChargeStyle, setGoRandom, setHoldPod, setReleaseMode } from "./holdStep";
 import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
 import { isValidVariableName, ownBlocks, setBlockField, setProgramField, type ProgramJson } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
@@ -78,7 +79,7 @@ export function ProblemList({ issues }: { issues: readonly Issue[] }) {
 /**
  * A time in seconds: a number edits the step, a setting edits the setting (for the whole program).
  */
-function TimeValue({ label, value, doc, onField, apply }: { label: string; value: unknown; doc: ProgramJson; onField: (ms: number) => void; apply: Apply }) {
+function TimeValue({ label, value, doc, onField, apply, min = LIMIT.min }: { label: string; value: unknown; doc: ProgramJson; onField: (ms: number) => void; apply: Apply; min?: number }) {
   const { t } = useTranslation();
   const vars = isObject(doc.variables) ? (doc.variables as Record<string, number>) : {};
   const fmt = (v: number) => secondsText(v, t);
@@ -87,12 +88,12 @@ function TimeValue({ label, value, doc, onField, apply }: { label: string; value
     if (typeof v !== "number") return <p className={styles.hint}>{t("editor.step.fromSetting", { name: settingLabel(value, t).label })}</p>;
     return (
       <div className={styles.valueBox}>
-        <Stepper label={label} value={v} {...LIMIT} format={fmt} onChange={(n) => apply(setProgramField(doc, "variables", { ...vars, [value]: n }), `var.${value}`)} />
+        <Stepper label={label} value={v} {...LIMIT} min={min} format={fmt} onChange={(n) => apply(setProgramField(doc, "variables", { ...vars, [value]: n }), `var.${value}`)} />
         <p className={styles.hint}>{t("editor.step.settingHint", { name: settingLabel(value, t).label })}</p>
       </div>
     );
   }
-  return <Stepper label={label} value={typeof value === "number" ? value : 0} {...LIMIT} format={fmt} onChange={onField} />;
+  return <Stepper label={label} value={typeof value === "number" ? value : min} {...LIMIT} min={min} format={fmt} onChange={onField} />;
 }
 
 /** A count (rounds, red pods): number or setting, like TimeValue. */
@@ -300,6 +301,10 @@ function Essentials({ block, doc, set, apply, labelOf, variables }: FieldProps &
       );
     case "effect":
       return <EffectFields block={block} doc={doc} set={set} apply={apply} />;
+    case "charge":
+      return <ChargeFields block={block} doc={doc} set={set} apply={apply} />;
+    case "release":
+      return <ReleaseFields block={block} doc={doc} set={set} apply={apply} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -499,16 +504,18 @@ function FeatureSwitch({ id, block, doc, set, apply, toggle, inLoop }: FieldProp
         ...(inLoop && block.type !== "remoteMultiPress" ? [{ value: "endRound", label: s("endRound") }] : []),
         ...(action === "other" ? [{ value: "other", label: s("other") }] : []),
       ];
-      const time = block.timeoutMs ?? block.minTimeoutMs;
+      const limitField = block.type === "release" ? limitFieldOf(block) : "timeoutMs";
+      const time = block[limitField] ?? block.minTimeoutMs;
+      const holdLimit = block.type === "release" && limitField === "maxHoldMs";
       return (
         <SwitchRow
-          label={avoid ? s("staysRed") : s("timeLimit")}
-          hint={on ? s("timeLimitOn", { time: typeof time === "number" ? secondsText(time, t) : settingLabel(String(time), t).label }) : s("timeLimitOff")}
+          label={avoid ? s("staysRed") : holdLimit ? s("holdLimit") : s("timeLimit")}
+          hint={on ? s(holdLimit ? "holdLimitOn" : "timeLimitOn", { time: typeof time === "number" ? secondsText(time, t) : settingLabel(String(time), t).label }) : s("timeLimitOff")}
           checked={on}
           onChange={(v) => toggle("timeLimit", v)}
         >
-          {block.timeoutMs !== undefined || block.minTimeoutMs === undefined ? (
-            <TimeValue label={s("seconds")} value={block.timeoutMs} doc={doc} apply={apply} onField={(ms) => set("timeoutMs", ms)} />
+          {block[limitField] !== undefined || block.minTimeoutMs === undefined ? (
+            <TimeValue label={s("seconds")} value={block[limitField]} doc={doc} apply={apply} onField={(ms) => set(limitField, ms)} />
           ) : (
             <div className={styles.pair}>
               <TimeValue label={t("editor.step.shortest")} value={block.minTimeoutMs} doc={doc} apply={apply} onField={(ms) => set("minTimeoutMs", ms)} />
@@ -571,6 +578,119 @@ function FeatureSwitch({ id, block, doc, set, apply, toggle, inLoop }: FieldProp
       );
     }
   }
+}
+
+/* ---------------------------------------------------------------- hold to charge, let go */
+
+/** "Which button": the central's or a pod's. */
+function HoldPodChips({ block, doc, apply }: FieldProps) {
+  const { t } = useTranslation();
+  const pod = holdPod(block);
+  const peripherals = typeof doc.peripherals === "number" ? doc.peripherals : 0;
+  const count = Math.max(peripherals, typeof pod === "number" ? pod + 1 : 0);
+  return (
+    <Field label={t("editor.step.hold.whichButton")}>
+      <div className={styles.chips}>
+        <button type="button" className={inspector.chip} aria-pressed={pod === "central"} onClick={() => apply(setHoldPod(doc, block.name, "central"))}>
+          {t("editor.step.effect.central")}
+        </button>
+        {Array.from({ length: count }, (_, i) => (
+          <button key={i} type="button" className={inspector.chip} aria-pressed={pod === i} onClick={() => apply(setHoldPod(doc, block.name, i))}>
+            {t("editor.step.podN", { n: i + 1 })}
+          </button>
+        ))}
+        {pod === "other" && typeof block.pod === "string" && (
+          <button type="button" className={inspector.chip} aria-pressed disabled>
+            {t("editor.step.podIn", { name: settingLabel(block.pod, t).label })}
+          </button>
+        )}
+      </div>
+    </Field>
+  );
+}
+
+/** Essentials of "Hold to charge": which button, hold time for a full charge, style, colour. */
+function ChargeFields({ block, doc, set, apply }: FieldProps) {
+  const { t } = useTranslation();
+  const h = (key: string, o?: Record<string, unknown>) => t(`editor.step.hold.${key}`, o);
+  const style = typeof block.style === "string" && (CHARGE_STYLES as readonly string[]).includes(block.style) ? block.style : "fill";
+  const accumulate = chargeMode(block) === "accumulate";
+  return (
+    <>
+      <HoldPodChips block={block} doc={doc} set={set} apply={apply} />
+      <TimeValue label={h("fullAfter")} value={block.maxMs ?? 0} doc={doc} apply={apply} min={500} onField={(ms) => set("maxMs", ms)} />
+      <p className={styles.hint}>{accumulate ? h("accumulateHint") : h("chargeHint")}</p>
+      <Field label={h("style")}>
+        <div className={styles.chips}>
+          {CHARGE_STYLES.map((k) => (
+            <button key={k} type="button" className={inspector.chip} aria-pressed={style === k} onClick={() => apply(setChargeStyle(doc, block.name, k))}>
+              {h(`styles.${k}`)}
+            </button>
+          ))}
+        </div>
+      </Field>
+      {style !== "trafficLight" && (
+        <Field label={t("editor.step.colour")}>
+          <ColorField value={block.color} optional defaultValue="green" label={t("editor.step.colour")} onChange={(c) => set("color", c, false)} />
+        </Field>
+      )}
+      {style === "colorShift" && (
+        <Field label={t("editor.step.effect.colour2")}>
+          <ColorField value={block.color2} optional defaultValue="red" label={t("editor.step.effect.colour2")} onChange={(c) => set("color2", c, false)} />
+        </Field>
+      )}
+    </>
+  );
+}
+
+/** Essentials of "Let go": trigger | signal, which button, colours, the time until the signal. */
+function ReleaseFields({ block, doc, set, apply }: FieldProps) {
+  const { t } = useTranslation();
+  const h = (key: string, o?: Record<string, unknown>) => t(`editor.step.hold.${key}`, o);
+  const mode = releaseMode(block);
+  const random = goIsRandom(block);
+  return (
+    <>
+      <Segmented
+        label={h("mode")}
+        value={mode}
+        options={[
+          { value: "trigger", label: h("modes.trigger") },
+          { value: "signal", label: h("modes.signal") },
+        ]}
+        onChange={(v) => apply(setReleaseMode(doc, block.name, v as "trigger" | "signal"))}
+      />
+      <p className={styles.hint}>{mode === "signal" ? h("signalHint") : h("triggerHint")}</p>
+      <HoldPodChips block={block} doc={doc} set={set} apply={apply} />
+      <Field label={h("holdColour")}>
+        <ColorField value={block.holdColor} optional defaultValue="yellow" label={h("holdColour")} onChange={(c) => set("holdColor", c, false)} />
+      </Field>
+      {mode === "signal" && (
+        <>
+          <Field label={h("goColour")}>
+            <ColorField value={block.goColor} optional defaultValue="green" label={h("goColour")} onChange={(c) => set("goColor", c, false)} />
+          </Field>
+          <Segmented
+            label={h("signalAfter")}
+            value={random ? "random" : "fixed"}
+            options={[
+              { value: "fixed", label: t("editor.step.fixed") },
+              { value: "random", label: t("editor.step.random") },
+            ]}
+            onChange={(v) => apply(setGoRandom(doc, block.name, v === "random"))}
+          />
+          {random ? (
+            <div className={styles.pair}>
+              <TimeValue label={t("editor.step.shortest")} value={block.minGoMs} doc={doc} apply={apply} onField={(ms) => set("minGoMs", ms)} />
+              <TimeValue label={t("editor.step.longest")} value={block.maxGoMs} doc={doc} apply={apply} onField={(ms) => set("maxGoMs", ms)} />
+            </div>
+          ) : (
+            <TimeValue label={t("editor.step.seconds")} value={block.goMs} doc={doc} apply={apply} onField={(ms) => set("goMs", ms)} />
+          )}
+        </>
+      )}
+    </>
+  );
 }
 
 /* ---------------------------------------------------------------- light effect */
@@ -695,8 +815,9 @@ function CountdownRow({ block, doc, set, apply }: FieldProps) {
 function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps & { variables: readonly string[]; metrics: readonly string[] }) {
   const { t } = useTranslation();
   // colour shift asks for its second colour above; only blink, spin, fill and drain have a background
-  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
-  const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name));
+  const mode = block.type === "release" ? releaseMode(block) : block.type === "charge" ? chargeMode(block) : undefined;
+  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "charge" ? ["color2"] : []), ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
+  const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name) && (f.onlyMode === undefined || f.onlyMode === mode));
   if (fields.length === 0) return null;
   const used = fields.some((f) => block[f.name] !== undefined);
   return (
@@ -735,8 +856,29 @@ function MoreField({ field, block, doc, set, apply, variables, metrics }: FieldP
       input = <LedsField value={value} color={block.color} label={label} onChange={(v) => set(field.name, v)} />;
       break;
     case "bool": {
-      const checked = typeof value === "boolean" ? value : field.default === true;
-      return <SwitchRow label={label} hint={help || undefined} checked={checked} onChange={(v) => set(field.name, v === field.default ? undefined : v, false)} />;
+      // allowHeld: on for a trigger, off for a signal
+      const dflt = field.name === "allowHeld" ? releaseMode(block) === "trigger" : field.default === true;
+      const checked = typeof value === "boolean" ? value : dflt;
+      return <SwitchRow label={label} hint={help || undefined} checked={checked} onChange={(v) => set(field.name, v === dflt ? undefined : v, false)} />;
+    }
+    case "enum": {
+      const current = typeof value === "string" ? value : String(field.default ?? "");
+      input = (
+        <div className={styles.chips}>
+          {(field.options ?? []).map((o) => (
+            <button
+              key={o}
+              type="button"
+              className={inspector.chip}
+              aria-pressed={current === o}
+              onClick={() => (field.name === "mode" && block.type === "charge" ? apply(setChargeMode(doc, block.name, o as never)) : set(field.name, o === field.default ? undefined : o, false))}
+            >
+              {t(`editor.step.enum.${field.name}.${o}`, { defaultValue: o })}
+            </button>
+          ))}
+        </div>
+      );
+      break;
     }
     case "variable":
       input = <SuggestField value={value} suggestions={variables} placeholder={t("editor.step.notKept")} label={label} onChange={(v) => set(field.name, v)} />;

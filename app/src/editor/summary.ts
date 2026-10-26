@@ -78,6 +78,20 @@ export function blockSummary(block: Block, t: (key: string, options?: Record<str
       if (block.wait === true) parts.push(text("⏳"));
       return parts;
     }
+    case "charge": {
+      const parts: SummaryPart[] = [{ kind: "color", color: block.color ?? "green", label: colorLabel(block.color ?? "green") }, text(`${ms(block.maxMs)} · ${v(block.style ?? "fill")}`)];
+      if (block.timeoutMs !== undefined) parts.push(text(`⏱ ${ms(block.timeoutMs)}`));
+      if (typeof block.record === "string") parts.push(text(`● ${block.record}`));
+      return parts;
+    }
+    case "release": {
+      const signal = block.mode === "signal";
+      const parts: SummaryPart[] = [{ kind: "color", color: block.holdColor ?? "yellow", label: colorLabel(block.holdColor ?? "yellow") }, text(signal ? "signal" : "trigger")];
+      const limit = signal ? block.timeoutMs : block.maxHoldMs;
+      if (limit !== undefined) parts.push(text(`⏱ ${ms(limit)}`));
+      if (typeof block.record === "string") parts.push(text(`● ${block.record}`));
+      return parts;
+    }
     default:
       return [];
   }
