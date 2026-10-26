@@ -2,7 +2,7 @@
  * Program checks. Mirrors tools/validate_programs.py and the firmware loader
  * (src/BlockManager/BlockManager.cpp). Errors stop a push, warnings do not.
  */
-import { blockType, COMMON_FIELDS, MAX_TIMERS, TIMER_FIELDS, type BlockTypeDef } from "./blockTypes";
+import { blockType, COMMON_FIELDS, MAX_TIMERS, PERIODIC_EFFECTS, TARGET_KEYWORDS, TIMEOUT_TYPES, TIMER_FIELDS, type BlockTypeDef } from "./blockTypes";
 import { isColor, isNamedColor } from "./colors";
 import {
   INDEX_PATH,
@@ -56,6 +56,10 @@ export const ISSUE_CODES = [
   "portNotText",
   "portUnknownTarget",
   "tooManyTimers",
+  "fieldFormatTooOld",
+  "effectWaitEndless",
+  "countdownNeedsTimeLimit",
+  "countdownTargetNotDelay",
   // warnings
   "noOutgoing",
   "unreachable",
@@ -304,7 +308,9 @@ function checkBlock(
     }
     checkField(def, field.name, value, file, at, out, knownVars);
     if (format !== undefined && (field.minFormat ?? 1) > format && (def.minFormat ?? 1) <= format) {
-      out.warn("fieldNeedsFormat", file, at(field.name, { field: field.name, format: field.minFormat ?? 1 }));
+      const params = { field: field.name, format: field.minFormat ?? 1 };
+      if (field.rejectedByOlder) out.error("fieldFormatTooOld", file, at(field.name, params));
+      else out.warn("fieldNeedsFormat", file, at(field.name, params));
     }
   }
   checkTypeRules(def, block, file, at, out);
@@ -322,7 +328,7 @@ function checkBlock(
     if (!connected) out.warn("noOutgoing", file, at());
     const allowed = new Set<string>([...COMMON_FIELDS, ...def.ports, ...def.fields.map((f) => f.name)]);
     for (const key of Object.keys(block)) {
-      if (!allowed.has(key)) out.warn("unknownField", file, at(key, { field: key }));
+      if (!allowed.has(key) && key !== "countdownTarget") out.warn("unknownField", file, at(key, { field: key }));
     }
   }
 }
@@ -360,6 +366,15 @@ function checkField(
           }
         }
       break;
+    case "target":
+      if (typeof value === "string") {
+        if (!(TARGET_KEYWORDS as readonly string[]).includes(value) && !knownVars.has(value)) {
+          out.warn("unknownVariable", file, at(name, { name: value }));
+        }
+      } else if (typeof value !== "number" || !Number.isInteger(value)) {
+        out.error("notValue", file, at(name));
+      }
+      break;
     case "enum": {
       const ok = [...(field.options ?? []), ...(field.aliases ?? [])];
       if (typeof value !== "string" || !ok.includes(value)) {
@@ -381,7 +396,7 @@ function checkTypeRules(
   def: BlockTypeDef,
   block: Record<string, unknown>,
   file: string,
-  at: (field?: string) => Partial<Issue>,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
   out: Collector,
 ) {
   if (def.type === "delay" && block.ms === undefined && (block.minMs === undefined || block.maxMs === undefined)) {
@@ -390,6 +405,19 @@ function checkTypeRules(
   if (def.type === "button" && (block.minTimeoutMs === undefined) !== (block.maxTimeoutMs === undefined)) {
     out.error("randomTimeoutPair", file, at("minTimeoutMs"));
   }
+  // effect: wait for something that never ends (a variable duration is not known here)
+  if (def.type === "effect" && block.wait === true && typeof block.effect === "string" && PERIODIC_EFFECTS.includes(block.effect)) {
+    const duration = block.durationMs;
+    if (duration === undefined || (typeof duration === "number" && duration <= 0)) {
+      out.error("effectWaitEndless", file, at("wait", { effect: block.effect }));
+    }
+  }
+  // countdown: needs a time limit (delay always has one)
+  if (block.countdown !== undefined && block.countdown !== "secret" && (TIMEOUT_TYPES as readonly string[]).includes(def.type)) {
+    const random = block.minTimeoutMs !== undefined && block.maxTimeoutMs !== undefined;
+    if (block.timeoutMs === undefined && !random) out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown) }));
+  }
+  if (block.countdownTarget !== undefined && def.type !== "delay") out.error("countdownTargetNotDelay", file, at("countdownTarget"));
 }
 
 /** Warns about own blocks that can never run. */

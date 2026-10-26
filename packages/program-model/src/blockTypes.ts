@@ -9,6 +9,7 @@ export type FieldKind =
   | "color" /** any colour (central LEDs) */
   | "remoteColor" /** named colour only (sent to peripherals) */
   | "leds" /** list of LED indices 0..17 */
+  | "target" /** "central", "all", "peripherals", a pod id or a variable (programFormat 3) */
   | "enum"
   | "variable" /** name of a variable that is written */
   | "metric" /** name of a measurement metric */
@@ -30,6 +31,11 @@ export type FieldDef = {
   group?: SwitchId;
   /** program format revision that introduced the field (programs.md §6); default 1 */
   minFormat?: number;
+  /**
+   * true: a pod with an older program format rejects the program (validator error `fieldFormatTooOld`)
+   * instead of ignoring the field (warning `fieldNeedsFormat`)
+   */
+  rejectedByOlder?: boolean;
 };
 
 /**
@@ -82,6 +88,40 @@ export const TIMER_FIELDS: readonly FieldDef[] = [
 /** Different timer names a program (with its includes) may use (BlockManager::MAX_TIMERS). */
 export const MAX_TIMERS = 16;
 
+/** Values of a `target` field besides a pod id (effect `target`, delay `countdownTarget`). */
+export const TARGET_KEYWORDS = ["central", "all", "peripherals"] as const;
+
+/** `effect` of the effect block (programs.md §2, programFormat 3). */
+export const EFFECTS = ["solid", "fill", "drain", "dim", "colorShift", "trafficLight", "blink", "pulse", "spin", "off"] as const;
+/** Effects that repeat every `periodMs` (endless without a `durationMs` > 0). */
+export const PERIODIC_EFFECTS: readonly string[] = ["blink", "pulse", "spin"];
+
+/** `countdown` of timed blocks; "secret" shows nothing (= before format 3). */
+export const COUNTDOWNS = ["secret", "drain", "fill", "dim", "colorShift", "trafficLight"] as const;
+
+/**
+ * Countdown over the time limit of a block (programFormat 3, issue #56). "delay": always has a time
+ * limit and alone has `countdownTarget` (which pods show it). "timeout": the fields sit behind the
+ * time-limit switch of blocks with `timeoutMs`.
+ */
+function countdownFields(kind: "delay" | "timeout", from = false): readonly FieldDef[] {
+  const level: Pick<FieldDef, "level" | "group"> = kind === "timeout" ? { level: "switch", group: "timeLimit" } : { level: "more" };
+  return [
+    { name: "countdown", kind: "enum", options: COUNTDOWNS, default: "secret", ...level, minFormat: 3, rejectedByOlder: true },
+    { name: "countdownColor", kind: "remoteColor", default: "red", level: "more", minFormat: 3, rejectedByOlder: true },
+    // delay and button have no lit colour of their own: the countdown starts with this one
+    ...(from
+      ? ([{ name: "countdownFrom", kind: "remoteColor", default: "green", level: "more", minFormat: 3, rejectedByOlder: true }] as const)
+      : []),
+    ...(kind === "delay"
+      ? ([{ name: "countdownTarget", kind: "target", default: "central", level: "more", minFormat: 3, rejectedByOlder: true }] as const)
+      : []),
+  ];
+}
+
+/** Block types with a time limit besides `delay`, which always has one. */
+export const TIMEOUT_TYPES = ["button", "remotePress", "remoteMultiPress"] as const;
+
 const withTimers = (fields: readonly FieldDef[]): readonly FieldDef[] => [...fields, ...TIMER_FIELDS];
 
 export const IF_OPS = ["==", "!=", ">", "<", ">=", "<="] as const;
@@ -109,6 +149,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "ms", kind: "value" },
       { name: "minMs", kind: "value" },
       { name: "maxMs", kind: "value" },
+      ...countdownFields("delay", true),
     ]),
   },
   {
@@ -122,6 +163,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       { name: "minTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       { name: "maxTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
+      ...countdownFields("timeout", true),
       { name: "record", kind: "metric", level: "switch", group: "record" },
       { name: "storeAs", kind: "variable", level: "more" },
     ]),
@@ -162,6 +204,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "color", kind: "remoteColor" },
       { name: "colorAfter", kind: "remoteColor", default: "off", level: "more" },
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
+      ...countdownFields("timeout"),
       { name: "record", kind: "metric", level: "switch", group: "record" },
       { name: "storeAs", kind: "variable", level: "more" },
     ]),
@@ -180,6 +223,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "avoidColor", kind: "remoteColor", default: "red", level: "switch", group: "avoid" },
       { name: "syncStartMs", kind: "value", default: 20, level: "more" },
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
+      ...countdownFields("timeout"),
       { name: "record", kind: "metric", level: "switch", group: "record" },
     ]),
   },
@@ -221,6 +265,26 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "storeIndex", kind: "variable", level: "more" },
     ]),
   },
+  {
+    type: "effect",
+    category: "light",
+    ports: ["next"],
+    portRoles: { next: "then" },
+    waits: true,
+    minFormat: 3,
+    fields: withTimers([
+      { name: "target", kind: "target", default: "central" },
+      { name: "effect", kind: "enum", options: EFFECTS, required: true },
+      { name: "color", kind: "remoteColor", default: "white" },
+      { name: "color2", kind: "remoteColor", default: "off", level: "more" },
+      { name: "durationMs", kind: "value" },
+      { name: "periodMs", kind: "value", default: 500, level: "more" },
+      { name: "brightness", kind: "value", default: 255, level: "more" },
+      { name: "leds", kind: "leds", level: "more" },
+      { name: "syncStartMs", kind: "value", default: 20, level: "more" },
+      { name: "wait", kind: "bool", default: false },
+    ]),
+  },
 ];
 
 const BY_TYPE = new Map(BLOCK_TYPES.map((def) => [def.type, def]));
@@ -259,7 +323,7 @@ export function blockFormatOf(block: unknown): number {
 }
 
 /**
- * The smallest program format revision (programs.md §6) a pod needs to run the program: 1 or 2.
+ * The smallest program format revision (programs.md §6) a pod needs to run the program: 1, 2 or 3.
  * Takes a program or fragment file (its own `blocks`), or a resolved program (`blocks` of
  * `{ file, block }`, includes too). Anything else needs revision 1.
  */

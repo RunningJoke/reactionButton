@@ -15,8 +15,9 @@ export const PROGRAM_FORMAT_VERSION = 1;
 /**
  * Revision of block fields, ports and semantics the app's block types match (`info.programFormat`,
  * programs.md §6). 2: `timerStart` / `timerStop` on every block, block type `repeat`.
+ * 3: block type `effect`, `countdown` fields on timed blocks.
  */
-export const PROGRAM_FORMAT = 2;
+export const PROGRAM_FORMAT = 3;
 /** Longest set name in bytes (`setName`). */
 export const MAX_SET_NAME = 16;
 
