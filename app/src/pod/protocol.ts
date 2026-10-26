@@ -43,6 +43,8 @@ export type ErrorResponse = ResponseBase & { ok: false; error: ApiErrorCode; mes
 export type InfoResponse = ResponseBase & {
   firmware: string;
   linkProtocol: number;
+  /** link protocol revision (firmware ≥ 2.9; missing = 1). 2 = hold reporting (`charge`, `release` on peripherals) */
+  linkRevision?: number;
   setId: string;
   generation: number;
   storeHash: string;
