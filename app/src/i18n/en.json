@@ -661,7 +661,12 @@
     "rangeReversed": "The shortest time is longer than the longest: the pod always uses the shortest",
     "fieldFormatTooOld": "The connected pod rejects {{field}} (needs program format {{format}}, firmware update needed)",
     "effectWaitEndless": "Waiting for an endless {{effect}} never ends: set a duration",
-    "countdownNeedsTimeLimit": "A countdown ({{countdown}}) needs a time limit",
+    "countdownNeedsTimeLimit": "A countdown ({{countdown}}) needs a time limit ({{limit}})",
+    "fieldWrongMode": "{{field}} only works in the \"{{needs}}\" mode, this step is in the \"{{mode}}\" mode",
+    "signalNeedsGoTime": "Set the time until the signal: a fixed time or a shortest and a longest time",
+    "goTimeBothForms": "Use either one fixed time or a shortest and a longest time, not both",
+    "podSingleOnly": "This step needs one pod (\"central\" or a number), not {{value}}",
+    "maxMsTooSmall": "The time for a full charge must be at least {{min}} ms",
     "countdownTargetNotDelay": "Only a pause can choose where the countdown is shown"
   },
   "portRoles": {
@@ -674,7 +679,11 @@
     "ifYes": "If yes",
     "ifNo": "If no",
     "eachRound": "Each round",
-    "afterLast": "After the last round"
+    "afterLast": "After the last round",
+    "ifReleasedEarly": "If released too early",
+    "ifFull": "If fully charged",
+    "ifNoHold": "If nobody holds",
+    "ifFalseStart": "False start"
   },
   "view": {
     "back": "Back",
