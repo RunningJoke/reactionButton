@@ -296,3 +296,22 @@ compared with the baseline, ping round trip, longest loop gap.
 
 All criteria pass → ADR 0005 "accepted" (option A), go on with #39. A criterion fails → try once
 with `--interval-ms 100`. If it still fails, use the fallback in the ADR.
+
+## 9. Hold blocks (`charge`, `release`), firmware ≥ 2.9
+
+Checks for the `charge` and `release` blocks with the demo programs `charge.json` and `release.json`
+(one central + one peripheral, both with firmware ≥ 2.9; `status.pods[0].hold` must be `true`).
+Not yet run on hardware: record the results in the issue (#57 / #58), do not mark them passed here.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | `charge`, central, each style (`fill`, `brightness`, `trafficLight`, `colorShift`): hold the button | ring follows the charge after `onsetMs`; release → `released`, `CENTRAL_CHARGE` = hold − onset |
+| 2 | same on pod 0 (`"pod": 0`) | same behaviour, ring animates on the pod |
+| 3 | hold shorter than `onsetMs` | port `early` (falls back to `released` if unconnected), charge 0 |
+| 4 | hold until full | ring flashes, block leaves through `full` at once, no reset of the flash |
+| 5 | `timeoutMs` with `countdown` | idle ring counts down, a hold stops it; `timeout` after the limit |
+| 6 | `accumulate` with `decayMs` on pod 0 | release freezes / drains the ring visibly, hold again goes on; full or `timeout` ends; `POD_CHARGE` set |
+| 7 | held ms from pod 0 vs a stopwatch (`record` + `RESULT` line) | within ± 5 ms |
+| 8 | `release` trigger: hold pod 0 before the block starts (`allowHeld`), then release | `next` at the release, `HOLD_MS` set; `noHold` and `maxHoldMs` paths work |
+| 9 | `release` signal: release after the switch | reaction within ± 2 ms of a `remotePress` measurement (timing.md §3); release 1 ms before the switch → `falseStart` |
+| 10 | peripheral with firmware ≤ 2.8 in the set | `charge` / `release` on it take `timeout` at once; the log has "cannot measure holds" |

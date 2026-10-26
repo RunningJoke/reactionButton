@@ -19,6 +19,7 @@
  *   PRESSED (cmdSeq, reaction µs) ──►
  *                                ◄─── RESET
  *                                ◄─── EFFECT (effect, start time)   only to pods with LINK_FEATURE_EFFECTS
+ *   RELEASED (hold report) ─────────►                 CHARGE / RELEASE activations, LINK_FEATURE_HOLD
  *
  * Program store sync (see StoreSync): PING and PONG carry the store generation and hash.
  * The pod with the older store reads the other pod's manifest and changed files with
@@ -30,13 +31,17 @@
  * before it reads an appended field. Unknown message types are ignored by every version.
  * What a peripheral understands is announced in CLAIM_ACK (linkFeatures).
  *
+ * Link protocol revision 2 (firmware 2.9) adds hold reporting (LINK_FEATURE_HOLD): PodMode
+ * CHARGE / RELEASE, the RELEASED frame and the hold parameters appended to ARM.
+ *
  *   SYNC_READ_REQ (path, offset) ───►
  *                                ◄─── SYNC_READ_RESP (offset, total, data)
  */
 namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
-    const uint8_t VERSION = 1;
+    const uint8_t VERSION = 1;          // frame header version, see "Extensions" above
+    const uint8_t REVISION = 2;         // link protocol revision (reported as info.linkRevision)
     const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
@@ -51,14 +56,18 @@ namespace Protocol {
         SYNC_READ_REQ,
         SYNC_READ_RESP,
         EFFECT,             // firmware >= 2.8, only sent to pods with LINK_FEATURE_EFFECTS
+        RELEASED,           // firmware >= 2.9, peripheral -> central, hold report (LINK_FEATURE_HOLD)
     };
 
     // ClaimAck::linkFeatures (firmware >= 2.8; a shorter CLAIM_ACK means 0)
     const uint8_t LINK_FEATURE_EFFECTS = 0x01;     // EFFECT frames and the ARM waiting effect
+    const uint8_t LINK_FEATURE_HOLD = 0x02;        // PodMode CHARGE / RELEASE, ARM hold parameters, RELEASED (firmware >= 2.9)
 
     enum class PodMode : uint8_t {
         HIT = 1,    // pod should be pressed
         AVOID = 2,  // pod must not be pressed
+        CHARGE = 3, // hold to charge (charge block), needs LINK_FEATURE_HOLD
+        RELEASE = 4,// hold, release is the event (release block), needs LINK_FEATURE_HOLD
     };
 
     enum class PressResult : uint8_t {
@@ -109,6 +118,27 @@ namespace Protocol {
         uint8_t flags;          // EFFECT_FLAG_*
     };
     static_assert(sizeof(EffectDesc) == 12, "EffectDesc must stay 12 bytes");
+
+    // HoldParams::flags
+    const uint8_t HOLD_FLAG_ALLOW_HELD = 0x01;     // RELEASE: a hold that is active on activation counts
+    const uint8_t HOLD_FLAG_SIGNAL = 0x02;         // RELEASE: switch colour after goDelayMs, measure the reaction
+    const uint8_t HOLD_FLAG_ACCUMULATE = 0x04;     // CHARGE: releasing pauses / drains the charge instead of ending
+
+    // Parameters of a CHARGE / RELEASE activation (36 bytes), see link-protocol.md §2.2
+    struct __attribute__((packed)) HoldParams {
+        uint8_t flags;          // HOLD_FLAG_*
+        uint8_t heldColor;      // RELEASE: colour once the hold is detected
+        uint8_t goColor;        // RELEASE signal: colour after the switch
+        uint8_t reserved;
+        uint32_t onsetMs;       // CHARGE: hold time before the charge starts (every hold)
+        uint32_t maxMs;         // CHARGE: charging time (after the onset) for a full charge
+        uint32_t decayMs;       // CHARGE accumulate: time to drain a full charge while released; 0 = keep
+        uint32_t goDelayMs;     // RELEASE signal: hold start -> switch
+        uint32_t limitMs;       // CHARGE accumulate: time limit since the activation; 0 = none
+        EffectDesc effect;      // CHARGE: the charge, over maxMs. RELEASE: countdown at the hold start (trigger)
+                                // or at the switch (signal); NONE = static heldColor / goColor
+    };
+    static_assert(sizeof(HoldParams) == 36, "HoldParams must stay 36 bytes");
 
     struct __attribute__((packed)) Header {
         uint8_t magic;
@@ -172,6 +202,7 @@ namespace Protocol {
         uint8_t colorAfter;     // colour after the press
         int64_t startAtUs;      // central clock; 0 = light up immediately
         EffectDesc waiting;     // appended, optional: played instead of colorActive while waiting for the press
+        HoldParams hold;        // appended after waiting, only for PodMode CHARGE / RELEASE (waiting is then always present)
     };
 
     // central -> peripheral: play an effect on the ring. Does not change the activation state.
@@ -193,6 +224,22 @@ namespace Protocol {
         uint8_t cmdSeq;
         PressResult result;
         int32_t reactionUs;     // LED on -> button press, measured on the peripheral
+    };
+
+    const uint8_t RELEASED_FLAG_FALSE_START = 0x01;    // RELEASE signal: released before the switch
+    const uint8_t RELEASED_FLAG_FULL = 0x02;           // CHARGE: full charge reached (reported at that moment, not at the release)
+    const uint8_t RELEASED_FLAG_LIMIT = 0x04;          // CHARGE accumulate: time limit reached, chargeMs is final
+    const uint8_t RELEASED_FLAG_EARLY = 0x08;          // CHARGE release mode: released before the onset
+
+    // peripheral -> central: end of a hold (CHARGE / RELEASE activations), measured on the peripheral
+    struct __attribute__((packed)) Released {
+        Header header;
+        uint8_t podId;
+        uint8_t cmdSeq;
+        uint8_t flags;          // RELEASED_FLAG_*
+        uint32_t heldMs;        // hold time (CHARGE accumulate: all holds together)
+        int32_t reactionUs;     // RELEASE signal: switch -> release; else 0
+        uint32_t chargeMs;      // CHARGE: charge at the end (0 .. maxMs); else 0
     };
 
     // Path of the virtual manifest file in SYNC_READ requests
@@ -225,6 +272,7 @@ namespace Protocol {
     static_assert(sizeof(Arm) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Pressed) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Effect) <= MAX_FRAME, "frame too large");
+    static_assert(sizeof(Released) <= MAX_FRAME, "frame too large");
 
     inline void fillHeader(Header& header, MsgType type, uint32_t setId) {
         header.magic = MAGIC;
@@ -254,12 +302,13 @@ namespace Protocol {
             case MsgType::CLAIM_ACK: return offsetof(ClaimAck, linkFeatures);
             case MsgType::PING: return sizeof(Ping);
             case MsgType::PONG: return sizeof(Pong);
-            case MsgType::ARM: return offsetof(Arm, waiting);
+            case MsgType::ARM: return offsetof(Arm, waiting);       // waiting and hold are appended
             case MsgType::RESET: return sizeof(Reset);
             case MsgType::PRESSED: return sizeof(Pressed);
             case MsgType::SYNC_READ_REQ: return sizeof(SyncReadReq);
             case MsgType::SYNC_READ_RESP: return offsetof(SyncReadResp, data);   // + len bytes
             case MsgType::EFFECT: return sizeof(Effect);
+            case MsgType::RELEASED: return sizeof(Released);
         }
         return 0;
     }

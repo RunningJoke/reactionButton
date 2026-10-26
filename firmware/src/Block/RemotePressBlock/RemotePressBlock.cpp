@@ -72,7 +72,7 @@ BlockStatus RemotePressBlock::execute(BlockContext& ctx) {
 
     PodEvent event;
     while(ctx.network->pollEvent(event)) {
-        if(event.podId != this->podId || event.cmdSeq != this->cmdSeq) {
+        if(event.kind != PodEvent::Kind::PRESSED || event.podId != this->podId || event.cmdSeq != this->cmdSeq) {
             ESP_LOGD(TAG, "ignoring event from pod %u", event.podId);
             continue;
         }

@@ -113,11 +113,11 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.9","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
+← {"op":"info","ok":true,"firmware":"2.9","linkProtocol":1,"linkRevision":2,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":3,"features":["validateInline","listMeta","effects"],
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":3,"features":["validateInline","listMeta","effects","hold"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
-                 "remoteMultiPress","remoteResetAll","summary","repeat","effect"]}
+                 "remoteMultiPress","remoteResetAll","summary","repeat","effect","charge","release"]}
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
 is true if a PIN is set and this transport needs it (BLE), see §8.
@@ -132,7 +132,11 @@ program metadata; `effects` (firmware ≥ 2.8) = the ring effect player: `effect
 `status.pods[].effects` ([link-protocol.md](link-protocol.md) §2.1). A program that uses another type fails `validate`.
 The `effect` block type and the `countdown` option of the timed blocks (firmware ≥ 2.9) have
 no feature flag of their own: they are `programFormat` ≥ 3 (programs.md §6). Check it before
-uploading a program that uses them. Both need the effect player (`effects`).
+uploading a program that uses them. Both need the effect player (`effects`). The same holds for the block
+types `charge` and `release` (firmware ≥ 2.9). `hold` (firmware ≥ 2.9) says that the firmware speaks link protocol
+revision 2 (hold reporting, [link-protocol.md](link-protocol.md) §2.2); it is a statement about the firmware, a
+peripheral of a set may still be older: `status.pods[].hold`. `linkRevision` (firmware ≥ 2.9; missing = 1) is that
+revision; `linkProtocol` is the frame header version and stays 1.
 
 ### `list`
 ```json
@@ -193,7 +197,7 @@ switched off when a program is selected.
 | op | Role | Request fields | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, effects, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, effects, hold, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | menu: `programs[] {index, name, path, peripherals}`, `selected` |
 | `select` | central, menu | `program`: index, path or name | loads the program, BLE off, radio on, searching for peripherals |
 | `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing |
@@ -209,6 +213,8 @@ switched off when a program is selected.
 
 `pods[].effects` (firmware ≥ 2.8): the pod plays ring effects. `false` for pods with older
 firmware; effects then fall back to a static colour on that pod.
+`pods[].hold` (firmware ≥ 2.9): the pod measures holds (link protocol revision 2). `false` for pods with older
+firmware; the `charge` and `release` blocks then take their `timeout` port at once for that pod.
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
 changes during a game or a sync), `not_ready`.

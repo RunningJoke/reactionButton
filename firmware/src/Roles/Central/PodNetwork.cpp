@@ -90,6 +90,9 @@ void PodNetwork::service() {
             case MsgType::PRESSED:
                 this->handlePressed(frame, podId);
                 break;
+            case MsgType::RELEASED:
+                this->handleReleased(frame, podId);
+                break;
             default:
                 break;
         }
@@ -184,9 +187,29 @@ void PodNetwork::handlePressed(const RxFrame& frame, int16_t podId) {
     this->events.push_back(event);
 }
 
+void PodNetwork::handleReleased(const RxFrame& frame, int16_t podId) {
+    const Released* released = reinterpret_cast<const Released*>(frame.data);
+
+    PodEvent event;
+    event.podId = (uint8_t)podId;
+    event.cmdSeq = released->cmdSeq;
+    event.result = PressResult::HIT;
+    event.reactionUs = released->reactionUs;
+    event.rxTimeUs = frame.rxUs;
+    event.kind = PodEvent::Kind::RELEASED;
+    event.flags = released->flags;
+    event.heldMs = released->heldMs;
+    event.chargeMs = released->chargeMs;
+    this->events.push_back(event);
+}
+
 uint8_t PodNetwork::arm(uint8_t podId, const ArmCommand& command) {
     if(podId >= this->pods.size()) {
         return 0;
+    }
+    bool hold = command.mode == PodMode::CHARGE || command.mode == PodMode::RELEASE;
+    if(hold && !this->supportsHold(podId)) {
+        return 0;   // the caller checks supportsHold first; an older pod would show a wrong mode
     }
     Pod& pod = this->pods[podId];
     pod.cmdSeq++;
@@ -199,15 +222,21 @@ uint8_t PodNetwork::arm(uint8_t podId, const ArmCommand& command) {
     arm.colorAfter = command.colorAfter;
     arm.startAtUs = command.startAtUs;
     arm.waiting = command.waiting;
-    // the waiting effect is appended only when the pod plays it; otherwise it shows colorActive
+    arm.hold = command.hold;
+    // the waiting effect is appended only when the pod plays it; otherwise it shows colorActive.
+    // The hold parameters follow the waiting effect, so a hold activation always sends both.
     bool withEffect = command.waiting.effect != EffectId::NONE && this->supportsEffects(podId);
-    uint8_t len = withEffect ? sizeof(arm) : offsetof(Arm, waiting);
+    uint8_t len = hold ? sizeof(arm) : (withEffect ? offsetof(Arm, hold) : offsetof(Arm, waiting));
     this->link.send(pod.mac, &arm, len, 5, -1, true);
     return pod.cmdSeq;
 }
 
 bool PodNetwork::supportsEffects(uint8_t podId) const {
     return podId < this->pods.size() && (this->pods[podId].linkFeatures & LINK_FEATURE_EFFECTS) != 0;
+}
+
+bool PodNetwork::supportsHold(uint8_t podId) const {
+    return podId < this->pods.size() && (this->pods[podId].linkFeatures & LINK_FEATURE_HOLD) != 0;
 }
 
 bool PodNetwork::effect(uint8_t podId, const EffectDesc& effect, int64_t startAtUs) {
@@ -257,6 +286,7 @@ void PodNetwork::describe(JsonArray out) const {
         entry["alive"] = this->isAlive((uint8_t)i);
         entry["lastSeenMs"] = (uint32_t)((now - pod.lastSeenUs) / 1000);
         entry["effects"] = (pod.linkFeatures & LINK_FEATURE_EFFECTS) != 0;
+        entry["hold"] = (pod.linkFeatures & LINK_FEATURE_HOLD) != 0;
 
         EspNowLink::LinkStats st;
         if(this->link.stats(pod.mac, st)) {

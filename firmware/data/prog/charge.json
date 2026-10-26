@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Charge",
+  "description": "Demo of the charge block (programFormat 3, firmware 2.9). Per round: the central charges first - hold its button, the ring fills green after 0.2 s and is full after 2 s more (the idle ring drains as a countdown, 8 s). Release = score, release before 0.2 s = red blink, full = the ring flashes. Then pod 0 is charged in accumulate mode (brightness style, 3 s to full): releasing keeps the charge for a moment, it drains over 1.5 s, hold again to go on. Full or 8 s ends the pod's turn. CENTRAL_CHARGE / POD_CHARGE (ms) and the percentages are variables, the metric 'charge' is recorded. Needs one peripheral with firmware 2.9 (link feature 'hold'), else its turn is skipped.",
+  "peripherals": 1,
+  "menu": [ { "leds": [3, 9, 15], "color": "cyan" } ],
+  "variables": { "MAX_LOOPS": 3 },
+  "include": ["/prog/lib/loop.json"],
+  "start": "StartLoop",
+  "blocks": [
+    { "name": "EnterProgram",  "type": "delay", "ms": 500, "next": "CentralCharge" },
+    { "name": "CentralCharge", "type": "charge", "pod": "central", "onsetMs": 200, "maxMs": 2000, "style": "fill", "color": "green",
+      "timeoutMs": 8000, "countdown": "drain", "storeAs": "CENTRAL_CHARGE", "storePercent": "CENTRAL_PERCENT", "record": "charge",
+      "released": "Pause", "early": "TooEarly", "full": "Pause", "timeout": "Pause" },
+    { "name": "TooEarly",      "type": "effect", "target": "central", "effect": "blink", "color": "red", "periodMs": 200, "durationMs": 600, "wait": true, "next": "Pause" },
+    { "name": "Pause",         "type": "delay", "ms": 800, "next": "PodCharge" },
+    { "name": "PodCharge",     "type": "charge", "pod": 0, "maxMs": 3000, "style": "brightness", "color": "blue", "mode": "accumulate", "decayMs": 1500,
+      "timeoutMs": 8000, "storeAs": "POD_CHARGE", "storePercent": "POD_PERCENT", "record": "charge", "full": "Cleanup", "timeout": "Cleanup" },
+    { "name": "Cleanup",       "type": "remoteResetAll", "next": "EndLoop" }
+  ]
+}
