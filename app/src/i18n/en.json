@@ -221,7 +221,11 @@
         "ifNo": "If no",
         "eachRound": "Each round",
         "afterLast": "After the last round",
-        "ifPressedEarly": "If pressed too early"
+        "ifPressedEarly": "If pressed too early",
+        "ifReleasedEarly": "If released too early",
+        "ifFull": "If fully charged",
+        "ifNoHold": "If nobody holds",
+        "ifFalseStart": "False start"
       },
       "toStep": "step {{n}}",
       "nextRound": "next round",

@@ -221,7 +221,11 @@
         "ifNo": "Wenn nein",
         "eachRound": "Jede Runde",
         "afterLast": "Nach der letzten Runde",
-        "ifPressedEarly": "Wenn zu früh gedrückt"
+        "ifPressedEarly": "Wenn zu früh gedrückt",
+        "ifReleasedEarly": "Wenn zu früh losgelassen",
+        "ifFull": "Wenn voll geladen",
+        "ifNoHold": "Wenn niemand hält",
+        "ifFalseStart": "Fehlstart"
       },
       "toStep": "Schritt {{n}}",
       "nextRound": "nächste Runde",
