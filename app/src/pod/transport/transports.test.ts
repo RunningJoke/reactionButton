@@ -194,7 +194,7 @@ describe("pod session", () => {
     expect(s.state).toBe("connected");
     expect(s.role).toBe("central");
     expect(isReadOnly(s)).toBe(false);
-    expect(s.list?.menu).toHaveLength(10);
+    expect(s.list?.menu).toHaveLength(12);
     await s.disconnect();
     expect(usePodSession.getState().state).toBe("disconnected");
     expect(isReadOnly({ role: "peripheral" })).toBe(true);
