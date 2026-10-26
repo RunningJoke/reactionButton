@@ -5,6 +5,7 @@
 #include <string>
 #include "Block/Block.h"
 #include "Block/Value.h"
+#include "Block/Countdown.h"
 #include "Link/Protocol.h"
 
 /**
@@ -16,6 +17,8 @@
  *     "color": "green",            colour while waiting (named colours only)
  *     "colorAfter": "off",         colour after the press
  *     "timeoutMs": 5000,           optional
+ *     "countdown": "drain",        ring countdown on the pod over the timeout (needs timeoutMs,
+ *     "countdownColor": "red",     read once on enter), see programs.md §7.12
  *     "record": "reaction",        record the reaction time measured by the peripheral
  *     "storeAs": "LAST_REACTION",  also write it into a variable
  *     "next": "...",               pressed
@@ -40,6 +43,8 @@ class RemotePressBlock : public Block {
         uint8_t colorActive = Protocol::Color::GREEN;
         uint8_t colorAfter = Protocol::Color::OFF;
         Value timeoutMs;
+        Countdown countdown;
+        int64_t timeoutAtEnter = 0;     // timeoutMs read on enter (used with a countdown)
         std::string recordMetric;
         VarId storeVar = -1;
 

@@ -77,8 +77,10 @@ class LEDManager {
         // ClockSync::toLocal. If the start time has come, the first frame is shown before
         // this returns (reaction times are measured from it). Before a later start time the
         // LEDs stay as they are. EffectId::NONE stops and switches off.
+        // ledMask: bit i = LED i takes part (the effect is computed for the whole ring, the
+        // other LEDs keep their colour). Used by the effect block's "leds" on the central.
         // Returns false (nothing changed) for an unknown effect id.
-        bool playEffect(const Protocol::EffectDesc& effect, int64_t startUs = 0);
+        bool playEffect(const Protocol::EffectDesc& effect, int64_t startUs = 0, uint32_t ledMask = ALL_LEDS);
 
         // Stops the effect; the LEDs keep the last frame
         void stopEffect() { this->effectState = EffectState::IDLE; }
@@ -113,6 +115,7 @@ class LEDManager {
         static const char* effectName(Protocol::EffectId id);
         static Protocol::EffectId effectFromName(const char* name);
 
+        static const uint32_t ALL_LEDS = (1UL << NEOPIXEL_SIZE) - 1;
         static const int64_t MIN_FRAME_US = 16000;     // at most ~60 frames per second
 
     private:
@@ -126,6 +129,7 @@ class LEDManager {
         EffectState effectState = EffectState::IDLE;
         int64_t effectStart = 0;
         int64_t lastFrameUs = 0;
+        uint32_t ledMask = ALL_LEDS;
         uint32_t frame[NEOPIXEL_SIZE];
         uint8_t cap = 255;
 };
