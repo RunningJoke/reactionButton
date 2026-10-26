@@ -6,7 +6,7 @@ import { createStep } from "./stepRecipes";
 import { setSwitch, switchState, switchesFor, timeoutAction } from "./switches";
 import { countdownKind, hasCountdownTime, setCountdown } from "./countdown";
 
-const doc = (blocks: ProgramJson["blocks"]): ProgramJson => ({ version: 1, name: "T", peripherals: 2, start: blocks![0]!.name, blocks });
+const doc = (blocks: ProgramJson["blocks"]): ProgramJson => ({ version: 1, name: "T", peripherals: 2, start: String((blocks as { name: string }[])[0]!.name), blocks });
 const get = (d: ProgramJson, name: string) => ownBlocks(d).find((b) => b.name === name)!;
 const valid = (d: ProgramJson) => !hasErrors(validateProgram("/prog/t.json", (p) => (p === "/prog/t.json" ? JSON.stringify(d) : undefined)).issues);
 
