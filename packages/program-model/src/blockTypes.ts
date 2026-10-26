@@ -36,6 +36,11 @@ export type FieldDef = {
    * instead of ignoring the field (warning `fieldNeedsFormat`)
    */
   rejectedByOlder?: boolean;
+  /**
+   * The field only applies in this mode of the block (`BlockTypeDef.modes`); in another mode the
+   * validator reports `fieldWrongMode`. Fields without it apply in every mode.
+   */
+  onlyMode?: string;
 };
 
 /**
@@ -58,7 +63,11 @@ export type PortRole =
   | "ifYes"
   | "ifNo"
   | "eachRound"
-  | "afterLast";
+  | "afterLast"
+  | "ifReleasedEarly" /** charge: released before the onset */
+  | "ifFull" /** charge: full charge reached */
+  | "ifNoHold" /** release: nobody held the pod */
+  | "ifFalseStart"; /** release (signal): released before the switch */
 
 export type BlockCategory = "light" | "wait" | "input" | "logic" | "remote" | "stats";
 
@@ -74,6 +83,10 @@ export type BlockTypeDef = {
   portRoles?: Partial<Record<string, PortRole>>;
   /** program format revision that introduced the block type (programs.md §6); default 1 */
   minFormat?: number;
+  /** blocks with modes: the enum field that selects the mode and the mode that applies when it is missing */
+  modes?: { field: string; default: string };
+  /** port → the only mode it exists in (other modes: validator error `fieldWrongMode`) */
+  portOnlyMode?: Partial<Record<string, string>>;
 };
 
 /**
@@ -120,7 +133,32 @@ function countdownFields(kind: "delay" | "timeout", from = false): readonly Fiel
 }
 
 /** Block types with a time limit besides `delay`, which always has one. */
-export const TIMEOUT_TYPES = ["button", "remotePress", "remoteMultiPress"] as const;
+export const TIMEOUT_TYPES = ["button", "remotePress", "remoteMultiPress", "charge", "release"] as const;
+
+/** `style` and `mode` of the charge block, `mode` of the release block (programs.md §2, programFormat 3). */
+export const CHARGE_STYLES = ["fill", "brightness", "trafficLight", "colorShift"] as const;
+export const CHARGE_MODES = ["release", "accumulate"] as const;
+export const RELEASE_MODES = ["trigger", "signal"] as const;
+
+/**
+ * The block fields that give a block its time limit, as alternatives: the limit exists when every
+ * field of one alternative is set. Empty for blocks without a time limit (delay always has one).
+ * `mode` is the block's mode (undefined: the default mode).
+ */
+export function timeLimitFields(type: string, mode?: unknown): readonly (readonly string[])[] {
+  switch (type) {
+    case "button":
+    case "charge":
+      return [["timeoutMs"], ["minTimeoutMs", "maxTimeoutMs"]];
+    case "remotePress":
+    case "remoteMultiPress":
+      return [["timeoutMs"]];
+    case "release":
+      return mode === "signal" ? [["timeoutMs"]] : [["maxHoldMs"]];
+    default:
+      return [];
+  }
+}
 
 const withTimers = (fields: readonly FieldDef[]): readonly FieldDef[] => [...fields, ...TIMER_FIELDS];
 
@@ -283,6 +321,61 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "leds", kind: "leds", level: "more" },
       { name: "syncStartMs", kind: "value", default: 20, level: "more" },
       { name: "wait", kind: "bool", default: false },
+    ]),
+  },
+  {
+    // hold to charge (issue #57); the ring shows the charge, releasing ends the block (mode release)
+    type: "charge",
+    category: "input",
+    ports: ["next", "released", "early", "full", "timeout"],
+    portRoles: { next: "then", released: "then", early: "ifReleasedEarly", full: "ifFull", timeout: "ifTooSlow" },
+    waits: true,
+    minFormat: 3,
+    modes: { field: "mode", default: "release" },
+    fields: withTimers([
+      { name: "pod", kind: "target", default: "central" },
+      { name: "maxMs", kind: "value", required: true },
+      { name: "style", kind: "enum", options: CHARGE_STYLES, default: "fill" },
+      { name: "color", kind: "remoteColor", default: "green" },
+      { name: "color2", kind: "remoteColor", level: "more" },
+      { name: "onsetMs", kind: "value", default: 0, level: "more" },
+      { name: "mode", kind: "enum", options: CHARGE_MODES, default: "release", level: "more" },
+      { name: "decayMs", kind: "value", default: 0, level: "more", onlyMode: "accumulate" },
+      { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
+      { name: "minTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
+      { name: "maxTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
+      ...countdownFields("timeout"),
+      { name: "record", kind: "metric", level: "switch", group: "record" },
+      { name: "storeAs", kind: "variable", level: "more" },
+      { name: "storePercent", kind: "variable", level: "more" },
+    ]),
+  },
+  {
+    // release as trigger, or release on a colour switch (issue #58)
+    type: "release",
+    category: "input",
+    ports: ["next", "noHold", "falseStart", "timeout"],
+    portRoles: { next: "then", noHold: "ifNoHold", falseStart: "ifFalseStart", timeout: "ifTooSlow" },
+    portOnlyMode: { falseStart: "signal" },
+    waits: true,
+    minFormat: 3,
+    modes: { field: "mode", default: "trigger" },
+    fields: withTimers([
+      { name: "mode", kind: "enum", options: RELEASE_MODES, default: "trigger" },
+      { name: "pod", kind: "target", default: "central" },
+      { name: "holdColor", kind: "remoteColor", default: "yellow" },
+      { name: "goColor", kind: "remoteColor", default: "green", onlyMode: "signal" },
+      { name: "goMs", kind: "value", onlyMode: "signal" },
+      { name: "minGoMs", kind: "value", onlyMode: "signal" },
+      { name: "maxGoMs", kind: "value", onlyMode: "signal" },
+      { name: "heldColor", kind: "remoteColor", level: "more" }, // default: holdColor
+      { name: "allowHeld", kind: "bool", level: "more" }, // default: true in trigger mode, false in signal mode
+      { name: "holdTimeoutMs", kind: "value", level: "more" },
+      { name: "maxHoldMs", kind: "value", level: "switch", group: "timeLimit", onlyMode: "trigger" },
+      { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit", onlyMode: "signal" },
+      ...countdownFields("timeout"),
+      { name: "record", kind: "metric", level: "switch", group: "record", onlyMode: "signal" },
+      { name: "storeAs", kind: "variable", level: "more" },
     ]),
   },
 ];

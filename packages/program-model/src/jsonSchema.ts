@@ -49,7 +49,11 @@ const DEFS: Record<string, Schema> = {
 };
 
 function fieldSchema(field: FieldDef): Schema {
-  const description = field.default !== undefined ? { description: `default: ${JSON.stringify(field.default)}` } : {};
+  const notes = [
+    ...(field.default !== undefined ? [`default: ${JSON.stringify(field.default)}`] : []),
+    ...(field.onlyMode !== undefined ? [`only in mode ${field.onlyMode}`] : []),
+  ];
+  const description = notes.length > 0 ? { description: notes.join("; ") } : {};
   switch (field.kind) {
     case "value":
       return { ...ref("value"), ...description };

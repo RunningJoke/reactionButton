@@ -141,6 +141,179 @@ describe("program format 3", () => {
     });
   });
 
+  describe("charge", () => {
+    const charge = (fields: Record<string, unknown>, format?: number) =>
+      validate([{ name: "C", type: "charge", maxMs: 2000, next: "L", ...fields }, LED], format);
+
+    it("accepts a complete block, every style, pod values and all ports", () => {
+      const issues = charge({
+        pod: 2, onsetMs: 200, style: "colorShift", color: "green", color2: "red", mode: "release", timeoutMs: 5000,
+        countdown: "drain", countdownColor: "red", record: "charge", storeAs: "CHARGE", storePercent: "PCT",
+        released: "L", early: "L", full: "L", timeout: "L",
+      });
+      expect(issues).toEqual([{ severity: "warning", code: "noOutgoing", file: PATH, block: "L" }]);
+      for (const style of ["fill", "brightness", "trafficLight", "colorShift"]) expect(errors(charge({ style }))).toEqual([]);
+      for (const pod of ["central", 0, "WHO"]) expect(errors(charge({ pod }))).toEqual([]);
+      expect(errors(charge({ mode: "accumulate", decayMs: 1000 }))).toEqual([]);
+    });
+
+    it("maxMs is required; style, mode and colour are checked", () => {
+      expect(errors(validate([{ name: "C", type: "charge" }]))).toEqual(["missingField"]);
+      expect(errors(charge({ style: "rainbow" }))).toEqual(["unknownOption"]);
+      expect(errors(charge({ mode: "hold" }))).toEqual(["unknownOption"]);
+      expect(errors(charge({ color: "#00ff00" }))).toEqual(["notNamedColor"]);
+      expect(errors(charge({ pod: "all" }))).toEqual(["podSingleOnly"]);
+      expect(errors(charge({ pod: "peripherals" }))).toEqual(["podSingleOnly"]);
+    });
+
+    it("decayMs only with accumulate", () => {
+      expect(errors(charge({ decayMs: 500 }))).toEqual(["fieldWrongMode"]);
+      expect(errors(charge({ mode: "release", decayMs: 500 }))).toEqual(["fieldWrongMode"]);
+      const issue = charge({ decayMs: 500 }).find((i) => i.code === "fieldWrongMode");
+      expect(issue).toMatchObject({ block: "C", field: "decayMs", params: { field: "decayMs", mode: "release", needs: "accumulate" } });
+      expect(errors(charge({ mode: "accumulate", decayMs: 500 }))).toEqual([]);
+    });
+
+    it("countdown needs timeoutMs or a random pair; a lone min or max is an error", () => {
+      expect(errors(charge({ countdown: "fill" }))).toEqual(["countdownNeedsTimeLimit"]);
+      expect(errors(charge({ countdown: "secret" }))).toEqual([]);
+      expect(errors(charge({ countdown: "fill", timeoutMs: 3000 }))).toEqual([]);
+      expect(errors(charge({ countdown: "fill", minTimeoutMs: 1000, maxTimeoutMs: 2000 }))).toEqual([]);
+      expect(errors(charge({ minTimeoutMs: 1000 }))).toEqual(["randomTimeoutPair"]);
+      expect(warnings(charge({ minTimeoutMs: 3000, maxTimeoutMs: 1000 }))).toContain("rangeReversed");
+    });
+
+    it("needs program format 3", () => {
+      for (const programFormat of [1, 2]) expect(errors(charge({}, programFormat))).toEqual(["unsupportedType"]);
+      expect(errors(charge({}, 3))).toEqual([]);
+    });
+
+    it("format, field levels and port roles", () => {
+      expect(programFormatOf({ blocks: [{ name: "A", type: "charge", maxMs: 1 }] })).toBe(3);
+      const def = blockType("charge")!;
+      const level = (name: string) => fieldLevel(def.fields.find((f) => f.name === name)!);
+      expect(level("maxMs")).toBe("essential");
+      expect(level("style")).toBe("essential");
+      expect(level("onsetMs")).toBe("more");
+      expect(level("timeoutMs")).toBe("switch");
+      expect(level("record")).toBe("switch");
+      expect(def.fields.find((f) => f.name === "timeoutMs")!.group).toBe("timeLimit");
+      expect(def.ports).toEqual(["next", "released", "early", "full", "timeout"]);
+      expect(portRole({ type: "charge" }, "released")).toBe("then");
+      expect(portRole({ type: "charge" }, "early")).toBe("ifReleasedEarly");
+      expect(portRole({ type: "charge" }, "full")).toBe("ifFull");
+      expect(portRole({ type: "charge" }, "timeout")).toBe("ifTooSlow");
+    });
+  });
+
+  describe("release", () => {
+    const release = (fields: Record<string, unknown>, format?: number) =>
+      validate([{ name: "R", type: "release", next: "L", ...fields }, LED], format);
+    const signal = (fields: Record<string, unknown>) => release({ mode: "signal", goMs: 2000, ...fields });
+
+    it("accepts trigger and signal blocks with all their fields", () => {
+      const trigger = release({
+        mode: "trigger", pod: 0, holdColor: "yellow", heldColor: "cyan", allowHeld: true, holdTimeoutMs: 5000,
+        maxHoldMs: 10000, storeAs: "HOLD", noHold: "L", timeout: "L",
+      });
+      expect(trigger).toEqual([{ severity: "warning", code: "noOutgoing", file: PATH, block: "L" }]);
+      expect(errors(release({}))).toEqual([]);
+      const sig = signal({ pod: 1, goColor: "green", heldColor: "cyan", allowHeld: false, holdTimeoutMs: 4000, timeoutMs: 1000, record: "start", storeAs: "RT", noHold: "L", falseStart: "L", timeout: "L" });
+      expect(errors(sig)).toEqual([]);
+      expect(errors(release({ mode: "signal", minGoMs: 1500, maxGoMs: 3000 }))).toEqual([]);
+      expect(errors(release({ mode: "signal", goMs: "GO" }))).toEqual([]);
+    });
+
+    it("checks mode and colours", () => {
+      expect(errors(release({ mode: "go" }))).toEqual(["unknownOption"]);
+      expect(errors(release({ holdColor: "#ffff00" }))).toEqual(["notNamedColor"]);
+      expect(errors(signal({ goColor: [0, 255, 0] }))).toEqual(["notNamedColor"]);
+      expect(errors(release({ allowHeld: "yes" }))).toEqual(["notBool"]);
+      expect(errors(release({ pod: "all" }))).toEqual(["podSingleOnly"]);
+    });
+
+    it("trigger-only fields in signal mode and signal-only fields in trigger mode are errors", () => {
+      expect(errors(signal({ maxHoldMs: 100 }))).toEqual(["fieldWrongMode"]);
+      for (const field of ["goColor", "goMs", "minGoMs", "maxGoMs", "timeoutMs", "record"]) {
+        const value = field === "record" ? "start" : field === "goColor" ? "green" : 100;
+        const issues = release({ [field]: value });
+        expect(errors(issues).filter((c) => c === "fieldWrongMode")).toEqual(["fieldWrongMode"]);
+        expect(issues.find((i) => i.code === "fieldWrongMode")).toMatchObject({ field, params: { field, mode: "trigger", needs: "signal" } });
+      }
+      const wrong = signal({ maxHoldMs: 100 }).find((i) => i.code === "fieldWrongMode");
+      expect(wrong).toMatchObject({ field: "maxHoldMs", params: { mode: "signal", needs: "trigger" } });
+    });
+
+    it("signal needs goMs or both minGoMs and maxGoMs, not both forms", () => {
+      expect(errors(release({ mode: "signal" }))).toEqual(["signalNeedsGoTime"]);
+      expect(errors(release({ mode: "signal", minGoMs: 1000 }))).toEqual(["signalNeedsGoTime"]);
+      expect(errors(release({ mode: "signal", maxGoMs: 1000 }))).toEqual(["signalNeedsGoTime"]);
+      expect(errors(release({ mode: "signal", goMs: 1000, minGoMs: 500, maxGoMs: 900 }))).toEqual(["goTimeBothForms"]);
+      expect(errors(release({ mode: "signal", goMs: 1000, minGoMs: 500 }))).toEqual(["goTimeBothForms"]);
+      expect(warnings(release({ mode: "signal", minGoMs: 3000, maxGoMs: 1000 }))).toContain("rangeReversed");
+    });
+
+    it("the falseStart port only exists in signal mode", () => {
+      expect(errors(release({ falseStart: "L" }))).toEqual(["fieldWrongMode"]);
+      expect(errors(release({ mode: "trigger", falseStart: "L" }))).toEqual(["fieldWrongMode"]);
+      expect(errors(signal({ falseStart: "L" }))).toEqual([]);
+      expect(release({ falseStart: "L" }).find((i) => i.code === "fieldWrongMode")).toMatchObject({
+        field: "falseStart",
+        params: { field: "falseStart", mode: "trigger", needs: "signal" },
+      });
+    });
+
+    it("countdown needs maxHoldMs in trigger mode and timeoutMs in signal mode", () => {
+      expect(errors(release({ countdown: "drain" }))).toEqual(["countdownNeedsTimeLimit"]);
+      expect(errors(release({ countdown: "drain", maxHoldMs: 3000 }))).toEqual([]);
+      expect(errors(release({ countdown: "secret" }))).toEqual([]);
+      expect(errors(signal({ countdown: "drain" }))).toEqual(["countdownNeedsTimeLimit"]);
+      expect(errors(signal({ countdown: "drain", timeoutMs: 800 }))).toEqual([]);
+      const issue = release({ countdown: "drain" }).find((i) => i.code === "countdownNeedsTimeLimit");
+      expect(issue?.params).toMatchObject({ countdown: "drain", limit: "maxHoldMs" });
+    });
+
+    it("needs program format 3", () => {
+      for (const programFormat of [1, 2]) expect(errors(release({}, programFormat))).toEqual(["unsupportedType"]);
+      expect(errors(release({}, 3))).toEqual([]);
+    });
+
+    it("format, field levels and port roles", () => {
+      expect(programFormatOf({ blocks: [{ name: "A", type: "release" }] })).toBe(3);
+      const def = blockType("release")!;
+      const field = (name: string) => def.fields.find((f) => f.name === name)!;
+      expect(fieldLevel(field("mode"))).toBe("essential");
+      expect(fieldLevel(field("holdColor"))).toBe("essential");
+      expect(fieldLevel(field("goMs"))).toBe("essential");
+      expect(fieldLevel(field("heldColor"))).toBe("more");
+      expect(fieldLevel(field("maxHoldMs"))).toBe("switch");
+      expect(field("maxHoldMs").group).toBe("timeLimit");
+      expect(field("timeoutMs").group).toBe("timeLimit");
+      expect(field("maxHoldMs").onlyMode).toBe("trigger");
+      expect(field("goColor").onlyMode).toBe("signal");
+      expect(def.modes).toEqual({ field: "mode", default: "trigger" });
+      expect(def.ports).toEqual(["next", "noHold", "falseStart", "timeout"]);
+      expect(portRole({ type: "release" }, "noHold")).toBe("ifNoHold");
+      expect(portRole({ type: "release" }, "falseStart")).toBe("ifFalseStart");
+      expect(portRole({ type: "release" }, "timeout")).toBe("ifTooSlow");
+    });
+  });
+
+  it("JSON schema accepts charge and release blocks and rejects bad ones", () => {
+    const check = new Ajv2020({ strict: false }).compile(buildProgramSchema());
+    const ok = {
+      name: "T",
+      blocks: [
+        { name: "C", type: "charge", maxMs: 2000, style: "colorShift", color: "green", color2: "red", mode: "accumulate", decayMs: 500, released: "R" },
+        { name: "R", type: "release", mode: "signal", minGoMs: 1500, maxGoMs: 3000, falseStart: "C" },
+      ],
+    };
+    expect(check(ok)).toBe(true);
+    expect(check({ name: "T", blocks: [{ name: "C", type: "charge" }] })).toBe(false);
+    expect(check({ name: "T", blocks: [{ name: "C", type: "charge", maxMs: 1, style: "rainbow" }] })).toBe(false);
+    expect(check({ name: "T", blocks: [{ name: "R", type: "release", mode: "go" }] })).toBe(false);
+  });
+
   it("JSON schema accepts effect and countdown fields and rejects bad ones", () => {
     const check = new Ajv2020({ strict: false }).compile(buildProgramSchema());
     const ok = {
