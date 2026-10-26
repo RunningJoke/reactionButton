@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdownEffect, renderRing, type RingEffect, type Rgb } from "./ringEffects";
+import { chargeRing, countdownEffect, FULL_FLASH_MS, fullFlashRing, releaseRing, renderRing, type RingEffect, type Rgb } from "./ringEffects";
 
 const OFF: Rgb = [0, 0, 0];
 const RED: Rgb = [255, 0, 0];
@@ -90,5 +90,55 @@ describe("countdownEffect", () => {
     const e = countdownEffect("drain", BLUE, RED, 10, 1010)!;
     expect(lit(renderRing(base, e, 10))).toBe(18);
     expect(lit(renderRing(base, e, 1010))).toBe(0);
+  });
+});
+
+describe("charge and release rings", () => {
+  const green: Rgb = [0, 255, 0];
+  const red: Rgb = [255, 0, 0];
+  const lit = (ring: Rgb[]) => ring.filter((c) => c[0] || c[1] || c[2]).length;
+
+  it("fill lights the LEDs one by one", () => {
+    expect(lit(chargeRing("fill", 0, green, red))).toBe(0);
+    expect(lit(chargeRing("fill", 0.5, green, red))).toBe(9);
+    expect(lit(chargeRing("fill", 1, green, red))).toBe(18);
+    expect(chargeRing("fill", 0.5, green, red)[8]).toEqual(green);
+    expect(chargeRing("fill", 0.5, green, red)[9]).toEqual([0, 0, 0]);
+  });
+
+  it("brightness scales the colour", () => {
+    expect(chargeRing("brightness", 0.5, green, red)[0]).toEqual([0, 128, 0]);
+    expect(chargeRing("brightness", 1, green, red)[17]).toEqual(green);
+  });
+
+  it("trafficLight goes green, yellow, red", () => {
+    expect(chargeRing("trafficLight", 0.1, green, red)[0]).toEqual([0, 255, 0]);
+    expect(chargeRing("trafficLight", 0.5, green, red)[0]).toEqual([255, 255, 0]);
+    expect(chargeRing("trafficLight", 1, green, red)[0]).toEqual([255, 0, 0]);
+  });
+
+  it("colorShift blends into the second colour", () => {
+    expect(chargeRing("colorShift", 0, green, red)[0]).toEqual(green);
+    expect(chargeRing("colorShift", 0.5, green, red)[0]).toEqual([128, 128, 0]);
+    expect(chargeRing("colorShift", 1, green, red)[0]).toEqual(red);
+  });
+
+  it("clamps the level", () => {
+    expect(lit(chargeRing("fill", 7, green, red))).toBe(18);
+    expect(lit(chargeRing("fill", -1, green, red))).toBe(0);
+  });
+
+  it("flashes when full, then stays on", () => {
+    expect(fullFlashRing(green, 0)[0]).toEqual(green);
+    expect(fullFlashRing(green, 100)[0]).toEqual([0, 0, 0]);
+    expect(fullFlashRing(green, 200)[0]).toEqual(green);
+    expect(fullFlashRing(green, 100 + FULL_FLASH_MS)[0]).toEqual(green);
+  });
+
+  it("release colours by phase", () => {
+    const colors = { hold: [255, 255, 0] as Rgb, held: [0, 0, 255] as Rgb, go: green };
+    expect(releaseRing("waiting", colors)[3]).toEqual(colors.hold);
+    expect(releaseRing("held", colors)[3]).toEqual(colors.held);
+    expect(releaseRing("go", colors)[3]).toEqual(green);
   });
 });

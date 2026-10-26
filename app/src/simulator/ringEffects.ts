@@ -125,3 +125,46 @@ export function countdownEffect(style: unknown, lit: Rgb, endColor: Rgb, startAt
     brightness: 255,
   };
 }
+
+/* ------------------------------------------------------------------ charge, release (programFormat 3) */
+
+export const CHARGE_STYLES = ["fill", "brightness", "trafficLight", "colorShift"] as const;
+export type ChargeStyle = (typeof CHARGE_STYLES)[number];
+
+/** The `full` flash of a charge: on / off every this many ms, then steady. */
+export const FULL_FLASH_STEP_MS = 100;
+export const FULL_FLASH_MS = 600;
+
+const solid = (c: Rgb): Rgb[] => Array.from({ length: LED_COUNT }, () => c);
+
+/**
+ * The ring of a `charge` block at a charge level 0 … 1 (programs.md charge): `fill` lights LEDs one by one in
+ * `color`, `brightness` dims `color` up, `trafficLight` goes green, yellow, red, `colorShift` blends `color`
+ * into `color2`. Nothing charged (level 0) is a dark ring, except `colorShift`, which starts in `color`.
+ */
+export function chargeRing(style: unknown, level: number, color: Rgb, color2: Rgb): Rgb[] {
+  const p = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0));
+  switch (style) {
+    case "brightness":
+      return solid(scale(color, p));
+    case "trafficLight":
+      return p <= 0 ? solid(OFF) : solid([GREEN, YELLOW, RED][Math.min(2, Math.floor(p * 3))]!);
+    case "colorShift":
+      return solid(mix(color, color2, p));
+    default: {
+      const lit = Math.floor(LED_COUNT * p + 1e-9);
+      return Array.from({ length: LED_COUNT }, (_, i) => (i < lit ? color : OFF));
+    }
+  }
+}
+
+/** The ring flashes when a charge is full: `elapsed` ms since it was reached; steady in `color` after `FULL_FLASH_MS`. */
+export function fullFlashRing(color: Rgb, elapsed: number): Rgb[] {
+  if (elapsed >= FULL_FLASH_MS) return solid(color);
+  return solid(Math.floor(Math.max(0, elapsed) / FULL_FLASH_STEP_MS) % 2 === 0 ? color : OFF);
+}
+
+/** The ring of a `release` block: `holdColor` while it waits for the hold, `heldColor` once held, `goColor` after the switch. */
+export function releaseRing(phase: "waiting" | "held" | "go", colors: { hold: Rgb; held: Rgb; go: Rgb }): Rgb[] {
+  return solid(phase === "go" ? colors.go : phase === "held" ? colors.held : colors.hold);
+}
