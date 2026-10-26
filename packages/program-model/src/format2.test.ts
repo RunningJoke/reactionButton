@@ -36,7 +36,7 @@ const loop = [
 
 describe("program format 2", () => {
   it("is the app's format", () => {
-    expect(PROGRAM_FORMAT).toBe(2);
+    expect(PROGRAM_FORMAT).toBe(3);
   });
 
   it("programFormatOf: 1 without repeat and timers, 2 with either", () => {
@@ -186,8 +186,8 @@ describe("JSON Schema, format 2", () => {
   ajv.addKeyword("x-programFormat");
   const validate = ajv.compile(schema);
 
-  it("declares format 2 and accepts repeat and timers", () => {
-    expect(schema["x-programFormat"]).toBe(2);
+  it("declares the current format and accepts repeat and timers", () => {
+    expect(schema["x-programFormat"]).toBe(3);
     expect(validate({ name: "T", blocks: loop }), ajv.errorsText(validate.errors)).toBe(true);
   });
 
