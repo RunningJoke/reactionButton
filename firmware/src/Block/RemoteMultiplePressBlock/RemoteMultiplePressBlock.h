@@ -5,6 +5,7 @@
 #include <string>
 #include "Block/Block.h"
 #include "Block/Value.h"
+#include "Block/Countdown.h"
 #include "ColorSet/ColorSet.h"
 #include "Link/Protocol.h"
 
@@ -20,6 +21,9 @@
  *     "syncStartMs": 20,               lead time: all pods light together this long after the
  *                                      block starts (time for the commands to arrive)
  *     "timeoutMs": 10000,              optional
+ *     "countdown": "drain",            all lit pods and the central count down together over the
+ *     "countdownColor": "red",         timeout (needs timeoutMs, read once on enter), see
+ *                                      programs.md §7.12
  *     "record": "reaction",            record the reaction time of every green pod
  *     "next": "...",                   all green pods pressed
  *     "avoidHit": "...",               a red pod was pressed
@@ -50,6 +54,9 @@ class RemoteMultiplePressBlock : public Block {
         ColorSet localHitColor = {0, 255, 0};
         ColorSet localAvoidColor = {255, 0, 0};
         Value timeoutMs;
+        Countdown countdown;
+        int64_t timeoutAtEnter = 0;     // timeoutMs read on enter (used with a countdown)
+        Protocol::EffectDesc centralCountdown = {Protocol::EffectId::NONE, 0, 0, 0, 0, 0, 0, 0};
         std::string recordMetric;
 
         uint8_t podCount = 0;

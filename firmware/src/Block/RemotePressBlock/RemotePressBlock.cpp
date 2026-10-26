@@ -27,6 +27,13 @@ bool RemotePressBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
         return ctx.fail("invalid 'timeoutMs'");
     }
 
+    if(!this->countdown.parse(json, ctx)) {
+        return false;
+    }
+    if(this->countdown.active() && !this->timeoutMs.isSet()) {
+        return ctx.fail("'countdown' needs 'timeoutMs'");
+    }
+
     JsonUtil::getString(json["record"], this->recordMetric);
     const char* storeAs = json["storeAs"];
     if(storeAs != nullptr) {
@@ -39,6 +46,7 @@ void RemotePressBlock::enter(BlockContext& ctx) {
     this->enterTime = millis();
     this->podId = (uint8_t)this->pod.get(ctx.vars);
     this->armed = false;
+    this->timeoutAtEnter = this->timeoutMs.isSet() ? this->timeoutMs.get(ctx.vars) : 0;
 
     if(ctx.network == nullptr || this->podId >= ctx.network->podCount()) {
         ESP_LOGE(TAG, "%s: pod %u not available", this->getName().c_str(), this->podId);
@@ -49,6 +57,10 @@ void RemotePressBlock::enter(BlockContext& ctx) {
     command.mode = this->avoid ? Protocol::PodMode::AVOID : Protocol::PodMode::HIT;
     command.colorActive = this->colorActive;
     command.colorAfter = this->colorAfter;
+    // the pod counts down on its own ring; pods without effect support stay lit (secret)
+    if(this->timeoutAtEnter > 0) {
+        this->countdown.describe(this->colorActive, (uint32_t)this->timeoutAtEnter, command.waiting);
+    }
     this->cmdSeq = ctx.network->arm(this->podId, command);
     this->armed = true;
 }
@@ -75,7 +87,9 @@ BlockStatus RemotePressBlock::execute(BlockContext& ctx) {
         return BlockStatus::done(NEXT);
     }
 
-    if(this->timeoutMs.isSet() && millis() - this->enterTime >= (uint32_t)this->timeoutMs.get(ctx.vars)) {
+    // with a countdown the timeout is fixed on enter, the animation has a fixed length
+    int64_t timeoutMs = this->countdown.active() ? this->timeoutAtEnter : this->timeoutMs.get(ctx.vars);
+    if(this->timeoutMs.isSet() && millis() - this->enterTime >= (uint32_t)timeoutMs) {
         ctx.network->reset(this->podId);
         return BlockStatus::done(TIMEOUT);
     }

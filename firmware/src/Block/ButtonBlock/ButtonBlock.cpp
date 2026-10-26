@@ -23,6 +23,13 @@ bool ButtonBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
         return ctx.fail("random timeout needs 'minTimeoutMs' and 'maxTimeoutMs'");
     }
 
+    if(!this->countdown.parse(json, ctx)) {
+        return false;
+    }
+    if(this->countdown.active() && !this->minTimeoutMs.isSet()) {
+        return ctx.fail("'countdown' needs 'timeoutMs' or 'minTimeoutMs' + 'maxTimeoutMs'");
+    }
+
     JsonUtil::getString(json["record"], this->recordMetric);
     const char* storeAs = json["storeAs"];
     if(storeAs != nullptr) {
@@ -39,6 +46,20 @@ void ButtonBlock::enter(BlockContext& ctx) {
     if(this->minTimeoutMs.isSet()) {
         this->timeout = (uint32_t)RandomUtil::between(this->minTimeoutMs.get(ctx.vars), this->maxTimeoutMs.get(ctx.vars));
     }
+
+    this->centralCounting = false;
+    Protocol::EffectDesc effect;
+    if(this->countdown.describe(this->countdown.fromColor, this->timeout, effect)) {
+        ctx.leds.playEffect(effect);
+        this->centralCounting = true;
+    }
+}
+
+void ButtonBlock::exit(BlockContext& ctx) {
+    if(this->centralCounting) {
+        ctx.leds.stopEffect();
+        this->centralCounting = false;
+    }
 }
 
 BlockStatus ButtonBlock::execute(BlockContext& ctx) {
@@ -51,6 +72,10 @@ BlockStatus ButtonBlock::execute(BlockContext& ctx) {
         }
 
         this->pressed = true;
+        if(this->centralCounting) {
+            ctx.leds.stopEffect();      // a press stops the countdown, the ring keeps its last frame
+            this->centralCounting = false;
+        }
         int32_t reaction = (int32_t)(ctx.button.lastPressTime() - this->enterTime);
         if(!this->recordMetric.empty()) {
             ctx.results.record(this->recordMetric.c_str(), ctx.centralPodId, reaction);

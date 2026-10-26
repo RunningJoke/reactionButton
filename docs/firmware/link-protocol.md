@@ -100,6 +100,11 @@ activation if 0). The central appends it only for pods with the `effects` featur
 pods show `colorActive`, which the central keeps filling in as the static fallback. The
 reaction time is still measured from the first LED update of the activation.
 
+**Use by programs** (firmware ≥ 2.9, programs.md §7.11, §7.12): the `effect` block sends EFFECT
+frames; the `countdown` of `remotePress` / `remoteMultiPress` is the ARM waiting effect (a drain,
+fill, dim, colorShift or trafficLight over the timeout), the `countdown` of `delay` uses EFFECT
+frames. The frames did not change for this: header version 1, no new fields.
+
 ## 3. Transport rules (`EspNowLink`)
 
 - **Unicast is reliable and ordered per peer.** Only one frame per peer is on air at a

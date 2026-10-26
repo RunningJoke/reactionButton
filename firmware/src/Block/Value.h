@@ -26,6 +26,10 @@ class Value {
             return varId >= 0 ? vars.get(varId) : constant;
         }
 
+        // true if the value is a constant (not a variable); constantValue() is then final
+        bool isConstant() const { return varId < 0; }
+        int64_t constantValue() const { return constant; }
+
         // true if the field was given in JSON (or a default was passed to the constructor)
         bool isSet() const { return present; }
 

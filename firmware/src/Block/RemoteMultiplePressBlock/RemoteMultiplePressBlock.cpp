@@ -30,6 +30,13 @@ bool RemoteMultiplePressBlock::configure(JsonObjectConst json, BlockLoadContext&
         }
     }
 
+    if(!this->countdown.parse(json, ctx)) {
+        return false;
+    }
+    if(this->countdown.active() && !this->timeoutMs.isSet()) {
+        return ctx.fail("'countdown' needs 'timeoutMs'");
+    }
+
     JsonUtil::getString(json["record"], this->recordMetric);
     return true;
 }
@@ -39,6 +46,8 @@ void RemoteMultiplePressBlock::enter(BlockContext& ctx) {
     this->avoidMask = 0;
     this->remainingMask = 0;
     this->centralLit = false;
+    this->timeoutAtEnter = this->timeoutMs.isSet() ? this->timeoutMs.get(ctx.vars) : 0;
+    this->centralCountdown.effect = Protocol::EffectId::NONE;
 
     uint8_t connected = ctx.network != nullptr ? ctx.network->podCount() : 0;
     int64_t wanted = this->pods.isSet() ? this->pods.get(ctx.vars) : connected;
@@ -63,6 +72,11 @@ void RemoteMultiplePressBlock::enter(BlockContext& ctx) {
     int64_t lead = this->syncStartMs.get(ctx.vars);
     this->startAtUs = (ctx.network != nullptr ? ctx.network->nowUs() : esp_timer_get_time()) + lead * 1000;
 
+    // countdown: the pods and the central light together and run out together at entry + timeout
+    // (they start `lead` after the entry, so the animation is that much shorter)
+    int64_t countdownMs = this->timeoutAtEnter - (lead > 0 ? lead : 0);
+    bool counting = this->countdown.active() && countdownMs > 0;
+
     for(uint8_t i = 0; i < this->podCount; i++) {
         ArmCommand command;
         command.startAtUs = lead > 0 ? this->startAtUs : 0;
@@ -74,11 +88,19 @@ void RemoteMultiplePressBlock::enter(BlockContext& ctx) {
             command.colorActive = this->remoteHitColor;
             this->remainingMask |= 1UL << i;
         }
+        if(counting) {
+            this->countdown.describe(command.colorActive, (uint32_t)countdownMs, command.waiting);
+        }
         this->cmdSeqs[i] = ctx.network->arm(i, command);
     }
 
     if(this->includeCentral && (this->avoidMask & (1UL << this->podCount)) == 0) {
         this->remainingMask |= 1UL << this->podCount;
+    }
+    if(counting && this->includeCentral) {
+        bool centralAvoid = (this->avoidMask & (1UL << this->podCount)) != 0;
+        this->countdown.describe(centralAvoid ? this->remoteAvoidColor : this->remoteHitColor,
+                                 (uint32_t)countdownMs, this->centralCountdown);
     }
 }
 
@@ -86,7 +108,11 @@ BlockStatus RemoteMultiplePressBlock::execute(BlockContext& ctx) {
     uint32_t centralBit = 1UL << this->podCount;
 
     if(this->includeCentral && !this->centralLit && esp_timer_get_time() >= this->startAtUs) {
-        ctx.leds.setLEDColors((this->avoidMask & centralBit) ? &this->localAvoidColor : &this->localHitColor);
+        if(this->centralCountdown.effect != Protocol::EffectId::NONE) {
+            ctx.leds.playEffect(this->centralCountdown, this->startAtUs);   // same start time as the pods
+        } else {
+            ctx.leds.setLEDColors((this->avoidMask & centralBit) ? &this->localAvoidColor : &this->localHitColor);
+        }
         this->centralLit = true;
         this->centralLitUs = esp_timer_get_time();
         this->pressCountAtLight = ctx.button.pressCount();
@@ -133,7 +159,9 @@ BlockStatus RemoteMultiplePressBlock::execute(BlockContext& ctx) {
     if(this->remainingMask == 0) {
         return BlockStatus::done(NEXT);
     }
-    if(this->timeoutMs.isSet() && millis() - this->enterTime >= (uint32_t)this->timeoutMs.get(ctx.vars)) {
+    // with a countdown the timeout is fixed on enter, the animation has a fixed length
+    int64_t timeoutMs = this->countdown.active() ? this->timeoutAtEnter : this->timeoutMs.get(ctx.vars);
+    if(this->timeoutMs.isSet() && millis() - this->enterTime >= (uint32_t)timeoutMs) {
         return BlockStatus::done(TIMEOUT);
     }
     return BlockStatus::running();

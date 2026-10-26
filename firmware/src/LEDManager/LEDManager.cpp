@@ -146,7 +146,7 @@ EffectId LEDManager::effectFromName(const char* name)
     return EffectId::COUNT_;
 }
 
-bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs)
+bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs, uint32_t ledMask)
 {
     if((uint8_t)effect.effect >= (uint8_t)EffectId::COUNT_) {
         return false;
@@ -158,6 +158,7 @@ bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs)
 
     int64_t now = esp_timer_get_time();
     this->effect = effect;
+    this->ledMask = ledMask & ALL_LEDS;
     this->effectStart = startUs == 0 ? now : startUs;
     this->lastFrameUs = INT64_MIN / 2;                  // first frame is never throttled
     memset(this->frame, 0xFF, sizeof(this->frame));     // differs from every real frame (24 bit colours)
@@ -309,6 +310,14 @@ void LEDManager::renderEffect(int64_t nowUs)
             default:
                 fillAll(next, on);
                 break;
+        }
+    }
+
+    if(this->ledMask != ALL_LEDS) {
+        for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
+            if((this->ledMask & (1UL << i)) == 0) {
+                next[i] = this->pixelManager->getPixelColor(i);     // not part of the effect: unchanged
+            }
         }
     }
 

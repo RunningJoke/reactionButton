@@ -10,6 +10,7 @@
 #include "Block/RemoteResetAllBlock/RemoteResetAllBlock.h"
 #include "Block/SummaryBlock/SummaryBlock.h"
 #include "Block/RepeatBlock/RepeatBlock.h"
+#include "Block/EffectBlock/EffectBlock.h"
 
 namespace {
     template<typename T>
@@ -34,6 +35,7 @@ namespace {
         {"remoteResetAll",   &createBlock<RemoteResetAllBlock>},
         {"summary",          &createBlock<SummaryBlock>},
         {"repeat",           &createBlock<RepeatBlock>},
+        {"effect",           &createBlock<EffectBlock>},
     };
 }
 

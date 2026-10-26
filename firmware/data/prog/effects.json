@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "Effects",
+  "description": "Demo of the effect block and the countdown option (programFormat 3). Per round: all pods pulse blue and wait, the central spins while the program goes on, a random 2-4 s wait with a traffic light on all rings, then the pod must be pressed within 2 s (its ring drains), then the central within 2 s (green turns red). Success: all rings fill green and fade out. A miss: the central blinks red. Needs one peripheral.",
+  "peripherals": 1,
+  "menu": [ { "leds": [6, 12], "color": "magenta" }, { "leds": [9], "color": "yellow" } ],
+  "variables": { "MAX_LOOPS": 5 },
+  "include": ["/prog/lib/loop.json"],
+  "start": "StartLoop",
+  "blocks": [
+    { "name": "EnterProgram", "type": "effect", "target": "all", "effect": "pulse", "color": "blue", "periodMs": 500, "durationMs": 2000, "wait": true, "next": "Spinner" },
+    { "name": "Spinner",      "type": "effect", "target": "central", "effect": "spin", "color": "cyan", "periodMs": 600, "durationMs": 1200, "wait": false, "next": "SpinWait" },
+    { "name": "SpinWait",     "type": "delay", "ms": 1200, "next": "GetReady" },
+    { "name": "GetReady",     "type": "delay", "minMs": 2000, "maxMs": 4000, "countdown": "trafficLight", "countdownTarget": "all", "next": "PodGo" },
+    { "name": "PodGo",        "type": "remotePress", "pod": 0, "color": "green", "timeoutMs": 2000, "countdown": "drain", "record": "reaction", "next": "CentralGo", "timeout": "Miss" },
+    { "name": "CentralGo",    "type": "button", "pressed": "Win", "timeoutMs": 2000, "countdown": "colorShift", "countdownFrom": "green", "countdownColor": "red", "record": "reaction", "timeout": "Miss" },
+    { "name": "Win",          "type": "effect", "target": "all", "effect": "fill", "color": "green", "durationMs": 800, "wait": true, "next": "Fade" },
+    { "name": "Fade",         "type": "effect", "target": "all", "effect": "dim", "color": "green", "durationMs": 600, "wait": false, "next": "FadeWait" },
+    { "name": "FadeWait",     "type": "delay", "ms": 600, "next": "Done" },
+    { "name": "Miss",         "type": "effect", "target": "central", "effect": "blink", "color": "red", "periodMs": 200, "durationMs": 800, "wait": true, "next": "Done" },
+    { "name": "Done",         "type": "effect", "target": "all", "effect": "off", "wait": false, "next": "Cleanup" },
+    { "name": "Cleanup",      "type": "remoteResetAll", "next": "EndLoop" }
+  ]
+}
