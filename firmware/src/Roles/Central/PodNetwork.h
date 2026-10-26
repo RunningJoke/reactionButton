@@ -16,8 +16,8 @@
  * - A peripheral that rebooted announces itself again; it is re-claimed with its old id.
  * - Answers PINGs (heartbeat + clock sync). A pod without PING for POD_TIMEOUT_US is lost.
  * - The central's esp_timer is the network time base.
- * - Remembers which pods play effects (CLAIM_ACK linkFeatures); older pods get no EFFECT
- *   frames and a plain ARM.
+ * - Remembers which pods play effects / measure holds (CLAIM_ACK linkFeatures); older pods get no
+ *   EFFECT frames, no hold activations and a plain ARM.
  * - Runs the program store sync with the peripherals (StoreSync), only while allowed.
  */
 class PodNetwork : public IPodNetwork {
@@ -48,6 +48,7 @@ class PodNetwork : public IPodNetwork {
         bool pollEvent(PodEvent& event) override;
         int64_t nowUs() const override { return esp_timer_get_time(); }
         bool supportsEffects(uint8_t podId) const override;
+        bool supportsHold(uint8_t podId) const override;
         bool effect(uint8_t podId, const Protocol::EffectDesc& effect, int64_t startAtUs) override;
 
     private:
@@ -68,6 +69,7 @@ class PodNetwork : public IPodNetwork {
         void handleClaimAck(const RxFrame& frame);
         void handlePing(const RxFrame& frame, int16_t podId);
         void handlePressed(const RxFrame& frame, int16_t podId);
+        void handleReleased(const RxFrame& frame, int16_t podId);
 
         EspNowLink& link = EspNowLink::get();
         uint32_t setId = 0;

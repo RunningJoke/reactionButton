@@ -120,7 +120,7 @@ BlockStatus RemoteMultiplePressBlock::execute(BlockContext& ctx) {
 
     PodEvent event;
     while(ctx.network != nullptr && ctx.network->pollEvent(event)) {
-        if(event.podId >= this->podCount || event.cmdSeq != this->cmdSeqs[event.podId]) {
+        if(event.kind != PodEvent::Kind::PRESSED || event.podId >= this->podCount || event.cmdSeq != this->cmdSeqs[event.podId]) {
             continue;   // not part of this round
         }
         uint32_t bit = 1UL << event.podId;

@@ -5,6 +5,7 @@
 #include "Link/EspNowLink.h"
 #include "Link/ClockSync.h"
 #include "Link/Protocol.h"
+#include "Link/HoldSession.h"
 #include "Store/StoreSync.h"
 
 /**
@@ -17,6 +18,8 @@
  *   ACTIVE     lit (colorActive, or the ARM's waiting effect), waiting for a press. The
  *              reaction time is measured locally from the moment the LEDs were updated to
  *              the button edge.
+ *   HOLDING    armed for a CHARGE / RELEASE activation (HoldSession): measures the hold, shows
+ *              it on the ring and reports PRESSED (hold start) and RELEASED.
  *   DONE       pressed and reported, waiting for RESET or the next ARM.
  *
  * EFFECT frames play an effect on the ring in any claimed state; they do not change the
@@ -39,7 +42,7 @@ class PeripheralRole : public IRole {
         bool storeEditable() const override;
 
     private:
-        enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, DONE };
+        enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };
 
         static const int64_t HELLO_INTERVAL_US = 250000;
         static const int64_t PING_INTERVAL_US = 200000;
@@ -52,6 +55,7 @@ class PeripheralRole : public IRole {
         void handleEffect(const Protocol::Effect& effect);
         int64_t localStartUs(int64_t centralUs) const;
         void activate();
+        void runHold();
         void becomeUnclaimed();
         void sendPing();
         static const char* stateName(State state);
@@ -81,4 +85,6 @@ class PeripheralRole : public IRole {
         int64_t waitingEffectStartUs = 0;      // local; 0 = at activation
         int64_t activatedUs = 0;
         uint32_t pressCountAtActivation = 0;
+        ArmCommand holdCommand;                 // CHARGE / RELEASE activation
+        HoldSession hold;
 };

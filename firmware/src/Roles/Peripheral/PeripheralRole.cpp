@@ -105,8 +105,41 @@ void PeripheralRole::run() {
             }
             break;
 
+        case State::HOLDING:
+            this->runHold();
+            break;
+
         default:
             break;
+    }
+}
+
+// CHARGE / RELEASE: report the hold start and the end of the hold
+void PeripheralRole::runHold() {
+    HoldSession::Event event;
+    while(this->hold.poll(esp_timer_get_time(), event)) {
+        if(event.kind == HoldSession::Event::Kind::HOLD_STARTED) {
+            Pressed pressed;
+            fillHeader(pressed.header, MsgType::PRESSED, this->setId);
+            pressed.podId = this->podId;
+            pressed.cmdSeq = this->cmdSeq;
+            pressed.result = PressResult::HIT;
+            pressed.reactionUs = event.reactionUs;
+            this->link.send(this->centralMac, &pressed, sizeof(pressed), 8, -1, true);
+            continue;
+        }
+
+        Released released;
+        fillHeader(released.header, MsgType::RELEASED, this->setId);
+        released.podId = this->podId;
+        released.cmdSeq = this->cmdSeq;
+        released.flags = event.flags;
+        released.heldMs = event.heldMs;
+        released.reactionUs = event.reactionUs;
+        released.chargeMs = event.chargeMs;
+        this->link.send(this->centralMac, &released, sizeof(released), 8, -1, true);
+        this->state = State::DONE;
+        return;
     }
 }
 
@@ -158,6 +191,7 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
             break;
 
         case MsgType::RESET:
+            this->hold.end();
             this->state = State::READY;
             LEDManager::getManager()->turnOff();
             break;
@@ -191,7 +225,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ClaimAck ack;
     fillHeader(ack.header, MsgType::CLAIM_ACK, this->setId);
     ack.podId = this->podId;
-    ack.linkFeatures = LINK_FEATURE_EFFECTS;
+    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
     if(this->state == State::UNCLAIMED) {
@@ -213,17 +247,36 @@ int64_t PeripheralRole::localStartUs(int64_t centralUs) const {
 
 void PeripheralRole::handleArm(const RxFrame& frame) {
     const Arm& arm = *reinterpret_cast<const Arm*>(frame.data);
+
+    // CHARGE / RELEASE carry hold parameters (appended after the waiting effect, firmware >= 2.9).
+    // A shorter ARM is ignored: the pod would not know what to measure.
+    bool holdMode = arm.mode == PodMode::CHARGE || arm.mode == PodMode::RELEASE;
+    if(holdMode && frame.len < sizeof(Arm)) {
+        ESP_LOGW(TAG, "hold ARM without parameters ignored");
+        return;
+    }
+
     this->cmdSeq = arm.cmdSeq;
     this->mode = arm.mode;
     this->colorActive = arm.colorActive;
     this->colorAfter = arm.colorAfter;
+    this->hold.end();       // an earlier hold activation ends with the new ARM
 
     // optional waiting effect (appended field, firmware >= 2.8). It is timed from the start
     // time, so a late ARM joins the animation of the other pods instead of restarting it.
-    this->hasWaitingEffect = frame.len >= sizeof(Arm) && arm.waiting.effect != EffectId::NONE;
+    this->hasWaitingEffect = frame.len >= offsetof(Arm, hold) && arm.waiting.effect != EffectId::NONE;
     if(this->hasWaitingEffect) {
         this->waitingEffect = arm.waiting;
         this->waitingEffectStartUs = this->localStartUs(arm.startAtUs);
+    }
+
+    if(holdMode) {
+        this->holdCommand = ArmCommand();
+        this->holdCommand.mode = arm.mode;
+        this->holdCommand.colorActive = arm.colorActive;
+        this->holdCommand.colorAfter = arm.colorAfter;
+        this->holdCommand.waiting = arm.waiting;
+        this->holdCommand.hold = arm.hold;
     }
 
     int64_t now = esp_timer_get_time();
@@ -256,6 +309,12 @@ void PeripheralRole::handleEffect(const Effect& effect) {
 
 void PeripheralRole::activate() {
     LEDManager* leds = LEDManager::getManager();
+    if(this->mode == PodMode::CHARGE || this->mode == PodMode::RELEASE) {
+        this->hold.begin(this->holdCommand, Button::get(), *leds);
+        this->activatedUs = esp_timer_get_time();
+        this->state = State::HOLDING;
+        return;
+    }
     if(!this->hasWaitingEffect || !leds->playEffect(this->waitingEffect, this->waitingEffectStartUs)) {
         leds->setLEDColors(this->colorActive);
     }
@@ -273,13 +332,14 @@ const char* PeripheralRole::stateName(State state) {
         case State::READY: return "READY";
         case State::SCHEDULED: return "SCHEDULED";
         case State::ACTIVE: return "ACTIVE";
+        case State::HOLDING: return "HOLDING";
         case State::DONE: return "DONE";
     }
     return "?";
 }
 
 bool PeripheralRole::storeEditable() const {
-    return !this->sync.isPulling() && this->state != State::ACTIVE && this->state != State::SCHEDULED;
+    return !this->sync.isPulling() && this->state != State::ACTIVE && this->state != State::HOLDING && this->state != State::SCHEDULED;
 }
 
 void PeripheralRole::describe(JsonObject status) {
@@ -335,7 +395,7 @@ bool PeripheralRole::control(const char* op, JsonObjectConst request, JsonDocume
 #endif
     if(strcmp(op, "effect") == 0) {
         // test op: play an effect on this pod's ring
-        if(this->state == State::ACTIVE || this->state == State::SCHEDULED) {
+        if(this->state == State::ACTIVE || this->state == State::HOLDING || this->state == State::SCHEDULED) {
             ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
             return true;
         }

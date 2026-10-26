@@ -17,7 +17,7 @@ Source: [Protocol.h](../../firmware/src/Link/Protocol.h) (wire format),
 | Channel | `ESPNOW_CHANNEL` = 1 ([_Definitions.h](../../firmware/src/_Definitions.h)), must be equal on all pods |
 | Power save | off (`WIFI_PS_NONE`): the receiver is always on, for lowest latency |
 | Encryption | none. Frames are filtered by protocol version and set id |
-| Frame size | ≤ 250 bytes (ESP-NOW limit). Game frames are ≤ 41 bytes; only sync responses are large |
+| Frame size | ≤ 250 bytes (ESP-NOW limit). Game frames are ≤ 68 bytes (ARM of a hold activation); only sync responses are large |
 
 ## 2. Frame format
 
@@ -38,9 +38,10 @@ All frames start with an 8-byte header (packed, little endian):
 | `CLAIM_ACK` | P → C | podId, linkFeatures (≥ 2.8, appended) | peripheral accepts and says what it understands (§7) |
 | `PING` | P → C | t1 (µs, peripheral clock, stamped at transmission), store generation + hash | heartbeat every 200 ms + clock sync + store state |
 | `PONG` | C → P | t1, t2 (central rx time), t3 (central tx time), store generation + hash, flags (bit 0: sync allowed) | clock sync answer + store state |
-| `ARM` | C → P | cmdSeq, mode (HIT/AVOID), colorActive, colorAfter, startAtUs, waiting effect (≥ 2.8, appended, optional) | light up now (`startAtUs = 0`) or at a central-clock time |
+| `ARM` | C → P | cmdSeq, mode (HIT/AVOID/CHARGE/RELEASE), colorActive, colorAfter, startAtUs, waiting effect (≥ 2.8, appended, optional), hold parameters (≥ 2.9, appended, only CHARGE / RELEASE) | light up now (`startAtUs = 0`) or at a central-clock time |
 | `RESET` | C → P | – | switch off, cancel a pending activation |
-| `PRESSED` | P → C | podId, cmdSeq, result (HIT/AVOID_HIT), reactionUs | button pressed while active |
+| `PRESSED` | P → C | podId, cmdSeq, result (HIT/AVOID_HIT), reactionUs | button pressed while active. For CHARGE / RELEASE: a hold started (§2.2) |
+| `RELEASED` (12) | P → C | podId, cmdSeq, flags, heldMs, reactionUs, chargeMs | end of a hold, measured on the peripheral (≥ 2.9, only for CHARGE / RELEASE, §2.2) |
 | `SYNC_READ_REQ` | either | reqId, offset, path (32 bytes) | read a chunk of a store file or of `@manifest` |
 | `SYNC_READ_RESP` | either | reqId, status, offset, total, len, data (≤ 200 bytes) | the chunk |
 | `EFFECT` (11) | C → P | EffectDesc (12 bytes), startAtUs | play an effect on the ring (≥ 2.8, only to pods with the `effects` feature) |
@@ -105,13 +106,72 @@ frames; the `countdown` of `remotePress` / `remoteMultiPress` is the ARM waiting
 fill, dim, colorShift or trafficLight over the timeout), the `countdown` of `delay` uses EFFECT
 frames. The frames did not change for this: header version 1, no new fields.
 
+### 2.2 Hold activations (link protocol revision 2, firmware ≥ 2.9)
+
+For the `charge` and `release` blocks (programs.md §7.13, §7.14) the peripheral measures how long
+its button is held, shows it on its own ring and reports the result. The central streams no
+frames; it sends one ARM and receives PRESSED (a hold started) and RELEASED (the hold ended).
+Only pods with the `hold` link feature (§7, CLAIM_ACK bit 1) get such an ARM; for a pod without it
+the blocks take their `timeout` port at once, as for a pod that does not exist.
+
+**PodMode** (ARM `mode`): `3 CHARGE`, `4 RELEASE` (older modes: `1 HIT`, `2 AVOID`).
+
+**ARM** of a hold activation always carries the waiting effect (it may be `none`) followed by the
+hold parameters. `colorActive` is the idle colour, `colorAfter` the colour after the end, the waiting effect (if not `none`)
+is played instead of `colorActive` while no hold is active (the idle ring, e.g. a countdown). `startAtUs` is 0.
+
+`HoldParams` (36 bytes, packed, appended after `waiting`):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `flags` | u8 | bit 0 `allowHeld` (RELEASE: a hold that is active on activation counts, from the activation on), bit 1 `signal` (RELEASE: colour switch after `goDelayMs`), bit 2 `accumulate` (CHARGE: a release pauses / drains the charge instead of ending) |
+| `heldColor` | u8 | RELEASE: colour once the hold is detected |
+| `goColor` | u8 | RELEASE signal: colour after the switch |
+| reserved | u8 | 0 |
+| `onsetMs` | u32 | CHARGE: hold time before the charge starts (for every hold) |
+| `maxMs` | u32 | CHARGE: charging time (after the onset) for a full charge (≥ 1) |
+| `decayMs` | u32 | CHARGE accumulate: time to drain a full charge while released, 0 = keep |
+| `goDelayMs` | u32 | RELEASE signal: hold start → switch |
+| `limitMs` | u32 | CHARGE accumulate: time limit counted from the activation, 0 = none |
+| `effect` | EffectDesc | CHARGE: the charge, an effect with `durationMs = maxMs` (frame = f(charge)). RELEASE trigger: countdown over `maxHoldMs`, started at the hold start. RELEASE signal: countdown over `timeoutMs`, started at the switch. `none` = static `heldColor` / `goColor` |
+
+**Pod behaviour** (`HoldSession`, the central runs the same code for its own button):
+
+- Only a press edge after the activation starts a hold (a button that is down on activation is
+  ignored until released and pressed again), except RELEASE with `allowHeld`, where the hold
+  starts at the activation. On every hold start the pod sends `PRESSED` (`reactionUs` = activation → press, 0 if already held).
+- CHARGE shows the charge effect frozen at the current charge at the hold start (it replaces an idle
+  countdown) and lets it run from `hold start + onsetMs`. The effect is a pure function of the time
+  since its start, so a charge of `c` ms is shown by starting the effect `c` ms in the past.
+  While a charge drains (`decayMs`) the pod redraws the frozen frame about every 33 ms.
+- CHARGE reaching the maximum ends the activation at once: the pod flashes the ring (200 ms
+  period, 600 ms, dark at the end) and sends `RELEASED` with `FULL`. It does not wait for the release.
+- RELEASE `signal` switches the ring at `hold start + goDelayMs` (`goColor`, or the countdown effect).
+  A release before that is a false start. `reactionUs` = switch (the moment the LEDs were updated) → release.
+- Everything is measured from the button edge timestamps on the pod, not from when a frame arrives.
+
+**RELEASED** (12, P → C, 23 bytes):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `podId`, `cmdSeq` | u8, u8 | as PRESSED; only the activation the central sent counts |
+| `flags` | u8 | bit 0 `falseStart` (RELEASE signal), bit 1 `full` (CHARGE: full charge, reported when reached), bit 2 `limit` (CHARGE accumulate: `limitMs` reached, `chargeMs` is final), bit 3 `early` (CHARGE: released before the onset) |
+| `heldMs` | u32 | hold time (release − hold start). With `full` / `limit` and `accumulate`: all holds together up to that moment |
+| `reactionUs` | i32 | RELEASE signal: switch → release, else 0 |
+| `chargeMs` | u32 | CHARGE: charge at the end (0 … `maxMs`), else 0 |
+
+A release of an accumulating charge is not reported (the charge goes on); only `full` and `limit` end it.
+RELEASED is sent urgent with 8 retries, like PRESSED, and ordered after the PRESSED of the same hold.
+After RELEASED the pod keeps the ring as it is (flash, `colorAfter`) until the next ARM or RESET; the
+central sends RESET after every end except `full` (so the flash stays visible).
+
 ## 3. Transport rules (`EspNowLink`)
 
 - **Unicast is reliable and ordered per peer.** Only one frame per peer is on air at a
   time. The next one goes out when the receiver's radio has acknowledged it (ESP-NOW send
-  callback). Unacknowledged frames are retried: ARM/RESET/EFFECT 5×, PRESSED 8×, CLAIM 3×, PING/PONG 0×.
+  callback). Unacknowledged frames are retried: ARM/RESET/EFFECT 5×, PRESSED/RELEASED 8×, CLAIM 3×, PING/PONG 0×.
   This keeps e.g. RESET before ARM.
-- **Urgent frames** (ARM, RESET, EFFECT, PRESSED) skip ahead of queued non-urgent frames
+- **Urgent frames** (ARM, RESET, EFFECT, PRESSED, RELEASED) skip ahead of queued non-urgent frames
   (PING/PONG). Among themselves they stay in order.
 - **Duplicates** (frame received, but the acknowledgement was lost, so it was resent) are
   dropped by comparing `seq` with the previous frame of the same sender.
@@ -274,7 +334,16 @@ firmware versions:
 | Bit | Feature | Firmware | Meaning |
 |---|---|---|---|
 | 0 | `effects` | ≥ 2.8 | EFFECT frames and the ARM waiting effect (§2.1) |
+| 1 | `hold` | ≥ 2.9 | PodMode CHARGE / RELEASE, the hold parameters in ARM and the RELEASED frame (§2.2) |
 
-A central with older firmware ignores `linkFeatures` and never sends EFFECT. A central with
+A central with older firmware ignores `linkFeatures` and never sends EFFECT or a hold ARM. A central with
 newer firmware treats a pod with older firmware as "no effects": blocks show a static colour
-on it instead.
+on it instead. A pod without `hold` cannot measure holds: `charge` and `release` take their `timeout`
+port at once for it (programs.md §7.13, §7.14). A peripheral with firmware ≥ 2.9 that receives a CHARGE /
+RELEASE ARM without the hold parameters ignores it.
+
+**Link protocol revision.** The header `version` (1) says whether pods can talk at all and never changes
+for compatible extensions. The *revision* counts the compatible extensions: revision 1 = firmware 2.0 … 2.8
+(effects came with 2.8 as a feature bit), **revision 2 = firmware 2.9** (hold reporting, feature bit 1). It is
+`Protocol::REVISION` and reported as `info.linkRevision` ([config-api.md](config-api.md) §5). The per-pod
+`hold` flag in `status.pods[]` tells whether a pod supports revision 2.
