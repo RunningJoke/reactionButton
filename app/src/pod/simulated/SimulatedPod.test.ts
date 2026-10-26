@@ -84,10 +84,19 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.8 fields in info: program format 2", () => {
+  it("reports the firmware 2.9 fields in info: program format 3 with the effect block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.8", setName: "Halle 2", pinRequired: false, programFormat: 2 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects"]);
+    expect(info).toMatchObject({ firmware: "2.9", setName: "Halle 2", pinRequired: false, programFormat: 3 });
+    expect(info.features).toEqual(["validateInline", "listMeta"]); // no feature flag, the format says it
+    expect(info.blockTypes).toContain("repeat");
+    expect(info.blockTypes).toContain("effect");
+  });
+
+  it("simulates a central with programFormat 2: no effect block", () => {
+    const pod = new SimulatedPod({ programFormat: 2 });
+    const info = call(pod, { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.8", programFormat: 2 });
+    expect(info.blockTypes).not.toContain("effect");
     expect(info.blockTypes).toContain("repeat");
   });
 
@@ -211,7 +220,7 @@ describe("SimulatedPod (demo of reports and remote control, #41 / #42)", () => {
 
   it("keeps 8 reports until ack, tags the athlete, answers commands only while waiting", () => {
     const pod = new SimulatedPod({ results: true });
-    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "effects", "reports", "remote"]);
+    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "reports", "remote"]);
     expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ error: "not_ready" });
     expect(call(pod, { op: "session", athlete: "ath_42" })).toMatchObject({ ok: true, athlete: "ath_42" });
     for (let i = 0; i < 9; i++) pod.emitSampleReport(() => 0.5);

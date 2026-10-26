@@ -32,7 +32,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9"), `info.features` has no `effects`, and `status` has no `timers`.
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9"), and `status` has no `timers`.
    */
   programFormat?: number;
 };
@@ -212,7 +212,6 @@ export class SimulatedPod {
       features: [
         "validateInline",
         "listMeta",
-        ...(this.programFormat >= 2 ? ["effects"] : []), // the ring effect player, firmware >= 2.8 (config-api.md §5)
         ...(this.results ? ["reports", "remote"] : []),
       ],
       blockTypes: this.blockTypes,

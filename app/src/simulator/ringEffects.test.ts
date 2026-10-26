@@ -43,27 +43,34 @@ describe("renderRing", () => {
     expect(renderRing(base, effect({ kind: "colorShift", color2: BLUE, endAt: 1100 }), 5000)[0]).toEqual(BLUE); // final frame is held
   });
 
-  it("trafficLight runs red, yellow, green (reverse: the other way)", () => {
-    const at = (reverse: boolean, t: number) => renderRing(base, effect({ kind: "trafficLight", endAt: 400, reverse }), t)[0];
-    expect([at(false, 100), at(false, 250), at(false, 399)]).toEqual([RED, [255, 255, 0], [0, 255, 0]]);
-    expect([at(true, 100), at(true, 250), at(true, 399)]).toEqual([[0, 255, 0], [255, 255, 0], RED]);
+  it("trafficLight runs green, yellow, red", () => {
+    const at = (t: number) => renderRing(base, effect({ kind: "trafficLight", endAt: 400 }), t)[0];
+    expect([at(100), at(250), at(399), at(5000)]).toEqual([[0, 255, 0], [255, 255, 0], RED, RED]);
   });
 
-  it("blink alternates, pulse breathes, spin moves a head around the ring", () => {
+  it("blink alternates, pulse starts bright and breathes, spin turns a segment of 3 LEDs", () => {
     const blink = effect({ kind: "blink" }); // period 400
     expect(renderRing(base, blink, 150)[0]).toEqual(RED);
     expect(renderRing(base, blink, 350)[0]).toEqual(OFF);
     expect(renderRing(base, blink, 500)[0]).toEqual(RED);
     const pulse = effect({ kind: "pulse" });
-    expect(renderRing(base, pulse, 100)[0]).toEqual(OFF);
-    expect(renderRing(base, pulse, 300)[0]).toEqual(RED);
+    expect(renderRing(base, pulse, 100)[0]).toEqual(RED);
+    expect(renderRing(base, pulse, 300)[0]).toEqual(OFF);
     const spin = effect({ kind: "spin", periodMs: 1800 });
-    expect(renderRing(base, spin, 100).findIndex((c) => c[0] === 255)).toBe(0);
-    expect(renderRing(base, spin, 100 + 5 * 100).findIndex((c) => c[0] === 255)).toBe(5);
+    const at = (t: number) => renderRing(base, spin, t).flatMap((c, i) => (c[0] === 255 ? [i] : []));
+    expect(at(100).sort((a, b) => a - b)).toEqual([0, 16, 17]);
+    expect(at(600).sort((a, b) => a - b)).toEqual([3, 4, 5]);
   });
 
-  it("a finite blink is dark when its duration is over", () => {
-    expect(renderRing(base, effect({ kind: "blink", endAt: 700 }), 800)[0]).toEqual(OFF);
+  it("a periodic effect with a duration ends in a steady colour", () => {
+    for (const kind of ["blink", "pulse", "spin"] as const) {
+      expect(renderRing(base, effect({ kind, endAt: 700 }), 800)).toEqual(base.map(() => RED));
+    }
+  });
+
+  it("the background of fill and drain is color2", () => {
+    const ring = renderRing(base, effect({ kind: "fill", color2: BLUE, endAt: 1100 }), 100);
+    expect(ring[0]).toEqual(BLUE);
   });
 
   it("brightness scales, leds limits the effect to some LEDs", () => {
