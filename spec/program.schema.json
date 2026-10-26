@@ -108,7 +108,7 @@
     },
     "target": {
       "description": "central, all, peripherals, a pod id (number) or a variable holding it",
-      "oneOf": [
+      "anyOf": [
         {
           "enum": [
             "central",
@@ -272,8 +272,12 @@
           "description": "default: \"secret\""
         },
         "countdownColor": {
-          "$ref": "#/$defs/color",
+          "$ref": "#/$defs/namedColor",
           "description": "default: \"red\""
+        },
+        "countdownFrom": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\""
         },
         "countdownTarget": {
           "$ref": "#/$defs/target",
@@ -334,8 +338,12 @@
           "description": "default: \"secret\""
         },
         "countdownColor": {
-          "$ref": "#/$defs/color",
+          "$ref": "#/$defs/namedColor",
           "description": "default: \"red\""
+        },
+        "countdownFrom": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\""
         },
         "record": {
           "type": "string",
@@ -532,7 +540,7 @@
           "description": "default: \"secret\""
         },
         "countdownColor": {
-          "$ref": "#/$defs/color",
+          "$ref": "#/$defs/namedColor",
           "description": "default: \"red\""
         },
         "record": {
@@ -615,7 +623,7 @@
           "description": "default: \"secret\""
         },
         "countdownColor": {
-          "$ref": "#/$defs/color",
+          "$ref": "#/$defs/namedColor",
           "description": "default: \"red\""
         },
         "record": {
@@ -817,11 +825,11 @@
           ]
         },
         "color": {
-          "$ref": "#/$defs/color",
+          "$ref": "#/$defs/namedColor",
           "description": "default: \"white\""
         },
         "color2": {
-          "$ref": "#/$defs/color",
+          "$ref": "#/$defs/namedColor",
           "description": "default: \"off\""
         },
         "durationMs": {

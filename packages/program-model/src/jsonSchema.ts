@@ -31,7 +31,7 @@ const DEFS: Record<string, Schema> = {
   },
   target: {
     description: "central, all, peripherals, a pod id (number) or a variable holding it",
-    oneOf: [{ enum: [...TARGET_KEYWORDS] }, { type: "number" }, ref("variableName")],
+    anyOf: [{ enum: [...TARGET_KEYWORDS] }, { type: "number" }, ref("variableName")],
   },
   leds: { type: "array", items: { type: "integer", minimum: 0, maximum: LED_COUNT - 1 } },
   blockName: { type: "string", minLength: 1 },
