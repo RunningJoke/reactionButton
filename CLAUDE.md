@@ -16,7 +16,7 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 | `platform/` | Community platform (Hono + Postgres): accounts, clubs, sharing, results; REST + MCP from one use-case list | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases), [deploy](platform/deploy/README.md) |
 | `packages/program-model/` | Program types, block definitions, limits, validator – shared by app and platform | programs |
 | `spec/` | Generated contracts: `platform-api.yaml` (OpenAPI, `cd platform && npm run openapi`), `program.schema.json` (`cd packages/program-model && npm run schema`) | – |
-| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform, platform architecture | – |
+| `docs/decisions/` | ADRs: layout, versioning + firmware delivery (no OTA, 0006), community platform, platform architecture | – |
 | `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)

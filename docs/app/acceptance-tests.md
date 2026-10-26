@@ -124,8 +124,9 @@ central with firmware before 2.8 (or the demo pod set to `programFormat` 1).
 | AT-S3 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
 | AT-S4 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
 | AT-B1 … AT-B5 | – | – | 2.0 | blocked | firmware 2.0 lacks CR-0 |
-| AT-B1 … AT-B7 | – | – | 2.7 | open | firmware with CR-0 … CR-7 builds, not yet run |
+| AT-B1 … AT-B7 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle |
 | AT-P1 … AT-P13 | 2026-10-19 | – | 2.7 | accepted | P5 confirmed as implemented by Patrick Stähle |
 | AT-M1 … AT-M5 | 2026-10-19 | – | 2.7 | accepted | P6 confirmed as implemented by Patrick Stähle |
-| AT-R1 … AT-R6 | – | – | – | open | P7; real pods wait for #41 / #42 |
-| AT-E1 … AT-E14 | – | – | – | open | P8 implemented; walk-through on the demo pod (format 2) passed, user test pending |
+| AT-R1 … AT-R6 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle; P7 |
+| AT-E1 … AT-E14 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle; P8 |
+| AT-U1 … AT-U6 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle |
