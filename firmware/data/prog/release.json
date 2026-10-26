@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "Release",
+  "description": "Demo of the release block (programFormat 3, firmware 2.9). Per round: 1) trigger: hold pod 0 (yellow, blue once held) and let go - the hold time is stored in HOLD_MS. 2) signal: hold pod 0 again; after a random 1.5-3 s the ring turns green and the pod must be released within 1 s (the ring drains) - the start reaction is recorded as 'reaction'. Releasing before green is a false start (red), too late is yellow. 3) trigger on the central: hold its button and let go to end the round (max 4 s). No hold within 8 s ends the round. Needs one peripheral with firmware 2.9 (link feature 'hold'), else its steps are skipped.",
+  "peripherals": 1,
+  "menu": [ { "leds": [4, 13], "color": "green" } ],
+  "variables": { "MAX_LOOPS": 3 },
+  "include": ["/prog/lib/loop.json"],
+  "start": "StartLoop",
+  "blocks": [
+    { "name": "EnterProgram", "type": "delay", "ms": 500, "next": "HoldIn" },
+    { "name": "HoldIn",       "type": "release", "mode": "trigger", "pod": 0, "holdColor": "yellow", "heldColor": "blue",
+      "holdTimeoutMs": 8000, "storeAs": "HOLD_MS", "next": "Signal", "noHold": "Cleanup" },
+    { "name": "Signal",       "type": "release", "mode": "signal", "pod": 0, "holdColor": "yellow", "goColor": "green",
+      "minGoMs": 1500, "maxGoMs": 3000, "timeoutMs": 1000, "countdown": "drain", "holdTimeoutMs": 8000, "record": "reaction",
+      "next": "Good", "falseStart": "Foul", "noHold": "Cleanup", "timeout": "Late" },
+    { "name": "Good",         "type": "effect", "target": "all", "effect": "fill", "color": "green", "durationMs": 600, "wait": true, "next": "Finish" },
+    { "name": "Foul",         "type": "effect", "target": "all", "effect": "blink", "color": "red", "periodMs": 200, "durationMs": 800, "wait": true, "next": "Finish" },
+    { "name": "Late",         "type": "effect", "target": "all", "effect": "blink", "color": "yellow", "periodMs": 300, "durationMs": 900, "wait": true, "next": "Finish" },
+    { "name": "Finish",       "type": "release", "mode": "trigger", "pod": "central", "holdColor": "cyan", "maxHoldMs": 4000,
+      "holdTimeoutMs": 8000, "next": "Cleanup" },
+    { "name": "Cleanup",      "type": "remoteResetAll", "next": "EndLoop" }
+  ]
+}
