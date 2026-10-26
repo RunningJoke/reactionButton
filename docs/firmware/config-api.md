@@ -113,11 +113,11 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.8","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
+← {"op":"info","ok":true,"firmware":"2.9","linkProtocol":1,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":2,"features":["validateInline","listMeta","effects"],
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":3,"features":["validateInline","listMeta","effects"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
-                 "remoteMultiPress","remoteResetAll","summary","repeat"]}
+                 "remoteMultiPress","remoteResetAll","summary","repeat","effect"]}
 ```
 `setName` is the stored set name (`""` = none, firmware ≥ 2.2). `pinRequired` (firmware ≥ 2.6)
 is true if a PIN is set and this transport needs it (BLE), see §8.
@@ -130,6 +130,9 @@ block fields, ports and semantics (firmware ≥ 2.3; missing = 1). Each increase
 = none): `validateInline` = `validate` accepts `data` (dry run); `listMeta` = `list` reports
 program metadata; `effects` (firmware ≥ 2.8) = the ring effect player: `effect` op,
 `status.pods[].effects` ([link-protocol.md](link-protocol.md) §2.1). A program that uses another type fails `validate`.
+The `effect` block type and the `countdown` option of the timed blocks (firmware ≥ 2.9) have
+no feature flag of their own: they are `programFormat` ≥ 3 (programs.md §6). Check it before
+uploading a program that uses them. Both need the effect player (`effects`).
 
 ### `list`
 ```json
