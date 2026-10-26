@@ -337,7 +337,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "maxMs", kind: "value", required: true },
       { name: "style", kind: "enum", options: CHARGE_STYLES, default: "fill" },
       { name: "color", kind: "remoteColor", default: "green" },
-      { name: "color2", kind: "remoteColor", level: "more" },
+      { name: "color2", kind: "remoteColor", default: "red", level: "more" }, // colorShift only
       { name: "onsetMs", kind: "value", default: 0, level: "more" },
       { name: "mode", kind: "enum", options: CHARGE_MODES, default: "release", level: "more" },
       { name: "decayMs", kind: "value", default: 0, level: "more", onlyMode: "accumulate" },

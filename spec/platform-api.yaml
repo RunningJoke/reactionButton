@@ -190,6 +190,7 @@ paths:
                             - signalNeedsGoTime
                             - goTimeBothForms
                             - podSingleOnly
+                            - maxMsTooSmall
                             - noOutgoing
                             - unreachable
                             - unknownVariable

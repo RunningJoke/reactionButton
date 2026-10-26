@@ -166,6 +166,15 @@ describe("program format 3", () => {
       expect(errors(charge({ pod: "peripherals" }))).toEqual(["podSingleOnly"]);
     });
 
+    it("maxMs below 1 is an error; a timeout of 0 or less is no time limit", () => {
+      expect(errors(charge({ maxMs: 0 }))).toEqual(["maxMsTooSmall"]);
+      expect(errors(charge({ maxMs: -5 }))).toEqual(["maxMsTooSmall"]);
+      expect(errors(charge({ maxMs: "M" }))).toEqual([]);
+      expect(errors(charge({ countdown: "fill", timeoutMs: 0 }))).toEqual(["countdownNeedsTimeLimit"]);
+      expect(errors(charge({ countdown: "fill", timeoutMs: 0, minTimeoutMs: 100, maxTimeoutMs: 200 }))).toEqual([]);
+      expect(errors(validate([{ name: "R", type: "release", countdown: "drain", maxHoldMs: 0, next: "L" }, LED]))).toEqual(["countdownNeedsTimeLimit"]);
+    });
+
     it("decayMs only with accumulate", () => {
       expect(errors(charge({ decayMs: 500 }))).toEqual(["fieldWrongMode"]);
       expect(errors(charge({ mode: "release", decayMs: 500 }))).toEqual(["fieldWrongMode"]);

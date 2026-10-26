@@ -74,6 +74,7 @@ export const ISSUE_CODES = [
   "signalNeedsGoTime",
   "goTimeBothForms",
   "podSingleOnly",
+  "maxMsTooSmall",
   // warnings
   "noOutgoing",
   "unreachable",
@@ -430,11 +431,14 @@ function checkTypeRules(
   // countdown: needs a time limit (delay always has one)
   if (block.countdown !== undefined && block.countdown !== "secret" && (TIMEOUT_TYPES as readonly string[]).includes(def.type)) {
     const alternatives = timeLimitFields(def.type, block.mode);
-    if (!alternatives.some((fields) => fields.every((f) => block[f] !== undefined))) {
+    // charge and release: a limit of 0 or less means none (programs.md §2)
+    const set = (f: string) => block[f] !== undefined && !((def.type === "charge" || def.type === "release") && typeof block[f] === "number" && block[f] <= 0);
+    if (!alternatives.some((fields) => fields.every(set))) {
       out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown), limit: alternatives.map((f) => f.join(" + ")).join(" or ") }));
     }
   }
   if (block.countdownTarget !== undefined && def.type !== "delay") out.error("countdownTargetNotDelay", file, at("countdownTarget"));
+  if (def.type === "charge" && typeof block.maxMs === "number" && block.maxMs < 1) out.error("maxMsTooSmall", file, at("maxMs", { min: 1 }));
   if ((def.type === "charge" || def.type === "release") && typeof block.pod === "string" && (block.pod === "all" || block.pod === "peripherals")) {
     out.error("podSingleOnly", file, at("pod", { value: block.pod }));
   }
