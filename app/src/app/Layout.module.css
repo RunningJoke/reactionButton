@@ -1,10 +1,9 @@
-/* Phone: header on top, tab bar at the bottom. Wide screens: side rail, no tab bar. */
+/* Phone: header on top, a floating tab bar over the content. Wide screens: side rail, no tab bar. */
 .shell {
+  position: relative;
   display: grid;
-  grid-template-rows: calc(var(--header-h) + env(safe-area-inset-top)) 1fr calc(
-      var(--tabbar-h) + env(safe-area-inset-bottom)
-    );
-  grid-template-areas: "header" "main" "tabbar";
+  grid-template-rows: calc(var(--header-h) + env(safe-area-inset-top)) 1fr;
+  grid-template-areas: "header" "main";
   height: 100dvh;
 }
 
@@ -18,14 +17,14 @@
   align-items: center;
   gap: var(--space-2);
   padding: env(safe-area-inset-top) var(--space-2) 0 var(--space-4);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .title {
   flex: 1;
-  font-size: 18px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -48,16 +47,28 @@
   grid-area: main;
   overflow: auto;
   min-width: 0;
+  /* room for the floating tab bar */
+  padding-bottom: calc(var(--tabbar-h) + 2 * var(--tabbar-gap) + env(safe-area-inset-bottom));
 }
 
 .tabbar {
-  grid-area: tabbar;
+  position: absolute;
+  z-index: 10;
+  left: var(--tabbar-gap);
+  right: var(--tabbar-gap);
+  bottom: calc(var(--tabbar-gap) + env(safe-area-inset-bottom));
+  height: var(--tabbar-h);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  padding-bottom: env(safe-area-inset-bottom);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  align-items: center;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--floating-border);
+  border-radius: 26px;
+  background: var(--floating-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--floating-shadow);
 }
 
 .navItem {
@@ -68,12 +79,10 @@
   gap: 2px;
   min-width: 0;
   min-height: var(--touch);
-  /* six tabs at 360 px: 60 px each, the labels need the full width */
   padding: var(--space-1) 0;
   color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: -0.02em;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   text-decoration: none;
   border-radius: var(--radius-m);
 }
@@ -86,17 +95,21 @@
 }
 
 .navItem svg {
-  padding: 2px 12px;
+  padding: 3px 14px;
   box-sizing: content-box;
   border-radius: 999px;
+  /* the pod icon only glows on the active tab */
+  --pod-glow: currentColor;
 }
 
 .navItem:global(.active) {
-  color: var(--accent);
+  color: var(--text);
 }
 
 .navItem:global(.active) svg {
+  color: var(--accent);
   background: var(--accent-soft);
+  --pod-glow: var(--led-green);
 }
 
 @media (min-width: 900px) {
@@ -124,5 +137,9 @@
   .tabbar,
   .headerButton {
     display: none;
+  }
+
+  .main {
+    padding-bottom: 0;
   }
 }

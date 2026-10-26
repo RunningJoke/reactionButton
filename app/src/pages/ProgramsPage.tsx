@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, ChevronRight, CircleAlert, CircleCheck, FileUp, FolderHeart, Loader, Package, Plus, Radio, SlidersHorizontal, Users } from "lucide-react";
+import { AlertTriangle, BookLock, ChevronRight, CircleAlert, CircleCheck, FileUp, FolderHeart, Loader, Package, Plus, SlidersHorizontal } from "lucide-react";
+import { PodIcon } from "../components/PodIcon";
 import { LedRing } from "../components/LedRing";
 import { buildCatalog, type CatalogEntry } from "../programs/catalog";
 import { AdjustSheet, type AdjustTarget } from "../programs/AdjustSheet";
@@ -60,7 +61,7 @@ export function ProgramsPage() {
       {pod.available ? (
         <section className={page.section}>
           <h2 className={styles.heading}>
-            <Radio size={16} aria-hidden /> {t("programs.onPod")}
+            <PodIcon size={16} aria-hidden /> {t("programs.onPod")}
           </h2>
           {loading && (
             <p className={styles.loading}>
@@ -76,7 +77,7 @@ export function ProgramsPage() {
         </section>
       ) : (
         <p className={styles.connectHint}>
-          <Radio size={16} aria-hidden /> <Link to="/pod">{t("programs.connectHint")}</Link>
+          <PodIcon size={16} aria-hidden /> <Link to="/pod">{t("programs.connectHint")}</Link>
         </p>
       )}
 
@@ -174,7 +175,12 @@ function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: Lis
         <li key={entry.path} className={styles.row}>
           <Link to={href ? href(entry) : viewUrl(source, entry.path)} className={styles.entry}>
             {entry.kind === "program" ? (
-              <LedRing groups={entry.menu} size={40} label={t("programs.menuPattern")} />
+              <LedRing
+                groups={entry.menu}
+                size={56}
+                title={String(entry.peripherals + 1)}
+                label={`${t("programs.menuPattern")} · ${t("programs.pods", { count: entry.peripherals + 1 })}`}
+              />
             ) : (
               <span className={styles.fragmentIcon}>
                 <BookLock size={20} aria-hidden />
@@ -190,11 +196,6 @@ function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: Lis
                 {source === "pod" && !entry.inMenu && entry.kind === "program" && <span className={styles.tag}>{t("programs.notInMenu")}</span>}
               </span>
               <span className={styles.meta}>
-                {entry.kind === "program" && (
-                  <span title={t("programs.podsTitle")}>
-                    <Users size={13} aria-hidden /> {t("programs.pods", { count: entry.peripherals + 1 })}
-                  </span>
-                )}
                 <span>{t("programs.blocks", { count: entry.blocks })}</span>
                 <span className={styles.path}>{entry.path}</span>
               </span>

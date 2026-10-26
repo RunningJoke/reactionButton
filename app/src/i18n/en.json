@@ -529,6 +529,7 @@
     "central": "Central · {{id}}",
     "peripheral": "Pod {{id}}",
     "press": "Press {{pod}}",
+    "pressNow": "press now",
     "controls": "Controls",
     "run": "Run",
     "pause": "Pause",

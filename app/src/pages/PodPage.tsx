@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, FileJson, Info, KeyRound, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
+import { Link } from "react-router";
+import { AlertTriangle, BookLock, ChevronRight, FileJson, Info, KeyRound, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
+import { LedRing } from "../components/LedRing";
 import { Modal, modalStyles } from "../components/Modal";
 import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
 import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
@@ -21,7 +23,20 @@ export function PodPage() {
     <div className={page.page}>
       <ErrorBanner />
       {state === "connected" ? <Connected /> : <NotConnected busy={state === "connecting"} />}
+      <MenuLink />
     </div>
+  );
+}
+
+/** The program menu has no tab on phones (five tabs at most); it belongs to the pod, so it is linked here. */
+function MenuLink() {
+  const { t } = useTranslation();
+  return (
+    <Link to="/menu" className={styles.menuLink}>
+      <ListOrdered size={22} aria-hidden />
+      <span>{t("nav.menu")}</span>
+      <ChevronRight size={20} aria-hidden />
+    </Link>
   );
 }
 
@@ -61,6 +76,7 @@ function Connected() {
     <>
       <section className={page.section}>
         <div className={styles.podHeader}>
+          <LedRing size={64} />
           <div className={styles.podTitle}>
             <h2 className={styles.podName}>{setLabel(session) ?? t(`pod.kind.${kind}`)}</h2>
             <span className={styles.badge} data-role={role}>

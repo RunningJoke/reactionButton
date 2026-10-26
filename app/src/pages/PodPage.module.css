@@ -25,7 +25,41 @@
 .podHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+
+.podHeader > :global(.led-ring) {
+  flex: none;
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: 0 var(--space-4);
+  margin-top: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.menuLink span {
+  flex: 1;
+}
+
+.menuLink svg {
+  color: var(--text-muted);
+}
+
+/* wide screens have the menu in the side rail */
+@media (min-width: 900px) {
+  .menuLink {
+    display: none;
+  }
 }
 
 .podTitle {
@@ -38,7 +72,9 @@
 }
 
 .podName {
-  font-size: 18px !important;
+  font-family: var(--font-display);
+  font-size: 24px !important;
+  font-weight: 700 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
   color: var(--text) !important;

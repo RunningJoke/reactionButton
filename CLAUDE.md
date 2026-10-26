@@ -75,7 +75,9 @@ Layout of `app/src/`:
 
 Rules:
 - Mobile first: touch targets ≥ 44 px, every action works without drag and drop, nothing cut off at 360 px.
-- Theme tokens in `src/app/theme.css`. Use them for colours, also in the dark theme.
+- Design guidelines (theme Midnight / Daylight, icons, the pod puck, layout) and the link to the design
+  canvas: [app/DESIGN.md](app/DESIGN.md). Read it before styling anything. Theme tokens in
+  `src/app/theme.css`; use them for every colour, in both themes.
 - The demo pod and the simulator must behave like the firmware. When you change one side, change the other.
 - Check a UI change in a real browser: `npm run build`, `npm run preview`, then a playwright-core
   script with the local Chrome (`scripts/screenshots.mjs` shows how). Look at the screenshots.

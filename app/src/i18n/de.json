@@ -529,6 +529,7 @@
     "central": "Zentrale · {{id}}",
     "peripheral": "Pod {{id}}",
     "press": "{{pod}} drücken",
+    "pressNow": "jetzt drücken",
     "controls": "Steuerung",
     "run": "Start",
     "pause": "Pause",
