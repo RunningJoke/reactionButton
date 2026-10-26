@@ -655,7 +655,11 @@
     "timerNeverStopped": "Stoppuhr {{name}} wird gestartet, aber nie gestoppt",
     "timerNeverStarted": "Stoppuhr {{name}} wird gestoppt, aber nie gestartet",
     "repeatNoLoop": "Kein Schritt der Runde führt zu dieser Wiederholung zurück",
-    "rangeReversed": "Die kürzeste Zeit ist länger als die längste: der Pod nimmt immer die kürzeste"
+    "rangeReversed": "Die kürzeste Zeit ist länger als die längste: der Pod nimmt immer die kürzeste",
+    "fieldFormatTooOld": "Der verbundene Pod lehnt {{field}} ab (braucht Programmformat {{format}}, Firmware-Update nötig)",
+    "effectWaitEndless": "Auf einen endlosen Effekt ({{effect}}) zu warten endet nie: gib eine Dauer an",
+    "countdownNeedsTimeLimit": "Ein Countdown ({{countdown}}) braucht ein Zeitlimit",
+    "countdownTargetNotDelay": "Nur eine Pause kann wählen, wo der Countdown angezeigt wird"
   },
   "portRoles": {
     "then": "Dann",
@@ -897,6 +901,47 @@
     "timerStop": {
       "label": "Stoppuhr stoppen",
       "help": "Speichert am Ende des Schritts die Zeit seit dem Start unter diesem Namen."
+    },
+    "target": {
+      "label": "Wo",
+      "help": "central, all (Zentrale und Pods), peripherals oder die Nummer eines Pods."
+    },
+    "effect": {
+      "label": "Effekt",
+      "help": "Was der Ring tut."
+    },
+    "color2": {
+      "label": "Zweite Farbe",
+      "help": "Hintergrund oder Endfarbe des Effekts. Standard: aus."
+    },
+    "durationMs": {
+      "label": "Dauer (ms)",
+      "help": "Länge des Effekts. Blinken, Pulsieren und Drehen laufen ohne Dauer bis zur nächsten Lichtänderung."
+    },
+    "periodMs": {
+      "label": "Ein Durchlauf (ms)",
+      "help": "Blinken, Pulsieren und Drehen: wie lange ein Durchlauf dauert."
+    },
+    "brightness": {
+      "label": "Helligkeit",
+      "help": "0 bis 255."
+    },
+    "wait": {
+      "label": "Warten, bis er vorbei ist",
+      "help": "Aus: das Programm läuft sofort weiter."
+    },
+    "countdown": {
+      "label": "Countdown",
+      "help": "Zeigt die ablaufende Zeit auf dem Ring."
+    },
+    "countdownColor": {
+      "label": "Endfarbe des Countdowns"
+    },
+    "countdownTarget": {
+      "label": "Countdown auf"
+    },
+    "countdownFrom": {
+      "label": "Startfarbe des Countdowns"
     }
   },
   "ops": {

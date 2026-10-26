@@ -108,7 +108,7 @@ describe("column layout", () => {
 describe("catalog", () => {
   it("lists programs in menu order and the library separately", () => {
     const catalog = buildCatalog(Object.keys(DEFAULT_FILES), read);
-    expect(catalog.programs.map((p) => p.name)).toEqual(["Solo", "Weiche", "Dreieck", "Quadrat", "Stern", "Dreizack", "Run", "Run5", "Duo"]);
+    expect(catalog.programs.map((p) => p.name)).toEqual(["Solo", "Weiche", "Dreieck", "Quadrat", "Stern", "Dreizack", "Run", "Run5", "Duo", "Effects"]);
     expect(catalog.library.map((p) => p.name)).toEqual(["loop", "multi", "random", "star"]);
     expect(catalog.programs.find((p) => p.name === "Duo")).toMatchObject({ peripherals: 1, blocks: 15, inMenu: true, kind: "program" });
     expect(catalog.programs.every((p) => p.issues.every((i) => i.severity !== "error"))).toBe(true);

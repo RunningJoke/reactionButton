@@ -655,7 +655,11 @@
     "timerNeverStopped": "Stopwatch {{name}} is started but never stopped",
     "timerNeverStarted": "Stopwatch {{name}} is stopped but never started",
     "repeatNoLoop": "No step of the round leads back to this repeat",
-    "rangeReversed": "The shortest time is longer than the longest: the pod always uses the shortest"
+    "rangeReversed": "The shortest time is longer than the longest: the pod always uses the shortest",
+    "fieldFormatTooOld": "The connected pod rejects {{field}} (needs program format {{format}}, firmware update needed)",
+    "effectWaitEndless": "Waiting for an endless {{effect}} never ends: set a duration",
+    "countdownNeedsTimeLimit": "A countdown ({{countdown}}) needs a time limit",
+    "countdownTargetNotDelay": "Only a pause can choose where the countdown is shown"
   },
   "portRoles": {
     "then": "Then",
@@ -897,6 +901,47 @@
     "timerStop": {
       "label": "Stop stopwatch",
       "help": "When the step ends, records the time since the start under this name."
+    },
+    "target": {
+      "label": "Where",
+      "help": "central, all (central and pods), peripherals, or the number of a pod."
+    },
+    "effect": {
+      "label": "Effect",
+      "help": "What the ring does."
+    },
+    "color2": {
+      "label": "Second colour",
+      "help": "Background or end colour of the effect. Default: off."
+    },
+    "durationMs": {
+      "label": "Duration (ms)",
+      "help": "Length of the effect. Blink, pulse and spin run until the next light change without it."
+    },
+    "periodMs": {
+      "label": "One cycle (ms)",
+      "help": "Blink, pulse and spin: how long one turn takes."
+    },
+    "brightness": {
+      "label": "Brightness",
+      "help": "0 to 255."
+    },
+    "wait": {
+      "label": "Wait until it is over",
+      "help": "Off: the program goes on at once."
+    },
+    "countdown": {
+      "label": "Countdown",
+      "help": "Shows the time running out on the ring."
+    },
+    "countdownColor": {
+      "label": "Countdown end colour"
+    },
+    "countdownTarget": {
+      "label": "Countdown on"
+    },
+    "countdownFrom": {
+      "label": "Countdown start colour"
     }
   },
   "ops": {

@@ -24,7 +24,7 @@ describe("shipped programs", () => {
     for (const [path, issues] of results) {
       expect(issues.filter((i) => i.severity === "error"), path).toEqual([]);
     }
-    expect(results.size).toBe(10); // index + 9 programs
+    expect(results.size).toBe(11); // index + 10 programs
   });
 
   it("finds the same block counts as tools/validate_programs.py", () => {
