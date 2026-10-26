@@ -20,7 +20,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "firmware" / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
 
-PROGRAM_FORMAT = 2   # revision of the block types below
+PROGRAM_FORMAT = 3   # revision of the block types below
 
 NAMED_COLORS = {"off", "black", "red", "green", "blue", "yellow", "magenta", "cyan", "white"}
 
@@ -38,7 +38,23 @@ BLOCK_TYPES = {
     "remoteResetAll":   (["next"], [], ["pods"], [], []),
     "summary":          (["next"], ["metric"], [], [], []),
     "repeat":           (["next", "body", "done"], ["count"], ["count"], [], []),
+    # programFormat 3: ring effect; colours are named (also on the central)
+    "effect":           (["next"], ["effect"], ["durationMs", "periodMs", "brightness", "syncStartMs"], [],
+                         ["color", "color2"]),
 }
+
+# programFormat 3 (programs.md section 2 "Countdown"): optional fields of the timed blocks.
+# type -> its named colour fields (countdownFrom: only delay and button have no lit colour of their own)
+COUNTDOWN_FIELDS = {
+    "delay":            ["countdownColor", "countdownFrom"],
+    "button":           ["countdownColor", "countdownFrom"],
+    "remotePress":      ["countdownColor"],
+    "remoteMultiPress": ["countdownColor"],
+}
+COUNTDOWNS = {"secret", "drain", "fill", "dim", "colorShift", "trafficLight"}
+EFFECTS = {"solid", "fill", "drain", "dim", "colorShift", "trafficLight", "blink", "pulse", "spin", "off"}
+ENDLESS_EFFECTS = {"blink", "pulse", "spin"}  # endless without a durationMs > 0
+TARGET_KEYWORDS = {"central", "all", "peripherals"}  # or a pod id (value)
 
 # fields every block may carry (programFormat 2): timer name, handled by the engine
 TIMER_FIELDS = ("timerStart", "timerStop")
@@ -137,7 +153,8 @@ class Validator:
                 self.error(where, f"'{field}' must be a timer name")
         if btype == "repeat" and "storeIndex" in block and not isinstance(block["storeIndex"], str):
             self.error(where, "'storeIndex' must be a variable name")
-        if btype == "led":
+        self.check_format3(where, btype, block)
+        if btype in ("led", "effect"):
             for led in block.get("leds", []):
                 if not isinstance(led, int) or not 0 <= led < 18:
                     self.error(where, f"led index {led} out of range 0..17")
@@ -150,6 +167,49 @@ class Validator:
                     self.error(where, f"port '{port}' points to unknown block '{block[port]}'")
         if not connected:
             print(f"  note: {where} has no outgoing connection, the program ends there")
+
+    def check_format3(self, where, btype, block):
+        """effect block and countdown fields (programFormat 3)."""
+        def check_target(field):
+            value = block[field]
+            if isinstance(value, bool) or not isinstance(value, (int, str)) or value == "":
+                self.error(where, f"'{field}' must be {', '.join(sorted(TARGET_KEYWORDS))}, a pod id or a variable name")
+
+        if btype == "effect":
+            if "effect" in block and block["effect"] not in EFFECTS:
+                self.error(where, f"unknown effect '{block['effect']}' (known: {', '.join(sorted(EFFECTS))})")
+            if "target" in block:
+                check_target("target")
+            if "wait" in block and not isinstance(block["wait"], bool):
+                self.error(where, "'wait' must be true or false")
+            duration = block.get("durationMs")
+            if (block.get("wait") is True and block.get("effect") in ENDLESS_EFFECTS
+                    and (duration is None or (isinstance(duration, int) and not isinstance(duration, bool) and duration <= 0))):
+                self.error(where, f"'wait' with the endless effect '{block['effect']}' needs a durationMs > 0")
+        if not any(f in block for f in ("countdown", "countdownColor", "countdownFrom", "countdownTarget")):
+            return
+        if btype not in COUNTDOWN_FIELDS:
+            self.error(where, "countdown fields are only valid on delay, button, remotePress and remoteMultiPress")
+            return
+        for field in ("countdownColor", "countdownFrom"):
+            if field not in block:
+                continue
+            if field not in COUNTDOWN_FIELDS[btype]:
+                self.error(where, f"'{field}' is not valid on {btype}")
+            elif not isinstance(block[field], str) or block[field].lower() not in NAMED_COLORS:
+                self.error(where, f"'{field}' must be a named colour")
+        if "countdownTarget" in block:
+            if btype != "delay":
+                self.error(where, "'countdownTarget' is only valid on delay")
+            else:
+                check_target("countdownTarget")
+        countdown = block.get("countdown", "secret")
+        if countdown not in COUNTDOWNS:
+            self.error(where, f"unknown countdown '{countdown}' (known: {', '.join(sorted(COUNTDOWNS))})")
+        elif countdown != "secret" and btype != "delay":
+            random_timeout = "minTimeoutMs" in block and "maxTimeoutMs" in block
+            if "timeoutMs" not in block and not random_timeout:
+                self.error(where, f"countdown '{countdown}' needs a time limit ('timeoutMs')")
 
     def check_timers(self, fs_path, blocks):
         started, stopped = set(), set()

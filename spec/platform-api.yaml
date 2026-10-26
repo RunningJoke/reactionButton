@@ -182,6 +182,10 @@ paths:
                             - portNotText
                             - portUnknownTarget
                             - tooManyTimers
+                            - fieldFormatTooOld
+                            - effectWaitEndless
+                            - countdownNeedsTimeLimit
+                            - countdownTargetNotDelay
                             - noOutgoing
                             - unreachable
                             - unknownVariable

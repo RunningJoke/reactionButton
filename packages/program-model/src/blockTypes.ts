@@ -93,7 +93,7 @@ export const TARGET_KEYWORDS = ["central", "all", "peripherals"] as const;
 
 /** `effect` of the effect block (programs.md §2, programFormat 3). */
 export const EFFECTS = ["solid", "fill", "drain", "dim", "colorShift", "trafficLight", "blink", "pulse", "spin", "off"] as const;
-/** Effects that repeat every `periodMs` (endless without `durationMs`). */
+/** Effects that repeat every `periodMs` (endless without a `durationMs` > 0). */
 export const PERIODIC_EFFECTS: readonly string[] = ["blink", "pulse", "spin"];
 
 /** `countdown` of timed blocks; "secret" shows nothing (= before format 3). */
@@ -104,11 +104,15 @@ export const COUNTDOWNS = ["secret", "drain", "fill", "dim", "colorShift", "traf
  * limit and alone has `countdownTarget` (which pods show it). "timeout": the fields sit behind the
  * time-limit switch of blocks with `timeoutMs`.
  */
-function countdownFields(kind: "delay" | "timeout"): readonly FieldDef[] {
+function countdownFields(kind: "delay" | "timeout", from = false): readonly FieldDef[] {
   const level: Pick<FieldDef, "level" | "group"> = kind === "timeout" ? { level: "switch", group: "timeLimit" } : { level: "more" };
   return [
     { name: "countdown", kind: "enum", options: COUNTDOWNS, default: "secret", ...level, minFormat: 3, rejectedByOlder: true },
-    { name: "countdownColor", kind: "color", default: "red", level: "more", minFormat: 3, rejectedByOlder: true },
+    { name: "countdownColor", kind: "remoteColor", default: "red", level: "more", minFormat: 3, rejectedByOlder: true },
+    // delay and button have no lit colour of their own: the countdown starts with this one
+    ...(from
+      ? ([{ name: "countdownFrom", kind: "remoteColor", default: "green", level: "more", minFormat: 3, rejectedByOlder: true }] as const)
+      : []),
     ...(kind === "delay"
       ? ([{ name: "countdownTarget", kind: "target", default: "central", level: "more", minFormat: 3, rejectedByOlder: true }] as const)
       : []),
@@ -145,7 +149,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "ms", kind: "value" },
       { name: "minMs", kind: "value" },
       { name: "maxMs", kind: "value" },
-      ...countdownFields("delay"),
+      ...countdownFields("delay", true),
     ]),
   },
   {
@@ -159,7 +163,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       { name: "minTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       { name: "maxTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
-      ...countdownFields("timeout"),
+      ...countdownFields("timeout", true),
       { name: "record", kind: "metric", level: "switch", group: "record" },
       { name: "storeAs", kind: "variable", level: "more" },
     ]),
@@ -271,8 +275,8 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
     fields: withTimers([
       { name: "target", kind: "target", default: "central" },
       { name: "effect", kind: "enum", options: EFFECTS, required: true },
-      { name: "color", kind: "color", default: "white" },
-      { name: "color2", kind: "color", default: "off", level: "more" },
+      { name: "color", kind: "remoteColor", default: "white" },
+      { name: "color2", kind: "remoteColor", default: "off", level: "more" },
       { name: "durationMs", kind: "value" },
       { name: "periodMs", kind: "value", default: 500, level: "more" },
       { name: "brightness", kind: "value", default: 255, level: "more" },
