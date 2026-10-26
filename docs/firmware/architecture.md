@@ -227,6 +227,9 @@ repeat up to 32 times:
 | `remoteResetAll` | `RemoteResetAllBlock` | next |
 | `summary` | `SummaryBlock` | next |
 | `repeat` | `RepeatBlock` | next, body, done |
+| `effect` | `EffectBlock` | next |
+| `charge` | `ChargeBlock` (on `HoldBlock`) | next, released, early, full, timeout |
+| `release` | `ReleaseBlock` (on `HoldBlock`) | next, noHold, falseStart, timeout |
 
 ### 6.4 Variables
 
@@ -243,7 +246,10 @@ load time. Unknown variables read as 0. Variables set by the system:
 
 - ESP-NOW receive callbacks run in the WiFi task and only copy frames into a FreeRTOS
   queue (`EspNowLink`). `PodNetwork::service()` processes them in the main loop and turns
-  PRESSED frames into `PodEvent {podId, cmdSeq, result, reactionUs, rxTimeUs}`.
+  PRESSED frames into `PodEvent {podId, cmdSeq, result, reactionUs, rxTimeUs}`; RELEASED frames (hold
+  activations, firmware ≥ 2.9) become `PodEvent`s of kind `RELEASED` with `flags`, `heldMs`, `chargeMs`.
+  `HoldSession` (Link/) measures and animates a hold; the peripheral runs it for an ARM of mode CHARGE /
+  RELEASE and the `charge` / `release` blocks run it for the central's own button.
 - Remote blocks get the `cmdSeq` back from `IPodNetwork::arm()` and only accept the event
   with the same pod and `cmdSeq`.
 - Blocks with `record` pass measurements to `Results`. Results prints a `RESULT,…` CSV
