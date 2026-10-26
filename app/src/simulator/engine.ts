@@ -13,12 +13,13 @@ import { LED_COUNT } from "@reactpod/program-model";
 import { isObject } from "@reactpod/program-model";
 import type { ResolvedProgram } from "@reactpod/program-model";
 import { createRandom, type Random } from "./random";
+import { countdownEffect, renderRing, type EffectKind, type RingEffect, type Rgb } from "./ringEffects";
 
 export const MAX_STEPS_PER_PASS = 32;
 const DEBOUNCE_MS = 20;
 const MAX_MULTI_PODS = 31;
 
-export type Rgb = [number, number, number];
+export type { Rgb };
 const OFF: Rgb = [0, 0, 0];
 
 export type LogKind = "enter" | "result" | "summary" | "end" | "info";
@@ -83,11 +84,20 @@ type Peripheral = {
   startAt: number;
   activatedAt: number;
   button: Button;
+  /** ring effect (effect block, countdown) over `color`; ARM, RESET and a press replace it */
+  effect: RingEffect | null;
 };
 
 type PodEvent = { podId: number; cmdSeq: number; avoidHit: boolean; reactionMs: number };
 
-type ArmCommand = { mode: "hit" | "avoid"; colorActive: Rgb; colorAfter?: Rgb; startAt?: number };
+type ArmCommand = {
+  mode: "hit" | "avoid";
+  colorActive: Rgb;
+  colorAfter?: Rgb;
+  startAt?: number;
+  /** countdown over the time limit, builds the effect from the time the pod lights */
+  countdown?: (litAt: number) => RingEffect | null;
+};
 
 /** The peripherals as the central's IPodNetwork sees them. */
 class Network {
@@ -106,6 +116,7 @@ class Network {
       startAt: 0,
       activatedAt: 0,
       button: new Button(),
+      effect: null,
     }));
   }
 
@@ -125,6 +136,8 @@ class Network {
     pod.mode = command.mode;
     pod.colorActive = command.colorActive;
     pod.colorAfter = command.colorAfter ?? OFF;
+    const litAt = command.startAt !== undefined && command.startAt > now ? command.startAt : now;
+    pod.effect = command.countdown?.(litAt) ?? null;
     if (command.startAt !== undefined && command.startAt > now) {
       pod.state = "scheduled";
       pod.startAt = command.startAt;
@@ -140,6 +153,13 @@ class Network {
     if (!pod) return;
     pod.state = "ready";
     pod.color = OFF;
+    pod.effect = null;
+  }
+
+  /** an `effect` block aimed at a peripheral */
+  setEffect(id: number, effect: RingEffect) {
+    const pod = this.pods[id];
+    if (pod) pod.effect = effect;
   }
 
   tick(now: number) {
@@ -151,6 +171,7 @@ class Network {
     const pod = this.pods[id];
     if (!pod || !pod.button.press(now) || pod.state !== "active") return;
     pod.color = pod.colorAfter;
+    pod.effect = null; // a press stops the countdown
     pod.state = "done";
     this.events.push({ podId: id, cmdSeq: pod.cmdSeq, avoidHit: pod.mode === "avoid", reactionMs: now - pod.activatedAt });
   }
@@ -202,6 +223,8 @@ type Ctx = {
   vars: Variables;
   button: Button;
   leds: Rgb[];
+  /** effect on the central's ring over `leds`; led, RESET and a press replace it */
+  effect: RingEffect | null;
   network: Network;
   results: Results;
   random: Random;
@@ -246,8 +269,38 @@ function str(value: unknown): string | undefined {
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
+const EFFECTS: readonly EffectKind[] = ["solid", "fill", "drain", "dim", "colorShift", "trafficLight", "blink", "pulse", "spin", "off"];
+const WHITE: Rgb = [255, 255, 255];
+
+/** The colour a ring shows now, for a countdown that has no colour of its own (white if dark). */
+const litColor = (leds: readonly Rgb[]): Rgb => leds.find((c) => c[0] + c[1] + c[2] > 0) ?? WHITE;
+
+/**
+ * `countdown` / `countdownColor` of a timed block (programs.md §2, program format 3). `secret` or a missing
+ * field gives no effect: the block behaves exactly as in format 1 and 2.
+ */
+function countdownOf(raw: Record<string, unknown>) {
+  const style = typeof raw.countdown === "string" && raw.countdown !== "secret" ? raw.countdown : null;
+  const end = remoteColor(raw.countdownColor, colorToRgb("red"));
+  return {
+    style,
+    /** the countdown from `startAt` to `endAt` (the time limit) in `lit`, or undefined (secret) */
+    effect: (lit: Rgb, startAt: number, endAt: number) => (style ? (countdownEffect(style, lit, end, startAt, endAt) ?? undefined) : undefined),
+  };
+}
+
+/** Rings an `effect` block or a `delay` countdown is aimed at (`target`: programs.md §2). */
+function effectTargets(ctx: Ctx, target: unknown): { central: boolean; pods: number[] } {
+  const all = Array.from({ length: ctx.network.podCount }, (_, i) => i);
+  if (target === undefined || target === "central") return { central: true, pods: [] };
+  if (target === "all") return { central: true, pods: all };
+  if (target === "peripherals") return { central: false, pods: all };
+  const id = ctx.vars.read(target as Value) & 0xff;
+  return id < ctx.network.podCount ? { central: false, pods: [id] } : { central: false, pods: [] };
+}
+
 function createBlock(raw: Record<string, unknown>): SimBlock | null {
-  const def = blockType(raw.type);
+  const def = blockType(raw.type) ?? (raw.type === "effect" ? { type: "effect", ports: ["next"] } : undefined); // TODO: model type
   if (!def || typeof raw.name !== "string") return null;
   const targets: Record<string, string | undefined> = {};
   for (const port of def.ports) targets[port] = typeof raw[port] === "string" ? (raw[port] as string) : undefined;
@@ -263,6 +316,7 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
         enter: () => undefined,
         execute: (ctx) => {
           for (let i = 0; i < LED_COUNT; i++) if (!leds || leds.includes(i)) ctx.leds[i] = color;
+          ctx.effect = null;
           return "next";
         },
       };
@@ -271,10 +325,20 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
     case "delay": {
       let until = 0;
       const [minF, maxF] = raw.ms !== undefined ? ["ms", "ms"] : ["minMs", "maxMs"];
+      const countdown = countdownOf(raw);
       return {
         ...base,
         enter: (ctx) => {
           until = ctx.now() + randomBetween(ctx.random, ctx.vars.read(v(minF)), ctx.vars.read(v(maxF)));
+          if (!countdown.style) return;
+          // the countdown runs over the delay on the chosen rings, in the colour each ring shows now
+          const { central, pods } = effectTargets(ctx, raw.countdownTarget);
+          if (central) ctx.effect = countdown.effect(litColor(ctx.leds), ctx.now(), until) ?? null;
+          for (const id of pods) {
+            const pod = ctx.network.pods[id]!;
+            const effect = countdown.effect(litColor([pod.color]), ctx.now(), until);
+            if (effect) ctx.network.setEffect(id, effect);
+          }
         },
         execute: (ctx) => (ctx.now() >= until ? "next" : "running"),
         deadline: () => until,
@@ -290,6 +354,7 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
       const record = str(raw.record);
       const storeAs = str(raw.storeAs);
       const pressedConnected = targets.pressed !== undefined;
+      const countdown = countdownOf(raw);
       return {
         ...base,
         enter: (ctx) => {
@@ -299,6 +364,7 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
           timeout = 0;
           if (raw.timeoutMs !== undefined) timeout = ctx.vars.read(v("timeoutMs"));
           else if (random) timeout = randomBetween(ctx.random, ctx.vars.read(v("minTimeoutMs")), ctx.vars.read(v("maxTimeoutMs")));
+          if (countdown.style && timeout > 0) ctx.effect = countdown.effect(litColor(ctx.leds), enterTime, enterTime + timeout) ?? null;
         },
         execute: (ctx) => {
           if (!pressed) {
@@ -307,6 +373,7 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
               return "running";
             }
             pressed = true;
+            if (countdown.style) ctx.effect = null; // a press stops the countdown
             const reaction = ctx.button.lastPressTime - enterTime;
             if (record) ctx.results.record(ctx.now(), record, ctx.centralPodId, reaction);
             if (record) ctx.log("result", `RESULT,${ctx.now()},${record},${ctx.centralPodId},${reaction}`);
@@ -374,18 +441,33 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
       let podId = 0;
       let cmdSeq = 0;
       let armed = false;
-      const timeoutAt = (ctx: Ctx) => (raw.timeoutMs === undefined ? undefined : enterTime + ctx.vars.read(v("timeoutMs")));
+      const countdown = countdownOf(raw);
+      // a countdown needs a fixed length: the timeout is read once on enter, else on every pass (programs.md §7.2)
+      let fixedTimeout = 0;
+      const timeoutAt = (ctx: Ctx) =>
+        raw.timeoutMs === undefined ? undefined : enterTime + (countdown.style ? fixedTimeout : ctx.vars.read(v("timeoutMs")));
       return {
         ...base,
         enter: (ctx) => {
           enterTime = ctx.now();
           podId = ctx.vars.read(v("pod")) & 0xff; // uint8_t on the pod
           armed = false;
+          fixedTimeout = raw.timeoutMs === undefined ? 0 : ctx.vars.read(v("timeoutMs"));
           if (podId >= ctx.network.podCount) {
             ctx.log("info", `${raw.name}: pod ${podId} not available`);
             return;
           }
-          cmdSeq = ctx.network.arm(podId, { mode: avoid ? "avoid" : "hit", colorActive, colorAfter }, ctx.now());
+          const limit = timeoutAt(ctx);
+          cmdSeq = ctx.network.arm(
+            podId,
+            {
+              mode: avoid ? "avoid" : "hit",
+              colorActive,
+              colorAfter,
+              countdown: limit === undefined ? undefined : (litAt) => countdown.effect(colorActive, litAt, limit) ?? null,
+            },
+            ctx.now(),
+          );
           armed = true;
         },
         execute: (ctx) => {
@@ -429,11 +511,15 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
       let centralLitAt = 0;
       let pressCountAtLight = 0;
       const cmdSeqs: number[] = [];
-      const timeoutAt = (ctx: Ctx) => (raw.timeoutMs === undefined ? undefined : enterTime + ctx.vars.read(v("timeoutMs")));
+      const countdown = countdownOf(raw);
+      let fixedTimeout = 0;
+      const timeoutAt = (ctx: Ctx) =>
+        raw.timeoutMs === undefined ? undefined : enterTime + (countdown.style ? fixedTimeout : ctx.vars.read(v("timeoutMs")));
       return {
         ...base,
         enter: (ctx) => {
           enterTime = ctx.now();
+          fixedTimeout = raw.timeoutMs === undefined ? 0 : ctx.vars.read(v("timeoutMs"));
           avoidMask = 0;
           remaining = 0;
           centralLit = false;
@@ -452,11 +538,19 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
           }
           const lead = raw.syncStartMs === undefined ? 20 : ctx.vars.read(v("syncStartMs"));
           startAt = ctx.now() + lead;
+          const limit = timeoutAt(ctx);
+          // every lit pod and the central count down together from the sync start to the timeout
           for (let i = 0; i < podCount; i++) {
             const isAvoid = (avoidMask & (1 << i)) !== 0;
+            const colorActive = isAvoid ? avoidColor : hitColor;
             cmdSeqs[i] = ctx.network.arm(
               i,
-              { mode: isAvoid ? "avoid" : "hit", colorActive: isAvoid ? avoidColor : hitColor, startAt: lead > 0 ? startAt : undefined },
+              {
+                mode: isAvoid ? "avoid" : "hit",
+                colorActive,
+                startAt: lead > 0 ? startAt : undefined,
+                countdown: limit === undefined ? undefined : (litAt) => countdown.effect(colorActive, litAt, limit) ?? null,
+              },
               ctx.now(),
             );
             if (!isAvoid) remaining |= 1 << i;
@@ -468,6 +562,8 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
           if (includeCentral && !centralLit && ctx.now() >= startAt) {
             const color = avoidMask & centralBit ? avoidColor : hitColor;
             ctx.leds.fill(color);
+            const limit = timeoutAt(ctx);
+            ctx.effect = limit === undefined ? null : (countdown.effect(color, ctx.now(), limit) ?? null);
             centralLit = true;
             centralLitAt = ctx.now();
             pressCountAtLight = ctx.button.pressCount;
@@ -494,6 +590,7 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
             if (remaining & centralBit) {
               remaining &= ~centralBit;
               ctx.leds.fill(OFF);
+              ctx.effect = null;
               if (record) {
                 const reaction = ctx.button.lastPressTime - centralLitAt;
                 ctx.results.record(ctx.now(), record, ctx.centralPodId, reaction);
@@ -521,7 +618,10 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
           const connected = ctx.network.podCount;
           const count = raw.pods === undefined ? connected : Math.min(Math.max(ctx.vars.read(v("pods")), 0), connected);
           for (let i = 0; i < count; i++) ctx.network.reset(i);
-          if (ledsOff) ctx.leds.fill(OFF);
+          if (ledsOff) {
+            ctx.leds.fill(OFF);
+            ctx.effect = null;
+          }
           return "next";
         },
       };
@@ -547,6 +647,37 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
           if (reset) ctx.results.reset(metric);
           return "next";
         },
+      };
+    }
+
+    case "effect": {
+      // programs.md §7: starts the effect on enter; wait:false continues at once, wait:true at start + syncStartMs + durationMs
+      const kind = EFFECTS.includes(raw.effect as EffectKind) ? (raw.effect as EffectKind) : "solid";
+      const leds = Array.isArray(raw.leds) ? raw.leds.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < LED_COUNT) : undefined;
+      const wait = raw.wait === true;
+      let finishAt = 0;
+      return {
+        ...base,
+        enter: (ctx) => {
+          const sync = raw.syncStartMs === undefined ? 20 : Math.max(0, ctx.vars.read(v("syncStartMs")));
+          const startAt = ctx.now() + sync;
+          const duration = Math.max(0, ctx.vars.read(v("durationMs")));
+          finishAt = startAt + duration;
+          const effect: RingEffect = {
+            kind,
+            color: raw.color === undefined ? WHITE : colorToRgb(raw.color),
+            color2: raw.color2 === undefined ? OFF : colorToRgb(raw.color2),
+            startAt,
+            endAt: duration > 0 ? startAt + duration : undefined,
+            periodMs: raw.periodMs === undefined ? 500 : Math.max(1, ctx.vars.read(v("periodMs"))),
+            brightness: raw.brightness === undefined ? 255 : Math.min(255, Math.max(0, ctx.vars.read(v("brightness")))),
+          };
+          const { central, pods } = effectTargets(ctx, raw.target);
+          if (central) ctx.effect = { ...effect, leds };
+          for (const id of pods) ctx.network.setEffect(id, effect);
+        },
+        execute: (ctx) => (wait && ctx.now() < finishAt ? "running" : "next"),
+        deadline: () => (wait ? finishAt : undefined),
       };
     }
 
@@ -673,6 +804,7 @@ export class Simulator {
       vars,
       button: new Button(),
       leds: Array.from({ length: LED_COUNT }, () => OFF),
+      effect: null,
       network: new Network(this.peripherals),
       results: new Results(),
       random: createRandom(seed),
@@ -785,11 +917,11 @@ export class Simulator {
     const pods: PodView[] = this.ctx.network.pods.map((p, id) => ({
       id,
       central: false,
-      leds: Array.from({ length: LED_COUNT }, () => p.color),
+      leds: renderRing(Array.from({ length: LED_COUNT }, () => p.color), p.effect, this.time),
       state: p.state,
       held: p.button.down,
     }));
-    pods.push({ id: this.centralId, central: true, leds: [...this.ctx.leds], state: "central", held: this.ctx.button.down });
+    pods.push({ id: this.centralId, central: true, leds: renderRing(this.ctx.leds, this.ctx.effect, this.time), state: "central", held: this.ctx.button.down });
     const results = this.ctx.results;
     const metrics = [...new Set([...results.names(), ...results.all.map((m) => m.metric)])].map((metric) => ({ metric, ...results.stats(metric) }));
     return {
