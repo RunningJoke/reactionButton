@@ -3,7 +3,7 @@
  * (docs/firmware/programs.md). The schema describes the structure for other languages and editors;
  * `validateProgram` stays the authority (references between blocks, reachability, limits per pod).
  */
-import { BLOCK_TYPES, COMMON_FIELDS, TIMER_FIELDS, type FieldDef } from "./blockTypes";
+import { BLOCK_TYPES, COMMON_FIELDS, TARGET_KEYWORDS, TIMER_FIELDS, type FieldDef } from "./blockTypes";
 import { NAMED_COLORS } from "./colors";
 import { LED_COUNT, MAX_PATH, MAX_PERIPHERALS, PROGRAM_FORMAT, PROGRAM_FORMAT_VERSION } from "./limits";
 
@@ -28,6 +28,10 @@ const DEFS: Record<string, Schema> = {
       { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
       { type: "array", items: { type: "integer", minimum: 0, maximum: 255 }, minItems: 3, maxItems: 3 },
     ],
+  },
+  target: {
+    description: "central, all, peripherals, a pod id (number) or a variable holding it",
+    oneOf: [{ enum: [...TARGET_KEYWORDS] }, { type: "number" }, ref("variableName")],
   },
   leds: { type: "array", items: { type: "integer", minimum: 0, maximum: LED_COUNT - 1 } },
   blockName: { type: "string", minLength: 1 },
@@ -55,6 +59,8 @@ function fieldSchema(field: FieldDef): Schema {
       return { ...ref("namedColor"), ...description };
     case "leds":
       return { ...ref("leds"), ...description };
+    case "target":
+      return { ...ref("target"), ...description };
     case "enum":
       return { enum: [...(field.options ?? []), ...(field.aliases ?? [])], ...description };
     case "variable":

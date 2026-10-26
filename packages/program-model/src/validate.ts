@@ -2,7 +2,7 @@
  * Program checks. Mirrors tools/validate_programs.py and the firmware loader
  * (src/BlockManager/BlockManager.cpp). Errors stop a push, warnings do not.
  */
-import { blockType, COMMON_FIELDS, MAX_TIMERS, TIMER_FIELDS, type BlockTypeDef } from "./blockTypes";
+import { blockType, COMMON_FIELDS, MAX_TIMERS, TARGET_KEYWORDS, TIMER_FIELDS, type BlockTypeDef } from "./blockTypes";
 import { isColor, isNamedColor } from "./colors";
 import {
   INDEX_PATH,
@@ -359,6 +359,15 @@ function checkField(
             out.error("ledOutOfRange", file, at(name, { led: String(led), max: LED_COUNT - 1 }));
           }
         }
+      break;
+    case "target":
+      if (typeof value === "string") {
+        if (!(TARGET_KEYWORDS as readonly string[]).includes(value) && !knownVars.has(value)) {
+          out.warn("unknownVariable", file, at(name, { name: value }));
+        }
+      } else if (typeof value !== "number" || !Number.isInteger(value)) {
+        out.error("notValue", file, at(name));
+      }
       break;
     case "enum": {
       const ok = [...(field.options ?? []), ...(field.aliases ?? [])];
