@@ -12,6 +12,7 @@
  */
 import { BUILTIN_VARIABLES, blockType, isNamedColor, isObject, type Block, type Value } from "@reactpod/program-model";
 import { MISSES } from "../programs/recipes/fragments";
+import { DEFAULT_MAX_MS } from "./holdStep";
 import { addStep, newBlockName, ownBlocks, uniqueName, type ProgramJson } from "./ops";
 import { detectLoops, entryOf, isCatchEarly, mainPort, stepFamily, stepList, stepNeighbours, type Step } from "./structure";
 
@@ -23,6 +24,8 @@ export const INTENTS = [
   { id: "press", type: "button" },
   { id: "pod", type: "remotePress" },
   { id: "race", type: "remoteMultiPress" },
+  { id: "charge", type: "charge" },
+  { id: "release", type: "release" },
   { id: "count", type: "setVariable" },
   { id: "decide", type: "if" },
   { id: "repeat", type: "repeat" },
@@ -293,6 +296,12 @@ export function createStep(intent: Intent, doc: ProgramJson, after?: string, opt
       break;
     case "pod":
       next = patch(next, name, { pod: 0, color: previousColor(ctx, true), ...(limit ? fixedLimit(limit) : {}), record });
+      break;
+    case "charge":
+      next = patch(next, name, { maxMs: DEFAULT_MAX_MS, color: previousColor(ctx, true) });
+      break;
+    case "release":
+      // letting go of the central goes on
       break;
     case "race": {
       next = patch(next, name, { hitColor: previousColor(ctx, true), ...(limit ? fixedLimit(limit) : {}), record });

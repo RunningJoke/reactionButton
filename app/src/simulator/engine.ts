@@ -14,7 +14,7 @@ import { isObject } from "@reactpod/program-model";
 import type { ResolvedProgram } from "@reactpod/program-model";
 import { createRandom, type Random } from "./random";
 import { EFFECTS } from "@reactpod/program-model";
-import { countdownEffect, renderRing, type EffectKind, type RingEffect, type Rgb } from "./ringEffects";
+import { chargeRing, countdownEffect, fullColor, fullFlashRing, releaseRing, renderRing, type EffectKind, type RingEffect, type Rgb } from "./ringEffects";
 
 export const MAX_STEPS_PER_PASS = 32;
 const DEBOUNCE_MS = 20;
@@ -55,6 +55,10 @@ class Button {
   down = false;
   lastPressTime = 0;
   lastHeldMs = 0;
+  releaseCount = 0;
+  lastReleaseTime = 0;
+  /** `releaseCount` when the last press happened: a release after it ends that hold */
+  releaseCountAtPress = 0;
   private lastEdge = -Infinity;
 
   press(now: number) {
@@ -62,6 +66,7 @@ class Button {
     this.down = true;
     this.pressCount++;
     this.lastPressTime = now;
+    this.releaseCountAtPress = this.releaseCount;
     this.lastEdge = now;
     return true;
   }
@@ -69,6 +74,8 @@ class Button {
     if (!this.down) return;
     this.down = false;
     this.lastHeldMs = now - this.lastPressTime;
+    this.releaseCount++;
+    this.lastReleaseTime = now;
     this.lastEdge = now;
   }
 }
@@ -307,6 +314,89 @@ function effectTargets(ctx: Ctx, target: unknown): { central: boolean; pods: num
   const id = ctx.vars.read(target as Value) & 0xff;
   if (id === ctx.centralPodId) return { central: true, pods: [] };
   return { central: false, pods: id < ctx.network.podCount ? [id] : [] };
+}
+
+/* ------------------------------------------------------------------ hold (charge, release) */
+
+/** The button a hold block watches: the central's own or a peripheral's (programs.md 7.13). null = cannot take part. */
+type HoldTarget = { podId: number; central: boolean; button: Button };
+
+function holdTarget(ctx: Ctx, pod: unknown): HoldTarget | null {
+  if (pod === undefined || pod === "central") return { podId: ctx.centralPodId, central: true, button: ctx.button };
+  const id = ctx.vars.read(pod as Value) & 0xff;
+  if (id === ctx.centralPodId) return { podId: id, central: true, button: ctx.button };
+  const peripheral = ctx.network.pods[id];
+  return peripheral ? { podId: id, central: false, button: peripheral.button } : null;
+}
+
+function showRing(ctx: Ctx, target: HoldTarget, effect: RingEffect) {
+  if (target.central) ctx.effect = effect;
+  else ctx.network.setEffect(target.podId, effect);
+}
+
+/** The pod / the central's ring is reset (dark). */
+function resetRing(ctx: Ctx, target: HoldTarget) {
+  if (target.central) {
+    ctx.leds.fill(OFF);
+    ctx.effect = null;
+  } else ctx.network.reset(target.podId);
+}
+
+/** A ring drawn by a function of the time. */
+const frameEffect = (frame: (t: number) => Rgb[], startAt = 0): RingEffect => ({
+  kind: "solid",
+  color: OFF,
+  color2: OFF,
+  startAt,
+  periodMs: 500,
+  brightness: 255,
+  frame,
+});
+
+/**
+ * The start and the end of a hold on a button (HoldSession): a hold starts at a press edge after the entry; with
+ * `allowHeld` a button that is down on entry starts it at the entry.
+ */
+class HoldWatch {
+  started = false;
+  /** start of the hold */
+  at = 0;
+  private pressSeen = 0;
+  private releaseBase = 0;
+
+  constructor(private readonly button: Button) {}
+
+  enter(now: number, allowHeld: boolean) {
+    this.pressSeen = this.button.pressCount;
+    this.started = false;
+    if (allowHeld && this.button.down) this.begin(now);
+  }
+
+  private begin(at: number) {
+    this.started = true;
+    this.at = at;
+    this.releaseBase = this.button.releaseCountAtPress;
+  }
+
+  /** a hold starts now (a press edge since the last call) */
+  poll(): boolean {
+    if (this.started || this.button.pressCount === this.pressSeen) return false;
+    this.pressSeen = this.button.pressCount;
+    this.begin(this.button.lastPressTime);
+    return true;
+  }
+
+  /** the release edge that ends the hold, once */
+  released(): number | undefined {
+    if (!this.started || this.button.releaseCount <= this.releaseBase) return undefined;
+    return this.button.lastReleaseTime;
+  }
+
+  /** the hold is over, wait for the next press */
+  rearm() {
+    this.started = false;
+    this.pressSeen = this.button.pressCount;
+  }
 }
 
 function createBlock(raw: Record<string, unknown>): SimBlock | null {
@@ -690,6 +780,222 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
         },
         execute: (ctx) => (wait && ctx.now() < finishAt ? "running" : "next"),
         deadline: () => (wait ? finishAt : undefined),
+      };
+    }
+
+    case "charge": {
+      // programs.md 7.13 (ChargeBlock.cpp, HoldSession.cpp)
+      const accumulate = raw.mode === "accumulate";
+      const style = typeof raw.style === "string" ? raw.style : "fill";
+      const color = remoteColor(raw.color, colorToRgb("green"));
+      const color2 = remoteColor(raw.color2, colorToRgb("red"));
+      const record = str(raw.record);
+      const storeAs = str(raw.storeAs);
+      const storePercent = str(raw.storePercent);
+      const randomTimeout = raw.timeoutMs === undefined && raw.minTimeoutMs !== undefined;
+      const countdown = countdownOf(raw);
+      let target: HoldTarget | null = null;
+      let watch: HoldWatch | null = null;
+      let enterTime = 0;
+      let onset = 0;
+      let max = 1;
+      let decay = 0;
+      let limit = 0;
+      let everHeld = false;
+      let active = false;
+      let p = 0;
+      let c0 = 0;
+      let r = 0;
+      let cRelease = 0;
+      let idle: RingEffect | null = null;
+
+      const decayed = (t: number) => (decay > 0 ? Math.max(0, cRelease - ((t - r) * max) / decay) : cRelease);
+      const chargeAt = (t: number) => (active ? Math.min(max, c0 + Math.max(0, t - p - onset)) : everHeld ? decayed(t) : 0);
+      const store = (ctx: Ctx, charge: number) => {
+        const ms = Math.round(charge);
+        if (storeAs) ctx.vars.set(storeAs, ms);
+        if (storePercent) ctx.vars.set(storePercent, Math.trunc((ms * 100 + Math.trunc(max / 2)) / max));
+        if (record) {
+          ctx.results.record(ctx.now(), record, target!.podId, ms);
+          ctx.log("result", `RESULT,${ctx.now()},${record},${target!.podId},${ms}`);
+        }
+      };
+      const dark = Array.from({ length: LED_COUNT }, () => OFF);
+      const ring = (t: number): Rgb[] => {
+        if (!everHeld) return idle ? renderRing(dark, idle, t) : chargeRing(style, 0, color, color2);
+        return chargeRing(style, chargeAt(t) / max, color, color2);
+      };
+      const finish = (ctx: Ctx, port: string, charge: number) => {
+        store(ctx, charge);
+        resetRing(ctx, target!);
+        return port;
+      };
+      const timeout = (ctx: Ctx) => {
+        if (accumulate) store(ctx, chargeAt(enterTime + limit)); // the charge when the time ran out
+        resetRing(ctx, target!);
+        return "timeout";
+      };
+      const fullPort = (ctx: Ctx, fullAt: number) => {
+        const flash = fullColor(style, color, color2);
+        store(ctx, max);
+        showRing(ctx, target!, frameEffect((t) => fullFlashRing(flash, t - fullAt), fullAt));
+        return "full";
+      };
+      return {
+        ...base,
+        enter: (ctx) => {
+          enterTime = ctx.now();
+          onset = Math.max(0, ctx.vars.read(v("onsetMs")));
+          max = Math.max(1, ctx.vars.read(v("maxMs")));
+          decay = accumulate ? Math.max(0, ctx.vars.read(v("decayMs"))) : 0;
+          limit = 0;
+          if (raw.timeoutMs !== undefined) limit = ctx.vars.read(v("timeoutMs"));
+          else if (randomTimeout) limit = randomBetween(ctx.random, ctx.vars.read(v("minTimeoutMs")), ctx.vars.read(v("maxTimeoutMs")));
+          limit = Math.max(0, limit);
+          everHeld = false;
+          active = false;
+          c0 = cRelease = 0;
+          target = holdTarget(ctx, raw.pod);
+          watch = null;
+          if (!target) {
+            ctx.log("info", `${raw.name}: pod not available`);
+            return;
+          }
+          watch = new HoldWatch(target.button);
+          watch.enter(enterTime, false);
+          idle = limit > 0 ? countdown.effect(color, enterTime, enterTime + limit) : null;
+          showRing(ctx, target, frameEffect(ring));
+        },
+        execute: (ctx) => {
+          if (!target || !watch) return "timeout";
+          const now = ctx.now();
+          for (let again = true; again; ) {
+            again = false;
+            if (!active && watch.poll()) {
+              c0 = accumulate && everHeld ? decayed(watch.at) : 0;
+              p = watch.at;
+              active = everHeld = true;
+            }
+            if (!active) break;
+            const fullAt = p + onset + (max - c0);
+            const rel = watch.released();
+            if (rel === undefined) {
+              if (now >= fullAt) return fullPort(ctx, fullAt);
+            } else if (rel >= fullAt) {
+              return fullPort(ctx, fullAt);
+            } else if (!accumulate) {
+              if (rel - p < onset) return finish(ctx, targets.early !== undefined ? "early" : "released", 0);
+              return finish(ctx, "released", Math.min(max, rel - p - onset));
+            } else {
+              // a release pauses the charge, or drains it
+              cRelease = Math.min(max, c0 + Math.max(0, rel - p - onset));
+              r = rel;
+              active = false;
+              watch.rearm();
+              again = true;
+            }
+          }
+          if (limit > 0 && now - enterTime >= limit) return timeout(ctx);
+          return "running";
+        },
+        deadline: () => (target && limit > 0 ? enterTime + limit : undefined),
+        forceTimeout: (ctx) => (target ? timeout(ctx) : "timeout"),
+      };
+    }
+
+    case "release": {
+      // programs.md 7.14 (ReleaseBlock.cpp, HoldSession.cpp)
+      const signal = raw.mode === "signal";
+      const holdColor = remoteColor(raw.holdColor, colorToRgb("yellow"));
+      const heldColor = remoteColor(raw.heldColor, holdColor);
+      const goColor = remoteColor(raw.goColor, colorToRgb("green"));
+      const allowHeld = typeof raw.allowHeld === "boolean" ? raw.allowHeld : !signal;
+      const record = str(raw.record);
+      const storeAs = str(raw.storeAs);
+      const countdown = countdownOf(raw);
+      let target: HoldTarget | null = null;
+      let watch: HoldWatch | null = null;
+      let enterTime = 0;
+      let holdTimeout = 0;
+      let maxHold = 0;
+      let goDelay = 0;
+      let timeoutMs = 0;
+      let cd: RingEffect | null = null;
+      const positive = (ctx: Ctx, field: string) => (raw[field] === undefined ? 0 : Math.max(0, ctx.vars.read(v(field))));
+      const switchAt = () => watch!.at + goDelay;
+      const dark = Array.from({ length: LED_COUNT }, () => OFF);
+      const colors = { hold: holdColor, held: heldColor, go: goColor };
+      const ring = (t: number): Rgb[] => {
+        if (!watch!.started) return releaseRing("waiting", colors);
+        if (signal) return t >= switchAt() ? (cd ? renderRing(dark, cd, t) : releaseRing("go", colors)) : releaseRing("held", colors);
+        return cd ? renderRing(dark, cd, t) : releaseRing("held", colors);
+      };
+      const startRing = () => {
+        // the countdown starts with the hold (trigger) or with the switch (signal)
+        if (signal) cd = timeoutMs > 0 ? countdown.effect(goColor, switchAt(), switchAt() + timeoutMs) : null;
+        else cd = maxHold > 0 ? countdown.effect(heldColor, watch!.at, watch!.at + maxHold) : null;
+      };
+      const leaveWith = (ctx: Ctx, port: string) => {
+        resetRing(ctx, target!);
+        return port;
+      };
+      const timeoutAt = () => {
+        if (!watch) return undefined;
+        if (!watch.started) return holdTimeout > 0 ? enterTime + holdTimeout : undefined;
+        if (signal) return timeoutMs > 0 ? switchAt() + timeoutMs : undefined;
+        return maxHold > 0 ? watch.at + maxHold : undefined;
+      };
+      return {
+        ...base,
+        enter: (ctx) => {
+          enterTime = ctx.now();
+          holdTimeout = positive(ctx, "holdTimeoutMs");
+          maxHold = signal ? 0 : positive(ctx, "maxHoldMs");
+          timeoutMs = signal ? positive(ctx, "timeoutMs") : 0;
+          goDelay = 0;
+          if (signal) {
+            const [minF, maxF] = raw.goMs !== undefined ? ["goMs", "goMs"] : ["minGoMs", "maxGoMs"];
+            goDelay = randomBetween(ctx.random, positive(ctx, minF), positive(ctx, maxF));
+          }
+          cd = null;
+          target = holdTarget(ctx, raw.pod);
+          watch = null;
+          if (!target) {
+            ctx.log("info", `${raw.name}: pod not available`);
+            return;
+          }
+          watch = new HoldWatch(target.button);
+          watch.enter(enterTime, allowHeld);
+          if (watch.started) startRing();
+          showRing(ctx, target, frameEffect(ring));
+        },
+        execute: (ctx) => {
+          if (!target || !watch) return "timeout";
+          const now = ctx.now();
+          if (!watch.started && watch.poll()) startRing();
+          if (watch.started) {
+            const rel = watch.released();
+            if (rel !== undefined) {
+              if (!signal) {
+                if (storeAs) ctx.vars.set(storeAs, rel - watch.at);
+                return leaveWith(ctx, "next");
+              }
+              if (rel < switchAt()) return leaveWith(ctx, "falseStart");
+              const reaction = rel - switchAt();
+              if (record) {
+                ctx.results.record(now, record, target.podId, reaction);
+                ctx.log("result", `RESULT,${now},${record},${target.podId},${reaction}`);
+              }
+              if (storeAs) ctx.vars.set(storeAs, reaction);
+              return leaveWith(ctx, "next");
+            }
+          }
+          const at = timeoutAt();
+          if (at !== undefined && now >= at) return leaveWith(ctx, watch.started ? "timeout" : "noHold");
+          return "running";
+        },
+        deadline: timeoutAt,
+        forceTimeout: (ctx) => (target ? leaveWith(ctx, watch!.started ? "timeout" : "noHold") : "timeout"),
       };
     }
 

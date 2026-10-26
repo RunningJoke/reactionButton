@@ -115,6 +115,16 @@ describe("step sentences", () => {
     expect(en_({ type: "delay", ms: 2000, countdown: "secret" })).toBe("Wait 2 s");
   });
 
+  it("hold to charge and let go (program format 3)", () => {
+    expect(en_({ type: "charge", maxMs: 2000 })).toBe("Hold the central to charge · full after 2 s");
+    expect(en_({ type: "charge", pod: 0, maxMs: 3000, mode: "accumulate", timeoutMs: 8000 })).toBe("Charge pod 1 by holding, letting go pauses · full after 3 s · max 8 s");
+    expect(en_({ type: "release", pod: 1, maxHoldMs: 4000 })).toBe("Wait for pod 2 to be held and let go · max 4 s");
+    expect(en_({ type: "release", mode: "signal", pod: 0, goColor: "green", minGoMs: 1500, maxGoMs: 3000, timeoutMs: 1000 })).toBe(
+      "Hold pod 1, let go when it turns green · signal after 1.5–3 s · max 1 s",
+    );
+    expect(stepSentence(b({ type: "release", mode: "signal", goMs: 2000 }), tDe)).toContain("Signal nach 2 s");
+  });
+
   it("never shows raw field names, ms or pod 0 for the shipped programs", () => {
     const paths = Object.keys(DEFAULT_FILES).filter((p) => p.startsWith("/prog/") && !p.startsWith("/prog/lib/"));
     for (const path of paths) {

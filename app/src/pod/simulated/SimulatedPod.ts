@@ -197,6 +197,8 @@ export class SimulatedPod {
     return {
       firmware: this.firmware,
       linkProtocol: 1,
+      // firmware >= 2.9: hold reporting (link protocol revision 2, config-api.md)
+      ...(this.programFormat >= 3 ? { linkRevision: 2 } : {}),
       setId: this.setId,
       setName: this.setName,
       pinRequired: this.pin !== "",
@@ -212,6 +214,7 @@ export class SimulatedPod {
       features: [
         "validateInline",
         "listMeta",
+        ...(this.programFormat >= 3 ? ["hold"] : []),
         ...(this.results ? ["reports", "remote"] : []),
       ],
       blockTypes: this.blockTypes,

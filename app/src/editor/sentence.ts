@@ -166,6 +166,17 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
     }
     case "repeat":
       return repeatSentence(block.count, t, options);
+    case "charge": {
+      const where = holdPodWords(block, t, pod);
+      const key = block.mode === "accumulate" ? "sentence.chargeAccumulate" : "sentence.charge";
+      return join(t(key, { pod: where, time: time(block.maxMs) }), limit(block, block.timeoutMs !== undefined ? "timeoutMs" : "maxTimeoutMs"));
+    }
+    case "release": {
+      const where = holdPodWords(block, t, pod);
+      if (block.mode !== "signal") return join(t("sentence.releaseTrigger", { pod: where }), limit(block, "maxHoldMs"));
+      const after = block.goMs !== undefined ? time(block.goMs) : range(block.minGoMs, block.maxGoMs);
+      return join(t("sentence.releaseSignal", { pod: where, color: color(block.goColor), time: after }), limit(block));
+    }
     case "effect": {
       const kind = (EFFECTS as readonly string[]).includes(String(block.effect)) ? String(block.effect) : "solid";
       const target = known(block.target);
@@ -181,6 +192,11 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
     default:
       return t("sentence.unknown", { type: String(block.type) });
   }
+}
+
+/** "the central" or "pod 2" for a hold step */
+function holdPodWords(block: Block, t: TFunction, pod: (raw: unknown) => string): string {
+  return block.pod === undefined || block.pod === "central" ? t("sentence.effect.central") : pod(block.pod);
 }
 
 /** `countdown` other than `secret` on a block that has one */

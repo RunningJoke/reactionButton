@@ -32,6 +32,8 @@ export type RingEffect = {
   brightness: number;
   /** only these LEDs (central `leds`); the others keep the static colours */
   leds?: readonly number[];
+  /** a block that draws the ring itself (charge, release): the 18 colours at time t, instead of `kind` */
+  frame?: (t: number) => Rgb[];
 };
 
 const OFF: Rgb = [0, 0, 0];
@@ -96,7 +98,7 @@ function frame(effect: RingEffect, t: number): Rgb[] {
 /** The ring at time `t`: `base` (static colours) until the effect starts, then the effect over it. */
 export function renderRing(base: readonly Rgb[], effect: RingEffect | null | undefined, t: number): Rgb[] {
   if (!effect || t < effect.startAt) return [...base];
-  const f = frame(effect, t);
+  const f = effect.frame ? effect.frame(t) : frame(effect, t);
   const level = Math.min(255, Math.max(0, effect.brightness)) / 255;
   return base.map((b, i) => {
     if (effect.leds && !effect.leds.includes(i)) return b;
@@ -124,4 +126,54 @@ export function countdownEffect(style: unknown, lit: Rgb, endColor: Rgb, startAt
     periodMs: 500,
     brightness: 255,
   };
+}
+
+/* ------------------------------------------------------------------ charge, release (programFormat 3) */
+
+export const CHARGE_STYLES = ["fill", "brightness", "trafficLight", "colorShift"] as const;
+export type ChargeStyle = (typeof CHARGE_STYLES)[number];
+
+/** The `full` flash of a charge (programs.md 7.13): 600 ms, 200 ms period, dark afterwards. */
+export const FULL_FLASH_STEP_MS = 100;
+export const FULL_FLASH_MS = 600;
+/** `brightness` fades from this (of 255) to full */
+export const CHARGE_MIN_BRIGHTNESS = 40;
+
+const solid = (c: Rgb): Rgb[] => Array.from({ length: LED_COUNT }, () => c);
+
+/**
+ * The ring of a `charge` block at a charge level 0 … 1 (programs.md 7.13): `fill` lights LED n at n/18 of the
+ * charge in `color` (dark at 0), `brightness` fades `color` from 40 to 255, `trafficLight` goes green, yellow,
+ * red in thirds, `colorShift` blends `color` into `color2`.
+ */
+export function chargeRing(style: unknown, level: number, color: Rgb, color2: Rgb): Rgb[] {
+  const p = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0));
+  switch (style) {
+    case "brightness":
+      return solid(scale(color, (CHARGE_MIN_BRIGHTNESS + (255 - CHARGE_MIN_BRIGHTNESS) * p) / 255));
+    case "trafficLight":
+      return solid([GREEN, YELLOW, RED][Math.min(2, Math.floor(p * 3))]!);
+    case "colorShift":
+      return solid(mix(color, color2, p));
+    default: {
+      const lit = Math.floor(LED_COUNT * p + 1e-9);
+      return Array.from({ length: LED_COUNT }, (_, i) => (i < lit ? color : OFF));
+    }
+  }
+}
+
+/** The colour a full charge flashes in: `color`; `trafficLight` red; `colorShift` `color2`. */
+export function fullColor(style: unknown, color: Rgb, color2: Rgb): Rgb {
+  return style === "trafficLight" ? RED : style === "colorShift" ? color2 : color;
+}
+
+/** The ring flashes when a charge is full: `elapsed` ms since it was reached; dark after `FULL_FLASH_MS`. */
+export function fullFlashRing(color: Rgb, elapsed: number): Rgb[] {
+  if (elapsed >= FULL_FLASH_MS) return solid(OFF);
+  return solid(Math.floor(Math.max(0, elapsed) / FULL_FLASH_STEP_MS) % 2 === 0 ? color : OFF);
+}
+
+/** The ring of a `release` block: `holdColor` while it waits for the hold, `heldColor` once held, `goColor` after the switch. */
+export function releaseRing(phase: "waiting" | "held" | "go", colors: { hold: Rgb; held: Rgb; go: Rgb }): Rgb[] {
+  return solid(phase === "go" ? colors.go : phase === "held" ? colors.held : colors.hold);
 }

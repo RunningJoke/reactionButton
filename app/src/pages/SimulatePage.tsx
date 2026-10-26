@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Copy, FastForward, Pause, Pencil, Play, RotateCcw, StepForward } from "lucide-react";
+import { Copy, FastForward, Hand, Pause, Pencil, Play, RotateCcw, StepForward } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { useEditor } from "../editor/editorStore";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
@@ -163,6 +163,9 @@ function Pods({ sim }: { sim: SimulationControls }) {
         {sim.snapshot.pods.map((pod) => (
           <li key={pod.id}>
             <PodButton pod={pod} size={size} onPress={() => sim.press(pod.id)} onRelease={() => sim.release(pod.id)} />
+            <button type="button" className={styles.holdToggle} aria-pressed={pod.held} onClick={() => (pod.held ? sim.release(pod.id) : sim.press(pod.id))}>
+              <Hand size={18} aria-hidden /> {t("simulate.hold")}
+            </button>
           </li>
         ))}
       </ul>

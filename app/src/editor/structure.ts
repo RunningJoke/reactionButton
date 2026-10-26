@@ -95,6 +95,7 @@ export function mainPort(block: Block): string | undefined {
   if (block.type === "repeat") order = ["done", "next"];
   else if (isCatchEarly(block)) order = ["timeout"];
   else if (block.type === "button") order = ["pressed", "next", "short"];
+  else if (block.type === "charge") order = ["next", "released", "full"];
   else order = ["next"];
   return order.find((p) => target(block, p) !== undefined);
 }
