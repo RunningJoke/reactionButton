@@ -192,7 +192,386 @@
     "removePreset": "Remove {{path}}",
     "addPreset": "Include a library part…",
     "flatten": "Convert to editable copy",
-    "addAfterAction": "Add block after"
+    "addAfterAction": "Add block after",
+    "programSheet": {
+      "title": "Program",
+      "sub": "Name, pods and the settings you change most",
+      "pods": "Pods besides the central",
+      "podsTotal_one": "{{count}} pod in the set",
+      "podsTotal_other": "{{count}} pods in the set",
+      "menu": "In the pod's menu",
+      "tweak": "Settings you can tweak",
+      "tweakNone": "This program has no settings to tweak. Change its steps in the editor.",
+      "expert": "Expert",
+      "start": "Start block",
+      "noPresets": "No library parts linked. This program is self-contained."
+    },
+    "step": {
+      "viewSteps": "Steps",
+      "viewBlocks": "Blocks",
+      "view": "View",
+      "role": {
+        "then": "Then",
+        "ifTooSlow": "If too slow",
+        "ifLeftAlone": "If left alone",
+        "shortPress": "Short press",
+        "longPress": "Long press",
+        "ifRedHit": "If a red pod is hit",
+        "ifYes": "If yes",
+        "ifNo": "If no",
+        "eachRound": "Each round",
+        "afterLast": "After the last round",
+        "ifPressedEarly": "If pressed too early",
+        "ifReleasedEarly": "If released too early",
+        "ifFull": "If fully charged",
+        "ifNoHold": "If nobody holds",
+        "ifFalseStart": "False start"
+      },
+      "toStep": "step {{n}}",
+      "nextRound": "next round",
+      "startOver": "start again",
+      "toRounds": "the rounds",
+      "notConnected": "nothing (the program ends)",
+      "goTo": "{{role}}: go to {{target}}",
+      "records": "records time",
+      "problems_one": "{{count}} problem",
+      "problems_other": "{{count}} problems",
+      "unsupported": "not supported by your pod",
+      "locked": "from a library part",
+      "ends": "the program ends here",
+      "afterLast": "After the last round",
+      "unreachable": "Not connected",
+      "unreachableHelp": "The program never gets to these steps.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "deleteStep": "Delete step",
+      "deleted": "Step deleted",
+      "undo": "Undo",
+      "addToRound": "Add a step",
+      "addEndOfRound": "added at the end of the round",
+      "addEnd": "added at the end",
+      "addAfter": "added after step {{n}}",
+      "empty": "This program has no steps yet. Add the first one with +.",
+      "count_one": "{{count}} step",
+      "count_other": "{{count}} steps",
+      "title": "Step {{n}}: {{kind}}",
+      "inRound": "In each round",
+      "kind": {
+        "led": "Light up the central",
+        "delay": "Pause",
+        "button": "Wait for a press",
+        "remotePress": "Light a pod",
+        "remoteMultiPress": "Race: all pods at once",
+        "remoteResetAll": "Turn all pods off",
+        "setVariable": "Count or remember",
+        "if": "Decide",
+        "summary": "Show results",
+        "repeat": "Repeat",
+        "unknown": "Step",
+        "effect": "Light effect",
+        "charge": "Hold to charge",
+        "release": "Let go"
+      },
+      "colour": "Colour",
+      "leds": "Which LEDs",
+      "howLong": "How long",
+      "fixed": "Always the same",
+      "random": "Random between",
+      "seconds": "Seconds",
+      "shortest": "Shortest",
+      "longest": "Longest",
+      "whichPod": "Which pod",
+      "podN": "Pod {{n}}",
+      "randomPod": "Random pod",
+      "randomOtherPod": "Random, never the same twice",
+      "podIn": "The pod in {{name}}",
+      "hitColour": "Colour to hit",
+      "whichPods": "Which pods",
+      "allPods": "All pods",
+      "somePods": "Some of them",
+      "podCount": "Pods",
+      "pressHint": "Waits until someone presses the central's button.",
+      "resetHint": "Turns off every pod's LEDs and stops waiting for them.",
+      "setting": "Setting",
+      "newSetting": "New setting…",
+      "newSettingName": "Name of the new setting",
+      "ok": "OK",
+      "whatToDo": "What to do",
+      "value": "Value",
+      "question": "Question",
+      "compare": "Is it",
+      "op": {
+        "=": "Set to",
+        "+": "Add",
+        "-": "Subtract",
+        "random": "Random number below",
+        "randomOther": "New random number below"
+      },
+      "summaryHint": "Shows the recorded times of this run. Each one is also kept in a setting.",
+      "stat": {
+        "average": "Average",
+        "best": "Best (fastest)",
+        "worst": "Worst (slowest)",
+        "count": "Number of presses"
+      },
+      "keptIn": "Kept in “{{name}}”",
+      "settingHint": "Setting “{{name}}”: changes it for the whole program",
+      "fromSetting": "Comes from the setting “{{name}}”",
+      "notKept": "not kept",
+      "moreOptions": "More options",
+      "label": {
+        "storeAs": "Keep the time in a setting",
+        "colorAfter": "Colour after the press",
+        "includeCentral": "The central takes part",
+        "syncStartMs": "Light up together after",
+        "timerStart": "Start a stopwatch",
+        "timerStop": "Stop a stopwatch",
+        "pods": "Number of pods",
+        "ledsOff": "Turn the central off too",
+        "reset": "Clear the times afterwards",
+        "storeIndex": "Keep the round number in",
+        "ms": "Time",
+        "minMs": "Shortest time",
+        "maxMs": "Longest time",
+        "timeoutMs": "Time limit",
+        "minTimeoutMs": "Shortest time",
+        "maxTimeoutMs": "Longest time",
+        "shortMs": "Long press from",
+        "count": "Rounds",
+        "onsetMs": "Charging starts after",
+        "decayMs": "Charge drains in",
+        "mode": "How it ends",
+        "heldColor": "Colour once held",
+        "allowHeld": "A hold from before counts",
+        "holdTimeoutMs": "Nobody holds after",
+        "storePercent": "Keep the percentage in"
+      },
+      "help": {
+        "storeAs": "Use it later in a Decide step, e.g. “if the last time is under 0.3 s”.",
+        "syncStartMs": "Pods wait this long so they light up together.",
+        "timerStart": "Name of a stopwatch that starts with this step.",
+        "timerStop": "Records the time since that stopwatch started.",
+        "onsetMs": "The first part of every hold does not charge yet.",
+        "decayMs": "Time to drain a full charge while the button is released. 0 keeps the charge.",
+        "heldColor": "Shown once the hold is detected (“you are set”). Default: the same colour.",
+        "allowHeld": "On: a button that is already down when the step starts counts as held. Off: it has to be let go and pressed again.",
+        "holdTimeoutMs": "Nobody holds the button in this time: the step takes its “nobody holds” way.",
+        "storePercent": "The charge from 0 to 100."
+      },
+      "addAfterAction": "Add a step after",
+      "expert": "Expert",
+      "expertMode": "Expert mode",
+      "on": "on",
+      "off": "off",
+      "roundTitle": "Repeat",
+      "roundSub": "The steps in the bracket",
+      "rounds": "Rounds",
+      "roundHint": "The steps inside the bracket run this many times, then the steps after the last round follow.",
+      "roundLocked": "{{count}} rounds, set in a library part",
+      "addToEachRound": "Add a step to each round",
+      "effect": {
+        "label": "Effect",
+        "kind": {
+          "solid": "Steady",
+          "fill": "Fill up",
+          "drain": "Drain",
+          "dim": "Fade out",
+          "colorShift": "Change colour",
+          "trafficLight": "Traffic light",
+          "blink": "Blink",
+          "pulse": "Pulse",
+          "spin": "Spin",
+          "off": "Off"
+        },
+        "where": "Where",
+        "central": "Central",
+        "all": "Everything",
+        "peripherals": "All pods",
+        "podN": "Pod {{n}}",
+        "colour2": "Second colour",
+        "colour2Hint": "The other colour of the effect. Empty: dark.",
+        "howLong": "How long",
+        "forever": "Until the next light change",
+        "limited": "Stop after a time",
+        "wait": "Wait until it is over",
+        "waitOn": "The next step starts when the effect ends",
+        "waitOff": "The next step starts at once, the effect plays on",
+        "waitNeedsTime": "Needs a time, an endless effect never ends"
+      },
+      "hold": {
+        "whichButton": "Which button",
+        "fullAfter": "Full after holding",
+        "chargeHint": "Letting go ends the step with the charge reached. A full charge ends it at once and the ring flashes.",
+        "accumulateHint": "Letting go only pauses the charge (or drains it, see more options). Only a full charge or the time limit ends the step.",
+        "style": "How the ring shows it",
+        "styles": {
+          "fill": "Fill up",
+          "brightness": "Brighter",
+          "trafficLight": "Traffic light",
+          "colorShift": "Change colour"
+        },
+        "mode": "What counts",
+        "modes": {
+          "trigger": "Letting go starts it",
+          "signal": "Let go at a signal"
+        },
+        "triggerHint": "The athlete holds the button, letting go goes on (e.g. the start of a run). The hold time can be kept.",
+        "signalHint": "The athlete holds the button and lets go as fast as possible when the colour changes. Letting go too early is a false start.",
+        "holdColour": "Colour while waiting for the hold",
+        "goColour": "Colour of the signal",
+        "signalAfter": "Signal after the hold"
+      },
+      "enum": {
+        "mode": {
+          "release": "Letting go ends it",
+          "accumulate": "Charge adds up"
+        }
+      }
+    },
+    "add": {
+      "title": "Add a step",
+      "afterStep": "Inserted after step {{n}}",
+      "endOfRound": "Added at the end of the round",
+      "end": "Added at the end",
+      "first": "The first step of the program",
+      "recipes": "Recipes",
+      "steps": "Single steps",
+      "library": "Library parts",
+      "libraryHint": "Inserted as a copy. To link a part as a preset, use the program settings.",
+      "intent": {
+        "light": {
+          "name": "Light up the central",
+          "hint": "Colour and which LEDs"
+        },
+        "pause": {
+          "name": "Pause",
+          "hint": "Fixed or random, can catch early presses"
+        },
+        "press": {
+          "name": "Wait for a press",
+          "hint": "On the central, with optional time limit"
+        },
+        "pod": {
+          "name": "Light a pod",
+          "hint": "One pod lights up and waits for its press"
+        },
+        "race": {
+          "name": "Race: all pods at once",
+          "hint": "Every pod lights, then all go off"
+        },
+        "count": {
+          "name": "Count or remember",
+          "hint": "Add to a setting like Misses"
+        },
+        "decide": {
+          "name": "Decide",
+          "hint": "Two ways, e.g. if Misses ≥ 3"
+        },
+        "repeat": {
+          "name": "Repeat",
+          "hint": "Steps that run several times"
+        },
+        "results": {
+          "name": "Show results",
+          "hint": "Average, best, worst, count"
+        },
+        "off": {
+          "name": "Turn all pods off",
+          "hint": "All pods dark again"
+        },
+        "effect": {
+          "name": "Light effect",
+          "hint": "Blink, pulse, fill or spin the ring"
+        },
+        "charge": {
+          "name": "Hold to charge",
+          "hint": "Hold a button, the ring charges up"
+        },
+        "release": {
+          "name": "Let go",
+          "hint": "Letting go is the event, or a start signal"
+        }
+      },
+      "recipe": {
+        "countMiss": {
+          "name": "Count a miss when too slow",
+          "hint": "Adds a time limit and a Misses counter to every press in the round"
+        },
+        "pauseBetweenRounds": {
+          "name": "Pause between rounds",
+          "hint": "A fixed 2 s pause at the end of each round"
+        },
+        "flashFalseStart": {
+          "name": "Flash red on a false start",
+          "hint": "The first pause of the round catches early presses"
+        }
+      },
+      "reason": {
+        "noPods": "The program uses no pods. Set the number of pods in the program settings.",
+        "noMetric": "Nothing records a time yet. Turn on “Record reaction time” on a press first.",
+        "needsFormat": "Your pod needs newer firmware for this step.",
+        "unsupported": "Your pod cannot run this step.",
+        "noPress": "No press in the round that does not count misses yet.",
+        "noPause": "No pause before a press in the round."
+      }
+    },
+    "switch": {
+      "timeLimit": "Time limit",
+      "timeLimitOn": "Too slow after {{time}}",
+      "timeLimitOff": "Wait as long as it takes",
+      "staysRed": "How long it stays red",
+      "seconds": "Seconds",
+      "tooSlow": "If too slow",
+      "goOn": "Go on",
+      "countMiss": "Count a miss",
+      "endRound": "End the round",
+      "other": "Own steps",
+      "record": "Record reaction time",
+      "recordOn": "Measured from light on to press",
+      "recordOff": "Not measured",
+      "longPress": "Long press does something else",
+      "longPressOn": "Held {{time}} or longer skips to the next round",
+      "longPressOff": "Short and long presses do the same",
+      "holdTime": "Long press from",
+      "avoidPod": "Don't touch (red)",
+      "avoidPodOn": "Pressing it is a miss, leaving it alone is right",
+      "avoidPodOff": "The pod has to be pressed",
+      "avoidMulti": "Red pods: don't touch",
+      "avoidMultiOn": "{{count}} red, chosen at random",
+      "avoidMultiOff": "Every pod has to be pressed",
+      "redPods": "Red pods",
+      "redColour": "Colour of the red pods",
+      "redMiss": "Count a red hit as a miss",
+      "missHint": "Adds 1 to Misses",
+      "falseStart": "Catch early presses",
+      "falseStartOn": "Pressing the central now is a false start: it flashes red, the round ends",
+      "falseStartOff": "Presses during the pause are ignored",
+      "earlyMiss": "Count it as a miss",
+      "countdown": {
+        "label": "Show the time running out",
+        "on": "The ring counts down: {{style}}",
+        "off": "The ring gives no hint of the time left",
+        "needsLimit": "Switch on a time limit first",
+        "style": "Style",
+        "color": "End colour",
+        "target": "Count down on",
+        "styles": {
+          "drain": "Empties",
+          "fill": "Fills up",
+          "dim": "Gets dark",
+          "colorShift": "Changes colour",
+          "trafficLight": "Traffic light"
+        },
+        "targets": {
+          "central": "Central",
+          "all": "Everything",
+          "peripherals": "All pods"
+        },
+        "from": "Start colour"
+      },
+      "holdLimit": "Longest hold",
+      "holdLimitOn": "Too long after {{time}}"
+    }
   },
   "simulate": {
     "title": "Simulate",
@@ -204,7 +583,8 @@
     "graph": "Block graph",
     "breakpointHint": "Tap a block to set or remove a breakpoint.",
     "pods": "Pods",
-    "podsHint": "Tap a pod's button to press it. Press and hold for a long press.",
+    "podsHint": "Tap a pod's button to press it. Press and hold for a long press, or switch on \"Hold\" to keep the button down.",
+    "hold": "Hold",
     "central": "Central · {{id}}",
     "peripheral": "Pod {{id}}",
     "press": "Press {{pod}}",
@@ -279,7 +659,9 @@
     "deleteSelected_other": "Delete {{count}} files…",
     "deleteTitle": "Delete files",
     "deleteText": "These files are deleted from the pod. This cannot be undone.",
-    "holdToDelete": "Hold to delete"
+    "holdToDelete": "Hold to delete",
+    "expertMode": "Expert mode",
+    "expertModeHint": "The editor shows block names, block types, ports and every field, like before. Remembered on this device."
   },
   "update": {
     "available": "A new version is available.",
@@ -328,7 +710,38 @@
     "unknownField": "Unknown setting {{field}} is ignored by the pod",
     "indexInvalid": "The menu file is invalid",
     "indexDuplicate": "{{path}} is in the menu twice",
-    "indexNotProgram": "{{path}} is a library part, not a program"
+    "indexNotProgram": "{{path}} is a library part, not a program",
+    "tooManyTimers": "{{count}} different stopwatches, the pod allows {{max}}",
+    "fieldNeedsFormat": "The connected pod ignores {{field}} (needs program format {{format}}, firmware update needed)",
+    "timerNeverStopped": "Stopwatch {{name}} is started but never stopped",
+    "timerNeverStarted": "Stopwatch {{name}} is stopped but never started",
+    "repeatNoLoop": "No step of the round leads back to this repeat",
+    "rangeReversed": "The shortest time is longer than the longest: the pod always uses the shortest",
+    "fieldFormatTooOld": "The connected pod rejects {{field}} (needs program format {{format}}, firmware update needed)",
+    "effectWaitEndless": "Waiting for an endless {{effect}} never ends: set a duration",
+    "countdownNeedsTimeLimit": "A countdown ({{countdown}}) needs a time limit ({{limit}})",
+    "fieldWrongMode": "{{field}} only works in the \"{{needs}}\" mode, this step is in the \"{{mode}}\" mode",
+    "signalNeedsGoTime": "Set the time until the signal: a fixed time or a shortest and a longest time",
+    "goTimeBothForms": "Use either one fixed time or a shortest and a longest time, not both",
+    "podSingleOnly": "This step needs one pod (\"central\" or a number), not {{value}}",
+    "maxMsTooSmall": "The time for a full charge must be at least {{min}} ms",
+    "countdownTargetNotDelay": "Only a pause can choose where the countdown is shown"
+  },
+  "portRoles": {
+    "then": "Then",
+    "ifTooSlow": "If too slow",
+    "ifLeftAlone": "If left alone",
+    "shortPress": "Short press",
+    "longPress": "Long press",
+    "ifRedHit": "If a red pod is hit",
+    "ifYes": "If yes",
+    "ifNo": "If no",
+    "eachRound": "Each round",
+    "afterLast": "After the last round",
+    "ifReleasedEarly": "If released too early",
+    "ifFull": "If fully charged",
+    "ifNoHold": "If nobody holds",
+    "ifFalseStart": "False start"
   },
   "view": {
     "back": "Back",
@@ -377,7 +790,9 @@
     "timeout": "timeout",
     "true": "true",
     "false": "false",
-    "avoidHit": "red hit"
+    "avoidHit": "red hit",
+    "body": "round",
+    "done": "done"
   },
   "blocks": {
     "led": {
@@ -415,6 +830,22 @@
     "summary": {
       "name": "Summary",
       "help": "Average, best and worst of a measurement, printed on the serial console."
+    },
+    "repeat": {
+      "name": "Repeat",
+      "help": "Runs the round (body) a number of times, then continues at done. The last step of the round leads back here."
+    },
+    "effect": {
+      "name": "Light effect",
+      "help": "Plays an effect on the ring of the central, one pod or all pods. Continues at once, or waits until the effect is over. A later light on the same ring replaces it."
+    },
+    "charge": {
+      "name": "Hold to charge",
+      "help": "The ring shows how long the button is held. Leave by release, when the charge is full or on a time limit. Needs firmware 2.9 on pods."
+    },
+    "release": {
+      "name": "Let go",
+      "help": "Trigger: letting go of the held button is the event. Signal: the colour switches after a time and the athlete lets go as fast as possible (false start if too early). Needs firmware 2.9 on pods."
     }
   },
   "common": {
@@ -533,6 +964,102 @@
     },
     "reset": {
       "label": "Reset measurements afterwards"
+    },
+    "count": {
+      "label": "Rounds",
+      "help": "How many times the round runs."
+    },
+    "storeIndex": {
+      "label": "Keep round number in"
+    },
+    "timerStart": {
+      "label": "Start stopwatch",
+      "help": "Starts this stopwatch when the step begins."
+    },
+    "timerStop": {
+      "label": "Stop stopwatch",
+      "help": "When the step ends, records the time since the start under this name."
+    },
+    "target": {
+      "label": "Where",
+      "help": "central, all (central and pods), peripherals, or the number of a pod."
+    },
+    "effect": {
+      "label": "Effect",
+      "help": "What the ring does."
+    },
+    "color2": {
+      "label": "Second colour",
+      "help": "Background or end colour of the effect. Default: off."
+    },
+    "durationMs": {
+      "label": "Duration (ms)",
+      "help": "Length of the effect. Blink, pulse and spin run until the next light change without it."
+    },
+    "periodMs": {
+      "label": "One cycle (ms)",
+      "help": "Blink, pulse and spin: how long one turn takes."
+    },
+    "brightness": {
+      "label": "Brightness",
+      "help": "0 to 255."
+    },
+    "wait": {
+      "label": "Wait until it is over",
+      "help": "Off: the program goes on at once."
+    },
+    "countdown": {
+      "label": "Countdown",
+      "help": "Shows the time running out on the ring."
+    },
+    "countdownColor": {
+      "label": "Countdown end colour"
+    },
+    "countdownTarget": {
+      "label": "Countdown on"
+    },
+    "countdownFrom": {
+      "label": "Countdown start colour"
+    },
+    "style": {
+      "label": "Style",
+      "help": "How the ring shows the charge: fill, brightness, trafficLight, colorShift."
+    },
+    "onsetMs": {
+      "label": "Charging starts after (ms)"
+    },
+    "decayMs": {
+      "label": "Drain time (ms)"
+    },
+    "holdColor": {
+      "label": "Colour while waiting"
+    },
+    "heldColor": {
+      "label": "Colour once held"
+    },
+    "goColor": {
+      "label": "Signal colour"
+    },
+    "goMs": {
+      "label": "Time until the signal (ms)"
+    },
+    "minGoMs": {
+      "label": "Signal at the earliest (ms)"
+    },
+    "maxGoMs": {
+      "label": "Signal at the latest (ms)"
+    },
+    "allowHeld": {
+      "label": "A hold from before counts"
+    },
+    "holdTimeoutMs": {
+      "label": "No hold within (ms)"
+    },
+    "maxHoldMs": {
+      "label": "Longest hold (ms)"
+    },
+    "storePercent": {
+      "label": "Store percentage in variable"
     }
   },
   "ops": {
@@ -756,5 +1283,312 @@
     "linkInvalid": "This sign-in link is incomplete.",
     "noServer": "Enter the server in the platform settings first, then open the link again.",
     "signingIn": "Signing in…"
+  },
+  "wizard": {
+    "numberLocale": "en",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "build": "Build my game",
+    "stepOf": "Step {{n}} of {{total}}",
+    "less": "Less: {{label}}",
+    "more": "More: {{label}}",
+    "steps": {
+      "game": "Game",
+      "pods": "Pods",
+      "timing": "Rounds and timing",
+      "colors": "Colours",
+      "measure": "Measure"
+    },
+    "games": {
+      "solo": {
+        "name": "Solo reaction",
+        "line": "Only the central. Blue = get ready, then press as soon as it lights up."
+      },
+      "star": {
+        "name": "Star",
+        "line": "The central and a random pod take turns."
+      },
+      "random": {
+        "name": "Random pod",
+        "line": "One random pod lights up, the central too, never the same twice."
+      },
+      "multi": {
+        "name": "All at once",
+        "line": "All pods light up at once. Hit every one, leave the red ones."
+      },
+      "duo": {
+        "name": "Duo",
+        "line": "Two pods take turns after a random pause."
+      }
+    },
+    "game": {
+      "question": "What do you want to play?",
+      "centralOnly": "central only",
+      "needs_one": "central + at least {{count}} pod",
+      "needs_other": "central + at least {{count}} pods"
+    },
+    "problems": {
+      "notEnoughPods_one": "{{game}} needs at least {{count}} pod besides the central. Add a pod or go back and pick another game.",
+      "notEnoughPods_other": "{{game}} needs at least {{count}} pods besides the central. Add pods or go back and pick another game.",
+      "pauseOrder": "The shortest pause must be shorter than the longest.",
+      "redTarget": "Red is taken by the “don't touch” pods. Pick another colour for the light to hit."
+    },
+    "pods": {
+      "question": "How many pods do you have?",
+      "hint": "Count the pods besides the central (the pod the app connects to).",
+      "label": "Pods besides the central",
+      "total_one": "Central + {{count}} pod",
+      "total_other": "Central + {{count}} pods",
+      "soloUses": "Solo uses only the central. Other pods stay off.",
+      "duoUses": "Duo uses the central and one pod. Other pods stay off."
+    },
+    "timing": {
+      "rounds": "Rounds",
+      "pause": "Pause before each light",
+      "fixed": "Always the same",
+      "random": "Random between",
+      "pauseFixed": "Pause",
+      "shortest": "Shortest pause",
+      "longest": "Longest pause",
+      "timeLimit": "Time limit",
+      "timeLimitOn": "Too slow after {{s}}",
+      "timeLimitOff": "Wait as long as it takes",
+      "secondsToPress": "Time to press",
+      "tooSlow": "If too slow",
+      "onTimeout": {
+        "goOn": "Go on",
+        "countMiss": "Count a miss and go on",
+        "endRound": "End the round"
+      }
+    },
+    "colors": {
+      "target": "Colour of the light to hit",
+      "redPods": "Red pods: don't touch",
+      "redPodsOn_one": "{{count}} red pod per round",
+      "redPodsOn_other": "{{count}} red pods per round",
+      "redPodsOff": "All pods light up in the target colour",
+      "redCount": "Red pods per round",
+      "hint": "Pods besides the central can show 8 colours. You can change the colours of single steps later.",
+      "preview": "Preview of the set"
+    },
+    "measure": {
+      "question": "What should the pods measure?",
+      "hint": "All of this is optional. You can change it later.",
+      "record": "Record reaction times",
+      "recordHint": "Each press is measured, from light on to press.",
+      "falseStart": "Catch false starts",
+      "falseStartHint": "Pressing during the pause flashes red and ends the round.",
+      "countMisses": "Count misses",
+      "countMissesHint": "Adds 1 for: {{what}}",
+      "countMissesOff": "Turn on a time limit first.",
+      "missTooSlow": "too slow",
+      "missRed": "red pod hit",
+      "missFalseStart": "false start",
+      "results": "Show results at the end",
+      "resultsHint": "Average and best time after the last round.",
+      "resultsOff": "Needs “Record reaction times”."
+    },
+    "ready": {
+      "title": "Your game is ready",
+      "name": "Name",
+      "menu": "Menu pattern",
+      "menuHint": "This is how it shows in the pod's program menu. Tap LEDs to change it.",
+      "size": "Uses {{percent}} % of the space for one program.",
+      "story": "What happens",
+      "try": "Try it in the simulator",
+      "change": "Change steps",
+      "saveToMenu": "Save and add to menu",
+      "saved": "Saved in My programs. Changes here update it.",
+      "centralOnly": "Central only."
+    },
+    "chooser": {
+      "question": "How do you want to start?",
+      "game": "Start from a game",
+      "gameLine": "Answer five questions. The app builds the program, you can try it right away.",
+      "recommended": "Recommended",
+      "copy": "Copy one of my programs",
+      "copyLine": "Take one of your programs or a shipped one and change it.",
+      "empty": "Start empty",
+      "emptyLine": "Build it block by block.",
+      "expert": "For people who know blocks",
+      "copyTitle": "Copy a program",
+      "noneMine": "No programs of your own yet."
+    },
+    "story": {
+      "rounds_one": "{{count}} round:",
+      "rounds_other": "{{count}} rounds, each one:",
+      "ready": "The central lights blue: get ready",
+      "pauseFixed": "Pause {{s}} s",
+      "pauseRandom": "Pause {{min}}–{{max}} s, at random",
+      "falseStart": "{{pause}}; pressing now is a false start: red, the round is over",
+      "andMiss": ", and it counts as a miss",
+      "lightCentral": "Light the central {{color}}",
+      "pressCentral": "Wait for the press on the central",
+      "limit": " (max {{s}} s)",
+      "podRandom": "Light a random pod {{color}} and wait for its press",
+      "podRandomOther": "Light a random pod {{color}}, the central too, never the same twice, and wait for its press",
+      "podDuo": "Light the pod {{color}} and wait for its press",
+      "allAtOnce_one": "Light both pods at once",
+      "allAtOnce_other": "Light all {{count}} pods at once",
+      "redPods_one": ", {{count}} of them red: don't touch",
+      "redPods_other": ", {{count}} of them red: don't touch",
+      "untilPressed": ", wait until every {{color}} one is pressed",
+      "redHit": "If a red pod is hit: flash red, the round is over",
+      "allOff": "Turn all pods off",
+      "tooSlow": {
+        "goOn": "If too slow: go on with the next step",
+        "countMiss": "If too slow: count a miss and go on",
+        "endRound": "If too slow: the round is over",
+        "endRoundMiss": "If too slow: count a miss, the round is over"
+      },
+      "record": "Every reaction time is recorded.",
+      "misses": "Misses are counted in the setting “Misses”.",
+      "endResults": "At the end: the average and best time are shown, then the game starts again.",
+      "endPlain": "At the end: the central lights blue for 3 s, then the game starts again."
+    }
+  },
+  "settingLabels": {
+    "rounds": "Rounds",
+    "runs": "Round counter",
+    "pause": "Pause",
+    "pauseMin": "Shortest pause",
+    "pauseMax": "Longest pause",
+    "timeLimit": "Time limit",
+    "redPods": "Red pods",
+    "misses": "Misses",
+    "selectedPod": "Selected pod",
+    "avgReaction": "Average reaction time",
+    "bestReaction": "Best reaction time",
+    "lastReaction": "Last reaction time",
+    "requiredPeripherals": "Pods besides the central",
+    "nodeCount": "Pods including the central"
+  },
+  "adjust": {
+    "action": "Adjust",
+    "actionFor": "Adjust {{name}}",
+    "title": "Adjust: {{name}}",
+    "subLocal": "Changes apply to the whole program.",
+    "subShipped": "Saving makes your own copy. The shipped program stays as it is.",
+    "subPod": "Saving makes a copy on this phone. The program on the pod stays as it is until you push.",
+    "existingCopy": "You already have a copy of this program. Adjust changes your copy.",
+    "readOnly": "This pod is not the central, so it cannot take programs. Your copy stays on this phone: try it in the simulator or push it to a set when you connect its central. It cannot be pushed to this pod.",
+    "settings": "Settings",
+    "wholeProgram": "For the whole program",
+    "timeLimit": "Time limit",
+    "timeLimitOn": "Too slow after {{s}}",
+    "timeLimitOff": "Wait as long as it takes",
+    "mixed": "On for some presses",
+    "secondsToPress": "Seconds to press",
+    "record": "Record reaction times",
+    "recordHint": "Each press is measured",
+    "results": "Show results at the end",
+    "resultsHint": "Average, best and number of presses",
+    "timeLimitSetting": "The seconds are a setting above",
+    "noSwitches": "This program is built from library parts, so these switches cannot change it. Change the steps to make an editable copy first.",
+    "try": "Try it",
+    "saveAndTry": "Save and try",
+    "save": "Save",
+    "steps": "Change the steps instead",
+    "saved": "Saved.",
+    "notFound": "The program was not found."
+  },
+  "sentence": {
+    "decimal": ".",
+    "seconds": "{{value}} s",
+    "secondsRange": "{{min}}–{{max}} s",
+    "range": "{{min}} to {{max}}",
+    "customColor": "in a custom colour",
+    "ledAll": "Light the central {{color}}",
+    "ledSome_one": "Light {{count}} LED of the central {{color}}",
+    "ledSome_other": "Light {{count}} LEDs of the central {{color}}",
+    "ledOff": "Turn the central's LEDs off",
+    "ledSomeOff_one": "Turn {{count}} LED of the central off",
+    "ledSomeOff_other": "Turn {{count}} LEDs of the central off",
+    "wait": "Wait {{time}}",
+    "waitRandom": "Wait {{time}} (random)",
+    "noWait": "Go on right away",
+    "press": "Wait for a press on the central",
+    "catchEarly": "Wait {{time}} (random), pressing now is a false start",
+    "max": "max {{time}}",
+    "maxRandom": "max {{time}} (random)",
+    "longFrom": "long press from {{time}}",
+    "pod": "pod {{n}}",
+    "chosenPod": "the chosen pod",
+    "podIn": "the pod in {{name}}",
+    "podHit": "Light {{pod}} {{color}}, wait for the press",
+    "podAvoid": "Light {{pod}} {{color}}: don't touch it",
+    "colorAfter": "then {{color}}",
+    "multiAll": "Light all pods {{color}} at once, wait until each one is pressed",
+    "multiSome_one": "Light {{count}} pod {{color}}, wait for the press",
+    "multiSome_other": "Light {{count}} pods {{color}} at once, wait until each one is pressed",
+    "multiVar": "Light {{value}} pods {{color}} at once, wait until each one is pressed",
+    "multiAvoid": "{{value}} of them {{color}}: don't touch",
+    "withoutCentral": "without the central",
+    "resetAll": "Turn all pods off",
+    "resetSome": "Turn {{value}} pods off",
+    "centralStays": "the central stays as it is",
+    "add": "Add {{value}} to {{var}}",
+    "subtract": "Subtract {{value}} from {{var}}",
+    "set": "Set {{var}} to {{value}}",
+    "randomPod": "Choose a random pod",
+    "randomPodOther": "Choose a random pod, never the same twice",
+    "randomNode": "Choose a random pod or the central",
+    "randomNodeOther": "Choose a random pod or the central, never the same twice",
+    "randomNumber": "Set {{var}} to a random number below {{value}}",
+    "randomNumberOther": "Set {{var}} to a new random number below {{value}}",
+    "if": "Check: is {{left}} {{op}} {{right}}?",
+    "op": {
+      "eq": "equal to",
+      "ne": "not equal to",
+      "gt": "more than",
+      "lt": "less than",
+      "ge": "at least",
+      "le": "at most"
+    },
+    "summary": "Show the results",
+    "summaryOf": "Show the results: {{list}}",
+    "ofMetric": "of {{name}}",
+    "stat": {
+      "average": "average",
+      "best": "best",
+      "worst": "worst",
+      "count": "count"
+    },
+    "repeat_one": "Repeat {{count}} round",
+    "repeat_other": "Repeat {{count}} rounds",
+    "repeatVar": "Repeat {{value}} rounds",
+    "unknown": "Step of type {{type}}",
+    "var": {
+      "peripherals": "the number of pods",
+      "nodes": "the number of pods and the central"
+    },
+    "isCentral": "Is the chosen pod the central?",
+    "isNotCentral": "Is the chosen pod one of the pods, not the central?",
+    "catchEarlyFixed": "Wait {{time}}, pressing now is a false start",
+    "effect": {
+      "solid": "Light {{where}} {{color}}",
+      "fill": "Fill {{where}} with {{color}}",
+      "drain": "Drain {{where}} of {{color}}",
+      "dim": "Fade {{where}} out from {{color}}",
+      "colorShift": "Change {{where}} from {{color}} to {{color2}}",
+      "trafficLight": "Traffic light on {{where}}",
+      "blink": "Blink {{where}} {{color}}",
+      "pulse": "Pulse {{where}} {{color}}",
+      "spin": "Spin {{color}} around {{where}}",
+      "off": "Turn {{where}} off",
+      "wait": "wait until it is over",
+      "for": "for {{time}}",
+      "central": "the central",
+      "all": "the central and all pods",
+      "peripherals": "all pods",
+      "pod": "pod {{n}}",
+      "chosenPod": "the chosen pod"
+    },
+    "withCountdown": "the ring counts down",
+    "charge": "Hold {{pod}} to charge · full after {{time}}",
+    "chargeAccumulate": "Charge {{pod}} by holding, letting go pauses · full after {{time}}",
+    "releaseTrigger": "Wait for {{pod}} to be held and let go",
+    "releaseSignal": "Hold {{pod}}, let go when it turns {{color}} · signal after {{time}}"
   }
 }

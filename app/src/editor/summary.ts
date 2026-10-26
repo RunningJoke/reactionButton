@@ -67,6 +67,31 @@ export function blockSummary(block: Block, t: (key: string, options?: Record<str
       return [text(block.pods === undefined ? t("summary.allPods") : `${t("summary.pods")} ${v(block.pods)}`)];
     case "summary":
       return [text(`Σ ${v(block.metric)}`)];
+    case "repeat": {
+      const parts: SummaryPart[] = [text(`↻ ${v(block.count)}×`)];
+      if (typeof block.storeIndex === "string") parts.push(text(`# ${block.storeIndex}`));
+      return parts;
+    }
+    case "effect": {
+      const parts: SummaryPart[] = [{ kind: "color", color: block.color ?? "white", label: colorLabel(block.color ?? "white") }, text(String(block.effect ?? "?"))];
+      if (typeof block.durationMs === "number" && block.durationMs > 0) parts.push(text(ms(block.durationMs)));
+      if (block.wait === true) parts.push(text("⏳"));
+      return parts;
+    }
+    case "charge": {
+      const parts: SummaryPart[] = [{ kind: "color", color: block.color ?? "green", label: colorLabel(block.color ?? "green") }, text(`${ms(block.maxMs)} · ${v(block.style ?? "fill")}`)];
+      if (block.timeoutMs !== undefined) parts.push(text(`⏱ ${ms(block.timeoutMs)}`));
+      if (typeof block.record === "string") parts.push(text(`● ${block.record}`));
+      return parts;
+    }
+    case "release": {
+      const signal = block.mode === "signal";
+      const parts: SummaryPart[] = [{ kind: "color", color: block.holdColor ?? "yellow", label: colorLabel(block.holdColor ?? "yellow") }, text(signal ? "signal" : "trigger")];
+      const limit = signal ? block.timeoutMs : block.maxHoldMs;
+      if (limit !== undefined) parts.push(text(`⏱ ${ms(limit)}`));
+      if (typeof block.record === "string") parts.push(text(`● ${block.record}`));
+      return parts;
+    }
     default:
       return [];
   }

@@ -177,6 +177,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     response["ok"] = true;
     response["firmware"] = String(FW_VERSION_MAJOR) + "." + String(FW_VERSION_MINOR);
     response["linkProtocol"] = (uint32_t)Protocol::VERSION;
+    response["linkRevision"] = (uint32_t)Protocol::REVISION;
     response["setId"] = hex32(Settings::getSetId());
     response["setName"] = Settings::getSetName();
     response["pinRequired"] = !Settings::getPin().isEmpty() && !this->isSerial();
@@ -196,6 +197,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("validateInline");
     features.add("listMeta");
     features.add("effects");
+    features.add("hold");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

@@ -40,7 +40,7 @@ Program format and block semantics: [docs/firmware/programs.md](../firmware/prog
 - Editing library fragments (`/prog/lib/*` is read-only).
 - Cloud storage / accounts (later a remote database may replace the local store, see §6).
   Planned as the community platform: [docs/platform/spec.md](../platform/spec.md) (§5.4 app integration).
-- Firmware OTA.
+- Firmware OTA (not planned, [ADR 0006](../decisions/0006-no-ota.md)).
 
 ---
 
@@ -239,6 +239,9 @@ type SyncState = {            // per pod set (setId), remembered after each sync
 ---
 
 ## 7. Editor
+
+> Proposed redesign for untrained users and coaches (simple step view, switches for optional
+> features, game wizard, expert mode): [editor-ux.md](editor-ux.md). Not implemented yet.
 
 ### 7.1 Graph
 
@@ -528,7 +531,8 @@ Implementation notes (`src/pod/sync.ts`):
 | P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | done |
 | P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | done (accepted 2026-10-19) |
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
-| P7 | Athletes, result history, platform upload (#47, #48 app side) | AT-R* pass | implemented, waiting for approval; with the demo pod until the firmware has `reports` / `remote` (#41, #42) |
+| P7 | Athletes, result history, platform upload (#47, #48 app side) | AT-R* pass | done (AT-R* passed 2026-10-26); real pods need `reports` / `remote` (#41, #42) for live results |
+| P8 | Block builder for first-timers and coaches ([editor-ux.md](editor-ux.md)): format 2 in model + simulator, step sheet, step list, game wizard, add a step by intent, program sheet, Adjust, expert mode | AT-E* pass | done (AT-E* passed 2026-10-26) |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](acceptance-tests.md).
 **Firmware / API changes the app needs** are requested as **GitHub issues** in this repository

@@ -5,7 +5,14 @@ import { useTranslation } from "react-i18next";
 import { Modal, modalStyles } from "../components/Modal";
 import { DEFAULT_FILES } from "../defaults";
 import { formatProgram } from "@reactpod/program-model";
-import { newProgram } from "../editor/ops";
+import { newProgram, type ProgramJson } from "../editor/ops";
+import { useEditor } from "../editor/editorStore";
+import { Copy, FilePlus, Wand2 } from "lucide-react";
+import type { MenuGroup } from "@reactpod/program-model";
+import { LedRing } from "../components/LedRing";
+import { WIZARD_PATH, useWizard } from "../wizard/wizardStore";
+import wizard from "../wizard/Wizard.module.css";
+import { buildCatalog } from "./catalog";
 import { usePodSession } from "../pod/session";
 import { rememberPodBase } from "../pod/syncActions";
 import type { ProgramDoc } from "../store/programStore";
@@ -44,6 +51,25 @@ export async function ensureLocal(path: string, text: string | undefined, origin
   return doc;
 }
 
+/**
+ * Saves a changed program (Adjust sheet, editor-ux.md §4 G): into the local program with this path
+ * (through the editor when it has it open, so undo works there), else as a new local copy with the
+ * same path, like Edit does. The program on the pod is not touched until the next push.
+ */
+export async function saveAdjusted(path: string, json: ProgramJson, origin: "local" | "pod" | "default"): Promise<ProgramDoc> {
+  const { programs, add, save } = useWorkspace.getState();
+  const existing = programs.find((p) => p.path === path);
+  if (existing) {
+    const editor = useEditor.getState();
+    if (editor.doc?.id === existing.id) editor.apply(json);
+    else await save({ ...existing, json });
+    return useWorkspace.getState().programs.find((p) => p.id === existing.id) ?? { ...existing, json };
+  }
+  const doc = await add(json, origin === "local" ? "local" : origin, { path });
+  if (origin === "pod") await rememberPodBase(path);
+  return doc;
+}
+
 export function downloadProgram(doc: ProgramDoc) {
   const blob = new Blob([formatProgram(doc.json)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -56,36 +82,87 @@ export function downloadProgram(doc: ProgramDoc) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Asks for a name and creates an empty program (or a copy of `from`). */
+type NewStage = { kind: "choose" } | { kind: "copy" } | { kind: "name"; from?: ProgramJson };
+
+/**
+ * "New program" (editor-ux.md §4 A). Without `from`: the chooser – start from a game
+ * (the wizard), copy a program, or start empty. With `from`: asks for the name of a copy.
+ */
 export function NewProgramModal({ open, onClose, from }: { open: boolean; onClose: () => void; from?: ProgramDoc }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const add = useWorkspace((s) => s.add);
   const taken = useTakenPaths();
+  const [stage, setStage] = useState<NewStage>({ kind: "choose" });
   const [name, setName] = useState("");
   const trimmed = name.trim();
+  const current: NewStage = from ? { kind: "name", from: from.json } : stage;
+  const source = current.kind === "name" ? current.from : undefined;
+
+  const close = () => {
+    setStage({ kind: "choose" });
+    setName("");
+    onClose();
+  };
 
   const create = async () => {
     if (!trimmed) return;
-    const json = from ? { ...structuredClone(from.json), name: trimmed } : newProgram(trimmed);
+    const json = source ? { ...structuredClone(source), name: trimmed } : newProgram(trimmed);
     const doc = await add(json, "local", { taken });
-    setName("");
-    onClose();
+    close();
     navigate(editorUrl(doc.id));
   };
+
+  if (current.kind === "choose") {
+    return (
+      <Modal open={open} title={t("programs.newTitle")} onClose={close} actions={<button className={modalStyles.button} onClick={close}>{t("common.cancel")}</button>}>
+        <NewProgramChooser
+          onGame={() => {
+            useWizard.getState().start();
+            close();
+            navigate(WIZARD_PATH);
+          }}
+          onCopy={() => setStage({ kind: "copy" })}
+          onEmpty={() => setStage({ kind: "name" })}
+        />
+      </Modal>
+    );
+  }
+
+  if (current.kind === "copy") {
+    return (
+      <Modal
+        open={open}
+        title={t("wizard.chooser.copyTitle")}
+        onClose={close}
+        actions={
+          <button className={modalStyles.button} onClick={() => setStage({ kind: "choose" })}>
+            {t("wizard.back")}
+          </button>
+        }
+      >
+        <CopyPicker
+          onPick={(json) => {
+            setName(t("programs.copyOf", { name: String(json.name) }));
+            setStage({ kind: "name", from: json });
+          }}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal
       open={open}
-      title={from ? t("programs.duplicateTitle") : t("programs.newTitle")}
-      onClose={onClose}
+      title={source ? t("programs.duplicateTitle") : t("programs.newTitle")}
+      onClose={close}
       actions={
         <>
-          <button className={modalStyles.button} onClick={onClose}>
-            {t("common.cancel")}
+          <button className={modalStyles.button} onClick={() => (from ? close() : setStage({ kind: "choose" }))}>
+            {from ? t("common.cancel") : t("wizard.back")}
           </button>
           <button className={`${modalStyles.button} ${modalStyles.primary}`} disabled={!trimmed} onClick={() => void create()}>
-            {from ? t("programs.duplicate") : t("programs.create")}
+            {source ? t("programs.duplicate") : t("programs.create")}
           </button>
         </>
       }
@@ -95,12 +172,86 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
         id="new-program-name"
         className={modalStyles.input}
         value={name}
-        placeholder={from ? t("programs.copyOf", { name: String(from.json.name) }) : t("programs.namePlaceholder")}
+        placeholder={source ? t("programs.copyOf", { name: String(source.name) }) : t("programs.namePlaceholder")}
         autoFocus
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && void create()}
       />
     </Modal>
+  );
+}
+
+/** The three ways to start a program. */
+function NewProgramChooser({ onGame, onCopy, onEmpty }: { onGame: () => void; onCopy: () => void; onEmpty: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className={wizard.chooser}>
+      <p className={wizard.muted}>{t("wizard.chooser.question")}</p>
+      <button type="button" className={wizard.choice} onClick={onGame}>
+        <span className={wizard.choiceIcon}>
+          <Wand2 size={26} aria-hidden />
+        </span>
+        <span className={wizard.choiceText}>
+          <strong>{t("wizard.chooser.game")}</strong>
+          <span>{t("wizard.chooser.gameLine")}</span>
+          <span className={`${wizard.tag} ${wizard.tagAccent}`}>{t("wizard.chooser.recommended")}</span>
+        </span>
+      </button>
+      <button type="button" className={wizard.choice} onClick={onCopy}>
+        <span className={wizard.choiceIcon}>
+          <Copy size={24} aria-hidden />
+        </span>
+        <span className={wizard.choiceText}>
+          <strong>{t("wizard.chooser.copy")}</strong>
+          <span>{t("wizard.chooser.copyLine")}</span>
+        </span>
+      </button>
+      <button type="button" className={wizard.choice} onClick={onEmpty}>
+        <span className={wizard.choiceIcon}>
+          <FilePlus size={24} aria-hidden />
+        </span>
+        <span className={wizard.choiceText}>
+          <strong>{t("wizard.chooser.empty")}</strong>
+          <span>{t("wizard.chooser.emptyLine")}</span>
+          <span className={wizard.tag}>{t("wizard.chooser.expert")}</span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** My programs first, then the shipped ones. */
+function CopyPicker({ onPick }: { onPick: (json: ProgramJson) => void }) {
+  const { t } = useTranslation();
+  const programs = useWorkspace((s) => s.programs);
+  const shipped = useMemo(
+    () =>
+      buildCatalog(Object.keys(DEFAULT_FILES), (p) => DEFAULT_FILES[p]).programs.flatMap((entry) => {
+        const text = DEFAULT_FILES[entry.path];
+        return text ? [{ entry, json: JSON.parse(text) as ProgramJson }] : [];
+      }),
+    [],
+  );
+  const row = (key: string, name: string, menu: MenuGroup[] | undefined, json: ProgramJson) => (
+    <li key={key}>
+      <button type="button" className={wizard.pick} onClick={() => onPick(json)}>
+        <LedRing groups={menu ?? []} size={36} />
+        <span>{name}</span>
+      </button>
+    </li>
+  );
+  return (
+    <ul className={wizard.pickList}>
+      <li className={wizard.pickGroup}>{t("programs.mine")}</li>
+      {programs.length === 0 && (
+        <li>
+          <p className={wizard.muted}>{t("wizard.chooser.noneMine")}</p>
+        </li>
+      )}
+      {programs.map((doc) => row(doc.id, String(doc.json.name), Array.isArray(doc.json.menu) ? (doc.json.menu as MenuGroup[]) : undefined, doc.json))}
+      <li className={wizard.pickGroup}>{t("programs.shipped")}</li>
+      {shipped.map(({ entry, json }) => row(entry.path, entry.name, entry.menu, json))}
+    </ul>
   );
 }
 

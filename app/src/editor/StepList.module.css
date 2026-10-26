@@ -1,0 +1,238 @@
+/* Step list (simple view of the editor). Category colours come from editor.css. */
+.scroll {
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* room to scroll the last steps above the sheet on phones */
+.scroll[data-sheet] {
+  padding-bottom: 55vh;
+}
+
+@media (min-width: 900px) {
+  .scroll[data-sheet] {
+    padding-bottom: 0;
+    padding-right: 356px;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 560px;
+  margin: 0 auto;
+  /* bottom: room for the floating + */
+  padding: var(--space-3) var(--space-3) 96px;
+}
+
+.section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-2) 2px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.section p {
+  margin: 2px 2px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bracket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 4px var(--space-2) var(--space-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-l);
+}
+
+.bracketHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.bracketHead strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+}
+
+.bracketHead[aria-pressed="true"] {
+  background: var(--accent-soft);
+}
+
+.card {
+  --c: var(--cat-unknown);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--c);
+  border-radius: var(--radius-m);
+}
+
+.card[data-category="light"] { --c: var(--cat-light); }
+.card[data-category="wait"] { --c: var(--cat-wait); }
+.card[data-category="input"] { --c: var(--cat-input); }
+.card[data-category="logic"] { --c: var(--cat-logic); }
+.card[data-category="remote"] { --c: var(--cat-remote); }
+.card[data-category="stats"] { --c: var(--cat-stats); }
+
+.card[data-selected] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.num {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  color: var(--c);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* from a library part (read only) */
+.lock {
+  margin-left: 6px;
+  vertical-align: -2px;
+  color: var(--text-muted);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip[data-kind="record"] {
+  background: color-mix(in srgb, var(--cat-stats) 16%, transparent);
+  color: var(--cat-stats);
+}
+
+.chip[data-kind="error"] {
+  background: color-mix(in srgb, var(--error) 14%, transparent);
+  color: var(--error);
+}
+
+.chip[data-kind="warn"] {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  color: var(--warn);
+}
+
+.branches {
+  display: flex;
+  flex-direction: column;
+  margin: -4px 0 0;
+  padding: 0 var(--space-2) 4px 50px;
+  list-style: none;
+}
+
+.branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: var(--touch);
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.branch svg {
+  flex: none;
+}
+
+.branch b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+button.branch {
+  cursor: pointer;
+}
+
+button.branch:hover {
+  background: var(--surface-2);
+}
+
+/* the steps of a branch, under the step they start at */
+.branchSteps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 var(--space-2) var(--space-2) 20px;
+  padding-left: var(--space-2);
+  border-left: 2px dashed var(--border);
+}

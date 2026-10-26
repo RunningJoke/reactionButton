@@ -28,6 +28,41 @@
   color: var(--accent);
 }
 
+/* program row: the entry link and the Adjust button (editor-ux.md §4 G) */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.row > .entry {
+  flex: 1;
+  min-width: 0;
+}
+
+.adjust {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: none;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adjust:hover {
+  background: var(--surface-2);
+}
+
 .fragmentIcon {
   display: grid;
   place-items: center;

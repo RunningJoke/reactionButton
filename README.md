@@ -35,5 +35,5 @@ firmware project.
 ## Releases
 
 Firmware, app and hardware are versioned separately: tags `fw-v2.7.0`, `app-v1.0.0`,
-`hw-rev1`. Firmware releases carry the binaries and an OTA manifest; see
+`hw-rev1`. Firmware releases carry the binaries (flashed over USB; OTA is not planned, ADR 0006); see
 [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -4,14 +4,23 @@
 #include "Link/Protocol.h"
 
 /**
- * A press reported by a peripheral.
+ * A press or release reported by a peripheral.
  */
 struct PodEvent {
+    enum class Kind : uint8_t {
+        PRESSED,        // button pressed (for CHARGE / RELEASE activations: a hold started)
+        RELEASED,       // end of a hold (RELEASED frame, only for CHARGE / RELEASE activations)
+    };
+
     uint8_t podId;
     uint8_t cmdSeq;                     // activation the press belongs to (see IPodNetwork::arm)
     Protocol::PressResult result;
-    int32_t reactionUs;                 // measured on the peripheral: LED on -> press
+    int32_t reactionUs;                 // measured on the peripheral: LED on -> press (RELEASED: switch -> release)
     int64_t rxTimeUs;                   // central clock when the event arrived
+    Kind kind = Kind::PRESSED;
+    uint8_t flags = 0;                  // RELEASED: Protocol::RELEASED_FLAG_*
+    uint32_t heldMs = 0;                // RELEASED: hold time measured on the peripheral
+    uint32_t chargeMs = 0;              // RELEASED: charge at the end
 
     int32_t reactionMs() const { return (this->reactionUs + 500) / 1000; }
 };
@@ -26,6 +35,9 @@ struct ArmCommand {
     // Pods without effect support (supportsEffects false) show colorActive instead.
     Protocol::EffectDesc waiting = {Protocol::EffectId::NONE, Protocol::Color::GREEN, Protocol::Color::OFF,
                                     255, 0, 0, 0, 0};
+
+    // PodMode CHARGE / RELEASE only (needs IPodNetwork::supportsHold)
+    Protocol::HoldParams hold = {};
 };
 
 /**
@@ -54,6 +66,10 @@ class IPodNetwork {
         // Whether the pod plays effects (EFFECT frames, ArmCommand::waiting). False for
         // pods with older firmware: show a static colour (arm / colorActive) instead.
         virtual bool supportsEffects(uint8_t podId) const { return false; }
+
+        // Whether the pod measures holds (PodMode CHARGE / RELEASE, RELEASED frames). False for pods
+        // with an older link protocol: the hold blocks take their timeout port at once.
+        virtual bool supportsHold(uint8_t podId) const { return false; }
 
         // Plays an effect on a pod's ring, starting at startAtUs (network time, 0 = now).
         // Does not arm or reset the pod. EffectId::NONE stops it and switches the LEDs off.

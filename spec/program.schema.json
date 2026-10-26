@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://runningjoke.github.io/reactionButton/spec/program.schema.json",
-  "x-programFormat": 1,
+  "x-programFormat": 3,
   "title": "ReactPod program",
-  "description": "ReactPod program file (/prog/*.json), program format 1. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
+  "description": "ReactPod program file (/prog/*.json), program format 3. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
   "type": "object",
   "required": [
     "name"
@@ -106,6 +106,24 @@
         }
       ]
     },
+    "target": {
+      "description": "central, all, peripherals, a pod id (number) or a variable holding it",
+      "anyOf": [
+        {
+          "enum": [
+            "central",
+            "all",
+            "peripherals"
+          ]
+        },
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/$defs/variableName"
+        }
+      ]
+    },
     "leds": {
       "type": "array",
       "items": {
@@ -173,6 +191,18 @@
         },
         {
           "$ref": "#/$defs/block_summary"
+        },
+        {
+          "$ref": "#/$defs/block_repeat"
+        },
+        {
+          "$ref": "#/$defs/block_effect"
+        },
+        {
+          "$ref": "#/$defs/block_charge"
+        },
+        {
+          "$ref": "#/$defs/block_release"
         }
       ]
     },
@@ -196,6 +226,16 @@
         },
         "leds": {
           "$ref": "#/$defs/leds"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -225,6 +265,39 @@
         },
         "maxMs": {
           "$ref": "#/$defs/value"
+        },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "countdownFrom": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\""
+        },
+        "countdownTarget": {
+          "$ref": "#/$defs/target",
+          "description": "default: \"central\""
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -259,6 +332,25 @@
         "maxTimeoutMs": {
           "$ref": "#/$defs/value"
         },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "countdownFrom": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\""
+        },
         "record": {
           "type": "string",
           "minLength": 1,
@@ -266,6 +358,16 @@
         },
         "storeAs": {
           "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -324,6 +426,16 @@
         "right": {
           "$ref": "#/$defs/value"
         },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
         "true": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
@@ -371,6 +483,16 @@
         "value": {
           "$ref": "#/$defs/value"
         },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
         "next": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
@@ -412,6 +534,21 @@
         "timeoutMs": {
           "$ref": "#/$defs/value"
         },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
         "record": {
           "type": "string",
           "minLength": 1,
@@ -419,6 +556,16 @@
         },
         "storeAs": {
           "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -470,10 +617,35 @@
         "timeoutMs": {
           "$ref": "#/$defs/value"
         },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
         "record": {
           "type": "string",
           "minLength": 1,
           "description": "measurement metric name"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -509,6 +681,16 @@
         "ledsOff": {
           "type": "boolean",
           "description": "default: true"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
         },
         "next": {
           "$ref": "#/$defs/blockName",
@@ -552,7 +734,379 @@
           "type": "boolean",
           "description": "default: true"
         },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
         "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_repeat": {
+      "title": "repeat",
+      "description": "needs program format 2",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "count"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "repeat"
+        },
+        "count": {
+          "$ref": "#/$defs/value"
+        },
+        "storeIndex": {
+          "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "body": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "done": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_effect": {
+      "title": "effect",
+      "description": "needs program format 3",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "effect"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "effect"
+        },
+        "target": {
+          "$ref": "#/$defs/target",
+          "description": "default: \"central\""
+        },
+        "effect": {
+          "enum": [
+            "solid",
+            "fill",
+            "drain",
+            "dim",
+            "colorShift",
+            "trafficLight",
+            "blink",
+            "pulse",
+            "spin",
+            "off"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"white\""
+        },
+        "color2": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"off\""
+        },
+        "durationMs": {
+          "$ref": "#/$defs/value"
+        },
+        "periodMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 500"
+        },
+        "brightness": {
+          "$ref": "#/$defs/value",
+          "description": "default: 255"
+        },
+        "leds": {
+          "$ref": "#/$defs/leds"
+        },
+        "syncStartMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 20"
+        },
+        "wait": {
+          "type": "boolean",
+          "description": "default: false"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_charge": {
+      "title": "charge",
+      "description": "needs program format 3",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "maxMs"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "charge"
+        },
+        "pod": {
+          "$ref": "#/$defs/target",
+          "description": "default: \"central\""
+        },
+        "maxMs": {
+          "$ref": "#/$defs/value"
+        },
+        "style": {
+          "enum": [
+            "fill",
+            "brightness",
+            "trafficLight",
+            "colorShift"
+          ],
+          "description": "default: \"fill\""
+        },
+        "color": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\""
+        },
+        "color2": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "onsetMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 0"
+        },
+        "mode": {
+          "enum": [
+            "release",
+            "accumulate"
+          ],
+          "description": "default: \"release\""
+        },
+        "decayMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 0; only in mode accumulate"
+        },
+        "timeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "minTimeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "maxTimeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "record": {
+          "type": "string",
+          "minLength": 1,
+          "description": "measurement metric name"
+        },
+        "storeAs": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storePercent": {
+          "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "released": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "early": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "full": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_release": {
+      "title": "release",
+      "description": "needs program format 3",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "release"
+        },
+        "mode": {
+          "enum": [
+            "trigger",
+            "signal"
+          ],
+          "description": "default: \"trigger\""
+        },
+        "pod": {
+          "$ref": "#/$defs/target",
+          "description": "default: \"central\""
+        },
+        "holdColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"yellow\""
+        },
+        "goColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"green\"; only in mode signal"
+        },
+        "goMs": {
+          "$ref": "#/$defs/value",
+          "description": "only in mode signal"
+        },
+        "minGoMs": {
+          "$ref": "#/$defs/value",
+          "description": "only in mode signal"
+        },
+        "maxGoMs": {
+          "$ref": "#/$defs/value",
+          "description": "only in mode signal"
+        },
+        "heldColor": {
+          "$ref": "#/$defs/namedColor"
+        },
+        "allowHeld": {
+          "type": "boolean"
+        },
+        "holdTimeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "maxHoldMs": {
+          "$ref": "#/$defs/value",
+          "description": "only in mode trigger"
+        },
+        "timeoutMs": {
+          "$ref": "#/$defs/value",
+          "description": "only in mode signal"
+        },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "record": {
+          "type": "string",
+          "minLength": 1,
+          "description": "measurement metric name"
+        },
+        "storeAs": {
+          "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "noHold": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "falseStart": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "timeout": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
         }

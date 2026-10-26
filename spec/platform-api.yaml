@@ -181,10 +181,25 @@ paths:
                             - ledOutOfRange
                             - portNotText
                             - portUnknownTarget
+                            - tooManyTimers
+                            - fieldFormatTooOld
+                            - effectWaitEndless
+                            - countdownNeedsTimeLimit
+                            - countdownTargetNotDelay
+                            - fieldWrongMode
+                            - signalNeedsGoTime
+                            - goTimeBothForms
+                            - podSingleOnly
+                            - maxMsTooSmall
                             - noOutgoing
                             - unreachable
                             - unknownVariable
                             - unknownField
+                            - fieldNeedsFormat
+                            - timerNeverStopped
+                            - timerNeverStarted
+                            - repeatNoLoop
+                            - rangeReversed
                             - indexInvalid
                             - indexDuplicate
                             - indexNotProgram

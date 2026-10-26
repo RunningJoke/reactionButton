@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Copy, FastForward, Pause, Pencil, Play, RotateCcw, StepForward } from "lucide-react";
+import { Copy, FastForward, Hand, Pause, Pencil, Play, RotateCcw, StepForward } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { useEditor } from "../editor/editorStore";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
@@ -48,11 +48,14 @@ export function SimulatePage() {
   const readRef = useRef(read);
   readRef.current = read;
   const path = target?.path;
+  const { programFormat } = source;
   const model = useMemo(() => {
     if (!path || text === undefined) return null;
-    const resolved = validateProgram(path, readRef.current);
-    return { resolved, graph: buildGraph(resolved), ok: !hasErrors(resolved.issues) && resolved.doc !== null };
-  }, [path, text]);
+    // checked against the connected pod's format; the simulator itself runs every block type the app knows
+    const resolved = validateProgram(path, readRef.current, { programFormat });
+    const blocking = resolved.issues.filter((i) => i.code !== "unsupportedType");
+    return { resolved, graph: buildGraph(resolved), ok: !hasErrors(blocking) && resolved.doc !== null };
+  }, [path, text, programFormat]);
 
   const sim = useSimulation(model?.ok ? model.resolved : null);
 
@@ -160,6 +163,9 @@ function Pods({ sim }: { sim: SimulationControls }) {
         {sim.snapshot.pods.map((pod) => (
           <li key={pod.id}>
             <PodButton pod={pod} size={size} onPress={() => sim.press(pod.id)} onRelease={() => sim.release(pod.id)} />
+            <button type="button" className={styles.holdToggle} aria-pressed={pod.held} onClick={() => (pod.held ? sim.release(pod.id) : sim.press(pod.id))}>
+              <Hand size={18} aria-hidden /> {t("simulate.hold")}
+            </button>
           </li>
         ))}
       </ul>

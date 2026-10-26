@@ -5,6 +5,7 @@
 #include <string>
 #include "Block/Block.h"
 #include "Block/Value.h"
+#include "Block/Countdown.h"
 
 /**
  * Waits for the central's own button.
@@ -18,7 +19,10 @@
  *     "shortMs": 1000,
  *     "timeoutMs": 3000            or "minTimeoutMs" + "maxTimeoutMs" for a random timeout
  *     "record": "reaction",        record press time - block entry time as a result
- *     "storeAs": "LAST_REACTION" } also write that time into a variable
+ *     "storeAs": "LAST_REACTION", also write that time into a variable
+ *     "countdown": "drain",        ring countdown over the timeout (needs a timeout), see
+ *     "countdownColor": "red",     programs.md §7.12; "countdownFrom" = start colour (green)
+ *     "countdownFrom": "green" }   A press stops the countdown.
  *
  * Only presses that start after the block was entered count. A button that is still
  * held from an earlier step is ignored until it is released and pressed again.
@@ -30,6 +34,7 @@ class ButtonBlock : public Block {
         bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
         void enter(BlockContext& ctx) override;
         BlockStatus execute(BlockContext& ctx) override;
+        void exit(BlockContext& ctx) override;
 
         uint8_t portCount() const override { return PORT_COUNT; }
         const char* portName(uint8_t port) const override;
@@ -40,6 +45,8 @@ class ButtonBlock : public Block {
         Value maxTimeoutMs;
         std::string recordMetric;
         VarId storeVar = -1;
+        Countdown countdown;
+        bool centralCounting = false;
 
         uint32_t enterTime = 0;
         uint32_t pressCountAtEnter = 0;

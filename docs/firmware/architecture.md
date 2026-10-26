@@ -227,6 +227,9 @@ repeat up to 32 times:
 | `remoteResetAll` | `RemoteResetAllBlock` | next |
 | `summary` | `SummaryBlock` | next |
 | `repeat` | `RepeatBlock` | next, body, done |
+| `effect` | `EffectBlock` | next |
+| `charge` | `ChargeBlock` (on `HoldBlock`) | next, released, early, full, timeout |
+| `release` | `ReleaseBlock` (on `HoldBlock`) | next, noHold, falseStart, timeout |
 
 ### 6.4 Variables
 
@@ -243,7 +246,10 @@ load time. Unknown variables read as 0. Variables set by the system:
 
 - ESP-NOW receive callbacks run in the WiFi task and only copy frames into a FreeRTOS
   queue (`EspNowLink`). `PodNetwork::service()` processes them in the main loop and turns
-  PRESSED frames into `PodEvent {podId, cmdSeq, result, reactionUs, rxTimeUs}`.
+  PRESSED frames into `PodEvent {podId, cmdSeq, result, reactionUs, rxTimeUs}`; RELEASED frames (hold
+  activations, firmware ≥ 2.9) become `PodEvent`s of kind `RELEASED` with `flags`, `heldMs`, `chargeMs`.
+  `HoldSession` (Link/) measures and animates a hold; the peripheral runs it for an ARM of mode CHARGE /
+  RELEASE and the `charge` / `release` blocks run it for the central's own button.
 - Remote blocks get the `cmdSeq` back from `IPodNetwork::arm()` and only accept the event
   with the same pod and `cmdSeq`.
 - Blocks with `record` pass measurements to `Results`. Results prints a `RESULT,…` CSV
@@ -258,7 +264,7 @@ load time. Unknown variables read as 0. Variables set by the system:
 - `setLEDColors(LEDPattern*)` – palette pattern: up to 8 palette colours, per-LED palette
   index packed as 3 bits × 18 into a `uint64_t` (`LEDPaletteID`), plus an optional
   `LEDAnimation::animate(now)` that mutates the indices.
-- `playEffect(EffectDesc, startUs)` – effect player (firmware ≥ 2.8): one effect at a time,
+- `playEffect(EffectDesc, startUs, ledMask)` – effect player (firmware ≥ 2.8): one effect at a time,
   table of effects in [link-protocol.md](link-protocol.md) §2.1. Every static call above stops it.
   `RoleManager::run()` calls `LEDManager::service()` after the role in every loop pass; it
   returns at once when nothing animates (`isAnimating()` false, light sleep allowed, #21).
@@ -268,5 +274,7 @@ load time. Unknown variables read as 0. Variables set by the system:
   `ArmCommand::waiting` (effect while an armed pod waits for the press). Check
   `IPodNetwork::supportsEffects(pod)`; pods with older firmware show static colours.
 - `LEDManager/EffectJson` parses the JSON form of an effect (used by the `effect` test op).
+  The `effect` block and the `countdown` option build `EffectDesc`s from block fields
+  (`Block/EffectTarget`, `Block/Countdown`, programs.md §7.11, §7.12); `ledMask` is the block's `leds`.
 - Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included
   (default 255 = full brightness).

@@ -122,6 +122,87 @@ colours, because the BLE protocol only transports these 8.
 - A block with both fields and the same name measures its own duration.
 - Engine details (restart, orphan stops, pause): §7.9.
 
+### Countdown – option of the timed blocks
+
+`programFormat` ≥ 3 (§6). `delay`, `button`, `remotePress`, `remoteMultiPress`, `charge` and `release` may show how
+much of their time limit is left on the LED ring:
+
+| Field | | Default |
+|---|---|---|
+| `countdown` | `secret`, `drain`, `fill`, `dim`, `colorShift` or `trafficLight` | `secret` (no animation, as before) |
+| `countdownColor` | named colour, end colour of `colorShift` | red |
+| `countdownTarget` | `delay` only: `"central"`, `"all"`, `"peripherals"` or a pod id (value) | `"central"` |
+| `countdownFrom` | `delay` and `button` only: named start colour (these blocks have no lit colour of their own) | green |
+
+```json
+{ "name": "Hit", "type": "remotePress", "pod": "P", "timeoutMs": 1500, "countdown": "drain", "next": "Ok", "timeout": "Miss" },
+{ "name": "Ready", "type": "delay", "minMs": 2000, "maxMs": 4000, "countdown": "trafficLight", "countdownTarget": "all", "next": "Go" }
+```
+
+- The countdown runs over the block's **time limit**: the duration of a `delay` (`ms`, or the
+  random duration), the timeout of the others (`timeoutMs`, or the random timeout of `button`).
+  It starts with the lit colour of the block (`color` of `remotePress`, `hitColor` / `avoidColor`
+  of `remoteMultiPress`, `countdownFrom` of `delay` and `button`).
+- Styles: `drain` = the ring is full and empties LED by LED (empty at the end); `fill` = it starts
+  empty and fills up; `dim` = full brightness fades to dark; `colorShift` = the lit colour blends
+  into `countdownColor`; `trafficLight` = green, yellow, red, one third of the time each (the lit
+  colour is not used).
+- A `button`, `remotePress` or `remoteMultiPress` without a time limit and with `countdown` ≠
+  `secret` is rejected (validator and firmware).
+- On peripherals the countdown runs on the pod itself (ARM carries the effect), so it ends
+  with the pod's timeout. On `remoteMultiPress` all lit pods and the central count down together.
+- With a countdown `timeoutMs` is read **once when the block is entered** (§7.2).
+- A press stops the countdown. `colorAfter`, press handling and reaction times are unchanged
+  (reaction times count from the first lighting).
+- Pods with older firmware (no `effects`) count down `secret`: they stay lit with the lit colour.
+- `charge`: the countdown runs over `timeoutMs` on the idle ring and ends with the first hold. `release`: over
+  `maxHoldMs` from the start of the hold (trigger), or over `timeoutMs` from the colour switch (signal);
+  `countdownFrom` is not used. Details: §7.13, §7.14.
+- Details: §7.12.
+
+### `effect` – ring effect
+`programFormat` ≥ 3 (§6). Plays an animation on the ring of the central and / or the peripherals.
+
+| Field | | Default |
+|---|---|---|
+| `target` | `"central"`, `"all"` (central + all peripherals), `"peripherals"` or a pod id (value; the central's own id = the central) | `"central"` |
+| `effect` | `solid`, `fill`, `drain`, `dim`, `colorShift`, `trafficLight`, `blink`, `pulse`, `spin`, `off` | required |
+| `color`, `color2` | named colours | white, off |
+| `durationMs` | value, length of the effect. For `blink`, `pulse`, `spin`: 0 / missing = endless (until the next LED change) | – |
+| `periodMs` | value, one cycle of `blink`, `pulse`, `spin` | 500 |
+| `brightness` | value 0 … 255 | 255 |
+| `leds` | LED indices, **central only** (ignored on pods) | all 18 |
+| `syncStartMs` | value: all targets start together this long after the block starts | 20 |
+| `wait` | `false`: start the effect and continue at once. `true`: continue when the effect has ended | `false` |
+
+Ports: `next`
+
+```json
+{ "name": "Ready", "type": "effect", "target": "all", "effect": "pulse", "color": "blue",
+  "periodMs": 500, "durationMs": 2000, "wait": true, "next": "Go" }
+```
+
+| `effect` | Shows |
+|---|---|
+| `solid` | the ring in `color` |
+| `fill` | LEDs light one by one in `color` (background `color2`) over `durationMs`, ends with a full ring |
+| `drain` | full ring in `color` that empties LED by LED over `durationMs`, ends with the background `color2` |
+| `dim` | `color` fades from `brightness` to dark over `durationMs` |
+| `colorShift` | `color` blends into `color2` over `durationMs` |
+| `trafficLight` | green, yellow, red, one third of `durationMs` each (colours ignored) |
+| `blink` | `color` and `color2` alternate, one cycle per `periodMs` |
+| `pulse` | `color` fades down to dark and up again, one cycle per `periodMs` |
+| `spin` | a segment of 3 LEDs in `color` turns once per `periodMs` on `color2` |
+| `off` | the ring goes dark |
+
+- `fill`, `drain`, `dim`, `colorShift` and `trafficLight` are timed: without `durationMs` they jump to
+  their end frame. `blink`, `pulse` and `spin` with a `durationMs` end in a steady `color`.
+- `wait: true` with an endless effect (`blink`, `pulse`, `spin` without a constant `durationMs` > 0) is an error.
+- A later `led`, `remotePress`, `remoteResetAll`, … on the same ring replaces the effect.
+  With `wait: false` the effect keeps running while the next blocks execute.
+- Pods without effect support (older firmware) show `color` statically (`off` switches them off).
+- Details: §7.11.
+
 ### `led` – set central LEDs
 | Field | | Default |
 |---|---|---|
@@ -135,6 +216,7 @@ Ports: `next`
 |---|---|---|
 | `ms` | value | – |
 | `minMs`, `maxMs` | value, random duration in [min, max] | – |
+| `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` | optional ring countdown over the duration (see *Countdown*) | `secret` |
 
 Ports: `next`
 
@@ -146,6 +228,7 @@ Ports: `next`
 | `minTimeoutMs`, `maxTimeoutMs` | value, random timeout | – |
 | `record` | metric name: records *press time − block entry* | – |
 | `storeAs` | variable for the same time | – |
+| `countdown`, `countdownColor`, `countdownFrom` | optional ring countdown over the timeout, needs a timeout (see *Countdown*) | `secret` |
 
 Ports: `pressed` (press edge), `short`, `long` (on release), `next` (fallback for
 short/long), `timeout`.
@@ -177,6 +260,7 @@ Ports: `next`
 | `mode` | `hit` / `avoid` | `hit` |
 | `color` / `colorAfter` | named colour while waiting / after press | green (red for avoid) / off |
 | `timeoutMs` | value | no timeout |
+| `countdown`, `countdownColor` | optional countdown on the pod, needs `timeoutMs` (see *Countdown*) | `secret` |
 | `record`, `storeAs` | reaction time measured **on the peripheral** | – |
 
 Ports: `next` (pressed), `timeout` (also taken if the pod does not exist).
@@ -192,10 +276,90 @@ are ignored.
 | `hitColor`, `avoidColor` | named colours | green, red |
 | `syncStartMs` | value: all pods (and the central) light together this long after the block starts. 0 = each pod as soon as its command arrives | 20 |
 | `timeoutMs` | value | no timeout |
+| `countdown`, `countdownColor` | optional countdown on all lit pods and the central, needs `timeoutMs` (see *Countdown*) | `secret` |
 | `record` | metric for every green pod's reaction time | – |
 
 Ports: `next` (all green pods pressed), `avoidHit`, `timeout`. Pods that were not pressed
 stay lit, so follow with `remoteResetAll`.
+
+### `charge` – hold the button to charge
+`programFormat` ≥ 3 (§6). The ring shows how long the button has been held. Needs the `hold` link feature on
+peripherals (firmware ≥ 2.9, [link-protocol.md](link-protocol.md) §2.2).
+
+| Field | | Default |
+|---|---|---|
+| `pod` | `"central"` or a peripheral id (value). The central's own id also means the central | `"central"` |
+| `onsetMs` | value. Minimum hold before charging starts | 0 |
+| `maxMs` | value, ≥ 1. Hold time (after the onset) for a full charge | required |
+| `style` | `fill`, `brightness`, `trafficLight`, `colorShift` | `fill` |
+| `color` | named colour while charging | green |
+| `color2` | `colorShift` only: end colour | red |
+| `mode` | `release`: releasing ends the block. `accumulate`: releasing pauses (or drains, see `decayMs`) the charge, the block ends at `full` / `timeout` | `release` |
+| `decayMs` | value, `accumulate` only: time to drain a full charge while released. 0 = keep the charge | 0 |
+| `timeoutMs`, or `minTimeoutMs` + `maxTimeoutMs` | value, from the entry of the block (random like `button`). 0 / missing = none. `countdown` applies | none |
+| `countdown`, `countdownColor` | optional countdown over the timeout on the idle ring (see *Countdown*); needs a timeout | `secret` |
+| `storeAs` | variable: charge in ms (0 … `maxMs`) | – |
+| `storePercent` | variable: charge 0 … 100 | – |
+| `record` | metric for the charge in ms | – |
+
+Ports: `released` (released after the onset), `early` (released before the onset; falls back to `released`
+with charge 0), `full` (maximum reached: the block ends at once, the ring flashes), `timeout`, `next` (fallback
+for the others).
+
+```json
+{ "name": "Charge", "type": "charge", "pod": "central", "onsetMs": 200, "maxMs": 2000, "style": "fill", "color": "green",
+  "storeAs": "CHARGE", "record": "charge", "released": "Score", "full": "Overcharged", "timeout": "Missed" }
+```
+
+- As with `button`, a hold that started before the block was entered does not count: the button must be
+  released and pressed again.
+- Ring: `fill` lights the LEDs one by one, `brightness` fades from dim to full, `trafficLight` goes green,
+  yellow, red, `colorShift` blends `color` into `color2`. Before the first hold the ring shows the start frame
+  (`fill`: dark, `brightness`: dim, `trafficLight`: green, `colorShift`: `color`) or the countdown.
+- The hold is measured and shown on the pod itself (it reports PRESSED when a hold starts and RELEASED when it
+  ends), so the charge is exact to about 1 ms and the ring is smooth.
+- A pod that does not exist, or has older firmware (no `hold` link feature), makes the block take `timeout` at once.
+- Details: §7.13.
+
+### `release` – the release is the event
+`programFormat` ≥ 3 (§6). Two modes. Needs the `hold` link feature on peripherals.
+
+1. `trigger`: the athlete holds the pod, letting go is the event, e.g. the start of a run.
+2. `signal`: the athlete holds, the colour switches after a fixed or random time, and the athlete must let go as
+   fast as possible (start reaction with false-start detection).
+
+| Field | Mode | | Default |
+|---|---|---|---|
+| `mode` | both | `trigger` or `signal` | `trigger` |
+| `pod` | both | `"central"` or a peripheral id (value) | `"central"` |
+| `holdColor` | both | named colour while waiting for the hold | yellow |
+| `heldColor` | both | named colour once the hold is detected ("you're set") | = `holdColor` |
+| `allowHeld` | both | a hold that is already active on entry counts (it starts on entry) | `true` for `trigger`, `false` for `signal` |
+| `holdTimeoutMs` | both | value. No hold within this time from the entry → `noHold`. 0 / missing = none | none |
+| `maxHoldMs` | trigger | value. Held longer than this (from the start of the hold) → `timeout`. 0 / missing = none. `countdown` applies | none |
+| `storeAs` | trigger | variable: hold duration in ms | – |
+| `goColor` | signal | named colour of the switch | green |
+| `goMs`, or `minGoMs` + `maxGoMs` | signal | value. Time from the start of the hold to the switch; random in [min, max] (inclusive), drawn once on entry. Required | – |
+| `timeoutMs` | signal | value. Not released this long after the switch → `timeout`. 0 / missing = none. `countdown` applies | none |
+| `record`, `storeAs` | signal | reaction = release − switch, measured **on the pod** (ms) | – |
+| `countdown`, `countdownColor` | both | optional countdown (see *Countdown*): trigger over `maxHoldMs` from the start of the hold, signal over `timeoutMs` from the switch | `secret` |
+
+Ports: `next` (released; in `signal` released after the switch, reaction recorded), `noHold`, `falseStart`
+(`signal` only: released before the switch), `timeout` (`trigger`: held too long, `signal`: released too late).
+Unconnected `noHold`, `falseStart` and `timeout` fall back to `next`.
+
+```json
+{ "name": "Go",    "type": "release", "mode": "trigger", "pod": 0, "holdColor": "yellow",
+  "storeAs": "HOLD_MS", "next": "Run", "noHold": "Idle" },
+{ "name": "Start", "type": "release", "mode": "signal", "pod": 0, "holdColor": "yellow", "goColor": "green",
+  "minGoMs": 1500, "maxGoMs": 3000, "timeoutMs": 1000, "record": "start",
+  "next": "Run", "falseStart": "Foul", "noHold": "Idle", "timeout": "Late" }
+```
+
+- `trigger` leaves the block at the release (the central's receive time of RELEASED, as for remote presses), so a
+  `timerStart` on the next block starts at the release.
+- A pod that does not exist, or has older firmware, makes the block take `timeout` at once (`next` if unconnected).
+- Details: §7.14.
 
 ### `remoteResetAll` – switch peripherals off
 | Field | | Default |
@@ -287,6 +451,7 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 |---|---|---|
 | 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
 | 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
+| 3 | 2.9 | block type `effect` (§2, §7.11); `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` on `delay`, `button`, `remotePress`, `remoteMultiPress` (§2 *Countdown*, §7.12). With a countdown `timeoutMs` of `remotePress` / `remoteMultiPress` is read once on enter (§7.2). Block types `charge` (§2, §7.13) and `release` (§2, §7.14), with the hold reporting of link protocol revision 2 ([link-protocol.md](link-protocol.md) §2.2), also with `countdown`. Revision 3 is not released yet, so these were added to it without a new revision |
 
 Programs of an older revision run unchanged on newer firmware. A program that uses fields
 or block types of a newer revision is rejected by older firmware only if it uses a new
@@ -327,10 +492,13 @@ changes, increase `programFormat` (§6).
 | Type | Finishes | Value read |
 |---|---|---|
 | `led`, `if`, `setVariable`, `remoteResetAll`, `summary`, `repeat` | immediately, in the pass it is entered | on execute |
-| `delay` | when `millis() ≥ entry + duration` (checked once per pass). A duration of 0 finishes in the entry pass | on enter |
+| `delay` | when `millis() ≥ entry + duration` (checked once per pass). A duration of 0 finishes in the entry pass | on enter (also the countdown fields) |
 | `button` | on press / release / timeout | timeout on enter, `shortMs` on release |
-| `remotePress` | on the peripheral's press / timeout. Immediately through `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass |
-| `remoteMultiPress` | when all green pods are pressed / an avoid pod is pressed / timeout | `pods`, `avoid`, `syncStartMs` on enter, `timeoutMs` every pass |
+| `remotePress` | on the peripheral's press / timeout. Immediately through `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass (on enter if `countdown` ≠ `secret`) |
+| `remoteMultiPress` | when all green pods are pressed / an avoid pod is pressed / timeout | `pods`, `avoid`, `syncStartMs` on enter, `timeoutMs` every pass (on enter if `countdown` ≠ `secret`) |
+| `effect` | `wait: false`: immediately. `wait: true`: when `now ≥ start + durationMs` (checked once per pass) | all fields in the entry pass (first execute) |
+| `charge` | on release / full charge / timeout (§7.13). Immediately through `timeout` if the pod does not exist or cannot measure holds | everything (also the random timeout) on enter |
+| `release` | on release / timeout / no hold (§7.14). Immediately through `timeout` as for `charge` | everything (also the random switch delay) on enter |
 
 ### 7.3 Random numbers
 
@@ -345,6 +513,8 @@ All random numbers come from `esp_random()` ([Block/RandomUtil.h](../../firmware
 - `delay` `minMs`/`maxMs` and `button` `minTimeoutMs`/`maxTimeoutMs`: uniform in
   **[min, max], both inclusive** (`RandomUtil::between`). A negative `min` counts as 0.
   If `max` ≤ `min`, the result is `min`. `ms` / `timeoutMs` is the same with min = max.
+- `charge` `minTimeoutMs`/`maxTimeoutMs` and `release` `minGoMs`/`maxGoMs`: the same, drawn once on enter.
+  `goMs` is `minGoMs` = `maxGoMs`.
 
 ### 7.4 `button`
 
@@ -464,3 +634,176 @@ Code: [RepeatBlock.cpp](../../firmware/src/Block/RepeatBlock/RepeatBlock.cpp).
   execute, and a re-entered block has not been executed yet.
 - If the program leaves the body for good (never returns to the repeat block), the counter
   keeps its value until the block next reaches `done`. This is not detected.
+
+### 7.11 `effect`
+
+Code: [EffectBlock.cpp](../../firmware/src/Block/EffectBlock/EffectBlock.cpp), [EffectTarget.cpp](../../firmware/src/Block/EffectTarget.cpp),
+effect player: [LEDManager.cpp](../../firmware/src/LEDManager/LEDManager.cpp) (`renderEffect`), frame formulas: [link-protocol.md](link-protocol.md) §2.1.
+
+- **Start.** In the first `execute` after the entry (the entry pass; a pause re-enters the block
+  and starts it again) all fields are read once. `durationMs` < 0 counts as 0, `periodMs` ≤ 0 as
+  500 (max 65535), `brightness` is limited to [0, 255], `syncStartMs` < 0 counts as 0.
+  Let `lead = syncStartMs` (default 20) and `start = entry time + lead` on the network clock
+  (= the central's clock). The effect is sent to the targets with start time `start` (with
+  `lead` = 0: "now", each pod as its command arrives). Until `start` the ring keeps its old
+  colours; from `start` the frames are a function of `now − start` (a late pod joins the animation).
+- **Target.** `central`: the central only. `peripherals`: peripheral ids 0 … connected − 1.
+  `all`: both. A pod id (value, read at start): that peripheral; the central's own id
+  (`REQUIRED_PERIPHERALS`) means the central; any other id is ignored (nothing shown, the
+  block continues). Without peripherals only the central is affected.
+- **Effect parameters.** The effect runs for the whole ring. `leds` (central only) limits the
+  output to those LEDs, the others keep their colour; the geometry of `fill` / `drain` / `spin`
+  stays that of the whole ring. `off` is a steady dark ring (colour off). `dim` fades from
+  `brightness` to 0, for all other effects `brightness` scales the output. Colours are named
+  colours for the central too.
+- **`wait: false`** (instant block): continues in the same pass through `next`. The effect keeps
+  running while the following blocks execute.
+- **`wait: true`**: leaves through `next` when `now ≥ start + durationMs` (checked once per pass),
+  so it takes `syncStartMs + durationMs` from the entry. Duration 0 (e.g. a variable that is 0)
+  finishes right after `syncStartMs`. `blink`, `pulse`, `spin` with a constant `durationMs` ≤ 0 or
+  none are rejected when the program is loaded. The effect is not stopped when the block is left.
+- **End frames.** Timed effects stay in their end frame (`fill` full, `drain` and `off` dark,
+  `colorShift` = `color2`, `trafficLight` red, `dim` dark). `blink`, `pulse` and `spin` with a
+  duration end in a steady `color`. Endless effects run until the ring is changed.
+- **Replacement.** On the central any static LED call (`led`, `remoteResetAll` with `ledsOff`,
+  a pressed central in `remoteMultiPress`, …) or another effect replaces it. On a peripheral an
+  ARM activation, a press result or RESET replaces it.
+- **Old pods.** A peripheral without the `effects` link feature shows `color` statically at
+  `start` (an ARM with `colorActive`; `off` is a RESET). It stays lit until the next ARM / RESET.
+  The block still waits for the full duration.
+
+### 7.12 Countdown
+
+Code: [Countdown.cpp](../../firmware/src/Block/Countdown.cpp) (effect for a style), the four blocks.
+
+A countdown is a ring effect (link-protocol.md §2.1) with `color` = the lit colour `L` and
+`durationMs` = the playing time `D`:
+
+| `countdown` | Effect | Ring at the end |
+|---|---|---|
+| `drain` | `drain`, `color` L, background off | dark |
+| `fill` | `fill`, `color` L, background off | full, colour L |
+| `dim` | `dim`, `color` L, brightness 255 → 0 | dark |
+| `colorShift` | `colorShift`, L → `countdownColor` (default red) | `countdownColor` |
+| `trafficLight` | `trafficLight` (colours ignored) | red |
+
+`D` is the time limit `T` read on enter (minus the lead time where noted). If `T` ≤ 0 (a
+timeout of 0 for `remote…`, a delay of 0, `button` without timeout) there is no countdown. `secret`
+never plays an effect.
+
+- **`delay`**: `T` = the drawn duration, `L` = `countdownFrom` (green). Central only: the effect
+  starts on enter (`D = T`). If the target includes peripherals and `T` > 20 ms, it starts
+  20 ms after the entry on all targets and `D = T − 20`, so that it ends with the delay.
+  `countdownTarget` as for the `effect` block, pods without effect support show nothing. When the
+  block is left the central stops its effect (the ring keeps the last frame).
+- **`button`**: `T` = the drawn timeout, `L` = `countdownFrom`. The effect starts on enter on the
+  central (`D = T`). A press (the edge that counts) or leaving the block stops it; the ring
+  keeps the last frame. Timeout and reaction time are unchanged.
+- **`remotePress`**: `T` = `timeoutMs` **read once on enter**, `L` = the pod's `color`
+  (`colorActive`). The ARM command carries the effect (`D = T`), which the pod plays from its
+  activation (the ARM command's arrival, as before). Because the central times out `T` after
+  its entry, the pod's countdown ends a few ms (link latency) after the timeout is taken. On press or
+  timeout the pod is reset as before (the countdown ends). A pod without effect support stays lit with `L`.
+- **`remoteMultiPress`**: `T` = `timeoutMs` read once on enter, `L` per pod = its lit colour
+  (`hitColor` / `avoidColor`). All lit pods (hit and avoid) and the central (if it takes part, with its
+  own lit colour) start the effect at the common start time `entry + syncStartMs` and
+  `D = T − syncStartMs`, so they run out together at the timeout. If `D` ≤ 0 there is no countdown.
+  A pressed green pod is reset, a pressed central switches off (both end their countdown); the
+  other pods keep counting down until the end frame, also after `avoidHit` / `timeout` (follow
+  with `remoteResetAll` as before).
+- Without a countdown `timeoutMs` is still read every pass (§7.2).
+- The central's countdown uses the same effect player as the `effect` block: a later static LED
+  call replaces it.
+
+### 7.13 `charge`
+
+Code: [ChargeBlock.cpp](../../firmware/src/Block/ChargeBlock/ChargeBlock.cpp), [HoldBlock.cpp](../../firmware/src/Block/HoldBlock.cpp),
+the hold itself: [Link/HoldSession.cpp](../../firmware/src/Link/HoldSession.cpp) (the central's own button and the
+peripheral run the same code), wire format: [link-protocol.md](link-protocol.md) §2.2.
+
+**Enter.** Read once: `pod`, `onsetMs` (< 0 counts as 0), `maxMs` (< 1 counts as 1), `decayMs` (< 0 as 0; ignored
+unless `accumulate`) and the timeout `T`: `timeoutMs`, or a random value in [`minTimeoutMs`, `maxTimeoutMs`] (§7.3);
+`T ≤ 0` or no timeout field means **no timeout** (as `button`, unlike `remotePress`). `pod` is the central if it is
+`"central"`, missing, or equals the central's own id (`REQUIRED_PERIPHERALS`). Otherwise it is a peripheral id
+`0 … connected − 1`; a peripheral without the `hold` link feature, or any other id, **cannot take part**: nothing
+is lit or stored and the block leaves through `timeout` in the pass it is entered. Then the idle ring is shown.
+
+**Hold.** A hold starts at a press edge **after** the entry (the press counter is stored on enter, §7.4); a button
+that is down on entry is ignored until it is released and pressed again. Let `p` be the press edge, `r` the release
+edge (button timestamps, not the time a pass notices them; the debounce is 20 ms). Charge in ms:
+
+- while held: `charge = min(maxMs, c0 + max(0, (t − p) − onsetMs))`. `c0` is the charge at `p`: 0 in `release` mode,
+  in `accumulate` the charge kept from earlier holds. The onset applies to **every** hold.
+- after a release in `accumulate`: `decayMs = 0`: `charge` is kept. Else it drains linearly,
+  `charge(t) = max(0, c − (t − r) · maxMs / decayMs)`.
+- the charge is rounded to whole ms when it is reported.
+
+**Ring** (central and pod alike). Idle (before the first hold): `fill` dark, `brightness` the colour at brightness 40
+(of 255), `trafficLight` green, `colorShift` `color`; if the block has a countdown and `T > 0`, the countdown
+(§7.12, lit colour `color`, duration `T`, started on enter) instead. At the start of a hold the ring shows the frame
+for the current charge (this replaces a countdown, which does not come back). From `p + onsetMs` the charge effect
+runs, a function of `charge / maxMs`: `fill`: LED n lights at n/18 of the charge, `brightness`: 40 → 255, `trafficLight`:
+green, yellow, red in thirds, `colorShift`: `color` → `color2` (default red). In `accumulate` a release freezes the
+ring at the charge (drawn about 30 times a second while it drains).
+
+**Ending, `release` mode.** The first of:
+
+1. `full`: the charge reaches `maxMs`, i.e. at `p + onsetMs + maxMs`. The pod / central reports it at that moment, without
+   waiting for the release (a release edge at or after that time also counts as full). The ring flashes (`color`;
+   `trafficLight`: red; `colorShift`: `color2`; 600 ms, 200 ms period, dark afterwards) and is **not** reset. The
+   block leaves through `full`; stored: `maxMs`, 100 %, `record` `maxMs`.
+2. A release edge `r` with `r − p < onsetMs`: port `early`, if it is not connected `released`. Charge 0 is stored.
+3. Any other release edge: port `released`, charge = `(r − p) − onsetMs` (0 for an exact `onsetMs`).
+4. Timeout (below).
+
+`storeAs` (ms), `storePercent` (`(charge · 100 + maxMs / 2) / maxMs`, integer) and `record` (ms, with the pod's id, or
+`REQUIRED_PERIPHERALS` for the central) are written for 1, 2 and 3. After `released`, `early` and `timeout` the pod / ring
+is reset (dark).
+
+**Ending, `accumulate` mode.** Only `full` (as above, with the charge that has accumulated: the `full` moment is
+`p + onsetMs + (maxMs − c0)`) and `timeout`. `released` and `early` are never taken; a release only pauses the charge.
+
+**Timeout.** `T` counts from the entry **until the block ends, also during a hold** (checked after the events of a pass;
+an event received in the same pass wins). `release` mode: leave through `timeout`, nothing is stored, the pod is reset.
+`accumulate` mode: the pod (or the central's own session) stops `T` ms after its activation and reports the charge it
+has then (decayed if released); the block leaves through `timeout` with that charge stored (`storeAs`, `storePercent`,
+`record`). The central waits up to 300 ms after its own `T` for the pod's report; if it does not come, nothing is stored.
+
+**Pause.** `restartCurrentBlock` ends the activation and enters again: charge 0, a new random timeout. A peripheral
+that cannot be reached keeps its ring until the new ARM.
+
+### 7.14 `release`
+
+Code: [ReleaseBlock.cpp](../../firmware/src/Block/ReleaseBlock/ReleaseBlock.cpp), [HoldBlock.cpp](../../firmware/src/Block/HoldBlock.cpp),
+[Link/HoldSession.cpp](../../firmware/src/Link/HoldSession.cpp), wire format: [link-protocol.md](link-protocol.md) §2.2.
+
+**Enter.** Read once: `pod`, `holdTimeoutMs`, `maxHoldMs` (trigger), `goMs` / `minGoMs` + `maxGoMs` (signal: the switch
+delay `G` is drawn once, §7.3, negative values count as 0), `timeoutMs` (signal), `allowHeld`; for each value `≤ 0` or
+missing means none. The pod is resolved as for `charge` (§7.13): a pod that does not exist or cannot measure holds
+makes the block leave through `timeout` at once (`next` if `timeout` is unconnected). Then the ring shows `holdColor`.
+
+**Start of the hold.** A press edge after the entry. With `allowHeld` a button that is already down on entry starts the
+hold **at the entry** (not at the physical press, so `storeAs` of `trigger` counts from the entry). Without it a button
+that is down is ignored until released and pressed again. Let `s` be the start of the hold. The ring shows `heldColor`
+(`trigger` with a countdown and `maxHoldMs > 0`: the countdown over `maxHoldMs`, lit colour `heldColor`, from `s`).
+The central learns of the start when it receives PRESSED (its own button: in the pass that sees it).
+
+**`trigger`.** A release edge `r`: leave through `next`; `storeAs` = `r − s` in ms (rounded). The block is left in the
+pass in which the central receives RELEASED (the central's own button: the pass that sees the release), so a
+`timerStart` on the next block starts then, a few ms after the physical release for a peripheral. The pod / ring is reset.
+
+**`signal`.** At `s + G` the ring switches to `goColor` (or, with a countdown and `timeoutMs > 0`, the countdown over
+`timeoutMs`, lit colour `goColor`). A release edge `r`:
+
+- `r < s + G`: false start, port `falseStart`. Nothing is stored or recorded.
+- otherwise: reaction = `r − switch` where `switch` is the moment the pod updated its LEDs at `s + G` (an ideal
+  simulator: `s + G`); ≥ 0, rounded to ms. `record` and `storeAs` get it, port `next`.
+
+**Timeouts** (the central's clock, a few ms of link latency are not modelled by the simulator):
+
+- `noHold`: the hold has not started `holdTimeoutMs` after the entry. Only checked until a hold has started.
+- `trigger` `timeout`: not released `maxHoldMs` after the start of the hold (where the central saw it start).
+- `signal` `timeout`: not released `G + timeoutMs` after the start of the hold, i.e. `timeoutMs` after the switch.
+- Events of a pass are handled before the timeouts. After `noHold` and `timeout` the pod / ring is reset, nothing is stored.
+
+An unconnected `noHold`, `falseStart` or `timeout` falls back to `next` (§7.1). **Pause:** as `charge`.

@@ -84,10 +84,78 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.7 fields in info", () => {
+  it("reports the firmware 2.9 fields in info: program format 3 with the effect block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.7", setName: "Halle 2", pinRequired: false, programFormat: 1 });
-    expect(info.features).toEqual(["validateInline", "listMeta"]);
+    expect(info).toMatchObject({ firmware: "2.9", setName: "Halle 2", pinRequired: false, programFormat: 3 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "hold"]); // hold reporting, link revision 2
+    expect(info.linkRevision).toBe(2);
+    expect(info.blockTypes).toContain("repeat");
+    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release"]));
+  });
+
+  it("simulates a central with programFormat 2: no effect block", () => {
+    const pod = new SimulatedPod({ programFormat: 2 });
+    const info = call(pod, { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.8", programFormat: 2 });
+    expect(info.blockTypes).not.toContain("effect");
+    expect(info.blockTypes).not.toContain("charge");
+    expect(info.blockTypes).not.toContain("release");
+    expect(info.features).not.toContain("hold");
+    expect(info.linkRevision).toBeUndefined();
+    expect(info.blockTypes).toContain("repeat");
+  });
+
+  it("simulates an older central with programFormat 1", () => {
+    const info = call(new SimulatedPod({ programFormat: 1 }), { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.7", programFormat: 1 });
+    expect(info.blockTypes).not.toContain("repeat");
+  });
+
+  const format2 = JSON.stringify({
+    name: "Laps",
+    blocks: [
+      { name: "R", type: "repeat", count: 3, body: "Go", done: "End" },
+      { name: "Go", type: "led", color: "green", timerStart: "lap", next: "Wait" },
+      { name: "Wait", type: "button", timerStop: "lap", next: "R" },
+      { name: "End", type: "summary", metric: "lap" },
+    ],
+  });
+  const timersOnly = JSON.stringify({
+    name: "Lap",
+    blocks: [
+      { name: "Go", type: "led", color: "green", timerStart: "lap", next: "Wait" },
+      { name: "Wait", type: "button", timerStop: "lap", next: "Go" },
+    ],
+  });
+
+  it("accepts format-2 programs (repeat, timers)", () => {
+    const pod = new SimulatedPod({ files: { "/prog/laps.json": format2 } });
+    expect(call(pod, { op: "validate", path: "/prog/laps.json" })).toMatchObject({ ok: true, blocks: 4 });
+    expect(call(pod, { op: "validate", path: "/prog/x.json", data: timersOnly })).toMatchObject({ ok: true, blocks: 2 });
+  });
+
+  it("a format-1 central rejects repeat but ignores timer fields, like older firmware", () => {
+    const pod = new SimulatedPod({ programFormat: 1 });
+    const repeat = call(pod, { op: "validate", path: "/prog/x.json", data: format2 });
+    expect(repeat).toMatchObject({ ok: false, error: "invalid_program" });
+    expect(repeat.message).toContain("unsupportedType");
+    expect(call(pod, { op: "validate", path: "/prog/x.json", data: timersOnly })).toMatchObject({ ok: true });
+  });
+
+  it("reports status.timers.orphanStops on a central in a game (format 2)", () => {
+    const pod = new SimulatedPod();
+    expect(call(pod, { op: "status" })).not.toHaveProperty("timers");
+    pod.state = "RUN";
+    pod.orphanStops = 2;
+    expect(call(pod, { op: "status" })).toMatchObject({ timers: { orphanStops: 2 } });
+    pod.state = "PAUSED";
+    expect(call(pod, { op: "status" })).toMatchObject({ timers: { orphanStops: 2 } });
+    const old = new SimulatedPod({ programFormat: 1 });
+    old.state = "RUN";
+    expect(call(old, { op: "status" })).not.toHaveProperty("timers");
+    const peripheral = new SimulatedPod({ role: "peripheral" });
+    peripheral.state = "RUN";
+    expect(call(peripheral, { op: "status" })).not.toHaveProperty("timers");
   });
 
   it("reports program metadata in list (listMeta)", () => {
@@ -157,7 +225,7 @@ describe("SimulatedPod (demo of reports and remote control, #41 / #42)", () => {
 
   it("keeps 8 reports until ack, tags the athlete, answers commands only while waiting", () => {
     const pod = new SimulatedPod({ results: true });
-    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "reports", "remote"]);
+    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "hold", "reports", "remote"]);
     expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ error: "not_ready" });
     expect(call(pod, { op: "session", athlete: "ath_42" })).toMatchObject({ ok: true, athlete: "ath_42" });
     for (let i = 0; i < 9; i++) pod.emitSampleReport(() => 0.5);

@@ -10,13 +10,13 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 | Folder | What | Spec |
 |---|---|---|
 | `firmware/` | PlatformIO, `arduino, espidf`; programs in `firmware/data/` (SPIFFS) | [architecture](docs/firmware/architecture.md), [programs](docs/firmware/programs.md) (§6 format revisions, §7 engine), [config-api](docs/firmware/config-api.md), [link-protocol](docs/firmware/link-protocol.md), [testing](docs/firmware/testing.md) |
-| `app/` | React + TS PWA on Pages: https://runningjoke.github.io/reactionButton/ | [spec](docs/app/spec.md) (§4 layout, §13 phases), [acceptance tests](docs/app/acceptance-tests.md) |
+| `app/` | React + TS PWA on Pages: https://runningjoke.github.io/reactionButton/ | [spec](docs/app/spec.md) (§4 layout, §13 phases), [acceptance tests](docs/app/acceptance-tests.md), [editor UX proposal](docs/app/editor-ux.md) |
 | `tools/` | `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` | config-api |
 | `hardware/` | KiCad PCB, FreeCAD casing | – |
 | `platform/` | Community platform (Hono + Postgres): accounts, clubs, sharing, results; REST + MCP from one use-case list | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases), [deploy](platform/deploy/README.md) |
 | `packages/program-model/` | Program types, block definitions, limits, validator – shared by app and platform | programs |
 | `spec/` | Generated contracts: `platform-api.yaml` (OpenAPI, `cd platform && npm run openapi`), `program.schema.json` (`cd packages/program-model && npm run schema`) | – |
-| `docs/decisions/` | ADRs: layout, versioning + OTA delivery, community platform, platform architecture | – |
+| `docs/decisions/` | ADRs: layout, versioning + firmware delivery (no OTA, 0006), community platform, platform architecture | – |
 | `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)

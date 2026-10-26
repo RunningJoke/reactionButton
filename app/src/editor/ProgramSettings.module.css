@@ -1,0 +1,49 @@
+/* Program sheet (editor-ux.md §4 F); TweakSettings and PodsField are also used by the Adjust sheet. */
+
+.pods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.podsStepper {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tweak {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.expert {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border: 1px dashed var(--cat-logic);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--cat-logic) 6%, var(--surface));
+}
+
+.expert h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cat-logic);
+}
+
+.expertGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

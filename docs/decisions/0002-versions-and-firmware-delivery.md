@@ -1,6 +1,6 @@
 # 0002 Version streams and firmware delivery for OTA
 
-Date: 2026-10-19 · Status: accepted
+Date: 2026-10-19 · Status: accepted; the OTA part is superseded by [0006](0006-no-ota.md)
 
 ## Context
 

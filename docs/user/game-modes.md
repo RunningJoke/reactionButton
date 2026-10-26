@@ -22,7 +22,7 @@
 | COUNTER / COUNTDOWN action modes on peripherals | ❌ (stubs) |
 | Battery measurement / low-battery warning | ❌ |
 | Power saving / auto power-off | ❌ |
-| OTA firmware update | ❌ (only one app partition) |
+| OTA firmware update | ❌ (not planned, flash over USB) |
 
 ## 2. Program menu
 

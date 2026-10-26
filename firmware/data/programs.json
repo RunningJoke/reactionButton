@@ -8,6 +8,9 @@
     "/prog/dreizack.json",
     "/prog/run.json",
     "/prog/run5.json",
-    "/prog/duo.json"
+    "/prog/duo.json",
+    "/prog/effects.json",
+    "/prog/charge.json",
+    "/prog/release.json"
   ]
 }

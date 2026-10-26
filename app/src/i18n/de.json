@@ -192,7 +192,386 @@
     "removePreset": "{{path}} entfernen",
     "addPreset": "Bibliotheksteil einbinden…",
     "flatten": "In bearbeitbare Kopie umwandeln",
-    "addAfterAction": "Block danach einfügen"
+    "addAfterAction": "Block danach einfügen",
+    "programSheet": {
+      "title": "Programm",
+      "sub": "Name, Pods und die Einstellungen, die du am häufigsten änderst",
+      "pods": "Pods außer dem Central",
+      "podsTotal_one": "{{count}} Pod im Set",
+      "podsTotal_other": "{{count}} Pods im Set",
+      "menu": "Im Menü des Pods",
+      "tweak": "Einstellungen zum Anpassen",
+      "tweakNone": "Dieses Programm hat keine Einstellungen zum Anpassen. Ändere seine Schritte im Editor.",
+      "expert": "Experte",
+      "start": "Startblock",
+      "noPresets": "Keine Bibliotheksteile verknüpft. Das Programm ist eigenständig."
+    },
+    "step": {
+      "viewSteps": "Schritte",
+      "viewBlocks": "Blöcke",
+      "view": "Ansicht",
+      "role": {
+        "then": "Dann",
+        "ifTooSlow": "Wenn zu langsam",
+        "ifLeftAlone": "Wenn nicht berührt",
+        "shortPress": "Kurz gedrückt",
+        "longPress": "Lang gedrückt",
+        "ifRedHit": "Wenn ein roter Pod gedrückt wird",
+        "ifYes": "Wenn ja",
+        "ifNo": "Wenn nein",
+        "eachRound": "Jede Runde",
+        "afterLast": "Nach der letzten Runde",
+        "ifPressedEarly": "Wenn zu früh gedrückt",
+        "ifReleasedEarly": "Wenn zu früh losgelassen",
+        "ifFull": "Wenn voll geladen",
+        "ifNoHold": "Wenn niemand hält",
+        "ifFalseStart": "Fehlstart"
+      },
+      "toStep": "Schritt {{n}}",
+      "nextRound": "nächste Runde",
+      "startOver": "von vorn",
+      "toRounds": "die Runden",
+      "notConnected": "nichts (das Programm endet)",
+      "goTo": "{{role}}: weiter mit {{target}}",
+      "records": "misst die Zeit",
+      "problems_one": "{{count}} Problem",
+      "problems_other": "{{count}} Probleme",
+      "unsupported": "kann dein Pod nicht",
+      "locked": "aus einem Bibliotheksteil",
+      "ends": "hier endet das Programm",
+      "afterLast": "Nach der letzten Runde",
+      "unreachable": "Nicht verbunden",
+      "unreachableHelp": "Diese Schritte erreicht das Programm nie.",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "deleteStep": "Schritt löschen",
+      "deleted": "Schritt gelöscht",
+      "undo": "Rückgängig",
+      "addToRound": "Schritt hinzufügen",
+      "addEndOfRound": "kommt ans Ende der Runde",
+      "addEnd": "kommt ans Ende",
+      "addAfter": "kommt nach Schritt {{n}}",
+      "empty": "Dieses Programm hat noch keine Schritte. Füge den ersten mit + hinzu.",
+      "count_one": "{{count}} Schritt",
+      "count_other": "{{count}} Schritte",
+      "title": "Schritt {{n}}: {{kind}}",
+      "inRound": "In jeder Runde",
+      "kind": {
+        "led": "Zentrale leuchten lassen",
+        "delay": "Pause",
+        "button": "Auf Druck warten",
+        "remotePress": "Einen Pod leuchten lassen",
+        "remoteMultiPress": "Wettlauf: alle Pods auf einmal",
+        "remoteResetAll": "Alle Pods ausschalten",
+        "setVariable": "Zählen oder merken",
+        "if": "Entscheiden",
+        "summary": "Ergebnisse zeigen",
+        "repeat": "Wiederholen",
+        "unknown": "Schritt",
+        "effect": "Lichteffekt",
+        "charge": "Halten zum Laden",
+        "release": "Loslassen"
+      },
+      "colour": "Farbe",
+      "leds": "Welche LEDs",
+      "howLong": "Wie lange",
+      "fixed": "Immer gleich",
+      "random": "Zufällig zwischen",
+      "seconds": "Sekunden",
+      "shortest": "Kürzeste",
+      "longest": "Längste",
+      "whichPod": "Welcher Pod",
+      "podN": "Pod {{n}}",
+      "randomPod": "Zufälliger Pod",
+      "randomOtherPod": "Zufällig, nie zweimal derselbe",
+      "podIn": "Der Pod aus {{name}}",
+      "hitColour": "Farbe zum Treffen",
+      "whichPods": "Welche Pods",
+      "allPods": "Alle Pods",
+      "somePods": "Einige davon",
+      "podCount": "Pods",
+      "pressHint": "Wartet, bis jemand den Knopf der Zentrale drückt.",
+      "resetHint": "Schaltet die LEDs aller Pods aus und wartet nicht mehr auf sie.",
+      "setting": "Einstellung",
+      "newSetting": "Neue Einstellung …",
+      "newSettingName": "Name der neuen Einstellung",
+      "ok": "OK",
+      "whatToDo": "Was passiert",
+      "value": "Wert",
+      "question": "Frage",
+      "compare": "Ist es",
+      "op": {
+        "=": "Setzen auf",
+        "+": "Addieren",
+        "-": "Abziehen",
+        "random": "Zufallszahl unter",
+        "randomOther": "Neue Zufallszahl unter"
+      },
+      "summaryHint": "Zeigt die gemessenen Zeiten dieses Durchgangs. Jeder Wert wird auch in einer Einstellung gemerkt.",
+      "stat": {
+        "average": "Durchschnitt",
+        "best": "Beste (schnellste)",
+        "worst": "Schlechteste (langsamste)",
+        "count": "Anzahl Drücke"
+      },
+      "keptIn": "Gemerkt in „{{name}}“",
+      "settingHint": "Einstellung „{{name}}“: gilt für das ganze Programm",
+      "fromSetting": "Kommt aus der Einstellung „{{name}}“",
+      "notKept": "nicht gemerkt",
+      "moreOptions": "Weitere Optionen",
+      "label": {
+        "storeAs": "Zeit in einer Einstellung merken",
+        "colorAfter": "Farbe nach dem Drücken",
+        "includeCentral": "Die Zentrale macht mit",
+        "syncStartMs": "Gemeinsam aufleuchten nach",
+        "timerStart": "Stoppuhr starten",
+        "timerStop": "Stoppuhr stoppen",
+        "pods": "Anzahl Pods",
+        "ledsOff": "Zentrale auch ausschalten",
+        "reset": "Zeiten danach löschen",
+        "storeIndex": "Rundennummer merken in",
+        "ms": "Zeit",
+        "minMs": "Kürzeste Zeit",
+        "maxMs": "Längste Zeit",
+        "timeoutMs": "Zeitlimit",
+        "minTimeoutMs": "Kürzeste Zeit",
+        "maxTimeoutMs": "Längste Zeit",
+        "shortMs": "Langer Druck ab",
+        "count": "Runden",
+        "onsetMs": "Laden beginnt nach",
+        "decayMs": "Ladung läuft ab in",
+        "mode": "Wie es endet",
+        "heldColor": "Farbe, sobald gehalten",
+        "allowHeld": "Ein Halten von vorher zählt",
+        "holdTimeoutMs": "Niemand hält nach",
+        "storePercent": "Prozent merken in"
+      },
+      "help": {
+        "storeAs": "Später in einem Entscheiden-Schritt nutzbar, z. B. „wenn die letzte Zeit unter 0,3 s liegt“.",
+        "syncStartMs": "So lange warten die Pods, damit sie gemeinsam aufleuchten.",
+        "timerStart": "Name einer Stoppuhr, die mit diesem Schritt startet.",
+        "timerStop": "Misst die Zeit seit dem Start dieser Stoppuhr.",
+        "onsetMs": "Der erste Teil jedes Haltens lädt noch nicht.",
+        "decayMs": "Zeit, in der eine volle Ladung bei losgelassenem Knopf abläuft. 0 behält die Ladung.",
+        "heldColor": "Wird gezeigt, sobald das Halten erkannt ist („du bist bereit“). Standard: dieselbe Farbe.",
+        "allowHeld": "An: Ein Knopf, der beim Start des Schritts schon gedrückt ist, zählt als gehalten. Aus: Er muss losgelassen und neu gedrückt werden.",
+        "holdTimeoutMs": "Hält niemand den Knopf in dieser Zeit, nimmt der Schritt den Weg „niemand hält“.",
+        "storePercent": "Die Ladung von 0 bis 100."
+      },
+      "addAfterAction": "Schritt danach einfügen",
+      "expert": "Experte",
+      "expertMode": "Expertenmodus",
+      "on": "an",
+      "off": "aus",
+      "roundTitle": "Wiederholen",
+      "roundSub": "Die Schritte in der Klammer",
+      "rounds": "Runden",
+      "roundHint": "Die Schritte in der Klammer laufen so oft, danach folgen die Schritte nach der letzten Runde.",
+      "roundLocked": "{{count}} Runden, festgelegt in einem Bibliotheksteil",
+      "addToEachRound": "Schritt zu jeder Runde hinzufügen",
+      "effect": {
+        "label": "Effekt",
+        "kind": {
+          "solid": "Dauerlicht",
+          "fill": "Füllen",
+          "drain": "Leeren",
+          "dim": "Ausblenden",
+          "colorShift": "Farbwechsel",
+          "trafficLight": "Ampel",
+          "blink": "Blinken",
+          "pulse": "Pulsieren",
+          "spin": "Drehen",
+          "off": "Aus"
+        },
+        "where": "Wo",
+        "central": "Zentrale",
+        "all": "Alles",
+        "peripherals": "Alle Pods",
+        "podN": "Pod {{n}}",
+        "colour2": "Zweite Farbe",
+        "colour2Hint": "Die andere Farbe des Effekts. Leer: dunkel.",
+        "howLong": "Wie lange",
+        "forever": "Bis zur nächsten Lichtänderung",
+        "limited": "Nach einer Zeit beenden",
+        "wait": "Warten, bis er vorbei ist",
+        "waitOn": "Der nächste Schritt startet, wenn der Effekt endet",
+        "waitOff": "Der nächste Schritt startet sofort, der Effekt läuft weiter",
+        "waitNeedsTime": "Braucht eine Zeit, ein endloser Effekt endet nie"
+      },
+      "hold": {
+        "whichButton": "Welcher Knopf",
+        "fullAfter": "Voll nach Halten von",
+        "chargeHint": "Loslassen beendet den Schritt mit der erreichten Ladung. Eine volle Ladung beendet ihn sofort und der Ring blinkt.",
+        "accumulateHint": "Loslassen pausiert die Ladung nur (oder lässt sie ablaufen, siehe weitere Optionen). Nur eine volle Ladung oder das Zeitlimit beendet den Schritt.",
+        "style": "So zeigt der Ring es",
+        "styles": {
+          "fill": "Füllen",
+          "brightness": "Heller",
+          "trafficLight": "Ampel",
+          "colorShift": "Farbwechsel"
+        },
+        "mode": "Was zählt",
+        "modes": {
+          "trigger": "Loslassen startet",
+          "signal": "Loslassen beim Signal"
+        },
+        "triggerHint": "Der Sportler hält den Knopf, Loslassen geht weiter (z. B. Start eines Laufs). Die Haltezeit lässt sich merken.",
+        "signalHint": "Der Sportler hält den Knopf und lässt so schnell wie möglich los, wenn die Farbe wechselt. Zu frühes Loslassen ist ein Fehlstart.",
+        "holdColour": "Farbe, solange auf das Halten gewartet wird",
+        "goColour": "Farbe des Signals",
+        "signalAfter": "Signal nach dem Halten"
+      },
+      "enum": {
+        "mode": {
+          "release": "Loslassen beendet",
+          "accumulate": "Ladung summiert sich"
+        }
+      }
+    },
+    "add": {
+      "title": "Schritt hinzufügen",
+      "afterStep": "Wird nach Schritt {{n}} eingefügt",
+      "endOfRound": "Wird am Ende der Runde angefügt",
+      "end": "Wird am Ende angefügt",
+      "first": "Der erste Schritt des Programms",
+      "recipes": "Rezepte",
+      "steps": "Einzelne Schritte",
+      "library": "Bibliotheksteile",
+      "libraryHint": "Wird als Kopie eingefügt. Als verknüpfte Vorlage geht es über die Programmeinstellungen.",
+      "intent": {
+        "light": {
+          "name": "Zentrale leuchten lassen",
+          "hint": "Farbe und welche LEDs"
+        },
+        "pause": {
+          "name": "Pause",
+          "hint": "Fest oder zufällig, kann zu frühes Drücken erkennen"
+        },
+        "press": {
+          "name": "Auf Drücken warten",
+          "hint": "An der Zentrale, mit optionalem Zeitlimit"
+        },
+        "pod": {
+          "name": "Einen Pod leuchten lassen",
+          "hint": "Ein Pod leuchtet und wartet aufs Drücken"
+        },
+        "race": {
+          "name": "Wettlauf: alle Pods auf einmal",
+          "hint": "Alle Pods leuchten, danach gehen alle aus"
+        },
+        "count": {
+          "name": "Zählen oder merken",
+          "hint": "Zu einer Einstellung wie Fehler addieren"
+        },
+        "decide": {
+          "name": "Entscheiden",
+          "hint": "Zwei Wege, z. B. wenn Fehler ≥ 3"
+        },
+        "repeat": {
+          "name": "Wiederholen",
+          "hint": "Schritte, die mehrmals laufen"
+        },
+        "results": {
+          "name": "Ergebnisse zeigen",
+          "hint": "Durchschnitt, beste, schlechteste, Anzahl"
+        },
+        "off": {
+          "name": "Alle Pods ausschalten",
+          "hint": "Alle Pods wieder dunkel"
+        },
+        "effect": {
+          "name": "Lichteffekt",
+          "hint": "Ring blinken, pulsieren, füllen oder drehen"
+        },
+        "charge": {
+          "name": "Halten zum Laden",
+          "hint": "Knopf halten, der Ring lädt sich auf"
+        },
+        "release": {
+          "name": "Loslassen",
+          "hint": "Das Loslassen ist das Ereignis, oder ein Startsignal"
+        }
+      },
+      "recipe": {
+        "countMiss": {
+          "name": "Fehler zählen, wenn zu langsam",
+          "hint": "Gibt jedem Drücken der Runde ein Zeitlimit und einen Fehlerzähler"
+        },
+        "pauseBetweenRounds": {
+          "name": "Pause zwischen den Runden",
+          "hint": "Eine feste Pause von 2 s am Ende jeder Runde"
+        },
+        "flashFalseStart": {
+          "name": "Rot blinken bei Fehlstart",
+          "hint": "Die erste Pause der Runde erkennt zu frühes Drücken"
+        }
+      },
+      "reason": {
+        "noPods": "Das Programm nutzt keine Pods. Stelle die Anzahl der Pods in den Programmeinstellungen ein.",
+        "noMetric": "Noch nichts misst eine Zeit. Schalte zuerst bei einem Drücken „Reaktionszeit messen“ ein.",
+        "needsFormat": "Dein Pod braucht für diesen Schritt eine neuere Firmware.",
+        "unsupported": "Dein Pod kann diesen Schritt nicht ausführen.",
+        "noPress": "Kein Drücken in der Runde, das noch keine Fehler zählt.",
+        "noPause": "Keine Pause vor einem Drücken in der Runde."
+      }
+    },
+    "switch": {
+      "timeLimit": "Zeitlimit",
+      "timeLimitOn": "Zu langsam nach {{time}}",
+      "timeLimitOff": "Warten, so lange es dauert",
+      "staysRed": "Wie lange er rot bleibt",
+      "seconds": "Sekunden",
+      "tooSlow": "Wenn zu langsam",
+      "goOn": "Weiter",
+      "countMiss": "Fehler zählen",
+      "endRound": "Runde beenden",
+      "other": "Eigene Schritte",
+      "record": "Reaktionszeit messen",
+      "recordOn": "Gemessen vom Aufleuchten bis zum Drücken",
+      "recordOff": "Wird nicht gemessen",
+      "longPress": "Langer Druck macht etwas anderes",
+      "longPressOn": "Ab {{time}} gedrückt geht es zur nächsten Runde",
+      "longPressOff": "Kurzer und langer Druck machen dasselbe",
+      "holdTime": "Langer Druck ab",
+      "avoidPod": "Nicht berühren (rot)",
+      "avoidPodOn": "Drücken ist ein Fehler, in Ruhe lassen ist richtig",
+      "avoidPodOff": "Der Pod muss gedrückt werden",
+      "avoidMulti": "Rote Pods: nicht berühren",
+      "avoidMultiOn": "{{count}} rot, zufällig gewählt",
+      "avoidMultiOff": "Jeder Pod muss gedrückt werden",
+      "redPods": "Rote Pods",
+      "redColour": "Farbe der roten Pods",
+      "redMiss": "Roten Treffer als Fehler zählen",
+      "missHint": "Zählt 1 zu Fehler dazu",
+      "falseStart": "Zu frühes Drücken erkennen",
+      "falseStartOn": "Wer jetzt die Zentrale drückt, startet zu früh: sie blinkt rot, die Runde endet",
+      "falseStartOff": "Drücken während der Pause wird ignoriert",
+      "earlyMiss": "Als Fehler zählen",
+      "countdown": {
+        "label": "Ablaufende Zeit anzeigen",
+        "on": "Der Ring zählt herunter: {{style}}",
+        "off": "Der Ring zeigt nicht, wie viel Zeit bleibt",
+        "needsLimit": "Schalte zuerst ein Zeitlimit ein",
+        "style": "Art",
+        "color": "Endfarbe",
+        "target": "Herunterzählen auf",
+        "styles": {
+          "drain": "Leert sich",
+          "fill": "Füllt sich",
+          "dim": "Wird dunkel",
+          "colorShift": "Wechselt die Farbe",
+          "trafficLight": "Ampel"
+        },
+        "targets": {
+          "central": "Zentrale",
+          "all": "Alles",
+          "peripherals": "Alle Pods"
+        },
+        "from": "Startfarbe"
+      },
+      "holdLimit": "Längstes Halten",
+      "holdLimitOn": "Zu lang nach {{time}}"
+    }
   },
   "simulate": {
     "title": "Simulation",
@@ -204,7 +583,8 @@
     "graph": "Block-Graph",
     "breakpointHint": "Tippe auf einen Block, um einen Haltepunkt zu setzen oder zu entfernen.",
     "pods": "Pods",
-    "podsHint": "Tippe auf den Knopf eines Pods, um ihn zu drücken. Gedrückt halten für einen langen Druck.",
+    "podsHint": "Tippe auf den Knopf eines Pods, um ihn zu drücken. Gedrückt halten für einen langen Druck, oder „Halten\" einschalten, um den Knopf gedrückt zu lassen.",
+    "hold": "Halten",
     "central": "Zentrale · {{id}}",
     "peripheral": "Pod {{id}}",
     "press": "{{pod}} drücken",
@@ -279,7 +659,9 @@
     "deleteSelected_other": "{{count}} Dateien löschen…",
     "deleteTitle": "Dateien löschen",
     "deleteText": "Diese Dateien werden vom Pod gelöscht. Das lässt sich nicht rückgängig machen.",
-    "holdToDelete": "Gedrückt halten zum Löschen"
+    "holdToDelete": "Gedrückt halten zum Löschen",
+    "expertMode": "Expertenmodus",
+    "expertModeHint": "Der Editor zeigt Blocknamen, Blocktypen, Anschlüsse und alle Felder, wie bisher. Wird auf diesem Gerät gespeichert."
   },
   "update": {
     "available": "Eine neue Version ist verfügbar.",
@@ -328,7 +710,38 @@
     "unknownField": "Unbekannte Angabe {{field}} wird vom Pod ignoriert",
     "indexInvalid": "Die Menüdatei ist ungültig",
     "indexDuplicate": "{{path}} steht doppelt im Menü",
-    "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Programm"
+    "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Programm",
+    "tooManyTimers": "{{count}} verschiedene Stoppuhren, der Pod erlaubt {{max}}",
+    "fieldNeedsFormat": "Der verbundene Pod ignoriert {{field}} (braucht Programmformat {{format}}, Firmware-Update nötig)",
+    "timerNeverStopped": "Stoppuhr {{name}} wird gestartet, aber nie gestoppt",
+    "timerNeverStarted": "Stoppuhr {{name}} wird gestoppt, aber nie gestartet",
+    "repeatNoLoop": "Kein Schritt der Runde führt zu dieser Wiederholung zurück",
+    "rangeReversed": "Die kürzeste Zeit ist länger als die längste: der Pod nimmt immer die kürzeste",
+    "fieldFormatTooOld": "Der verbundene Pod lehnt {{field}} ab (braucht Programmformat {{format}}, Firmware-Update nötig)",
+    "effectWaitEndless": "Auf einen endlosen Effekt ({{effect}}) zu warten endet nie: gib eine Dauer an",
+    "countdownNeedsTimeLimit": "Ein Countdown ({{countdown}}) braucht ein Zeitlimit ({{limit}})",
+    "fieldWrongMode": "{{field}} gilt nur im Modus „{{needs}}“, dieser Schritt ist im Modus „{{mode}}“",
+    "signalNeedsGoTime": "Lege die Zeit bis zum Signal fest: eine feste Zeit oder eine kürzeste und eine längste Zeit",
+    "goTimeBothForms": "Nimm entweder eine feste Zeit oder eine kürzeste und eine längste Zeit, nicht beides",
+    "podSingleOnly": "Dieser Schritt braucht genau einen Pod (\"central\" oder eine Zahl), nicht {{value}}",
+    "maxMsTooSmall": "Die Zeit für eine volle Ladung muss mindestens {{min}} ms betragen",
+    "countdownTargetNotDelay": "Nur eine Pause kann wählen, wo der Countdown angezeigt wird"
+  },
+  "portRoles": {
+    "then": "Dann",
+    "ifTooSlow": "Wenn zu langsam",
+    "ifLeftAlone": "Wenn nicht gedrückt",
+    "shortPress": "Kurz gedrückt",
+    "longPress": "Lang gedrückt",
+    "ifRedHit": "Wenn ein roter Pod gedrückt wird",
+    "ifYes": "Wenn ja",
+    "ifNo": "Wenn nein",
+    "eachRound": "Jede Runde",
+    "afterLast": "Nach der letzten Runde",
+    "ifReleasedEarly": "Wenn zu früh losgelassen",
+    "ifFull": "Wenn voll geladen",
+    "ifNoHold": "Wenn niemand hält",
+    "ifFalseStart": "Fehlstart"
   },
   "view": {
     "back": "Zurück",
@@ -377,7 +790,9 @@
     "timeout": "Zeit um",
     "true": "wahr",
     "false": "falsch",
-    "avoidHit": "rot gedrückt"
+    "avoidHit": "rot gedrückt",
+    "body": "Runde",
+    "done": "fertig"
   },
   "blocks": {
     "led": {
@@ -415,6 +830,22 @@
     "summary": {
       "name": "Auswertung",
       "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
+    },
+    "repeat": {
+      "name": "Wiederholen",
+      "help": "Führt die Runde (body) mehrmals aus und macht dann bei „fertig“ weiter. Der letzte Schritt der Runde führt hierher zurück."
+    },
+    "effect": {
+      "name": "Lichteffekt",
+      "help": "Spielt einen Effekt auf dem Ring der Zentrale, eines Pods oder aller Pods. Läuft sofort weiter oder wartet, bis der Effekt vorbei ist. Ein späteres Licht auf demselben Ring ersetzt ihn."
+    },
+    "charge": {
+      "name": "Halten zum Laden",
+      "help": "Der Ring zeigt, wie lange der Knopf gehalten wird. Verlassen durch Loslassen, bei voller Ladung oder nach einem Zeitlimit. Auf Pods ab Firmware 2.9."
+    },
+    "release": {
+      "name": "Loslassen",
+      "help": "Auslöser: Das Loslassen des gehaltenen Knopfs ist das Ereignis. Signal: Nach einer Zeit wechselt die Farbe und der Sportler lässt so schnell wie möglich los (Fehlstart, wenn zu früh). Auf Pods ab Firmware 2.9."
     }
   },
   "common": {
@@ -533,6 +964,102 @@
     },
     "reset": {
       "label": "Messungen danach zurücksetzen"
+    },
+    "count": {
+      "label": "Runden",
+      "help": "Wie oft die Runde läuft."
+    },
+    "storeIndex": {
+      "label": "Rundennummer speichern in"
+    },
+    "timerStart": {
+      "label": "Stoppuhr starten",
+      "help": "Startet diese Stoppuhr, wenn der Schritt beginnt."
+    },
+    "timerStop": {
+      "label": "Stoppuhr stoppen",
+      "help": "Speichert am Ende des Schritts die Zeit seit dem Start unter diesem Namen."
+    },
+    "target": {
+      "label": "Wo",
+      "help": "central, all (Zentrale und Pods), peripherals oder die Nummer eines Pods."
+    },
+    "effect": {
+      "label": "Effekt",
+      "help": "Was der Ring tut."
+    },
+    "color2": {
+      "label": "Zweite Farbe",
+      "help": "Hintergrund oder Endfarbe des Effekts. Standard: aus."
+    },
+    "durationMs": {
+      "label": "Dauer (ms)",
+      "help": "Länge des Effekts. Blinken, Pulsieren und Drehen laufen ohne Dauer bis zur nächsten Lichtänderung."
+    },
+    "periodMs": {
+      "label": "Ein Durchlauf (ms)",
+      "help": "Blinken, Pulsieren und Drehen: wie lange ein Durchlauf dauert."
+    },
+    "brightness": {
+      "label": "Helligkeit",
+      "help": "0 bis 255."
+    },
+    "wait": {
+      "label": "Warten, bis er vorbei ist",
+      "help": "Aus: das Programm läuft sofort weiter."
+    },
+    "countdown": {
+      "label": "Countdown",
+      "help": "Zeigt die ablaufende Zeit auf dem Ring."
+    },
+    "countdownColor": {
+      "label": "Endfarbe des Countdowns"
+    },
+    "countdownTarget": {
+      "label": "Countdown auf"
+    },
+    "countdownFrom": {
+      "label": "Startfarbe des Countdowns"
+    },
+    "style": {
+      "label": "Stil",
+      "help": "So zeigt der Ring die Ladung: fill, brightness, trafficLight, colorShift."
+    },
+    "onsetMs": {
+      "label": "Laden beginnt nach (ms)"
+    },
+    "decayMs": {
+      "label": "Ablaufzeit (ms)"
+    },
+    "holdColor": {
+      "label": "Farbe beim Warten"
+    },
+    "heldColor": {
+      "label": "Farbe, sobald gehalten"
+    },
+    "goColor": {
+      "label": "Signalfarbe"
+    },
+    "goMs": {
+      "label": "Zeit bis zum Signal (ms)"
+    },
+    "minGoMs": {
+      "label": "Signal frühestens (ms)"
+    },
+    "maxGoMs": {
+      "label": "Signal spätestens (ms)"
+    },
+    "allowHeld": {
+      "label": "Ein Halten von vorher zählt"
+    },
+    "holdTimeoutMs": {
+      "label": "Kein Halten innerhalb von (ms)"
+    },
+    "maxHoldMs": {
+      "label": "Längstes Halten (ms)"
+    },
+    "storePercent": {
+      "label": "Prozent in Variable speichern"
     }
   },
   "ops": {
@@ -756,5 +1283,312 @@
     "linkInvalid": "Dieser Anmeldelink ist unvollständig.",
     "noServer": "Trage zuerst den Server in den Plattform-Einstellungen ein und öffne den Link dann erneut.",
     "signingIn": "Melde an…"
+  },
+  "wizard": {
+    "numberLocale": "de",
+    "cancel": "Abbrechen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "build": "Spiel bauen",
+    "stepOf": "Schritt {{n}} von {{total}}",
+    "less": "Weniger: {{label}}",
+    "more": "Mehr: {{label}}",
+    "steps": {
+      "game": "Spiel",
+      "pods": "Pods",
+      "timing": "Runden und Zeiten",
+      "colors": "Farben",
+      "measure": "Messen"
+    },
+    "games": {
+      "solo": {
+        "name": "Solo-Reaktion",
+        "line": "Nur der Central. Blau = bereit machen, dann drücken, sobald er leuchtet."
+      },
+      "star": {
+        "name": "Stern",
+        "line": "Der Central und ein zufälliger Pod sind abwechselnd dran."
+      },
+      "random": {
+        "name": "Zufalls-Pod",
+        "line": "Ein zufälliger Pod leuchtet, auch der Central, nie zweimal derselbe."
+      },
+      "multi": {
+        "name": "Alle auf einmal",
+        "line": "Alle Pods leuchten gleichzeitig. Alle treffen, die roten nicht berühren."
+      },
+      "duo": {
+        "name": "Duo",
+        "line": "Zwei Pods sind abwechselnd dran, nach einer zufälligen Pause."
+      }
+    },
+    "game": {
+      "question": "Was möchtest du spielen?",
+      "centralOnly": "nur der Central",
+      "needs_one": "Central + mind. {{count}} Pod",
+      "needs_other": "Central + mind. {{count}} Pods"
+    },
+    "problems": {
+      "notEnoughPods_one": "{{game}} braucht mindestens {{count}} Pod außer dem Central. Nimm einen Pod dazu oder geh zurück und wähle ein anderes Spiel.",
+      "notEnoughPods_other": "{{game}} braucht mindestens {{count}} Pods außer dem Central. Nimm Pods dazu oder geh zurück und wähle ein anderes Spiel.",
+      "pauseOrder": "Die kürzeste Pause muss kürzer sein als die längste.",
+      "redTarget": "Rot ist für die „nicht berühren“-Pods reserviert. Wähle eine andere Farbe für das Licht zum Treffen."
+    },
+    "pods": {
+      "question": "Wie viele Pods hast du?",
+      "hint": "Zähle die Pods außer dem Central (dem Pod, mit dem sich die App verbindet).",
+      "label": "Pods außer dem Central",
+      "total_one": "Central + {{count}} Pod",
+      "total_other": "Central + {{count}} Pods",
+      "soloUses": "Solo nutzt nur den Central. Die anderen Pods bleiben aus.",
+      "duoUses": "Duo nutzt den Central und einen Pod. Die anderen Pods bleiben aus."
+    },
+    "timing": {
+      "rounds": "Runden",
+      "pause": "Pause vor jedem Licht",
+      "fixed": "Immer gleich",
+      "random": "Zufällig zwischen",
+      "pauseFixed": "Pause",
+      "shortest": "Kürzeste Pause",
+      "longest": "Längste Pause",
+      "timeLimit": "Zeitlimit",
+      "timeLimitOn": "Zu langsam nach {{s}}",
+      "timeLimitOff": "Warten, so lange es dauert",
+      "secondsToPress": "Zeit zum Drücken",
+      "tooSlow": "Wenn zu langsam",
+      "onTimeout": {
+        "goOn": "Weitermachen",
+        "countMiss": "Fehler zählen und weitermachen",
+        "endRound": "Runde beenden"
+      }
+    },
+    "colors": {
+      "target": "Farbe des Lichts zum Treffen",
+      "redPods": "Rote Pods: nicht berühren",
+      "redPodsOn_one": "{{count}} roter Pod pro Runde",
+      "redPodsOn_other": "{{count}} rote Pods pro Runde",
+      "redPodsOff": "Alle Pods leuchten in der Zielfarbe",
+      "redCount": "Rote Pods pro Runde",
+      "hint": "Pods außer dem Central können 8 Farben zeigen. Die Farben einzelner Schritte kannst du später ändern.",
+      "preview": "Vorschau des Sets"
+    },
+    "measure": {
+      "question": "Was sollen die Pods messen?",
+      "hint": "Alles hier ist freiwillig. Du kannst es später ändern.",
+      "record": "Reaktionszeiten aufzeichnen",
+      "recordHint": "Jeder Druck wird gemessen, vom Aufleuchten bis zum Drücken.",
+      "falseStart": "Fehlstarts erkennen",
+      "falseStartHint": "Drücken während der Pause blinkt rot und beendet die Runde.",
+      "countMisses": "Fehler zählen",
+      "countMissesHint": "Zählt 1 für: {{what}}",
+      "countMissesOff": "Schalte zuerst ein Zeitlimit ein.",
+      "missTooSlow": "zu langsam",
+      "missRed": "roter Pod getroffen",
+      "missFalseStart": "Fehlstart",
+      "results": "Ergebnis am Ende zeigen",
+      "resultsHint": "Durchschnitt und Bestzeit nach der letzten Runde.",
+      "resultsOff": "Braucht „Reaktionszeiten aufzeichnen“."
+    },
+    "ready": {
+      "title": "Dein Spiel ist fertig",
+      "name": "Name",
+      "menu": "Menü-Muster",
+      "menuHint": "So erscheint es im Programm-Menü des Pods. Tippe auf LEDs, um es zu ändern.",
+      "size": "Belegt {{percent}} % des Platzes für ein Programm.",
+      "story": "Was passiert",
+      "try": "Im Simulator ausprobieren",
+      "change": "Schritte ändern",
+      "saveToMenu": "Speichern und ins Menü",
+      "saved": "In „Meine Programme“ gespeichert. Änderungen hier aktualisieren es.",
+      "centralOnly": "Nur der Central."
+    },
+    "chooser": {
+      "question": "Wie möchtest du anfangen?",
+      "game": "Mit einem Spiel anfangen",
+      "gameLine": "Beantworte fünf Fragen. Die App baut das Programm, du kannst es gleich ausprobieren.",
+      "recommended": "Empfohlen",
+      "copy": "Eines meiner Programme kopieren",
+      "copyLine": "Nimm eines deiner Programme oder ein mitgeliefertes und ändere es.",
+      "empty": "Leer anfangen",
+      "emptyLine": "Block für Block selbst bauen.",
+      "expert": "Für Leute, die Blöcke kennen",
+      "copyTitle": "Programm kopieren",
+      "noneMine": "Noch keine eigenen Programme."
+    },
+    "story": {
+      "rounds_one": "{{count}} Runde:",
+      "rounds_other": "{{count}} Runden, jede so:",
+      "ready": "Der Central leuchtet blau: bereit machen",
+      "pauseFixed": "Pause {{s}} s",
+      "pauseRandom": "Pause {{min}}–{{max}} s, zufällig",
+      "falseStart": "{{pause}}; wer jetzt drückt, macht einen Fehlstart: rot, die Runde ist vorbei",
+      "andMiss": ", und es zählt als Fehler",
+      "lightCentral": "Den Central {{color}} leuchten lassen",
+      "pressCentral": "Auf den Druck am Central warten",
+      "limit": " (max. {{s}} s)",
+      "podRandom": "Einen zufälligen Pod {{color}} leuchten lassen und auf seinen Druck warten",
+      "podRandomOther": "Einen zufälligen Pod {{color}} leuchten lassen, auch den Central, nie zweimal denselben, und auf seinen Druck warten",
+      "podDuo": "Den Pod {{color}} leuchten lassen und auf seinen Druck warten",
+      "allAtOnce_one": "Beide Pods gleichzeitig leuchten lassen",
+      "allAtOnce_other": "Alle {{count}} Pods gleichzeitig leuchten lassen",
+      "redPods_one": ", {{count}} davon rot: nicht berühren",
+      "redPods_other": ", {{count}} davon rot: nicht berühren",
+      "untilPressed": ", warten, bis alle Pods in {{color}} gedrückt sind",
+      "redHit": "Wenn ein roter Pod getroffen wird: rot blinken, die Runde ist vorbei",
+      "allOff": "Alle Pods ausschalten",
+      "tooSlow": {
+        "goOn": "Wenn zu langsam: mit dem nächsten Schritt weitermachen",
+        "countMiss": "Wenn zu langsam: Fehler zählen und weitermachen",
+        "endRound": "Wenn zu langsam: die Runde ist vorbei",
+        "endRoundMiss": "Wenn zu langsam: Fehler zählen, die Runde ist vorbei"
+      },
+      "record": "Jede Reaktionszeit wird aufgezeichnet.",
+      "misses": "Fehler werden in der Einstellung „Fehler“ gezählt.",
+      "endResults": "Am Ende: Durchschnitt und Bestzeit werden gezeigt, dann beginnt das Spiel von vorn.",
+      "endPlain": "Am Ende: der Central leuchtet 3 s blau, dann beginnt das Spiel von vorn."
+    }
+  },
+  "settingLabels": {
+    "rounds": "Runden",
+    "runs": "Rundenzähler",
+    "pause": "Pause",
+    "pauseMin": "Kürzeste Pause",
+    "pauseMax": "Längste Pause",
+    "timeLimit": "Zeitlimit",
+    "redPods": "Rote Pods",
+    "misses": "Fehler",
+    "selectedPod": "Gewählter Pod",
+    "avgReaction": "Durchschnittliche Reaktionszeit",
+    "bestReaction": "Beste Reaktionszeit",
+    "lastReaction": "Letzte Reaktionszeit",
+    "requiredPeripherals": "Pods außer dem Central",
+    "nodeCount": "Pods mit dem Central"
+  },
+  "adjust": {
+    "action": "Anpassen",
+    "actionFor": "{{name}} anpassen",
+    "title": "Anpassen: {{name}}",
+    "subLocal": "Änderungen gelten für das ganze Programm.",
+    "subShipped": "Beim Speichern entsteht deine eigene Kopie. Das mitgelieferte Programm bleibt, wie es ist.",
+    "subPod": "Beim Speichern entsteht eine Kopie auf diesem Telefon. Das Programm auf dem Pod bleibt, wie es ist, bis du es überträgst.",
+    "existingCopy": "Du hast schon eine Kopie dieses Programms. Anpassen ändert deine Kopie.",
+    "readOnly": "Dieser Pod ist nicht der Central und kann keine Programme annehmen. Deine Kopie bleibt auf diesem Telefon: Probiere sie im Simulator aus oder übertrage sie auf ein Set, wenn du dessen Central verbindest. Auf diesen Pod kann sie nicht übertragen werden.",
+    "settings": "Einstellungen",
+    "wholeProgram": "Für das ganze Programm",
+    "timeLimit": "Zeitlimit",
+    "timeLimitOn": "Zu langsam nach {{s}}",
+    "timeLimitOff": "Warten, so lange es dauert",
+    "mixed": "Bei manchen Drücken an",
+    "secondsToPress": "Sekunden zum Drücken",
+    "record": "Reaktionszeiten aufzeichnen",
+    "recordHint": "Jeder Druck wird gemessen",
+    "results": "Ergebnisse am Ende zeigen",
+    "resultsHint": "Durchschnitt, Bestzeit und Anzahl der Drücke",
+    "timeLimitSetting": "Die Sekunden sind oben eine Einstellung",
+    "noSwitches": "Dieses Programm besteht aus Bibliotheksteilen, deshalb können diese Schalter es nicht ändern. Ändere zuerst die Schritte, um eine bearbeitbare Kopie zu machen.",
+    "try": "Ausprobieren",
+    "saveAndTry": "Speichern und ausprobieren",
+    "save": "Speichern",
+    "steps": "Lieber die Schritte ändern",
+    "saved": "Gespeichert.",
+    "notFound": "Das Programm wurde nicht gefunden."
+  },
+  "sentence": {
+    "decimal": ",",
+    "seconds": "{{value}} s",
+    "secondsRange": "{{min}}–{{max}} s",
+    "range": "{{min}} bis {{max}}",
+    "customColor": "in eigener Farbe",
+    "ledAll": "Zentrale leuchtet {{color}}",
+    "ledSome_one": "{{count}} LED der Zentrale leuchtet {{color}}",
+    "ledSome_other": "{{count}} LEDs der Zentrale leuchten {{color}}",
+    "ledOff": "LEDs der Zentrale aus",
+    "ledSomeOff_one": "{{count}} LED der Zentrale aus",
+    "ledSomeOff_other": "{{count}} LEDs der Zentrale aus",
+    "wait": "{{time}} warten",
+    "waitRandom": "{{time}} warten (zufällig)",
+    "noWait": "Sofort weiter",
+    "press": "Auf Druck an der Zentrale warten",
+    "catchEarly": "{{time}} warten (zufällig), wer jetzt drückt, startet zu früh",
+    "max": "max. {{time}}",
+    "maxRandom": "max. {{time}} (zufällig)",
+    "longFrom": "lang ab {{time}}",
+    "pod": "Pod {{n}}",
+    "chosenPod": "den gewählten Pod",
+    "podIn": "den Pod aus {{name}}",
+    "podHit": "{{pod}} {{color}} leuchten lassen, auf Druck warten",
+    "podAvoid": "{{pod}} {{color}} leuchten lassen: nicht berühren",
+    "colorAfter": "danach {{color}}",
+    "multiAll": "Alle Pods gleichzeitig {{color}}, warten bis jeder gedrückt ist",
+    "multiSome_one": "{{count}} Pod {{color}}, auf Druck warten",
+    "multiSome_other": "{{count}} Pods gleichzeitig {{color}}, warten bis jeder gedrückt ist",
+    "multiVar": "{{value}} Pods gleichzeitig {{color}}, warten bis jeder gedrückt ist",
+    "multiAvoid": "{{value}} davon {{color}}: nicht berühren",
+    "withoutCentral": "ohne die Zentrale",
+    "resetAll": "Alle Pods aus",
+    "resetSome": "{{value}} Pods aus",
+    "centralStays": "die Zentrale bleibt wie sie ist",
+    "add": "{{value}} zu {{var}} addieren",
+    "subtract": "{{value}} von {{var}} abziehen",
+    "set": "{{var}} auf {{value}} setzen",
+    "randomPod": "Zufälligen Pod wählen",
+    "randomPodOther": "Zufälligen Pod wählen, nie zweimal derselbe",
+    "randomNode": "Zufälligen Pod oder die Zentrale wählen",
+    "randomNodeOther": "Zufälligen Pod oder die Zentrale wählen, nie zweimal derselbe",
+    "randomNumber": "{{var}} auf eine Zufallszahl unter {{value}} setzen",
+    "randomNumberOther": "{{var}} auf eine neue Zufallszahl unter {{value}} setzen",
+    "if": "Prüfen: ist {{left}} {{op}} {{right}}?",
+    "op": {
+      "eq": "gleich",
+      "ne": "ungleich",
+      "gt": "größer als",
+      "lt": "kleiner als",
+      "ge": "mindestens",
+      "le": "höchstens"
+    },
+    "summary": "Ergebnisse zeigen",
+    "summaryOf": "Ergebnisse zeigen: {{list}}",
+    "ofMetric": "von {{name}}",
+    "stat": {
+      "average": "Durchschnitt",
+      "best": "Bestzeit",
+      "worst": "langsamste",
+      "count": "Anzahl"
+    },
+    "repeat_one": "{{count}} Runde wiederholen",
+    "repeat_other": "{{count}} Runden wiederholen",
+    "repeatVar": "{{value}} Runden wiederholen",
+    "unknown": "Schritt vom Typ {{type}}",
+    "var": {
+      "peripherals": "die Anzahl der Pods",
+      "nodes": "die Anzahl der Pods und Zentrale"
+    },
+    "isCentral": "Ist der gewählte Pod die Zentrale?",
+    "isNotCentral": "Ist der gewählte Pod einer der Pods, nicht die Zentrale?",
+    "catchEarlyFixed": "{{time}} warten, wer jetzt drückt, startet zu früh",
+    "effect": {
+      "solid": "{{where}} {{color}} leuchten lassen",
+      "fill": "{{where}} mit {{color}} füllen",
+      "drain": "{{where}} von {{color}} leeren",
+      "dim": "{{where}} aus {{color}} ausblenden",
+      "colorShift": "{{where}} von {{color}} zu {{color2}} wechseln",
+      "trafficLight": "Ampel auf {{where}}",
+      "blink": "{{where}} {{color}} blinken lassen",
+      "pulse": "{{where}} {{color}} pulsieren lassen",
+      "spin": "{{color}} um {{where}} drehen",
+      "off": "{{where}} ausschalten",
+      "wait": "warten, bis er vorbei ist",
+      "for": "für {{time}}",
+      "central": "die Zentrale",
+      "all": "die Zentrale und alle Pods",
+      "peripherals": "alle Pods",
+      "pod": "Pod {{n}}",
+      "chosenPod": "den gewählten Pod"
+    },
+    "withCountdown": "der Ring zählt herunter",
+    "charge": "{{pod}} halten zum Laden · voll nach {{time}}",
+    "chargeAccumulate": "{{pod}} durch Halten laden, Loslassen pausiert · voll nach {{time}}",
+    "releaseTrigger": "Warten, bis {{pod}} gehalten und losgelassen wird",
+    "releaseSignal": "{{pod}} halten, loslassen wenn es {{color}} wird · Signal nach {{time}}"
   }
 }

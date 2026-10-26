@@ -2,7 +2,17 @@
  * Program checks. Mirrors tools/validate_programs.py and the firmware loader
  * (src/BlockManager/BlockManager.cpp). Errors stop a push, warnings do not.
  */
-import { blockType, COMMON_FIELDS, type BlockTypeDef } from "./blockTypes";
+import {
+  blockType,
+  COMMON_FIELDS,
+  MAX_TIMERS,
+  PERIODIC_EFFECTS,
+  TARGET_KEYWORDS,
+  TIMEOUT_TYPES,
+  TIMER_FIELDS,
+  timeLimitFields,
+  type BlockTypeDef,
+} from "./blockTypes";
 import { isColor, isNamedColor } from "./colors";
 import {
   INDEX_PATH,
@@ -55,11 +65,26 @@ export const ISSUE_CODES = [
   "ledOutOfRange",
   "portNotText",
   "portUnknownTarget",
+  "tooManyTimers",
+  "fieldFormatTooOld",
+  "effectWaitEndless",
+  "countdownNeedsTimeLimit",
+  "countdownTargetNotDelay",
+  "fieldWrongMode",
+  "signalNeedsGoTime",
+  "goTimeBothForms",
+  "podSingleOnly",
+  "maxMsTooSmall",
   // warnings
   "noOutgoing",
   "unreachable",
   "unknownVariable",
   "unknownField",
+  "fieldNeedsFormat",
+  "timerNeverStopped",
+  "timerNeverStarted",
+  "repeatNoLoop",
+  "rangeReversed",
   // index
   "indexInvalid",
   "indexDuplicate",
@@ -98,6 +123,11 @@ export type ResolvedProgram = {
 export type ValidateOptions = {
   /** `info.blockTypes` of the connected pod; types outside it are errors */
   supportedTypes?: readonly string[];
+  /**
+   * `info.programFormat` of the connected pod (missing = 1 on old firmware). Block types of a newer
+   * revision are errors (the pod rejects them), fields of a newer revision warnings (it ignores them).
+   */
+  programFormat?: number;
 };
 
 class Collector {
@@ -219,6 +249,9 @@ export function validateProgram(path: string, source: FileSource, options: Valid
   }
 
   checkReachability(resolved, path, out);
+  checkTimers(resolved, path, out);
+  checkRepeats(resolved, path, out);
+  checkRanges(resolved, out);
   return resolved;
 }
 
@@ -274,7 +307,11 @@ function checkBlock(
     out.error("unknownType", file, at("type", { type: block.type }));
     return;
   }
-  if (options.supportedTypes && !options.supportedTypes.includes(def.type)) {
+  const format = options.programFormat;
+  if (
+    (options.supportedTypes && !options.supportedTypes.includes(def.type)) ||
+    (format !== undefined && (def.minFormat ?? 1) > format)
+  ) {
     out.error("unsupportedType", file, at("type", { type: def.type }));
   }
 
@@ -285,6 +322,11 @@ function checkBlock(
       continue;
     }
     checkField(def, field.name, value, file, at, out, knownVars);
+    if (format !== undefined && (field.minFormat ?? 1) > format && (def.minFormat ?? 1) <= format) {
+      const params = { field: field.name, format: field.minFormat ?? 1 };
+      if (field.rejectedByOlder) out.error("fieldFormatTooOld", file, at(field.name, params));
+      else out.warn("fieldNeedsFormat", file, at(field.name, params));
+    }
   }
   checkTypeRules(def, block, file, at, out);
 
@@ -301,7 +343,7 @@ function checkBlock(
     if (!connected) out.warn("noOutgoing", file, at());
     const allowed = new Set<string>([...COMMON_FIELDS, ...def.ports, ...def.fields.map((f) => f.name)]);
     for (const key of Object.keys(block)) {
-      if (!allowed.has(key)) out.warn("unknownField", file, at(key, { field: key }));
+      if (!allowed.has(key) && key !== "countdownTarget") out.warn("unknownField", file, at(key, { field: key }));
     }
   }
 }
@@ -339,6 +381,15 @@ function checkField(
           }
         }
       break;
+    case "target":
+      if (typeof value === "string") {
+        if (!(TARGET_KEYWORDS as readonly string[]).includes(value) && !knownVars.has(value)) {
+          out.warn("unknownVariable", file, at(name, { name: value }));
+        }
+      } else if (typeof value !== "number" || !Number.isInteger(value)) {
+        out.error("notValue", file, at(name));
+      }
+      break;
     case "enum": {
       const ok = [...(field.options ?? []), ...(field.aliases ?? [])];
       if (typeof value !== "string" || !ok.includes(value)) {
@@ -360,14 +411,68 @@ function checkTypeRules(
   def: BlockTypeDef,
   block: Record<string, unknown>,
   file: string,
-  at: (field?: string) => Partial<Issue>,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
   out: Collector,
 ) {
   if (def.type === "delay" && block.ms === undefined && (block.minMs === undefined || block.maxMs === undefined)) {
     out.error("delayNeedsMs", file, at("ms"));
   }
-  if (def.type === "button" && (block.minTimeoutMs === undefined) !== (block.maxTimeoutMs === undefined)) {
+  if ((def.type === "button" || def.type === "charge") && (block.minTimeoutMs === undefined) !== (block.maxTimeoutMs === undefined)) {
     out.error("randomTimeoutPair", file, at("minTimeoutMs"));
+  }
+  checkModes(def, block, file, at, out);
+  // effect: wait for something that never ends (a variable duration is not known here)
+  if (def.type === "effect" && block.wait === true && typeof block.effect === "string" && PERIODIC_EFFECTS.includes(block.effect)) {
+    const duration = block.durationMs;
+    if (duration === undefined || (typeof duration === "number" && duration <= 0)) {
+      out.error("effectWaitEndless", file, at("wait", { effect: block.effect }));
+    }
+  }
+  // countdown: needs a time limit (delay always has one)
+  if (block.countdown !== undefined && block.countdown !== "secret" && (TIMEOUT_TYPES as readonly string[]).includes(def.type)) {
+    const alternatives = timeLimitFields(def.type, block.mode);
+    // charge and release: a limit of 0 or less means none (programs.md §2)
+    const set = (f: string) => block[f] !== undefined && !((def.type === "charge" || def.type === "release") && typeof block[f] === "number" && block[f] <= 0);
+    if (!alternatives.some((fields) => fields.every(set))) {
+      out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown), limit: alternatives.map((f) => f.join(" + ")).join(" or ") }));
+    }
+  }
+  if (block.countdownTarget !== undefined && def.type !== "delay") out.error("countdownTargetNotDelay", file, at("countdownTarget"));
+  if (def.type === "charge" && typeof block.maxMs === "number" && block.maxMs < 1) out.error("maxMsTooSmall", file, at("maxMs", { min: 1 }));
+  if ((def.type === "charge" || def.type === "release") && typeof block.pod === "string" && (block.pod === "all" || block.pod === "peripherals")) {
+    out.error("podSingleOnly", file, at("pod", { value: block.pod }));
+  }
+}
+
+/** Blocks with modes (charge, release): fields and ports of another mode, and the release signal's switch time. */
+function checkModes(
+  def: BlockTypeDef,
+  block: Record<string, unknown>,
+  file: string,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
+  out: Collector,
+) {
+  if (!def.modes) return;
+  const raw = block[def.modes.field];
+  const modeField = def.fields.find((f) => f.name === def.modes!.field);
+  // an invalid mode is reported as unknownOption already
+  if (raw !== undefined && !(modeField?.options ?? []).includes(raw as string)) return;
+  const mode = (raw as string | undefined) ?? def.modes.default;
+  for (const field of def.fields) {
+    if (field.onlyMode !== undefined && field.onlyMode !== mode && block[field.name] !== undefined) {
+      out.error("fieldWrongMode", file, at(field.name, { field: field.name, mode, needs: field.onlyMode }));
+    }
+  }
+  for (const [port, needs] of Object.entries(def.portOnlyMode ?? {})) {
+    if (needs !== undefined && needs !== mode && block[port] !== undefined) {
+      out.error("fieldWrongMode", file, at(port, { field: port, mode, needs }));
+    }
+  }
+  if (def.type === "release" && mode === "signal") {
+    const { goMs, minGoMs, maxGoMs } = block;
+    const range = minGoMs !== undefined && maxGoMs !== undefined;
+    if (goMs !== undefined && (minGoMs !== undefined || maxGoMs !== undefined)) out.error("goTimeBothForms", file, at("goMs"));
+    else if (goMs === undefined && !range) out.error("signalNeedsGoTime", file, at("goMs"));
   }
 }
 
@@ -398,6 +503,84 @@ function checkReachability(resolved: ResolvedProgram, path: string, out: Collect
     if (file === path && isObject(block) && typeof block.name === "string" && !seen.has(block.name)) {
       out.warn("unreachable", file, { block: block.name });
     }
+  }
+}
+
+/** At most MAX_TIMERS timer names; a timer that is only started or only stopped is a warning. */
+function checkTimers(resolved: ResolvedProgram, path: string, out: Collector) {
+  const first = new Map<string, { file: string; block: string; field: string }>();
+  const started = new Set<string>();
+  const stopped = new Set<string>();
+  for (const { file, block } of resolved.blocks) {
+    if (!isObject(block) || typeof block.name !== "string") continue;
+    for (const { name: field } of TIMER_FIELDS) {
+      const timer = block[field];
+      if (typeof timer !== "string" || timer === "") continue;
+      (field === "timerStart" ? started : stopped).add(timer);
+      if (!first.has(`${field}:${timer}`)) first.set(`${field}:${timer}`, { file, block: block.name, field });
+    }
+  }
+  const names = new Set([...started, ...stopped]);
+  if (names.size > MAX_TIMERS) out.error("tooManyTimers", path, { params: { count: names.size, max: MAX_TIMERS } });
+  for (const timer of [...names].sort()) {
+    if (started.has(timer) && stopped.has(timer)) continue;
+    const onlyStarted = started.has(timer);
+    const where = first.get(`${onlyStarted ? "timerStart" : "timerStop"}:${timer}`)!;
+    out.warn(onlyStarted ? "timerNeverStopped" : "timerNeverStarted", where.file, {
+      block: where.block,
+      field: where.field,
+      params: { name: timer },
+    });
+  }
+}
+
+/** The random ranges a block type has: [min field, max field] (programs.md §7.3). */
+const RANGES: Record<string, readonly [string, string]> = {
+  delay: ["minMs", "maxMs"],
+  button: ["minTimeoutMs", "maxTimeoutMs"],
+  charge: ["minTimeoutMs", "maxTimeoutMs"],
+  release: ["minGoMs", "maxGoMs"],
+};
+
+/**
+ * Warns when a random range is reversed: with max <= min the firmware always uses min (programs.md §7.3),
+ * so the "random" pause or time limit is fixed. Variables count with their start value.
+ */
+function checkRanges(resolved: ResolvedProgram, out: Collector) {
+  const value = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? resolved.variables[v] : undefined);
+  for (const { file, block } of resolved.blocks) {
+    if (!isObject(block) || typeof block.name !== "string" || typeof block.type !== "string") continue;
+    const range = RANGES[block.type];
+    if (!range) continue;
+    const min = value(block[range[0]]);
+    const max = value(block[range[1]]);
+    if (min !== undefined && max !== undefined && max < min) {
+      out.warn("rangeReversed", file, { block: block.name, field: range[0], params: { min, max } });
+    }
+  }
+}
+
+/** Warns when no path from a repeat block's body leads back to it (like tools/validate_programs.py). */
+function checkRepeats(resolved: ResolvedProgram, path: string, out: Collector) {
+  const byName = new Map<string, Block>();
+  for (const { block } of resolved.blocks) {
+    if (isObject(block) && typeof block.name === "string" && !byName.has(block.name)) byName.set(block.name, block);
+  }
+  for (const { file, block } of resolved.blocks) {
+    if (file !== path || !isObject(block) || block.type !== "repeat" || typeof block.name !== "string") continue;
+    const first = typeof block.body === "string" ? block.body : block.next;
+    const seen = new Set<string>();
+    const queue = typeof first === "string" ? [first] : [];
+    while (queue.length > 0 && !seen.has(block.name)) {
+      const name = queue.pop()!;
+      const current = byName.get(name);
+      if (seen.has(name) || !current) continue;
+      seen.add(name);
+      for (const port of blockType(current.type)?.ports ?? []) {
+        if (typeof current[port] === "string") queue.push(current[port] as string);
+      }
+    }
+    if (!seen.has(block.name)) out.warn("repeatNoLoop", file, { block: block.name, field: "body" });
   }
 }
 
