@@ -232,12 +232,16 @@ class Validator:
             self.error(where, f"unknown countdown '{countdown}' (known: {', '.join(sorted(COUNTDOWNS))})")
         elif countdown != "secret" and btype != "delay":
             random_timeout = "minTimeoutMs" in block and "maxTimeoutMs" in block
+            def positive(field):  # charge / release: 0 or less means no limit
+                value = block.get(field)
+                return field in block and not (btype in ("charge", "release") and isinstance(value, int)
+                                               and not isinstance(value, bool) and value <= 0)
             if btype == "release":
                 limit = "timeoutMs" if block.get("mode") == "signal" else "maxHoldMs"
-                has_limit = limit in block
+                has_limit = positive(limit)
             else:
                 limit = "timeoutMs"
-                has_limit = "timeoutMs" in block or (random_timeout and btype in ("button", "charge"))
+                has_limit = positive("timeoutMs") or (random_timeout and btype in ("button", "charge"))
             if not has_limit:
                 self.error(where, f"countdown '{countdown}' needs a time limit ('{limit}')")
 
@@ -256,6 +260,9 @@ class Validator:
             for name, needs in ONLY_MODE[btype].items():
                 if name in block and needs != mode:
                     self.error(where, f"'{name}' is only valid in {field} '{needs}' (this block has '{mode}')")
+        if (btype == "charge" and isinstance(block.get("maxMs"), int) and not isinstance(block["maxMs"], bool)
+                and block["maxMs"] < 1):
+            self.error(where, "'maxMs' must be at least 1")
         if btype == "charge" and block.get("style", "fill") not in CHARGE_STYLES:
             self.error(where, f"unknown style '{block['style']}' (known: {', '.join(sorted(CHARGE_STYLES))})")
         if btype == "release":

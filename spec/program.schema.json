@@ -913,7 +913,8 @@
           "description": "default: \"green\""
         },
         "color2": {
-          "$ref": "#/$defs/namedColor"
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
         },
         "onsetMs": {
           "$ref": "#/$defs/value",
