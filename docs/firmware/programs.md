@@ -484,8 +484,8 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 |---|---|---|
 | 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
 | 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
-| 4 | 2.10 | block type `toggle` (§2, §7.15), with the toggle activations of link protocol revision 3 ([link-protocol.md](link-protocol.md) §2.3), also with `countdown` |
 | 3 | 2.9 | block type `effect` (§2, §7.11); `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` on `delay`, `button`, `remotePress`, `remoteMultiPress` (§2 *Countdown*, §7.12). With a countdown `timeoutMs` of `remotePress` / `remoteMultiPress` is read once on enter (§7.2). Block types `charge` (§2, §7.13) and `release` (§2, §7.14), with the hold reporting of link protocol revision 2 ([link-protocol.md](link-protocol.md) §2.2), also with `countdown`. Revision 3 is not released yet, so these were added to it without a new revision |
+| 4 | 2.10 | block type `toggle` (§2, §7.15), with the toggle activations of link protocol revision 3 ([link-protocol.md](link-protocol.md) §2.3), also with `countdown` |
 
 Programs of an older revision run unchanged on newer firmware. A program that uses fields
 or block types of a newer revision is rejected by older firmware only if it uses a new
