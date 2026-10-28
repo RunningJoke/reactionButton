@@ -326,7 +326,7 @@ void CentralRole::describe(JsonObject status) {
     JsonObject reports = status["reports"].to<JsonObject>();
     reports["pending"] = (uint32_t)Reports::get().pending();
     reports["dropped"] = Reports::get().droppedReports();
-    if(CommunicateBlock* waiting = CommunicateBlock::waiting()) {
+    if(CommunicateBlock* waiting = this->waitingBlock()) {
         JsonObject w = status["waiting"].to<JsonObject>();
         w["block"] = waiting->getName();
         JsonObject editable = w["editable"].to<JsonObject>();
@@ -535,7 +535,7 @@ void CentralRole::opCommand(JsonObjectConst request, JsonDocument& response) {
         ConfigApi::setError(response, "bad_request", "'name' must be continue, repeat or stop");
         return;
     }
-    CommunicateBlock* waiting = CommunicateBlock::waiting();
+    CommunicateBlock* waiting = this->waitingBlock();
     if(waiting == nullptr) {
         ConfigApi::setError(response, "not_ready", "no communicate block waits");
         return;
@@ -547,7 +547,7 @@ void CentralRole::opCommand(JsonObjectConst request, JsonDocument& response) {
 
 // All or nothing: every value is checked before the first one is written
 void CentralRole::opSetVariables(JsonObjectConst request, JsonDocument& response) {
-    CommunicateBlock* waiting = CommunicateBlock::waiting();
+    CommunicateBlock* waiting = this->waitingBlock();
     if(waiting == nullptr) {
         ConfigApi::setError(response, "not_ready", "no communicate block waits");
         return;
@@ -597,10 +597,14 @@ void CentralRole::opSetVariables(JsonObjectConst request, JsonDocument& response
     response["ok"] = true;
 }
 
+CommunicateBlock* CentralRole::waitingBlock() const {
+    return this->state == State::RUN ? CommunicateBlock::waiting() : nullptr;
+}
+
 // Athlete id of the following reports. Allowed before a game and while a communicate block waits.
 void CentralRole::opSession(JsonObjectConst request, JsonDocument& response) {
     bool idle = this->state == State::MENU || this->state == State::DISCOVERY || this->state == State::CONFIRM;
-    if(!idle && CommunicateBlock::waiting() == nullptr) {
+    if(!idle && this->waitingBlock() == nullptr) {
         ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
         return;
     }

@@ -58,10 +58,8 @@ bool CommunicateBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
             if(!JsonUtil::getString(item, name) || !validName(name)) {
                 return ctx.fail("'vars' needs variable names of 1 to 32 characters");
             }
-            VarId var = ctx.vars.find(name.c_str());
-            if(var < 0) {
-                return ctx.fail(String("'vars': '") + name.c_str() + "' is not a variable of the program");
-            }
+            // resolve, not find: an include's blocks load before the including file's variables (validator checks the names)
+            VarId var = ctx.vars.resolve(name.c_str());
             this->varNames.push_back(name);
             this->varIds.push_back(var);
         }
@@ -79,10 +77,8 @@ bool CommunicateBlock::configure(JsonObjectConst json, BlockLoadContext& ctx) {
             if(!validName(name)) {
                 return ctx.fail("'editable' needs variable names of 1 to 32 characters");
             }
-            VarId var = ctx.vars.find(name.c_str());
-            if(var < 0) {
-                return ctx.fail(String("'editable': '") + name.c_str() + "' is not a variable of the program");
-            }
+            // resolve, not find: an include's blocks load before the including file's variables (validator checks the names)
+            VarId var = ctx.vars.resolve(name.c_str());
             JsonVariantConst range = pair.value();
             if(!range["min"].is<int64_t>() || !range["max"].is<int64_t>()
                     || range["min"].as<int64_t>() > range["max"].as<int64_t>()) {
