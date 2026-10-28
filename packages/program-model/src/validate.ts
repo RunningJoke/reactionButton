@@ -78,6 +78,7 @@ export const ISSUE_CODES = [
   "colorsNotTwo",
   "toggleNeedsDuration",
   "toggleDurationBothForms",
+  "countdownNotSupported",
   // warnings
   "noOutgoing",
   "unreachable",
@@ -451,6 +452,11 @@ function checkTypeRules(
     if (!alternatives.some((fields) => fields.every(set))) {
       out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown), limit: alternatives.map((f) => f.join(" + ")).join(" or ") }));
     }
+  }
+  // countdown fields on a block type without a time (like tools/validate_programs.py)
+  const countdownFields = ["countdown", "countdownColor", "countdownFrom", "countdownTarget"];
+  if (countdownFields.some((f) => block[f] !== undefined) && def.type !== "delay" && def.type !== "toggle" && !(TIMEOUT_TYPES as readonly string[]).includes(def.type)) {
+    out.error("countdownNotSupported", file, at("countdown"));
   }
   if (block.countdownTarget !== undefined && def.type !== "delay") out.error("countdownTargetNotDelay", file, at("countdownTarget"));
   if (def.type === "charge" && typeof block.maxMs === "number" && block.maxMs < 1) out.error("maxMsTooSmall", file, at("maxMs", { min: 1 }));

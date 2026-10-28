@@ -191,6 +191,10 @@ paths:
                             - goTimeBothForms
                             - podSingleOnly
                             - maxMsTooSmall
+                            - colorsNotTwo
+                            - toggleNeedsDuration
+                            - toggleDurationBothForms
+                            - countdownNotSupported
                             - noOutgoing
                             - unreachable
                             - unknownVariable

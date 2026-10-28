@@ -624,6 +624,8 @@
     "peripheral": "Pod {{id}}",
     "press": "{{pod}} drücken",
     "pressNow": "jetzt drücken",
+    "teamA": "A",
+    "teamB": "B",
     "controls": "Steuerung",
     "run": "Start",
     "pause": "Pause",
@@ -761,6 +763,7 @@
     "podSingleOnly": "Dieser Schritt braucht genau einen Pod (\"central\" oder eine Zahl), nicht {{value}}",
     "maxMsTooSmall": "Die Zeit für eine volle Ladung muss mindestens {{min}} ms betragen",
     "countdownTargetNotDelay": "Nur eine Pause kann wählen, wo der Countdown angezeigt wird",
+    "countdownNotSupported": "Nur Pausen, Drücken, Halten, Rennen und Dominations-Spiele können einen Countdown zeigen",
     "colorsNotTwo": "Wähle genau zwei Teamfarben (rot, grün, blau, gelb, magenta, cyan oder weiß)",
     "toggleNeedsDuration": "Lege die Spieldauer fest: eine feste Zeit oder eine kürzeste und eine längste Zeit",
     "toggleDurationBothForms": "Nimm entweder eine feste Spieldauer oder eine kürzeste und eine längste, nicht beides"

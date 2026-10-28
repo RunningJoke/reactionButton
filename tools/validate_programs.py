@@ -348,7 +348,8 @@ class Validator:
             return v if isinstance(v, int) else self.variables.get(v) if isinstance(v, str) else None
         for file, block in blocks:
             fields = {"delay": ("minMs", "maxMs"), "button": ("minTimeoutMs", "maxTimeoutMs"),
-                      "charge": ("minTimeoutMs", "maxTimeoutMs"), "release": ("minGoMs", "maxGoMs")}.get(block.get("type"))
+                      "charge": ("minTimeoutMs", "maxTimeoutMs"), "release": ("minGoMs", "maxGoMs"),
+                      "toggle": ("minDurationMs", "maxDurationMs")}.get(block.get("type"))
             if not fields:
                 continue
             low, high = value(block.get(fields[0])), value(block.get(fields[1]))
