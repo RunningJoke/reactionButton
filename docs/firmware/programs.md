@@ -434,7 +434,7 @@ The last block of the body links back to the repeat block. Entering the block ag
 | Field | | Default |
 |---|---|---|
 | `timeoutMs` | value; 0 = no timeout | no timeout |
-| `metrics` | list of metric names included in the report (max 8) | all |
+| `metrics` | list of metric names included in the report (max 8); `[]` = all | all |
 | `vars` | list of variable names whose values are included in the report (max 8) | – |
 | `editable` | object: variable name → `{ "min": int, "max": int }`. Variables the client may change with `setVariables` while the block waits (max 8) | – |
 | `color` | colour of the central's LEDs while waiting | `"cyan"` |
@@ -949,5 +949,7 @@ Unconnected ports fall back to `next` (§7.1); with no `next` the program ends.
 `repeat` only selects the port: the report stays as it was sent (the client marks it as
 discarded).
 
-**Pause.** `restartCurrentBlock` enters again but does **not** build a second report: the
-block keeps the report of this entry, sets its LEDs again and restarts the timeout.
+**Pause.** While PAUSED the block does not wait: `command` and `setVariables` answer
+`not_ready`, `status` has no `waiting`. `restartCurrentBlock` resumes the block
+(`Block::resume()`, by default `enter()`) without building a second report: the block keeps
+the report of this entry, sets its LEDs again and restarts the timeout.

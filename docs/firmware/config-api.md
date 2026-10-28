@@ -215,7 +215,7 @@ switched off when a program is selected.
 | `auth` | any | `pin`: string | unlocks `put`, `delete`, `setName` for this BLE connection (§8). `ok` without a PIN set |
 | `setPin` | any, **serial only** | `pin`: 4–6 digits as a string; `""` or missing clears it | stores the PIN in NVS. Response: `pinSet`. Serial text form: `setPin 1234` |
 | `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2` |
-| `reports` | central (firmware ≥ 2.11) | – | `reports[]`: every report in the buffer not acknowledged yet, oldest first, in the form of the `report` event |
+| `reports` | central (firmware ≥ 2.11) | – | `reports[]`: every report in the buffer not acknowledged yet, oldest first, with the fields of the `report` event (without `event`) |
 | `ack` | central (firmware ≥ 2.11) | `reportId`: number | removes that report and all older ones from the buffer. Unknown or already removed ids are fine. `reportId`, not `id`: `id` is the request id (§3) |
 | `command` | central (firmware ≥ 2.11) | `name`: `continue`, `repeat` or `stop` | answers a waiting `communicate` block (programs.md §7.16). `not_ready` if no block waits |
 | `setVariables` | central (firmware ≥ 2.11) | `values`: object name → integer | only while a `communicate` block waits, only names in its `editable`, within `min` … `max`. All or nothing. Response: `variables` (the new values). Errors: `not_ready`, `not_editable`, `out_of_range` |
