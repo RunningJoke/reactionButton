@@ -187,6 +187,14 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
       if (block.includeCentral === false) parts.push(t("sentence.withoutCentral"));
       return join(t("sentence.toggle", { a: color(a), b: color(b), time: duration }), parts);
     }
+    case "communicate": {
+      // programs.md §7.16: the report goes out, then the block waits for the client or the time limit
+      const metrics = Array.isArray(block.metrics) ? block.metrics.filter((m): m is string => typeof m === "string") : [];
+      const parts: string[] = [];
+      if (metrics.length) parts.push(t("sentence.communicateMetrics", { names: metrics.join(", ") }));
+      if (typeof block.timeoutMs === "number" && block.timeoutMs > 0) parts.push(t("sentence.communicateTimeout", { time: time(block.timeoutMs) }));
+      return join(t("sentence.communicate"), parts);
+    }
     case "effect": {
       const kind = (EFFECTS as readonly string[]).includes(String(block.effect)) ? String(block.effect) : "solid";
       const target = known(block.target);

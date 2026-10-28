@@ -1,7 +1,7 @@
 /** A Simulator driven in real time (speed ×0.25 … ×4) for the Simulate page. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ResolvedProgram } from "@reactpod/program-model";
-import { Simulator, type Snapshot, type StopReason } from "./engine";
+import { Simulator, type Command, type Snapshot, type StopReason } from "./engine";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4] as const;
 
@@ -24,6 +24,10 @@ export type SimulationControls = {
   setSpeed: (speed: number) => void;
   toggleBreakpoint: (block: string) => void;
   press: (pod: number) => void;
+  /** a client command for the waiting communicate block (continue, repeat, stop) */
+  command: (name: Command) => void;
+  /** new values of the waiting block's editable variables (all or nothing, see Simulator.setVariables) */
+  setVariables: (values: Record<string, number>) => void;
   release: (pod: number) => void;
   trace: () => string;
 };
@@ -112,6 +116,15 @@ export function useSimulation(program: ResolvedProgram | null, initialSeed = 1):
       setBreakpoints(next);
     },
     // while paused, a press is handled at once (step mode: the waiting block reacts to it)
+    command: (name) => {
+      // like a press: while paused, the waiting block reacts at once
+      if (sim.command(name) && !playing && sim.isRunning) setStop(sim.step());
+      refresh();
+    },
+    setVariables: (values) => {
+      sim.setVariables(values);
+      refresh();
+    },
     press: (pod) => {
       sim.press(pod);
       if (!playing && sim.isRunning) setStop(sim.step());

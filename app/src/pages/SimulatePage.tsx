@@ -11,7 +11,7 @@ import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
 import { isProgramFile } from "@reactpod/program-model";
 import { hasErrors, validateProgram } from "@reactpod/program-model";
 import { editorUrl, simulateUrl, useLocalMenu, useProgramSource, type SourceId } from "../programs/sources";
-import type { PodView, Snapshot, StopReason } from "../simulator/engine";
+import type { CommunicateView, PodView, Snapshot, StopReason } from "../simulator/engine";
 import { SPEEDS, useSimulation, type SimulationControls } from "../simulator/useSimulation";
 import { useWorkspace } from "../store/workspace";
 import page from "./Page.module.css";
@@ -73,6 +73,7 @@ export function SimulatePage() {
         <div className={styles.layout}>
           <div className={styles.main}>
             <Pods sim={sim} />
+            {sim.snapshot.waiting && <WaitingPanel sim={sim} view={sim.snapshot.waiting} />}
             <Controls sim={sim} />
             <Panels snapshot={sim.snapshot} trace={sim.trace} />
           </div>
@@ -171,6 +172,106 @@ function Pods({ sim }: { sim: SimulationControls }) {
       </ul>
       <p className={styles.hint}>{t("simulate.podsHint")}</p>
     </section>
+  );
+}
+
+/**
+ * A communicate block waits (programs.md §7.16): its last report, the answers of the client (continue,
+ * repeat, stop) and the editable variables. Behaves like the phone app would.
+ */
+function WaitingPanel({ sim, view }: { sim: SimulationControls; view: CommunicateView }) {
+  const { t } = useTranslation();
+  const stats = Object.entries(view.report.stats);
+  const vars = Object.entries(view.report.vars);
+  const editable = Object.entries(view.editable);
+  return (
+    <section className={`${page.section} ${styles.waiting}`} aria-label={t("simulate.report.title")}>
+      <h2>{t("simulate.report.title")}</h2>
+      <p className={page.muted}>{t("simulate.report.number", { id: view.report.id, cycle: view.report.cycle })}</p>
+      {stats.length === 0 ? (
+        <p className={page.muted}>{t("simulate.noMetrics")}</p>
+      ) : (
+        <table className={styles.metrics}>
+          <thead>
+            <tr>
+              <th>{t("simulate.metric")}</th>
+              <th>{t("simulate.count")}</th>
+              <th>{t("simulate.average")}</th>
+              <th>{t("simulate.best")}</th>
+              <th>{t("simulate.worst")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map(([metric, s]) => (
+              <tr key={metric}>
+                <td>{metric}</td>
+                <td>{s.count}</td>
+                <td>{s.average}</td>
+                <td>{s.best}</td>
+                <td>{s.worst}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {vars.length > 0 && (
+        <dl className={styles.variables}>
+          {vars.map(([name, value]) => (
+            <div key={name} className={styles.variable}>
+              <dt>{name}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <div className={styles.buttons}>
+        <button className={`${styles.control} ${styles.primary}`} onClick={() => sim.command("continue")}>
+          {t("simulate.report.continue")}
+        </button>
+        <button className={styles.control} onClick={() => sim.command("repeat")}>
+          {t("simulate.report.repeat")}
+        </button>
+        <button className={styles.control} onClick={() => sim.command("stop")}>
+          {t("simulate.report.stop")}
+        </button>
+      </div>
+      {editable.length > 0 && (
+        <div className={styles.editable}>
+          {editable.map(([name, range]) => (
+            <EditableField key={name} name={name} min={range.min} max={range.max} value={range.value} onChange={(n) => sim.setVariables({ [name]: n })} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** A number input for an editable variable: applied while it holds a whole number within min … max. */
+function EditableField({ name, min, max, value, onChange }: { name: string; min: number; max: number; value: number; onChange: (n: number) => void }) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const id = `editable-${name}`;
+  return (
+    <div className={styles.editableField}>
+      <label htmlFor={id}>{name}</label>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        step={1}
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const n = Number(e.target.value);
+          if (e.target.value.trim() !== "" && Number.isInteger(n) && n >= min && n <= max) onChange(n);
+        }}
+        onBlur={() => setDraft(String(value))}
+      />
+      <span className={page.muted}>{t("simulate.report.range", { min, max })}</span>
+    </div>
   );
 }
 

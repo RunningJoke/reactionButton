@@ -14,6 +14,8 @@ export type ApiErrorCode =
   | "overflow"
   | "busy"
   | "not_ready"
+  | "not_editable" /** setVariables: the variable is not in the waiting block's `editable` (firmware ≥ 2.11) */
+  | "out_of_range" /** setVariables: a value is not an integer within min … max (firmware ≥ 2.11) */
   | "auth_required" /** a PIN is set: put / delete / setName need `auth` first (firmware ≥ 2.6) */
   | "auth_failed"; /** wrong PIN, or a retry within 3 s */
 

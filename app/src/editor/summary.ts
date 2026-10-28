@@ -101,6 +101,12 @@ export function blockSummary(block: Block, t: (key: string, options?: Record<str
       ];
       return parts;
     }
+    case "communicate": {
+      const parts: SummaryPart[] = [];
+      if (typeof block.timeoutMs === "number" && block.timeoutMs > 0) parts.push(text(`⏱ ${ms(block.timeoutMs)}`));
+      if (Array.isArray(block.metrics) && block.metrics.length) parts.push(text(block.metrics.filter((m) => typeof m === "string").join(", ")));
+      return parts.length ? parts : [text(t("summary.report"))];
+    }
     default:
       return [];
   }

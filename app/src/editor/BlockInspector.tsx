@@ -7,6 +7,7 @@ import type { Block } from "@reactpod/program-model";
 import { blockCategory, blockIcon } from "./blockStyle";
 import { teamColors } from "./toggleStep";
 import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
+import { EditableField, NameListField, editableValue, nameItems } from "./ListFields";
 import { changeBlockType, deleteBlock, duplicateBlock, isValidBlockName, renameBlock, setBlockField, setProgramField, type ProgramJson } from "./ops";
 import styles from "./Inspector.module.css";
 
@@ -252,6 +253,16 @@ function FieldRow({ field, block, ctx, onChange }: { field: FieldDef; block: Blo
       );
       break;
     }
+    case "metricList":
+      // communicate `metrics`: none listed = all metrics
+      input = <NameListField items={nameItems(value)} choices={[]} label={label} placeholder={t("list.metricPlaceholder")} onChange={(v) => onChange(v, false)} />;
+      break;
+    case "variableList":
+      input = <NameListField items={nameItems(value)} choices={ctx.variables} label={label} placeholder={placeholder ?? ""} onChange={(v) => onChange(v, false)} />;
+      break;
+    case "editableMap":
+      input = <EditableField value={editableValue(value)} choices={ctx.variables} label={label} onChange={(v) => onChange(v, false)} />;
+      break;
     case "variable":
       input = <SuggestField value={value} onChange={onChange} suggestions={ctx.variables} placeholder={placeholder} label={label} />;
       break;
@@ -273,7 +284,7 @@ function FieldRow({ field, block, ctx, onChange }: { field: FieldDef; block: Blo
   );
 }
 
-function PortRow({ port, block, ctx, hasNext }: { port: string; block: Block; ctx: InspectorContext; hasNext: boolean }) {
+export function PortRow({ port, block, ctx, hasNext }: { port: string; block: Block; ctx: InspectorContext; hasNext: boolean }) {
   const { t } = useTranslation();
   const target = typeof block[port] === "string" ? (block[port] as string) : "";
   // the toggle block's allA / allB do not fall back to next: the game goes on (programs.md §7.15)

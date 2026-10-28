@@ -155,8 +155,8 @@ describe("results store", () => {
 });
 
 describe("reports from a pod", () => {
-  async function demoPod(options: { results?: boolean } = { results: true }) {
-    const pod = new SimulatedPod({ results: options.results, files: { "/programs.json": '{"programs":["/prog/solo.json"]}' } });
+  async function demoPod(programFormat?: number) {
+    const pod = new SimulatedPod({ programFormat, files: { "/programs.json": '{"programs":["/prog/solo.json"]}' } });
     const transport = new SimulatedTransport(pod);
     await transport.connect();
     const client = new PodClient(transport, { timeoutMs: 500 });
@@ -210,7 +210,7 @@ describe("reports from a pod", () => {
     expect(session.contentSha256).toMatch(/^[0-9a-f]{64}$/);
     stop();
 
-    const old = await demoPod({ results: false });
+    const old = await demoPod(4);
     const oldInfo = await old.client.info();
     expect(oldInfo.features).not.toContain("reports");
     const sent: string[] = [];
