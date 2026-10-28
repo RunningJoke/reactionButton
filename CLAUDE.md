@@ -22,7 +22,7 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)
 
 ```sh
-pio run -d firmware -e NewBoard                                  # build (≈4 min clean); firmware.bin ≈ 82 % of the 2 MB app slot
+pio run -d firmware -e NewBoard                                  # build (≈4 min clean); firmware.bin ≈ 68 % of the 2 MB app slot (-Os)
 pio run -d firmware -e NewBoard -t upload   --upload-port COM4
 pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # programs
 python tools/validate_programs.py
