@@ -17,8 +17,9 @@ export const PROGRAM_FORMAT_VERSION = 1;
  * programs.md §6). 2: `timerStart` / `timerStop` on every block, block type `repeat`.
  * 3: block type `effect`, `countdown` fields on timed blocks, block types `charge` and `release`.
  * 4: block type `toggle`.
+ * 5: block type `communicate` (reports, remote ops).
  */
-export const PROGRAM_FORMAT = 4;
+export const PROGRAM_FORMAT = 5;
 /** Longest set name in bytes (`setName`). */
 export const MAX_SET_NAME = 16;
 

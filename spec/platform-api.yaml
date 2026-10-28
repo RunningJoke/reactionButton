@@ -195,6 +195,11 @@ paths:
                             - toggleNeedsDuration
                             - toggleDurationBothForms
                             - countdownNotSupported
+                            - namesInvalid
+                            - namesTooMany
+                            - variableNotDeclared
+                            - editableInvalid
+                            - timeoutNegative
                             - noOutgoing
                             - unreachable
                             - unknownVariable

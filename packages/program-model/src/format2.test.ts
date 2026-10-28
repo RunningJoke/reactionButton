@@ -187,7 +187,7 @@ describe("JSON Schema, format 2", () => {
   const validate = ajv.compile(schema);
 
   it("declares the current format and accepts repeat and timers", () => {
-    expect(schema["x-programFormat"]).toBe(4);
+    expect(schema["x-programFormat"]).toBe(5);
     expect(validate({ name: "T", blocks: loop }), ajv.errorsText(validate.errors)).toBe(true);
   });
 

@@ -20,7 +20,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "firmware" / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
 
-PROGRAM_FORMAT = 4   # revision of the block types below
+PROGRAM_FORMAT = 5   # revision of the block types below
 
 NAMED_COLORS = {"off", "black", "red", "green", "blue", "yellow", "magenta", "cyan", "white"}
 
@@ -52,6 +52,8 @@ BLOCK_TYPES = {
     # programFormat 4: pods change team colour on every press ("colors" is checked in check_toggle)
     "toggle":           (["next", "allA", "allB"], [],
                          ["pods", "durationMs", "minDurationMs", "maxDurationMs", "cooldownMs", "syncStartMs"], [], []),
+    # programFormat 5: report the measurements, wait for the client ("metrics", "vars", "editable": check_communicate)
+    "communicate":      (["next", "pressed", "timeout", "repeat", "stop"], [], ["timeoutMs"], ["color"], []),
 }
 TOGGLE_STARTS = {"a", "b", "alternate", "random", "off"}
 TOGGLE_STORES = ("storeA", "storeB", "storeTimeA", "storeTimeB", "storeFlips")
@@ -184,6 +186,8 @@ class Validator:
         self.check_format3(where, btype, block)
         if btype == "toggle":
             self.check_toggle(where, block)
+        if btype == "communicate":
+            self.check_communicate(where, block)
         if btype in ("led", "effect"):
             for led in block.get("leds", []):
                 if not isinstance(led, int) or not 0 <= led < 18:
@@ -216,6 +220,44 @@ class Validator:
         for name in TOGGLE_STORES:
             if name in block and (not isinstance(block[name], str) or block[name] == ""):
                 self.error(where, f"'{name}' must be a variable name")
+
+    def check_communicate(self, where, block):
+        """communicate block (programFormat 5): metric and variable lists, editable ranges, timeout.
+        vars and editable names must be variables the program declares (self.variables, includes too)."""
+        def is_int(value):
+            return isinstance(value, int) and not isinstance(value, bool)
+
+        def is_name(value):
+            return isinstance(value, str) and 0 < len(value) <= 32
+
+        def names(field):
+            value = block.get(field, [])
+            if not isinstance(value, list) or not all(is_name(n) for n in value):
+                self.error(where, f"'{field}' must be a list of names (1 to 32 characters)")
+                return []
+            if len(value) > 8:
+                self.error(where, f"'{field}' has more than 8 entries")
+            return value
+
+        names("metrics")
+        for name in names("vars"):
+            if name not in self.variables:
+                self.error(where, f"'vars' uses '{name}', which the program does not declare")
+        editable = block.get("editable", {})
+        if not isinstance(editable, dict):
+            self.error(where, "'editable' must be an object: variable name -> {min, max}")
+            editable = {}
+        if not all(is_name(key) for key in editable):
+            self.error(where, "'editable' names must be 1 to 32 characters")
+        if len(editable) > 8:
+            self.error(where, "'editable' has more than 8 entries")
+        for name, span in editable.items():
+            if not (isinstance(span, dict) and is_int(span.get("min")) and is_int(span.get("max")) and span["min"] <= span["max"]):
+                self.error(where, f"'editable' entry '{name}' needs integers 'min' and 'max' with min <= max")
+            if name not in self.variables:
+                self.error(where, f"'editable' uses '{name}', which the program does not declare")
+        if is_int(block.get("timeoutMs")) and block["timeoutMs"] < 0:
+            self.error(where, "'timeoutMs' must be 0 or more")
 
     def check_format3(self, where, btype, block):
         """effect block and countdown fields (programFormat 3)."""

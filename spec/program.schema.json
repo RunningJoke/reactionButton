@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://runningjoke.github.io/reactionButton/spec/program.schema.json",
-  "x-programFormat": 4,
+  "x-programFormat": 5,
   "title": "ReactPod program",
-  "description": "ReactPod program file (/prog/*.json), program format 4. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
+  "description": "ReactPod program file (/prog/*.json), program format 5. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
   "type": "object",
   "required": [
     "name"
@@ -206,6 +206,9 @@
         },
         {
           "$ref": "#/$defs/block_release"
+        },
+        {
+          "$ref": "#/$defs/block_communicate"
         }
       ]
     },
@@ -1222,6 +1225,101 @@
           "description": "name of the next block"
         },
         "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_communicate": {
+      "title": "communicate",
+      "description": "needs program format 5",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "communicate"
+        },
+        "timeoutMs": {
+          "$ref": "#/$defs/value"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "maxItems": 8
+        },
+        "vars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/variableName"
+          },
+          "maxItems": 8
+        },
+        "editable": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "min",
+              "max"
+            ],
+            "properties": {
+              "min": {
+                "type": "integer"
+              },
+              "max": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "maxProperties": 8
+        },
+        "color": {
+          "$ref": "#/$defs/color",
+          "description": "default: \"cyan\""
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "pressed": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "repeat": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "stop": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
         }

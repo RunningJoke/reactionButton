@@ -20,9 +20,11 @@ import validate_programs  # noqa: E402
 CASES = json.loads((Path(__file__).resolve().parent / "validator_cases.json").read_text(encoding="utf-8"))["cases"]
 
 
-def run(blocks):
+def run(blocks, variables=None):
     """Validates one program in a temporary data directory. Returns (errors, warnings)."""
     program = {"version": 1, "name": "T", "peripherals": 2, "blocks": blocks + [{"name": "L", "type": "led", "color": "off"}]}
+    if variables is not None:
+        program["variables"] = variables
     with tempfile.TemporaryDirectory() as tmp:
         data = Path(tmp)
         (data / "prog").mkdir()
@@ -43,14 +45,21 @@ class ValidatorCases(unittest.TestCase):
     def test_cases(self):
         for case in CASES:
             with self.subTest(case["name"]):
-                errors, warnings = run(case["blocks"])
+                errors, warnings = run(case["blocks"], case.get("variables"))
                 self.assertEqual(not errors, case["valid"], f"errors: {errors}")
                 if case.get("warns"):
                     self.assertTrue(warnings, "expected a warning")
 
     def test_program_format(self):
-        self.assertEqual(validate_programs.PROGRAM_FORMAT, 4)
+        self.assertEqual(validate_programs.PROGRAM_FORMAT, 5)
         self.assertIn("toggle", validate_programs.BLOCK_TYPES)
+        self.assertIn("communicate", validate_programs.BLOCK_TYPES)
+
+    def test_communicate_error_texts(self):
+        errors, _ = run([{"name": "C", "type": "communicate", "vars": ["NOPE"], "timeoutMs": -5, "next": "L"}])
+        text = "\n".join(errors)
+        self.assertIn("does not declare", text)
+        self.assertIn("'timeoutMs' must be 0 or more", text)
 
     def test_toggle_error_texts(self):
         errors, _ = run([{"name": "T", "type": "toggle", "colors": ["red"], "next": "L"}])

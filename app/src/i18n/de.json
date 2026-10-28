@@ -766,7 +766,12 @@
     "countdownNotSupported": "Nur Pausen, Drücken, Halten, Rennen und Dominations-Spiele können einen Countdown zeigen",
     "colorsNotTwo": "Wähle genau zwei Teamfarben (rot, grün, blau, gelb, magenta, cyan oder weiß)",
     "toggleNeedsDuration": "Lege die Spieldauer fest: eine feste Zeit oder eine kürzeste und eine längste Zeit",
-    "toggleDurationBothForms": "Nimm entweder eine feste Spieldauer oder eine kürzeste und eine längste, nicht beides"
+    "toggleDurationBothForms": "Nimm entweder eine feste Spieldauer oder eine kürzeste und eine längste, nicht beides",
+    "namesInvalid": "Metrik- und Variablennamen brauchen 1 bis {{max}} Zeichen",
+    "namesTooMany": "Höchstens {{max}} Metriken, Variablen oder einstellbare Variablen",
+    "variableNotDeclared": "{{name}} ist keine Variable dieses Programms: lege sie unter \"variables\" fest",
+    "editableInvalid": "Jede einstellbare Variable braucht ganze Zahlen als Minimum und Maximum, das Minimum nicht über dem Maximum",
+    "timeoutNegative": "Die Zeitgrenze darf nicht negativ sein"
   },
   "portRoles": {
     "then": "Dann",
@@ -785,7 +790,12 @@
     "ifFalseStart": "Fehlstart",
     "ifAllA": "Wenn Team A alle Pods hat",
     "ifAllB": "Wenn Team B alle Pods hat",
-    "whenTimeOver": "Wenn die Zeit um ist"
+    "whenTimeOver": "Wenn die Zeit um ist",
+    "ifContinued": "Wenn weiter",
+    "ifPressed": "Wenn gedrückt",
+    "ifTimedOut": "Wenn niemand rechtzeitig antwortet",
+    "ifRepeated": "Wenn wiederholt",
+    "ifStopped": "Wenn gestoppt"
   },
   "view": {
     "back": "Zurück",
