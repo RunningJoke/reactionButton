@@ -315,3 +315,21 @@ Not yet run on hardware: record the results in the issue (#57 / #58), do not mar
 | 8 | `release` trigger: hold pod 0 before the block starts (`allowHeld`), then release | `next` at the release, `HOLD_MS` set; `noHold` and `maxHoldMs` paths work |
 | 9 | `release` signal: release after the switch | reaction within ± 2 ms of a `remotePress` measurement (timing.md §3); release 1 ms before the switch → `falseStart` |
 | 10 | peripheral with firmware ≤ 2.8 in the set | `charge` / `release` on it take `timeout` at once; the log has "cannot measure holds" |
+
+## 10. Toggle block, firmware ≥ 2.10
+
+Checks for the `toggle` block with the demo program `domination.json` (one central + two peripherals, all with
+firmware ≥ 2.10; `status.pods[].toggle` must be `true`). Not yet run on hardware: record the results in the issue
+(#59), do not mark them passed here.
+
+| # | Check | Expected |
+|---|---|---|
+| 1 | start of the game | central and both pods light at the same moment: red, blue, red (alternate, central last) |
+| 2 | press a pod | its ring flips at once; the variable `FLIPS` counts it |
+| 3 | 60 s game with 4 pods (set `durationMs`, `pods`), a video count of the owner changes | `RED_PODS` / `BLUE_PODS` at the end and `RED_MS` / `BLUE_MS` match the video (± 1 flip, ± 50 ms per flip) |
+| 4 | press a pod several times within `cooldownMs` | only the first press flips |
+| 5 | make all pods one colour with `allA` / `allB` connected; then with them unconnected | the block leaves through `allA` / `allB`; unconnected: the game goes on to `next` |
+| 6 | press a pod after the block ended (in the "Show" delay) | its colour does not change |
+| 7 | `countdown` (e.g. `drain`) with a flip in the middle | the animation goes on in the new colour, it does not restart |
+| 8 | peripheral with firmware ≤ 2.9 in the set | it is left out of the game; the log has "cannot toggle" |
+| 9 | block `toggle` with `start: "off"` | all rings dark until pressed; the first press makes a pod A |

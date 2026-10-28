@@ -49,6 +49,7 @@ class PodNetwork : public IPodNetwork {
         int64_t nowUs() const override { return esp_timer_get_time(); }
         bool supportsEffects(uint8_t podId) const override;
         bool supportsHold(uint8_t podId) const override;
+        bool supportsToggle(uint8_t podId) const override;
         bool effect(uint8_t podId, const Protocol::EffectDesc& effect, int64_t startAtUs) override;
 
     private:

@@ -13,6 +13,7 @@
 #include "Block/EffectBlock/EffectBlock.h"
 #include "Block/ChargeBlock/ChargeBlock.h"
 #include "Block/ReleaseBlock/ReleaseBlock.h"
+#include "Block/ToggleBlock/ToggleBlock.h"
 
 namespace {
     template<typename T>
@@ -40,6 +41,7 @@ namespace {
         {"effect",           &createBlock<EffectBlock>},
         {"charge",           &createBlock<ChargeBlock>},
         {"release",          &createBlock<ReleaseBlock>},
+        {"toggle",           &createBlock<ToggleBlock>},
     };
 }
 

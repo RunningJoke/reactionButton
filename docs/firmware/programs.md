@@ -124,7 +124,7 @@ colours, because the BLE protocol only transports these 8.
 
 ### Countdown – option of the timed blocks
 
-`programFormat` ≥ 3 (§6). `delay`, `button`, `remotePress`, `remoteMultiPress`, `charge` and `release` may show how
+`programFormat` ≥ 3 (§6). `delay`, `button`, `remotePress`, `remoteMultiPress`, `charge`, `release` and `toggle` (≥ 4) may show how
 much of their time limit is left on the LED ring:
 
 | Field | | Default |
@@ -158,6 +158,8 @@ much of their time limit is left on the LED ring:
 - `charge`: the countdown runs over `timeoutMs` on the idle ring and ends with the first hold. `release`: over
   `maxHoldMs` from the start of the hold (trigger), or over `timeoutMs` from the colour switch (signal);
   `countdownFrom` is not used. Details: §7.13, §7.14.
+- `toggle`: the countdown runs over the whole game on every pod and the central, in the colour of the pod's current team (a flip
+  changes the colour, the animation goes on). Details: §7.15.
 - Details: §7.12.
 
 ### `effect` – ring effect
@@ -361,6 +363,37 @@ Unconnected `noHold`, `falseStart` and `timeout` fall back to `next`.
 - A pod that does not exist, or has older firmware, makes the block take `timeout` at once (`next` if unconnected).
 - Details: §7.14.
 
+### `toggle` – pods change team on every press
+`programFormat` ≥ 4 (§6). Team and capture games ("domination"): the pods stay lit and every press flips a pod between
+two team colours. Needs the `toggle` link feature on peripherals (older ones are left out of the game).
+
+| Field | | Default |
+|---|---|---|
+| `pods` | value, number of peripherals | all connected |
+| `includeCentral` | the central's own button takes part | true |
+| `colors` | the two team colours `[A, B]` (named) | `["red", "blue"]` |
+| `start` | `a`, `b`, `alternate` (every other pod, A first), `random` (each pod), `off` (unowned and dark until the first press, which makes the pod A) | `alternate` |
+| `durationMs`, or `minDurationMs` + `maxDurationMs` | value. Game length; random in [min, max], drawn once on entry. Required | – |
+| `cooldownMs` | value. Minimum time between two flips of one pod (0 … 65535) | 300 |
+| `syncStartMs` | value. All pods and the central start this long after the block was entered (as `remoteMultiPress`) | 20 |
+| `countdown`, `countdownColor` | optional countdown over the game, see *Countdown* | `secret` |
+| `storeA`, `storeB` | variables: number of pods per team at the end | – |
+| `storeTimeA`, `storeTimeB` | variables: owned time per team at the end, summed over all pods (ms) | – |
+| `storeFlips` | variable: total number of flips | – |
+
+Ports: `next` (time over), `allA`, `allB` (every pod and the central has team A / B, `allA` / `allB` are optional: an
+unconnected one does **not** fall back to `next`, the game goes on). After the block the pods stay lit in their final
+colour and a press no longer changes it; follow with `remoteResetAll`.
+
+```json
+{ "name": "Domination", "type": "toggle", "pods": "NODE_COUNT", "includeCentral": true,
+  "colors": ["red", "blue"], "start": "alternate", "durationMs": 60000, "cooldownMs": 500, "countdown": "secret",
+  "storeA": "RED_PODS", "storeB": "BLUE_PODS", "storeTimeA": "RED_MS", "storeTimeB": "BLUE_MS", "storeFlips": "FLIPS",
+  "next": "Result", "allA": "RedWins", "allB": "BlueWins" }
+```
+
+- Details: §7.15.
+
 ### `remoteResetAll` – switch peripherals off
 | Field | | Default |
 |---|---|---|
@@ -451,6 +484,7 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 |---|---|---|
 | 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
 | 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
+| 4 | 2.10 | block type `toggle` (§2, §7.15), with the toggle activations of link protocol revision 3 ([link-protocol.md](link-protocol.md) §2.3), also with `countdown` |
 | 3 | 2.9 | block type `effect` (§2, §7.11); `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` on `delay`, `button`, `remotePress`, `remoteMultiPress` (§2 *Countdown*, §7.12). With a countdown `timeoutMs` of `remotePress` / `remoteMultiPress` is read once on enter (§7.2). Block types `charge` (§2, §7.13) and `release` (§2, §7.14), with the hold reporting of link protocol revision 2 ([link-protocol.md](link-protocol.md) §2.2), also with `countdown`. Revision 3 is not released yet, so these were added to it without a new revision |
 
 Programs of an older revision run unchanged on newer firmware. A program that uses fields
@@ -499,6 +533,7 @@ changes, increase `programFormat` (§6).
 | `effect` | `wait: false`: immediately. `wait: true`: when `now ≥ start + durationMs` (checked once per pass) | all fields in the entry pass (first execute) |
 | `charge` | on release / full charge / timeout (§7.13). Immediately through `timeout` if the pod does not exist or cannot measure holds | everything (also the random timeout) on enter |
 | `release` | on release / timeout / no hold (§7.14). Immediately through `timeout` as for `charge` | everything (also the random switch delay) on enter |
+| `toggle` | when the game time is over / all pods one colour (§7.15) | everything (also the random duration) on enter |
 
 ### 7.3 Random numbers
 
@@ -807,3 +842,44 @@ pass in which the central receives RELEASED (the central's own button: the pass 
 - Events of a pass are handled before the timeouts. After `noHold` and `timeout` the pod / ring is reset, nothing is stored.
 
 An unconnected `noHold`, `falseStart` or `timeout` falls back to `next` (§7.1). **Pause:** as `charge`.
+
+### 7.15 `toggle`
+
+Code: [ToggleBlock.cpp](../../firmware/src/Block/ToggleBlock/ToggleBlock.cpp), the flip on the pod:
+[PeripheralRole.cpp](../../firmware/src/Roles/Peripheral/PeripheralRole.cpp) (`runToggle`), wire format:
+[link-protocol.md](link-protocol.md) §2.3.
+
+**Enter.** Read once: `pods`, `cooldownMs` (clamped to 0 … 65535), `syncStartMs` (< 0 counts as 0), the duration `D`
+(`durationMs`, or random in [`minDurationMs`, `maxDurationMs`], §7.3; `D ≤ 0` ends the block at the start) and, for
+`start: "random"`, one draw per participant. The participants are the peripherals `0 … pods − 1` that have the `toggle`
+link feature (the others are left out, the log has "cannot toggle") and, with `includeCentral`, the central (index
+`pods`). The start owner is set per participant in this order (central last): `a`, `b`, `alternate` = A for the 1st, 3rd, …
+participant and B for the others, `random`, `off` = nobody. Let `t0` = entry + `syncStartMs`: all pods and the central show their
+colour at `t0` (as in `remoteMultiPress`, §7.6). The game runs from `t0` to `t0 + D`.
+
+**Flip.** A press edge after `t0` flips the pod: A → B, B → A, nobody → A. A press less than `cooldownMs` after the
+last *accepted* press of that pod is ignored (button timestamps, not the time a pass notices them); the first press always
+counts. Several presses noticed in one pass count once. The pod flips on its own and reports `{owner, flipCount}` (the
+central's own button flips in the pass that sees the press). The ring shows the new colour at once.
+
+**Central bookkeeping.** For every participant the central keeps `owner`, `flipCount` and the time of the last owner change.
+A PRESSED event counts if pod and `cmdSeq` match the activation, `flipCount` is above the last one seen (older and
+duplicate frames are dropped) and it was received no later than `t0 + D`. A skipped `flipCount` (lost frame) adds to the
+flip total; if the owner differs, the time since the last change goes to the old owner, with the **central's receive
+time** as the moment of the change (a few ms after the press; an ideal simulator uses the press time). Owned time per team
+is the sum over all participants, so with N pods it can reach N · D.
+
+**Ending.** Checked each pass after the events:
+
+1. `allA` / `allB`: after a flip, every participant (also the central) has the same team and the port is connected.
+   Not connected: the game goes on. At least one participant is needed. This is checked only after a flip, never on entry.
+2. Time over: `now ≥ t0 + D` → `next`.
+
+At the end the owned time of the current owners is closed at the end time (`t0 + D` for `next`, the current time for
+`allA` / `allB`) and `storeA` / `storeB` (pods per team, nobody is not counted), `storeTimeA` / `storeTimeB`
+(rounded ms), `storeFlips` (sum of all `flipCount`s, central included) are written. Participants then show their final
+colour frozen: the central's ring is set (a countdown ends), a peripheral gets a plain activation with that colour before and
+after the press (so a press changes nothing). Nothing is reset; follow with `remoteResetAll`.
+
+**Pause.** `restartCurrentBlock` enters again: new random duration, new start owners, flips and times start from zero. A pod
+that is not reached keeps its state until the new ARM.

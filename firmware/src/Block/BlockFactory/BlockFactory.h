@@ -20,7 +20,7 @@ class BlockFactory
         // Revision of the program format this firmware understands, reported as
         // "programFormat" in the config API info. Increase it whenever a block type gets
         // new fields, ports or semantics, and add a line to the changelog in docs/firmware/programs.md.
-        static const uint32_t PROGRAM_FORMAT = 3;
+        static const uint32_t PROGRAM_FORMAT = 4;
 };
 
 

@@ -20,6 +20,8 @@
  *              the button edge.
  *   HOLDING    armed for a CHARGE / RELEASE activation (HoldSession): measures the hold, shows
  *              it on the ring and reports PRESSED (hold start) and RELEASED.
+ *              A TOGGLE activation stays ACTIVE: every press flips the colour between team A and B
+ *              (runToggle) and reports PRESSED with the owner, until RESET or the next ARM.
  *   DONE       pressed and reported, waiting for RESET or the next ARM.
  *
  * EFFECT frames play an effect on the ring in any claimed state; they do not change the
@@ -56,6 +58,8 @@ class PeripheralRole : public IRole {
         int64_t localStartUs(int64_t centralUs) const;
         void activate();
         void runHold();
+        void runToggle();
+        void showToggleOwner();
         void becomeUnclaimed();
         void sendPing();
         static const char* stateName(State state);
@@ -87,4 +91,11 @@ class PeripheralRole : public IRole {
         uint32_t pressCountAtActivation = 0;
         ArmCommand holdCommand;                 // CHARGE / RELEASE activation
         HoldSession hold;
+
+        // TOGGLE activation: colorActive is team A, colorAfter team B
+        uint8_t toggleOwner = Protocol::OWNER_NONE;
+        uint16_t toggleFlips = 0;
+        int64_t toggleCooldownUs = 0;
+        int64_t toggleLastFlipUs = 0;           // button time of the last accepted press
+        int64_t toggleEffectStartUs = 0;        // local start of the countdown, kept across flips
 };
