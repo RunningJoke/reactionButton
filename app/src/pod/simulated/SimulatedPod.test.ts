@@ -84,13 +84,26 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.10 fields in info: program format 4 with the toggle block", () => {
+  it("reports the firmware 2.11 fields in info: program format 5 with the communicate block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.10", setName: "Halle 2", pinRequired: false, programFormat: 4 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle"]);
+    expect(info).toMatchObject({ firmware: "2.11", setName: "Halle 2", pinRequired: false, programFormat: 5 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote"]);
     expect(info.linkRevision).toBe(3);
     expect(info.blockTypes).toContain("repeat");
-    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle"]));
+    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate"]));
+  });
+
+  it("simulates a central with programFormat 4 (firmware 2.10): toggle, no communicate, no reports or remote", () => {
+    const pod = new SimulatedPod({ programFormat: 4 });
+    const info = call(pod, { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.10", programFormat: 4, linkRevision: 3 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle"]);
+    expect(info.blockTypes).toContain("toggle");
+    expect(info.blockTypes).not.toContain("communicate");
+    expect(call(pod, { op: "status" })).not.toHaveProperty("reports");
+    expect(call(pod, { op: "reports" })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(call(pod, { op: "command", name: "stop" })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(call(pod, { op: "setVariables", values: {} })).toMatchObject({ ok: false, error: "bad_request" });
   });
 
   it("simulates a central with programFormat 3: no toggle block, link revision 2", () => {
@@ -238,26 +251,72 @@ describe("SimulatedPod (config API)", () => {
   });
 });
 
-describe("SimulatedPod (demo of reports and remote control, #41 / #42)", () => {
-  it("is off by default, like today's firmware", () => {
-    const pod = new SimulatedPod();
-    expect(call(pod, { op: "reports" })).toMatchObject({ ok: false, error: "bad_request" });
-    expect(() => pod.emitSampleReport()).toThrow();
-  });
+describe("SimulatedPod (reports and remote ops, program format 5, firmware 2.11)", () => {
+  const solo = { files: { "/programs.json": '{"programs":["/prog/solo.json"]}' } };
 
   it("keeps 8 reports until ack, tags the athlete, answers commands only while waiting", () => {
-    const pod = new SimulatedPod({ results: true });
-    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote"]);
+    const pod = new SimulatedPod(solo);
     expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ error: "not_ready" });
     expect(call(pod, { op: "session", athlete: "ath_42" })).toMatchObject({ ok: true, athlete: "ath_42" });
     for (let i = 0; i < 9; i++) pod.emitSampleReport(() => 0.5);
     const { reports } = call(pod, { op: "reports" }) as { reports: Json[] };
     expect(reports.map((r) => r.id)).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(reports[0]).toMatchObject({ event: "report", athlete: "ath_42", program: "/prog/solo.json", setId: pod.setId });
+    expect(reports[0]).toMatchObject({ athlete: "ath_42", program: "/prog/solo.json", setId: pod.setId });
+    expect(reports[0]).not.toHaveProperty("event"); // the fields of the report event, without `event`
     expect(call(pod, { op: "status" })).toMatchObject({ reports: { pending: 8, dropped: 1 } });
     expect(call(pod, { op: "ack", id: "req-1", reportId: 5 })).toMatchObject({ ok: true });
     expect(pod.pendingReports.map((r) => r.id)).toEqual([6, 7, 8, 9]);
     expect(call(pod, { op: "command", name: "repeat" })).toMatchObject({ ok: true });
     expect(call(pod, { op: "command", name: "repeat" })).toMatchObject({ error: "not_ready" });
+  });
+
+  it("lists the waiting block and its editable variables in status", () => {
+    const pod = new SimulatedPod(solo);
+    expect(call(pod, { op: "status" })).not.toHaveProperty("waiting");
+    pod.emitSampleReport(() => 0.5);
+    expect(call(pod, { op: "status" })).toMatchObject({
+      waiting: { block: "Report", editable: { MAX_LOOPS: { min: 1, max: 50, value: 12 } } },
+    });
+    call(pod, { op: "command", name: "continue" });
+    expect(call(pod, { op: "status" })).not.toHaveProperty("waiting");
+  });
+
+  it("does not wait while PAUSED: no waiting in status, command and setVariables answer not_ready", () => {
+    const pod = new SimulatedPod(solo);
+    pod.emitSampleReport(() => 0.5);
+    pod.state = "PAUSED";
+    expect(call(pod, { op: "status" })).not.toHaveProperty("waiting");
+    expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ error: "not_ready" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 5 } })).toMatchObject({ error: "not_ready" });
+    pod.state = "RUN";
+    expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ ok: true });
+  });
+
+  it("sets editable variables only while a block waits, all or nothing", () => {
+    const pod = new SimulatedPod(solo);
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 5 } })).toMatchObject({ error: "not_ready" });
+    pod.emitSampleReport(() => 0.5);
+    expect(call(pod, { op: "setVariables", values: { RUNS: 3 } })).toMatchObject({ error: "not_editable" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 0 } })).toMatchObject({ error: "out_of_range" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 51 } })).toMatchObject({ error: "out_of_range" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 2.5 } })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: "3" } })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 50, RUNS: 3 } })).toMatchObject({ error: "not_editable" });
+    expect(pod.variables.get("MAX_LOOPS")).toBe(12); // nothing was written
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 50 } })).toEqual({ op: "setVariables", ok: true, variables: { MAX_LOOPS: 50 } });
+    expect(call(pod, { op: "status" })).toMatchObject({ waiting: { editable: { MAX_LOOPS: { value: 50 } } } });
+    expect(call(pod, { op: "setVariables", values: "x" })).toMatchObject({ error: "bad_request" });
+  });
+
+  it("allows session in MENU, DISCOVERY and CONFIRM, and while waiting; busy during a game", () => {
+    const pod = new SimulatedPod(solo);
+    for (const state of ["MENU", "DISCOVERY", "CONFIRM"]) {
+      pod.state = state;
+      expect(call(pod, { op: "session", athlete: state })).toMatchObject({ ok: true, athlete: state });
+    }
+    pod.state = "RUN";
+    expect(call(pod, { op: "session", athlete: "x" })).toMatchObject({ error: "busy" });
+    pod.emitSampleReport(() => 0.5);
+    expect(call(pod, { op: "session", athlete: "" })).toMatchObject({ ok: true, athlete: "" });
   });
 });

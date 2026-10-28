@@ -14,7 +14,10 @@ export type FieldKind =
   | "variable" /** name of a variable that is written */
   | "metric" /** name of a measurement metric */
   | "bool"
-  | "colorPair"; /** exactly two named colours (toggle `colors`, programFormat 4) */
+  | "colorPair" /** exactly two named colours (toggle `colors`, programFormat 4) */
+  | "metricList" /** list of metric names, at most MAX_LIST_ITEMS (communicate `metrics`, programFormat 5) */
+  | "variableList" /** list of variable names the program declares, at most MAX_LIST_ITEMS (communicate `vars`) */
+  | "editableMap"; /** variable name → `{ min, max }`, at most MAX_LIST_ITEMS (communicate `editable`) */
 
 export type FieldDef = {
   name: string;
@@ -71,7 +74,12 @@ export type PortRole =
   | "ifFalseStart" /** release (signal): released before the switch */
   | "ifAllA" /** toggle: every pod has team A */
   | "ifAllB" /** toggle: every pod has team B */
-  | "whenTimeOver"; /** toggle: the game time is over */
+  | "whenTimeOver" /** toggle: the game time is over */
+  | "ifContinued" /** communicate: the client sent `continue` */
+  | "ifPressed" /** communicate: the central's button was pressed */
+  | "ifTimedOut" /** communicate: no answer within `timeoutMs` */
+  | "ifRepeated" /** communicate: the client sent `repeat` */
+  | "ifStopped"; /** communicate: the client sent `stop` */
 
 export type BlockCategory = "light" | "wait" | "input" | "logic" | "remote" | "stats";
 
@@ -140,6 +148,11 @@ function countdownFields(kind: "delay" | "timeout" | "game", from = false): read
 export const TOGGLE_STARTS = ["alternate", "a", "b", "random", "off"] as const;
 /** The variables a toggle block can write at the end. */
 export const TOGGLE_STORES = ["storeA", "storeB", "storeTimeA", "storeTimeB", "storeFlips"] as const;
+
+/** Longest list of metrics, variables or editable variables of a `communicate` block (programs.md §2). */
+export const MAX_LIST_ITEMS = 8;
+/** Longest metric or variable name of a `communicate` block, in characters (programs.md §2). */
+export const MAX_NAME_CHARS = 32;
 
 /** Block types with a time limit besides `delay`, which always has one. */
 export const TIMEOUT_TYPES = ["button", "remotePress", "remoteMultiPress", "charge", "release"] as const;
@@ -413,6 +426,22 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "storeAs", kind: "variable", level: "more" },
     ]),
   },
+  {
+    // report the measurements since the last report, then wait for the client (issue #44, programFormat 5)
+    type: "communicate",
+    category: "stats",
+    ports: ["next", "pressed", "timeout", "repeat", "stop"],
+    portRoles: { next: "ifContinued", pressed: "ifPressed", timeout: "ifTimedOut", repeat: "ifRepeated", stop: "ifStopped" },
+    waits: true,
+    minFormat: 5,
+    fields: withTimers([
+      { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" }, // 0 or missing: no timeout
+      { name: "metrics", kind: "metricList", level: "more" }, // missing: all metrics
+      { name: "vars", kind: "variableList", level: "more" },
+      { name: "editable", kind: "editableMap", level: "more" },
+      { name: "color", kind: "color", default: "cyan" },
+    ]),
+  },
 ];
 
 const BY_TYPE = new Map(BLOCK_TYPES.map((def) => [def.type, def]));
@@ -451,7 +480,7 @@ export function blockFormatOf(block: unknown): number {
 }
 
 /**
- * The smallest program format revision (programs.md §6) a pod needs to run the program: 1 to 4.
+ * The smallest program format revision (programs.md §6) a pod needs to run the program: 1 to 5.
  * Takes a program or fragment file (its own `blocks`), or a resolved program (`blocks` of
  * `{ file, block }`, includes too). Anything else needs revision 1.
  */

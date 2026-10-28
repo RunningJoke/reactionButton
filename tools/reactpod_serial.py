@@ -12,6 +12,11 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py start
     python tools/reactpod_serial.py set-name "Halle 2"    # BLE name "ReactPod Halle 2" ("" = default)
     python tools/reactpod_serial.py set-pin 1234          # PIN for BLE writes ("" = clear it)
+    python tools/reactpod_serial.py reports               # reports not acknowledged yet (firmware >= 2.11)
+    python tools/reactpod_serial.py ack 17                # remove report 17 and the older ones
+    python tools/reactpod_serial.py command continue      # answer a waiting communicate block
+    python tools/reactpod_serial.py set-variables MAX_LOOPS=5 RUNS=0
+    python tools/reactpod_serial.py session ath_42        # athlete id for the following reports ("" = clear)
     python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
 
@@ -227,6 +232,8 @@ class PodSerial:
                       f"  {event.get('program', '')}", "1;34"))
         elif kind == "block" and self.show == "all":
             say(color(f"[block] {event.get('name')}", "2"))
+        elif kind == "report" and self.show != "none":
+            say(color(report_line(event), "1;35"))
         self.events.put(event)
 
     # ------------------------------------------------------------ requests
@@ -357,6 +364,20 @@ class PodSerial:
 
 def store_path(data_dir: Path, file: Path) -> str:
     return "/" + file.relative_to(data_dir).as_posix()
+
+
+def report_line(report: dict) -> str:
+    """One line per `report` event (config-api.md §5): id, cycle, program, duration, metric statistics, variables."""
+    duration = (report.get("endMs", 0) - report.get("startMs", 0)) / 1000
+    head = f"[report {report.get('id')}] cycle {report.get('cycle')} {report.get('program')} {duration:.1f} s"
+    if report.get("athlete"):
+        head += f" athlete {report['athlete']}"
+    stats = [f"{metric} {s.get('count')}x avg {s.get('average')} best {s.get('best')} worst {s.get('worst')}"
+             for metric, s in report.get("stats", {}).items()]
+    variables = [f"{name}={value}" for name, value in report.get("vars", {}).items()]
+    body = "; ".join(stats + variables)
+    tail = f"  ({report['valuesDropped']} values dropped)" if report.get("valuesDropped") else ""
+    return head + (f"  {body}" if body else "") + tail
 
 
 def push(pod: PodSerial, directory: str):
@@ -641,6 +662,13 @@ def main():
     p = sub.add_parser("trace"); p.add_argument("state", choices=["on", "off"])
     p = sub.add_parser("set-name", help="set the set name advertised over BLE (\"\" = default)"); p.add_argument("name")
     p = sub.add_parser("set-pin", help="set the PIN for BLE writes, 4-6 digits (\"\" = clear it)"); p.add_argument("pin")
+    sub.add_parser("reports", help="reports not acknowledged yet (firmware >= 2.11)")
+    p = sub.add_parser("ack", help="acknowledge a report: it and the older ones leave the buffer"); p.add_argument("id", type=int)
+    p = sub.add_parser("command", help="answer a waiting communicate block")
+    p.add_argument("name", choices=["continue", "repeat", "stop"])
+    p = sub.add_parser("set-variables", help="change editable variables of a waiting communicate block: NAME=value ...")
+    p.add_argument("values", nargs="+", metavar="NAME=value")
+    p = sub.add_parser("session", help="athlete id copied into the following reports (\"\" = clear it)"); p.add_argument("athlete")
     p = sub.add_parser("cmd", help="send one raw command (JSON or text form)"); p.add_argument("text")
     p = sub.add_parser("push", help="upload program files"); p.add_argument("directory")
     p = sub.add_parser("pull", help="download program files"); p.add_argument("directory")
@@ -701,6 +729,22 @@ def main():
             say(json.dumps(pod.request("setName", check=False, name=args.name), indent=2, ensure_ascii=False))
         elif args.command == "set-pin":
             say(json.dumps(pod.request("setPin", check=False, pin=args.pin), indent=2))
+        elif args.command == "reports":
+            say(json.dumps(pod.request("reports", check=False), indent=2, ensure_ascii=False))
+        elif args.command == "ack":
+            say(json.dumps(pod.request("ack", check=False, reportId=args.id), indent=2))
+        elif args.command == "command":
+            say(json.dumps(pod.request("command", check=False, name=args.name), indent=2))
+        elif args.command == "set-variables":
+            values = {}
+            for item in args.values:
+                name, sep, number = item.partition("=")
+                if not sep or not number.lstrip("-").isdigit():
+                    sys.exit(f"set-variables: '{item}' is not NAME=integer")
+                values[name] = int(number)
+            say(json.dumps(pod.request("setVariables", check=False, values=values), indent=2))
+        elif args.command == "session":
+            say(json.dumps(pod.request("session", check=False, athlete=args.athlete), indent=2, ensure_ascii=False))
         elif args.command == "reboot":
             status = pod.reboot(args.role)
             if status:

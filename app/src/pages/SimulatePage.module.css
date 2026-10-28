@@ -341,3 +341,30 @@
 .logTime {
   color: var(--text-muted);
 }
+
+.waiting {
+  border-color: var(--accent);
+}
+
+.editable {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.editableField {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 120px;
+}
+
+.editableField input {
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}

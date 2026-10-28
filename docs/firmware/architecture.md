@@ -67,6 +67,7 @@ src/
 ├── Program/ProgramCatalog.*  program menu read from /programs.json
 ├── Input/Button.*            debounced button with edge counters and µs timestamps
 ├── Results/Results.*         measurement records + statistics, CSV on serial
+│   └── Reports.*             measurement log and report buffer of the `communicate` block
 ├── VariableManager/          program variables (int64), resolved to ids at load time
 ├── LEDManager/               NeoPixel wrapper, palette patterns, boot + error animations, effect player
 └── ColorSet/                 RGB struct and colour constants
@@ -255,6 +256,9 @@ load time. Unknown variables read as 0. Variables set by the system:
   with the same pod and `cmdSeq`.
 - Blocks with `record` pass measurements to `Results`. Results prints a `RESULT,…` CSV
   line and keeps per-metric statistics for the `summary` block.
+- `Results/Reports` also logs every measurement (48 values, cleared per report). The
+  `communicate` block turns the log into a report: 8 reports in a RAM buffer (structs, rendered
+  to JSON on demand) until the client acknowledges them (`ack`). Programs §7.16.
 
 ## 7. LED subsystem
 

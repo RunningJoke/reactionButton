@@ -1,4 +1,4 @@
-import { Lightbulb, Timer, CircleDot, GitBranch, Variable, Radio, RadioTower, PowerOff, Sigma, Box, Repeat, Sparkles, BatteryCharging, Hand, Swords, type LucideIcon } from "lucide-react";
+import { Lightbulb, Timer, CircleDot, GitBranch, Variable, Radio, RadioTower, PowerOff, Sigma, Box, Repeat, Sparkles, BatteryCharging, Hand, Swords, MessagesSquare, type LucideIcon } from "lucide-react";
 import { blockType, type BlockCategory } from "@reactpod/program-model";
 
 /** Icon per block type; colour per category (CSS variables in editor.css). */
@@ -17,6 +17,7 @@ const ICONS: Record<string, LucideIcon> = {
   charge: BatteryCharging,
   release: Hand,
   toggle: Swords,
+  communicate: MessagesSquare,
 };
 
 export function blockIcon(type: unknown): LucideIcon {

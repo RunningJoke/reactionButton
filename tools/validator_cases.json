@@ -46,6 +46,33 @@
     { "name": "release signal needs a time", "valid": false, "blocks": [{ "name": "X", "type": "release", "mode": "signal", "next": "L" }] },
     { "name": "charge needs one pod", "valid": false, "blocks": [{ "name": "X", "type": "charge", "maxMs": 2000, "pod": "all", "next": "L" }] },
     { "name": "unknown block type", "valid": false, "blocks": [{ "name": "X", "type": "toggel", "next": "L" }] },
-    { "name": "unknown port target", "valid": false, "blocks": [{ "name": "X", "type": "delay", "ms": 10, "next": "Nowhere" }] }
+    { "name": "unknown port target", "valid": false, "blocks": [{ "name": "X", "type": "delay", "ms": 10, "next": "Nowhere" }] },
+    { "name": "communicate: minimal", "valid": true, "blocks": [{ "name": "C", "type": "communicate", "next": "L" }] },
+    {
+      "name": "communicate: every field",
+      "valid": true,
+      "variables": { "MAX_LOOPS": 3, "RUNS": 0 },
+      "blocks": [
+        {
+          "name": "C", "type": "communicate", "timeoutMs": 3000, "metrics": ["reaction", "cycle"], "vars": ["RUNS", "MAX_LOOPS"],
+          "editable": { "MAX_LOOPS": { "min": 1, "max": 50 } }, "color": "magenta", "timerStart": "lap", "timerStop": "lap",
+          "pressed": "L", "timeout": "L", "repeat": "L", "stop": "L", "next": "L"
+        }
+      ]
+    },
+    { "name": "communicate: timeout 0 is no timeout", "valid": true, "blocks": [{ "name": "C", "type": "communicate", "timeoutMs": 0, "next": "L" }] },
+    { "name": "communicate: negative timeout", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "timeoutMs": -1, "next": "L" }] },
+    { "name": "communicate: nine metrics", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "metrics": ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"], "next": "L" }] },
+    { "name": "communicate: metric name of 33 characters", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "metrics": ["mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"], "next": "L" }] },
+    { "name": "communicate: empty metric name", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "metrics": [""], "next": "L" }] },
+    { "name": "communicate: metrics not a list", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "metrics": "reaction", "next": "L" }] },
+    { "name": "communicate: undeclared variable", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "vars": ["NOPE"], "next": "L" }] },
+    { "name": "communicate: editable variable not declared", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "editable": { "NOPE": { "min": 0, "max": 1 } }, "next": "L" }] },
+    { "name": "communicate: a variable written by a block is not declared", "valid": false, "blocks": [{ "name": "S", "type": "setVariable", "var": "W", "op": "=", "value": 1, "next": "C" }, { "name": "C", "type": "communicate", "vars": ["W"], "next": "L" }] },
+    { "name": "communicate: editable min above max", "valid": false, "variables": { "MAX_LOOPS": 3 }, "blocks": [{ "name": "C", "type": "communicate", "editable": { "MAX_LOOPS": { "min": 5, "max": 1 } }, "next": "L" }] },
+    { "name": "communicate: editable range not integers", "valid": false, "variables": { "MAX_LOOPS": 3 }, "blocks": [{ "name": "C", "type": "communicate", "editable": { "MAX_LOOPS": { "min": 1.5, "max": 3 } }, "next": "L" }] },
+    { "name": "communicate: editable without max", "valid": false, "variables": { "MAX_LOOPS": 3 }, "blocks": [{ "name": "C", "type": "communicate", "editable": { "MAX_LOOPS": { "min": 1 } }, "next": "L" }] },
+    { "name": "communicate: colour must be a colour", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "color": "nope", "next": "L" }] },
+    { "name": "communicate: repeat leads nowhere", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "repeat": "Nowhere", "next": "L" }] }
   ]
 }

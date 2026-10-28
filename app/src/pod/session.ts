@@ -90,8 +90,8 @@ function createTransport(kind: TransportKind): Transport {
     case "serial":
       return new WebSerialTransport();
     case "simulated":
-      // the demo pod also shows the planned live results (#41 / #42)
-      return new SimulatedTransport(new SimulatedPod({ files: DEFAULT_FILES, results: true }), { latencyMs: 30 });
+      // the demo pod is program format 5 (firmware 2.11): reports and remote ops (#41 / #42)
+      return new SimulatedTransport(new SimulatedPod({ files: DEFAULT_FILES }), { latencyMs: 30 });
   }
 }
 

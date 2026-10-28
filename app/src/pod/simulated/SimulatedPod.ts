@@ -24,15 +24,11 @@ export type SimulatedPodOptions = {
   /** a PIN makes put / delete / setName need `auth` (like BLE, firmware ≥ 2.6) */
   pin?: string;
   /**
-   * Demo of the planned reports and remote control (#41, #42; not in the firmware yet): adds the
-   * features "reports" and "remote", the ops `reports`, `ack`, `session`, `command` and
-   * `emitSampleReport()`. Off by default, so the simulated pod behaves like today's firmware.
-   */
-  results?: boolean;
-  /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10"), and `status` has no `timers`.
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.11"), and
+   * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
+   * `command`, `setVariables`, `session`); `emitSampleReport()` makes a demo report.
    */
   programFormat?: number;
   /**
@@ -76,12 +72,15 @@ export class SimulatedPod {
   /** answers the next n requests with `overflow`, like a BLE receive buffer overrun */
   overflowNext = 0;
 
-  /** demo results (#41 / #42), see SimulatedPodOptions.results */
-  readonly results: boolean;
   /** athlete id from `session` ("" = none) */
   athlete = "";
-  /** a communicate block waits for `command` (after a sample report) */
-  waiting = false;
+  /** the communicate block that waits (programs.md §7.16), or null; set by `emitSampleReport()` */
+  waiting: { block: string; editable: Record<string, { min: number; max: number }> } | null = null;
+  /** variables of the demo program (RUNS, MAX_LOOPS); `setVariables` changes the editable ones */
+  readonly variables = new Map<string, number>([
+    ["RUNS", 0],
+    ["MAX_LOOPS", 12],
+  ]);
   /** reports not acknowledged yet, oldest first */
   readonly pendingReports: Json[] = [];
   droppedReports = 0;
@@ -102,12 +101,17 @@ export class SimulatedPod {
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
     this.podCount = options.pods;
     this.firmware =
-      options.firmware ?? (this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      options.firmware ??
+      (this.programFormat >= 5 ? "2.11" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
     this.pin = options.pin ?? "";
-    this.results = options.results ?? false;
+  }
+
+  /** firmware ≥ 2.11 (program format 5): the reports and the remote ops, features `reports` and `remote` */
+  get remote(): boolean {
+    return this.programFormat >= 5;
   }
 
   /** A new client connected: it has to authenticate again, an unfinished upload is dropped. */
@@ -168,7 +172,19 @@ export class SimulatedPod {
     switch (op) {
       case "help":
         return {
-          ops: ["help", "status", "info", "list", "get", "put", "delete", "validate", "setName", "auth", ...(this.results ? ["reports", "ack", "session", "command"] : [])],
+          ops: [
+            "help",
+            "status",
+            "info",
+            "list",
+            "get",
+            "put",
+            "delete",
+            "validate",
+            "setName",
+            "auth",
+            ...(this.remote ? ["reports", "ack", "session", "command", "setVariables"] : []),
+          ],
           transport: "simulated",
         };
       case "info":
@@ -195,7 +211,8 @@ export class SimulatedPod {
       case "ack":
       case "session":
       case "command":
-        if (this.results) return this.resultOp(op, req);
+      case "setVariables":
+        if (this.remote) return this.remoteOp(op, req);
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
       default:
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
@@ -226,7 +243,7 @@ export class SimulatedPod {
         ...(this.programFormat >= 2 ? ["effects"] : []),
         ...(this.programFormat >= 3 ? ["hold"] : []),
         ...(this.programFormat >= 4 ? ["toggle"] : []),
-        ...(this.results ? ["reports", "remote"] : []),
+        ...(this.remote ? ["reports", "remote"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -257,14 +274,33 @@ export class SimulatedPod {
             })),
           }
         : {}),
-      ...(this.results ? { athlete: this.athlete, reports: { pending: this.pendingReports.length, dropped: this.droppedReports } } : {}),
+      ...(this.remote
+        ? {
+            athlete: this.athlete,
+            reports: { pending: this.pendingReports.length, dropped: this.droppedReports },
+            ...(this.isWaiting() ? { waiting: { block: this.waiting!.block, editable: this.editableView() } } : {}),
+          }
+        : {}),
     };
   }
 
-  private resultOp(op: string, req: Json): Json {
+  /** A communicate block waits; not while PAUSED (programs.md §7.16). */
+  private isWaiting(): boolean {
+    return this.waiting !== null && this.state !== "PAUSED";
+  }
+
+  /** `editable` of the waiting block with the current values (config-api.md §5, status.waiting). */
+  private editableView(): Record<string, { min: number; max: number; value: number }> {
+    return Object.fromEntries(
+      Object.entries(this.waiting?.editable ?? {}).map(([name, range]) => [name, { ...range, value: this.variables.get(name) ?? 0 }]),
+    );
+  }
+
+  private remoteOp(op: string, req: Json): Json {
     switch (op) {
       case "reports":
-        return { reports: this.pendingReports.map((r) => structuredClone(r)) };
+        // the fields of the `report` event without `event` (config-api.md §5)
+        return { reports: this.pendingReports.map(({ event: _event, ...report }) => structuredClone(report)) };
       case "ack": {
         // `reportId`, not `id`: `id` is the request id that every response echoes (config-api §3)
         const reportId = req.reportId;
@@ -277,29 +313,50 @@ export class SimulatedPod {
         if (typeof req.athlete !== "string" || byteLength(req.athlete) > 40) {
           throw new ApiFailure("bad_request", "'athlete' must be a string of at most 40 bytes");
         }
-        if (this.state !== "MENU" && !this.waiting) {
-          throw new ApiFailure("busy", "the athlete can change in the menu or while a communicate block waits");
+        if (!["MENU", "DISCOVERY", "CONFIRM"].includes(this.state) && !this.isWaiting()) {
+          throw new ApiFailure("busy", "the athlete can change in the menu, before the start or while a communicate block waits");
         }
         this.athlete = req.athlete;
         return { athlete: this.athlete };
+      }
+      case "setVariables": {
+        // all or nothing: every value is checked before one is written (config-api.md §5)
+        if (typeof req.values !== "object" || req.values === null || Array.isArray(req.values)) {
+          throw new ApiFailure("bad_request", "'values' must be an object of variable name → integer");
+        }
+        if (!this.isWaiting()) throw new ApiFailure("not_ready", "no communicate block is waiting");
+        const editable = this.waiting!.editable;
+        const values = Object.entries(req.values as Json);
+        for (const [name, value] of values) {
+          // same order of checks as CentralRole::opSetVariables
+          if (typeof value !== "number" || !Number.isInteger(value)) throw new ApiFailure("bad_request", `'${name}' must be an integer`);
+          const range = editable[name];
+          if (!range) throw new ApiFailure("not_editable", `'${name}' is not editable while the block waits`);
+          if (value < range.min || value > range.max) {
+            throw new ApiFailure("out_of_range", `'${name}' must be an integer from ${range.min} to ${range.max}`);
+          }
+        }
+        for (const [name, value] of values) this.variables.set(name, value as number);
+        return { variables: Object.fromEntries(values) };
       }
       default: {
         if (!["continue", "repeat", "stop"].includes(String(req.name))) {
           throw new ApiFailure("bad_request", "'name' must be continue, repeat or stop");
         }
-        if (!this.waiting) throw new ApiFailure("not_ready", "no communicate block is waiting");
-        this.waiting = false;
+        if (!this.isWaiting()) throw new ApiFailure("not_ready", "no communicate block is waiting");
+        this.waiting = null;
         return {};
       }
     }
   }
 
   /**
-   * Demo: a `communicate` block was reached. Builds a report with random reaction times for the
-   * first menu program, keeps it until `ack`, sends it as an event and waits for `command`.
+   * Demo: a `communicate` block (block "Report", MAX_LOOPS editable 1 … 50) was reached. Builds a
+   * report with random reaction times for the first menu program, keeps it until `ack`, sends it as
+   * an event and waits for `command` / `setVariables`.
    */
   emitSampleReport(random: () => number = Math.random): Json {
-    if (!this.results) throw new Error("the results demo is off");
+    if (!this.remote) throw new Error("reports need program format 5 (firmware 2.11)");
     let program = "/prog/solo.json";
     try {
       const index = JSON.parse(this.files.get(INDEX_PATH) ?? "") as Json;
@@ -319,6 +376,7 @@ export class SimulatedPod {
     values.push({ t: endMs, metric: "lap", pod: 0, ms: endMs - startMs });
     const reaction = values.filter((v) => v.metric === "reaction").map((v) => v.ms as number);
     this.cycle++;
+    this.variables.set("RUNS", this.cycle);
     const report: Json = {
       event: "report",
       id: this.nextReportId++,
@@ -337,14 +395,14 @@ export class SimulatedPod {
           worst: Math.max(...reaction),
         },
       },
-      vars: { RUNS: count, MAX_LOOPS: 12 },
+      vars: Object.fromEntries(this.variables),
     };
     this.pendingReports.push(report);
     if (this.pendingReports.length > REPORT_BUFFER) {
       this.pendingReports.shift();
       this.droppedReports++;
     }
-    this.waiting = true;
+    this.waiting = { block: "Report", editable: { MAX_LOOPS: { min: 1, max: 50 } } };
     this.onEvent?.(JSON.stringify(report));
     return report;
   }

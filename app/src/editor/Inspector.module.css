@@ -210,6 +210,82 @@ textarea.input {
   align-self: flex-start;
 }
 
+/* communicate lists (ListFields.tsx): names as chips, editable variables as rows */
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chipItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  padding: 0 0 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.chipRemove,
+.chipAddButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.chipAddButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chipAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 180px;
+}
+
+.editableList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.editableRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.editableName {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  min-width: 80px;
+}
+
+.editableBound {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.editableBound .input {
+  width: 88px;
+}
+
 .picker {
   display: flex;
   flex-direction: column;

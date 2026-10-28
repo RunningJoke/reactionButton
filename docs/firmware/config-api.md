@@ -139,6 +139,9 @@ peripheral of a set may still be older: `status.pods[].hold`. `linkRevision` (fi
 revision; `linkProtocol` is the frame header version and stays 1. `toggle` (firmware ≥ 2.10, link protocol revision 3)
 says that the firmware knows the block type `toggle` (`programFormat` ≥ 4) and the toggle activations of
 [link-protocol.md](link-protocol.md) §2.3; the pods may still be older: `status.pods[].toggle`.
+`reports` (firmware ≥ 2.11) = the report buffer, the `report` event and the ops `reports` / `ack`; `remote`
+(firmware ≥ 2.11) = the ops `command`, `setVariables` and `session`. Both come with the block type `communicate`
+(`programFormat` ≥ 5, programs.md §7.16).
 
 ### `list`
 ```json
@@ -212,6 +215,17 @@ switched off when a program is selected.
 | `auth` | any | `pin`: string | unlocks `put`, `delete`, `setName` for this BLE connection (§8). `ok` without a PIN set |
 | `setPin` | any, **serial only** | `pin`: 4–6 digits as a string; `""` or missing clears it | stores the PIN in NVS. Response: `pinSet`. Serial text form: `setPin 1234` |
 | `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2` |
+| `reports` | central (firmware ≥ 2.11) | – | `reports[]`: every report in the buffer not acknowledged yet, oldest first, with the fields of the `report` event (without `event`) |
+| `ack` | central (firmware ≥ 2.11) | `reportId`: number | removes that report and all older ones from the buffer. Unknown or already removed ids are fine. `reportId`, not `id`: `id` is the request id (§3) |
+| `command` | central (firmware ≥ 2.11) | `name`: `continue`, `repeat` or `stop` | answers a waiting `communicate` block (programs.md §7.16). `not_ready` if no block waits |
+| `setVariables` | central (firmware ≥ 2.11) | `values`: object name → integer | only while a `communicate` block waits, only names in its `editable`, within `min` … `max`. All or nothing. Response: `variables` (the new values). Errors: `not_ready`, `not_editable`, `out_of_range` |
+| `session` | central (firmware ≥ 2.11) | `athlete`: string, max 40 bytes; `""` clears it | an opaque athlete id copied into every following report (RAM, lost on reboot). Allowed in MENU, DISCOVERY, CONFIRM and while a `communicate` block waits, else `busy`. Response: `athlete` |
+
+Reports (firmware ≥ 2.11, `reports` and `remote` in `info.features`): the report buffer is
+RAM only, so `stop` (which restarts the pod) and every reboot clear it, and report ids start
+again at 1. Until BLE stays on during the game (#39), reports reach a client over USB serial
+only. Central `status` then also has `athlete` (`""` = none), `reports {pending, dropped}`
+and, while a `communicate` block waits, `waiting {block, editable {<name>: {min, max, value}}}`.
 
 `pods[].effects` (firmware ≥ 2.8): the pod plays ring effects. `false` for pods with older
 firmware; effects then fall back to a static colour on that pod.
@@ -221,7 +235,7 @@ firmware; the `charge` and `release` blocks then take their `timeout` port at on
 older firmware; the `toggle` block leaves such a pod out of the game.
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
-changes during a game or a sync), `not_ready`.
+changes during a game or a sync), `not_ready`, `not_editable`, `out_of_range` (`setVariables`).
 
 ### Events (USB serial)
 
@@ -232,6 +246,15 @@ Besides responses, the serial port carries event lines, also one JSON object per
 | `boot` | `role`, `firmware`, `lastReset {reason, lastStep}`: after every start. `reason` = `panic`/`*watchdog`/`brownout` means a crash, `lastStep` says where |
 | `state` | `state`, `program`, `pods`, `required`: every central state change (MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR) |
 | `block` | `name`, `t`: only while `trace` is on |
+| `report` | firmware ≥ 2.11, from a `communicate` block (programs.md §7.16): `id`, `program`, `setId`, `athlete` (if set), `cycle`, `startMs`, `endMs`, `values[] {t, metric, pod, ms}`, `stats {<metric>: {count, average, best, worst}}`, `vars {<name>: value}`, `valuesDropped` (if > 0) |
+
+```json
+{"event":"report","id":17,"program":"/prog/dreieck.json","setId":"1a2b3c4d","athlete":"ath_42",
+ "cycle":3,"startMs":120400,"endMs":165210,
+ "values":[{"t":121003,"metric":"reaction","pod":1,"ms":312},{"t":165100,"metric":"lap","pod":0,"ms":44097}],
+ "stats":{"reaction":{"count":1,"average":312,"best":312,"worst":312},"lap":{"count":1,"average":44097,"best":44097,"worst":44097}},
+ "vars":{"RUNS":12,"MAX_LOOPS":12}}
+```
 
 Measurements are printed as text lines `RESULT,<millis>,<metric>,<pod>,<ms>` and
 `SUMMARY,<metric>,<count>,<avg>,<best>,<worst>`. Firmware log lines never start with `{`.

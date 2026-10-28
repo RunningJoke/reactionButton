@@ -428,6 +428,36 @@ Ports: `body` (one more pass), `done` (after `count` passes). Both fall back to 
 The last block of the body links back to the repeat block. Entering the block again after
 `done` starts a new series of `count` passes. Details: §7.10.
 
+### `communicate` – send a report, wait for an answer
+`programFormat` ≥ 5 (§6). Central only.
+
+| Field | | Default |
+|---|---|---|
+| `timeoutMs` | value; 0 = no timeout | no timeout |
+| `metrics` | list of metric names included in the report (max 8); `[]` = all | all |
+| `vars` | list of variable names whose values are included in the report (max 8) | – |
+| `editable` | object: variable name → `{ "min": int, "max": int }`. Variables the client may change with `setVariables` while the block waits (max 8) | – |
+| `color` | colour of the central's LEDs while waiting | `"cyan"` |
+
+Ports: `next` (client `command` `continue`), `pressed` (central's button), `timeout`,
+`repeat` (client `command` `repeat`), `stop` (client `command` `stop`). Unconnected ports fall
+back to `next` (§2), so a program without a phone runs on after a press or the timeout.
+
+```json
+{ "name": "Report", "type": "communicate",
+  "timeoutMs": 3000, "metrics": ["reaction", "cycle"], "vars": ["RUNS", "MAX_LOOPS"],
+  "editable": { "MAX_LOOPS": { "min": 1, "max": 50 } },
+  "next": "StartCycle", "repeat": "ResetRuns", "stop": "End" }
+```
+
+On enter the block turns the measurements since the last report into a **report**, keeps it
+in the report buffer and sends it as a `report` event ([config-api.md](config-api.md) §5),
+then waits for a client `command`, a press or the timeout. Details: §7.16.
+
+- `vars` and the names in `editable` must be variables of the program (`variables`, also
+  from includes). `min` ≤ `max`.
+- Metric and variable names: non-empty, at most 32 characters.
+
 ## 3. Measurements
 
 Blocks with `record` add a measurement to a named metric, and so does every `timerStop`
@@ -486,6 +516,7 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 | 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
 | 3 | 2.9 | block type `effect` (§2, §7.11); `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` on `delay`, `button`, `remotePress`, `remoteMultiPress` (§2 *Countdown*, §7.12). With a countdown `timeoutMs` of `remotePress` / `remoteMultiPress` is read once on enter (§7.2). Block types `charge` (§2, §7.13) and `release` (§2, §7.14), with the hold reporting of link protocol revision 2 ([link-protocol.md](link-protocol.md) §2.2), also with `countdown`. Revision 3 is not released yet, so these were added to it without a new revision |
 | 4 | 2.10 | block type `toggle` (§2, §7.15), with the toggle activations of link protocol revision 3 ([link-protocol.md](link-protocol.md) §2.3), also with `countdown` |
+| 5 | 2.11 | block type `communicate` (§2, §7.16) with the report buffer and the ops `reports`, `ack`, `command`, `setVariables`, `session` ([config-api.md](config-api.md) §5) |
 
 Programs of an older revision run unchanged on newer firmware. A program that uses fields
 or block types of a newer revision is rejected by older firmware only if it uses a new
@@ -883,3 +914,42 @@ after the press (so a press changes nothing). Nothing is reset; follow with `rem
 
 **Pause.** `restartCurrentBlock` enters again: new random duration, new start owners, flips and times start from zero. A pod
 that is not reached keeps its state until the new ARM.
+
+### 7.16 `communicate`
+
+Code: `Block/CommunicateBlock`, `Results/Reports`.
+
+**Measurement log.** Besides the statistics (§7.7), the central keeps every measurement
+(`record`, `timerStop`, §3) since the last report: `t` (`millis()` when recorded), metric,
+pod id, value in ms. The log holds at most 48 values; further values are not listed but
+still counted in the report's `stats` and in `valuesDropped`. The log is cleared when the
+program starts and when a report is built. `summary` and the `results` op do not touch it.
+
+**Enter.**
+1. Build a report: `id` (counts from 1 since boot, never reused until reboot), `program`
+   (path), `setId`, `athlete` (only if a `session` set one), `cycle` (reports built since the
+   program started, 1 for the first), `startMs` (time of the previous report, or the program
+   start), `endMs` (now), `values` (the log, oldest first, only the metrics in `metrics`;
+   all without `metrics`), `stats` per listed metric that has values (`count`, `average`
+   truncated, `best` = smallest, `worst` = largest; over all values of the log, also the
+   dropped ones), `vars` (current values of `vars`), `valuesDropped` (only if > 0).
+2. Clear the log (all metrics, also those not listed).
+3. Put the report into the report buffer (8 reports, RAM). A full buffer drops its oldest
+   report and counts it (`status.reports.dropped`).
+4. Send it as a `report` event line on USB serial ([config-api.md](config-api.md) §5).
+5. Set all central LEDs to `color`, read `timeoutMs` (a value, read once), start waiting.
+
+**Wait.** Checked each pass, the first that applies wins:
+1. A client `command` (`continue` → `next`, `repeat` → `repeat`, `stop` → `stop`).
+2. A press of the central's button (press edge after entering) → `pressed`.
+3. `timeoutMs` > 0 and *now − entry* ≥ `timeoutMs` → `timeout`.
+
+Unconnected ports fall back to `next` (§7.1); with no `next` the program ends.
+`setVariables` (config-api.md §5) changes the `editable` variables only while the block waits.
+`repeat` only selects the port: the report stays as it was sent (the client marks it as
+discarded).
+
+**Pause.** While PAUSED the block does not wait: `command` and `setVariables` answer
+`not_ready`, `status` has no `waiting`. `restartCurrentBlock` resumes the block
+(`Block::resume()`, by default `enter()`) without building a second report: the block keeps
+the report of this entry, sets its LEDs again and restarts the timeout.

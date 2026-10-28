@@ -17,7 +17,7 @@ const toggle = (fields: Record<string, unknown>, format?: number) =>
 
 describe("program format 4 (toggle)", () => {
   it("is the app's format", () => {
-    expect(PROGRAM_FORMAT).toBe(4);
+    expect(PROGRAM_FORMAT).toBeGreaterThanOrEqual(4);
   });
 
   it("programFormatOf: toggle needs 4", () => {

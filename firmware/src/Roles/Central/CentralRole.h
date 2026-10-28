@@ -7,6 +7,8 @@
 #include "Program/ProgramCatalog.h"
 #include "ColorSet/ColorSet.h"
 
+class CommunicateBlock;
+
 /**
  * CENTRAL role.
  *
@@ -54,6 +56,13 @@ class CentralRole : public IRole {
         void opSelect(JsonObjectConst request, JsonDocument& response);
         void opStart(JsonDocument& response);
         void opEffect(JsonObjectConst request, JsonDocument& response);
+        void opReports(JsonDocument& response);
+        void opAck(JsonObjectConst request, JsonDocument& response);
+        void opCommand(JsonObjectConst request, JsonDocument& response);
+        void opSetVariables(JsonObjectConst request, JsonDocument& response);
+        void opSession(JsonObjectConst request, JsonDocument& response);
+        // the communicate block that waits for the client; none while PAUSED (programs.md §7.16)
+        CommunicateBlock* waitingBlock() const;
 
         State state = State::MENU;
         ProgramCatalog catalog;

@@ -1,5 +1,6 @@
 #include "Results.h"
 #include "Config/Console.h"
+#include "Results/Reports.h"
 
 Results& Results::get() {
     static Results results;
@@ -12,6 +13,7 @@ void Results::record(const char* metric, uint8_t podId, int32_t value) {
     s.sum += value;
     if(value < s.min) s.min = value;
     if(value > s.max) s.max = value;
+    Reports::get().log(metric, podId, value, millis());
 
     Console.printf("RESULT,%lu,%s,%u,%ld\n", (unsigned long)millis(), metric, podId, (long)value);
 }

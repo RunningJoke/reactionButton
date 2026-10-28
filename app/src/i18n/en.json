@@ -207,6 +207,10 @@
       "noPresets": "No library parts linked. This program is self-contained."
     },
     "step": {
+      "communicate": {
+        "hint": "Sends a report of the measurements since the last one, then waits for the app: continue, repeat or stop. A press goes on as well.",
+        "noLimit": "No limit"
+      },
       "viewSteps": "Steps",
       "viewBlocks": "Blocks",
       "view": "View",
@@ -274,7 +278,8 @@
         "effect": "Light effect",
         "charge": "Hold to charge",
         "release": "Let go",
-        "toggle": "Domination"
+        "toggle": "Domination",
+        "communicate": "Report and answer"
       },
       "colour": "Colour",
       "leds": "Which LEDs",
@@ -525,6 +530,10 @@
         "domination": {
           "name": "Domination",
           "hint": "Two teams flip pods by pressing them"
+        },
+        "report": {
+          "name": "Report to the app",
+          "hint": "Send the results, wait for continue, repeat or stop"
         }
       },
       "recipe": {
@@ -608,6 +617,17 @@
       "holdLimitOn": "Too long after {{time}}"
     }
   },
+  "list": {
+    "add": "Add",
+    "addOption": "Add…",
+    "addTo": "Add to {{label}}",
+    "remove": "Remove {{name}}",
+    "min": "Min",
+    "max": "Max",
+    "minOf": "Minimum of {{name}}",
+    "maxOf": "Maximum of {{name}}",
+    "metricPlaceholder": "e.g. reaction"
+  },
   "simulate": {
     "title": "Simulate",
     "open": "Simulate",
@@ -654,7 +674,15 @@
     "metricsHint": "Times are your clicks, not measurements of a pod.",
     "log": "Log",
     "copyTrace": "Copy trace",
-    "copied": "Copied"
+    "copied": "Copied",
+    "report": {
+      "title": "Waiting for the app",
+      "number": "Report {{id}} · cycle {{cycle}}",
+      "continue": "Continue",
+      "repeat": "Repeat",
+      "stop": "Stop",
+      "range": "{{min}} to {{max}}"
+    }
   },
   "menu": {
     "title": "Menu",
@@ -766,7 +794,12 @@
     "countdownNotSupported": "Only pauses, presses, holds, races and dominations can show a countdown",
     "colorsNotTwo": "Choose exactly two team colours (red, green, blue, yellow, magenta, cyan or white)",
     "toggleNeedsDuration": "Set the game length: a fixed time or a shortest and a longest time",
-    "toggleDurationBothForms": "Use either one fixed game length or a shortest and a longest length, not both"
+    "toggleDurationBothForms": "Use either one fixed game length or a shortest and a longest length, not both",
+    "namesInvalid": "Metric and variable names need 1 to {{max}} characters",
+    "namesTooMany": "At most {{max}} metrics, variables or editable variables",
+    "variableNotDeclared": "{{name}} is not a variable of this program: declare it under \"variables\"",
+    "editableInvalid": "Each editable variable needs whole numbers as minimum and maximum, the minimum not above the maximum",
+    "timeoutNegative": "The time limit cannot be negative"
   },
   "portRoles": {
     "then": "Then",
@@ -785,7 +818,12 @@
     "ifFalseStart": "False start",
     "ifAllA": "If team A has every pod",
     "ifAllB": "If team B has every pod",
-    "whenTimeOver": "When time is up"
+    "whenTimeOver": "When time is up",
+    "ifContinued": "If continued",
+    "ifPressed": "If pressed",
+    "ifTimedOut": "If nobody answers in time",
+    "ifRepeated": "If repeated",
+    "ifStopped": "If stopped"
   },
   "view": {
     "back": "Back",
@@ -820,6 +858,7 @@
     "leds_other": "{{count}} LEDs",
     "allLeds": "all LEDs",
     "waitPress": "wait for press",
+    "report": "report",
     "pod": "pod",
     "pods": "pods",
     "allPods": "all pods",
@@ -838,7 +877,9 @@
     "false": "false",
     "avoidHit": "red hit",
     "body": "round",
-    "done": "done"
+    "done": "done",
+    "repeat": "repeat",
+    "stop": "stop"
   },
   "blocks": {
     "led": {
@@ -896,6 +937,10 @@
     "toggle": {
       "name": "Domination",
       "help": "Pods stay lit and flip between two team colours on every press. Ends when the time is up (next), or when every pod is team A (allA) or team B (allB). Needs firmware 2.10 on pods."
+    },
+    "communicate": {
+      "name": "Report and answer",
+      "help": "Sends the measurements since the last report to the app, then waits for continue, repeat or stop, a press or the time limit. Needs firmware 2.11 on the central."
     }
   },
   "common": {
@@ -931,6 +976,18 @@
     "shortMs": {
       "label": "Short press up to (ms)",
       "help": "Shorter presses leave at “short”, longer ones at “long”."
+    },
+    "metrics": {
+      "label": "Measurements in the report",
+      "help": "Which measurements the report lists (none = all)."
+    },
+    "vars": {
+      "label": "Variables in the report",
+      "help": "Their values when the report is made."
+    },
+    "editable": {
+      "label": "Editable from the app",
+      "help": "Variables the app may change while the block waits, within min and max."
     },
     "timeoutMs": {
       "label": "Time-out (ms)",
@@ -1675,6 +1732,9 @@
     },
     "withCountdown": "the ring counts down",
     "toggle": "Domination: {{a}} against {{b}} for {{time}}",
+    "communicate": "Send a report, then wait for the app",
+    "communicateMetrics": "measurements {{names}}",
+    "communicateTimeout": "answer within {{time}}",
     "toggleCooldown": "{{time}} between presses",
     "toggleStart": {
         "a": "everyone starts {{a}}",
