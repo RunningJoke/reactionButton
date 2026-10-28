@@ -52,7 +52,7 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
 | Any pod, effect animating, new frame | one `show()`, at most every 16 ms (smooth effects: `dim`, `colorShift`, `pulse`) | ~0.6–1 ms |
 | Central, RUN, waiting block | button, `network.service()`, one `execute()` | µs range |
 | Central, RUN, block chain | instant blocks in one pass (max 32), one `show()` per LED block | ~0.6–1 ms per LED block |
-| Any `Serial.print` / `ESP_LOGx` | USB-CDC output (log level DEBUG) | variable |
+| Any `Serial.print` / `ESP_LOGx` | USB-CDC output (Arduino log level INFO, ESP-IDF INFO) | variable |
 
 ## 2. Constants
 
@@ -192,7 +192,7 @@ The measured values replace the estimates in this document.
 
 - **2.4 GHz congestion** (gyms with many WiFi networks) adds retries and jitter. The
   channel is fixed (`ESPNOW_CHANNEL`). Choosing a less used channel can help.
-- **Serial logging** at DEBUG level in hot paths can add delays when the console buffer
+- **Serial logging** in hot paths can add delays when the console buffer
   fills. Use a lower log level for timing measurements.
 - **No pre-arming yet**: pod → pod always goes through the central (2 hops). A direct
   pod-to-pod trigger would save one hop (~1–2 ms). See [improvement-plan.md](../archive/improvement-plan.md).
