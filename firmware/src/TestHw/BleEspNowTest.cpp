@@ -205,12 +205,16 @@ void BleEspNowTest::requestInterval() {
     if(units > 3200) units = 3200;          // 4 s, BLE maximum
     params.min_int = units;
     params.max_int = units;
-    params.latency = 0;
     params.timeout = 600;                   // 6 s supervision timeout (10 ms units)
+    // the supervision timeout must exceed (1 + latency) * interval * 2
+    uint32_t events = 6000UL * 4 / 5 / (2UL * units);   // most connection events per half timeout
+    uint32_t maxLatency = events > 2 ? events - 2 : 0;
+    params.latency = (uint16_t)(this->latency < maxLatency ? this->latency : maxLatency);
 
     esp_err_t err = esp_ble_gap_update_conn_params(&params);
     this->intervalRequests++;
-    ESP_LOGI(TAG, "connection interval %u ms requested: %s", (unsigned)this->intervalMs, esp_err_to_name(err));
+    ESP_LOGI(TAG, "connection interval %u ms, latency %u requested: %s", (unsigned)this->intervalMs,
+             (unsigned)params.latency, esp_err_to_name(err));
 }
 
 void BleEspNowTest::sendLoad(uint32_t nowMs) {
@@ -342,6 +346,7 @@ void BleEspNowTest::describe(JsonObject status, bool central) {
     int64_t nowUs = esp_timer_get_time();
     t["keepBle"] = this->keepBle;
     t["requestIntervalMs"] = this->intervalMs;
+    t["requestLatency"] = this->latency;
     t["loadBytes"] = this->loadBytes;
     t["loadPeriodMs"] = this->loadPeriodMs;
     t["connects"] = (uint32_t)connects;
@@ -375,6 +380,10 @@ void BleEspNowTest::control(JsonObjectConst request, JsonDocument& response, boo
         }
         if(request["intervalMs"].is<int>()) {
             this->intervalMs = (uint16_t)constrain(request["intervalMs"].as<int>(), 0, 4000);
+            this->intervalRequestedFor = 0;                     // request again on this connection
+        }
+        if(request["latency"].is<int>()) {
+            this->latency = (uint16_t)constrain(request["latency"].as<int>(), 0, 499);   // BLE maximum
             this->intervalRequestedFor = 0;                     // request again on this connection
         }
         if(request["loadBytes"].is<int>()) {

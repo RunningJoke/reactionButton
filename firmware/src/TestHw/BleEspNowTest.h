@@ -12,7 +12,8 @@
  *     starts as usual. Advertising stops while a client is connected (BLE controller) and
  *     restarts on disconnect (PhoneConfig::ServerCallbacks), also during the game.
  *   - in the game, the central requests a long connection interval (intervalMs, default 75 ms)
- *     about 1 s after each connect.
+ *     and a peripheral latency (latency, default 0: connection events the pod may skip while it
+ *     has nothing to send) about 1 s after each connect.
  *   - the config API over BLE stays served in every state. Its responses are indicated by a
  *     separate task (priority above the loop), so the game loop never waits for an
  *     indication confirmation.
@@ -21,7 +22,7 @@
  *   - status gets "heap", "ble" and "bleTest" (counters, loop gaps).
  * Peripheral: counts scheduled ARMs that arrived late and the start error (status "bleTest").
  *
- * Config op (USB serial or BLE): {"op":"bleTest", "keepBle":true, "intervalMs":75,
+ * Config op (USB serial or BLE): {"op":"bleTest", "keepBle":true, "intervalMs":75, "latency":0,
  *   "loadBytes":1024, "loadPeriodMs":2000, "reset":true}; every field optional.
  * See docs/firmware/testing.md §8 and tools/ble_espnow_test.py.
  */
@@ -71,6 +72,7 @@ class BleEspNowTest {
         // settings (RAM, back to the defaults after every restart)
         bool keepBle = true;
         uint16_t intervalMs = 75;           // 0 = do not request
+        uint16_t latency = 0;               // peripheral latency (connection events), with intervalMs
         uint16_t loadBytes = 1024;
         uint32_t loadPeriodMs = 0;          // 0 = no load lines
 
