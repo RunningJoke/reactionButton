@@ -17,7 +17,7 @@ Source: [Protocol.h](../../firmware/src/Link/Protocol.h) (wire format),
 | Channel | `ESPNOW_CHANNEL` = 1 ([_Definitions.h](../../firmware/src/_Definitions.h)), must be equal on all pods |
 | Power save | off (`WIFI_PS_NONE`): the receiver is always on, for lowest latency |
 | Encryption | none. Frames are filtered by protocol version and set id |
-| Frame size | ≤ 250 bytes (ESP-NOW limit). Game frames are ≤ 68 bytes (ARM of a hold activation); only sync responses are large |
+| Frame size | ≤ 250 bytes (ESP-NOW limit). Game frames are ≤ 72 bytes (ARM of a toggle activation); only sync responses are large |
 
 ## 2. Frame format
 
@@ -38,9 +38,9 @@ All frames start with an 8-byte header (packed, little endian):
 | `CLAIM_ACK` | P → C | podId, linkFeatures (≥ 2.8, appended) | peripheral accepts and says what it understands (§7) |
 | `PING` | P → C | t1 (µs, peripheral clock, stamped at transmission), store generation + hash | heartbeat every 200 ms + clock sync + store state |
 | `PONG` | C → P | t1, t2 (central rx time), t3 (central tx time), store generation + hash, flags (bit 0: sync allowed) | clock sync answer + store state |
-| `ARM` | C → P | cmdSeq, mode (HIT/AVOID/CHARGE/RELEASE), colorActive, colorAfter, startAtUs, waiting effect (≥ 2.8, appended, optional), hold parameters (≥ 2.9, appended, only CHARGE / RELEASE) | light up now (`startAtUs = 0`) or at a central-clock time |
+| `ARM` | C → P | cmdSeq, mode (HIT/AVOID/CHARGE/RELEASE/TOGGLE), colorActive, colorAfter, startAtUs, waiting effect (≥ 2.8, appended, optional), hold parameters (≥ 2.9, appended, only CHARGE / RELEASE), toggle parameters (≥ 2.10, appended, only TOGGLE) | light up now (`startAtUs = 0`) or at a central-clock time |
 | `RESET` | C → P | – | switch off, cancel a pending activation |
-| `PRESSED` | P → C | podId, cmdSeq, result (HIT/AVOID_HIT), reactionUs | button pressed while active. For CHARGE / RELEASE: a hold started (§2.2) |
+| `PRESSED` | P → C | podId, cmdSeq, result (HIT/AVOID_HIT), reactionUs, owner + flipCount (≥ 2.10, appended, only TOGGLE) | button pressed while active. For CHARGE / RELEASE: a hold started (§2.2). For TOGGLE: the pod flipped (§2.3) |
 | `RELEASED` (12) | P → C | podId, cmdSeq, flags, heldMs, reactionUs, chargeMs | end of a hold, measured on the peripheral (≥ 2.9, only for CHARGE / RELEASE, §2.2) |
 | `SYNC_READ_REQ` | either | reqId, offset, path (32 bytes) | read a chunk of a store file or of `@manifest` |
 | `SYNC_READ_RESP` | either | reqId, status, offset, total, len, data (≤ 200 bytes) | the chunk |
@@ -164,6 +164,36 @@ A release of an accumulating charge is not reported (the charge goes on); only `
 RELEASED is sent urgent with 8 retries, like PRESSED, and ordered after the PRESSED of the same hold.
 After RELEASED the pod keeps the ring as it is (flash, `colorAfter`) until the next ARM or RESET; the
 central sends RESET after every end except `full` (so the flash stays visible).
+
+### 2.3 Toggle activations (link protocol revision 3, firmware ≥ 2.10)
+
+Used by the `toggle` block (programs.md §7.15): the pod stays armed and flips between two team colours on every
+press. The flip happens **on the pod** at the press, so there is no round-trip latency; the central only learns
+of it. Only pods with the `toggle` link feature (§7, CLAIM_ACK bit 2) get such an ARM; the block leaves the
+others out of the game.
+
+**ARM** of a toggle activation (72 bytes) carries the waiting effect (the countdown over the game, may be `none`),
+the hold parameters (all zero, only there to keep the layout) and then the toggle parameters. `colorActive` is the
+colour of team A, `colorAfter` the colour of team B.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `startOwner` | u8 | `0` team A, `1` team B, `2` nobody (the ring is dark until the first press, which makes the pod A) |
+| `reserved` | u8 | 0 |
+| `cooldownMs` | u16 | minimum time between two flips of this pod. A press less than `cooldownMs` after the last accepted press (button timestamps) is ignored; the first press always counts |
+
+**PRESSED** has two appended fields: `owner` (u8, `0` A / `1` B, **after** this press) and `flipCount` (u16, accepted
+flips since the ARM, 1 for the first). `reactionUs` = activation → press. The owner is absolute: the central
+takes `owner` from the newest PRESSED it has seen, so a lost PRESSED (all retries failed) is corrected by the next one
+and `flipCount` still tells how many flips there were. A frame with a `flipCount` that is not above the last one (duplicate,
+reordered) is dropped.
+
+- The pod shows the owner's colour at once (`setLEDColors`). With a waiting effect (countdown) the effect is replayed
+  with the owner's colour as `color` and the **original start time**, so the animation does not restart on a flip.
+- The pod stays armed until RESET or the next ARM. The pod does not know the game length; the central ends the
+  game with a plain HIT ARM whose `colorActive` and `colorAfter` are the final colour, so the ring keeps the colour and
+  a press no longer flips it (the `PRESSED` of that ARM carries another `cmdSeq` and is ignored). `remoteResetAll` switches it off.
+- A toggle ARM shorter than 72 bytes is ignored.
 
 ## 3. Transport rules (`EspNowLink`)
 
@@ -335,15 +365,18 @@ firmware versions:
 |---|---|---|---|
 | 0 | `effects` | ≥ 2.8 | EFFECT frames and the ARM waiting effect (§2.1) |
 | 1 | `hold` | ≥ 2.9 | PodMode CHARGE / RELEASE, the hold parameters in ARM and the RELEASED frame (§2.2) |
+| 2 | `toggle` | ≥ 2.10 | PodMode TOGGLE, the toggle parameters in ARM and owner / flipCount in PRESSED (§2.3) |
 
 A central with older firmware ignores `linkFeatures` and never sends EFFECT or a hold ARM. A central with
 newer firmware treats a pod with older firmware as "no effects": blocks show a static colour
 on it instead. A pod without `hold` cannot measure holds: `charge` and `release` take their `timeout`
 port at once for it (programs.md §7.13, §7.14). A peripheral with firmware ≥ 2.9 that receives a CHARGE /
-RELEASE ARM without the hold parameters ignores it.
+RELEASE ARM without the hold parameters ignores it. A pod without `toggle` gets no TOGGLE ARM: the `toggle` block
+leaves it out of the game and logs a warning (programs.md §7.15).
 
 **Link protocol revision.** The header `version` (1) says whether pods can talk at all and never changes
 for compatible extensions. The *revision* counts the compatible extensions: revision 1 = firmware 2.0 … 2.8
-(effects came with 2.8 as a feature bit), **revision 2 = firmware 2.9** (hold reporting, feature bit 1). It is
+(effects came with 2.8 as a feature bit), revision 2 = firmware 2.9 (hold reporting, feature bit 1),
+**revision 3 = firmware 2.10** (toggle, feature bit 2). It is
 `Protocol::REVISION` and reported as `info.linkRevision` ([config-api.md](config-api.md) §5). The per-pod
-`hold` flag in `status.pods[]` tells whether a pod supports revision 2.
+`hold` and `toggle` flags in `status.pods[]` tell whether a pod supports revision 2 / 3.

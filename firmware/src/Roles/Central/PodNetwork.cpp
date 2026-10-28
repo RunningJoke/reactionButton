@@ -184,6 +184,10 @@ void PodNetwork::handlePressed(const RxFrame& frame, int16_t podId) {
     event.result = pressed->result;
     event.reactionUs = pressed->reactionUs;
     event.rxTimeUs = frame.rxUs;
+    if(frame.len >= sizeof(Pressed)) {      // appended by firmware >= 2.10, only meaningful for TOGGLE
+        event.owner = pressed->owner;
+        event.flipCount = pressed->flipCount;
+    }
     this->events.push_back(event);
 }
 
@@ -211,6 +215,10 @@ uint8_t PodNetwork::arm(uint8_t podId, const ArmCommand& command) {
     if(hold && !this->supportsHold(podId)) {
         return 0;   // the caller checks supportsHold first; an older pod would show a wrong mode
     }
+    bool toggle = command.mode == PodMode::TOGGLE;
+    if(toggle && !this->supportsToggle(podId)) {
+        return 0;   // as above, supportsToggle
+    }
     Pod& pod = this->pods[podId];
     pod.cmdSeq++;
 
@@ -223,10 +231,16 @@ uint8_t PodNetwork::arm(uint8_t podId, const ArmCommand& command) {
     arm.startAtUs = command.startAtUs;
     arm.waiting = command.waiting;
     arm.hold = command.hold;
+    arm.toggle = command.toggle;
     // the waiting effect is appended only when the pod plays it; otherwise it shows colorActive.
-    // The hold parameters follow the waiting effect, so a hold activation always sends both.
+    // The hold parameters follow the waiting effect, so a hold activation always sends both; the
+    // toggle parameters follow the hold parameters (zeroed for a toggle activation).
     bool withEffect = command.waiting.effect != EffectId::NONE && this->supportsEffects(podId);
-    uint8_t len = hold ? sizeof(arm) : (withEffect ? offsetof(Arm, hold) : offsetof(Arm, waiting));
+    if(toggle) {
+        memset(&arm.hold, 0, sizeof(arm.hold));
+    }
+    uint8_t len = toggle ? sizeof(arm) : hold ? offsetof(Arm, toggle)
+                : (withEffect ? offsetof(Arm, hold) : offsetof(Arm, waiting));
     this->link.send(pod.mac, &arm, len, 5, -1, true);
     return pod.cmdSeq;
 }
@@ -237,6 +251,10 @@ bool PodNetwork::supportsEffects(uint8_t podId) const {
 
 bool PodNetwork::supportsHold(uint8_t podId) const {
     return podId < this->pods.size() && (this->pods[podId].linkFeatures & LINK_FEATURE_HOLD) != 0;
+}
+
+bool PodNetwork::supportsToggle(uint8_t podId) const {
+    return podId < this->pods.size() && (this->pods[podId].linkFeatures & LINK_FEATURE_TOGGLE) != 0;
 }
 
 bool PodNetwork::effect(uint8_t podId, const EffectDesc& effect, int64_t startAtUs) {
@@ -287,6 +305,7 @@ void PodNetwork::describe(JsonArray out) const {
         entry["lastSeenMs"] = (uint32_t)((now - pod.lastSeenUs) / 1000);
         entry["effects"] = (pod.linkFeatures & LINK_FEATURE_EFFECTS) != 0;
         entry["hold"] = (pod.linkFeatures & LINK_FEATURE_HOLD) != 0;
+        entry["toggle"] = (pod.linkFeatures & LINK_FEATURE_TOGGLE) != 0;
 
         EspNowLink::LinkStats st;
         if(this->link.stats(pod.mac, st)) {

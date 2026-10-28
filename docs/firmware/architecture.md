@@ -228,6 +228,7 @@ repeat up to 32 times:
 | `effect` | `EffectBlock` | next |
 | `charge` | `ChargeBlock` (on `HoldBlock`) | next, released, early, full, timeout |
 | `release` | `ReleaseBlock` (on `HoldBlock`) | next, noHold, falseStart, timeout |
+| `toggle` | `ToggleBlock` | next, allA, allB |
 
 ### 6.4 Variables
 
@@ -248,6 +249,8 @@ load time. Unknown variables read as 0. Variables set by the system:
   activations, firmware ≥ 2.9) become `PodEvent`s of kind `RELEASED` with `flags`, `heldMs`, `chargeMs`.
   `HoldSession` (Link/) measures and animates a hold; the peripheral runs it for an ARM of mode CHARGE /
   RELEASE and the `charge` / `release` blocks run it for the central's own button.
+  PRESSED frames of a TOGGLE activation (firmware ≥ 2.10) also carry `owner` and `flipCount` into the `PodEvent`;
+  the `toggle` block keeps the owner and owned time per pod from them (programs.md §7.15).
 - Remote blocks get the `cmdSeq` back from `IPodNetwork::arm()` and only accept the event
   with the same pod and `cmdSeq`.
 - Blocks with `record` pass measurements to `Results`. Results prints a `RESULT,…` CSV

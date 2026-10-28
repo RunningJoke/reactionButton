@@ -89,6 +89,10 @@ void PeripheralRole::run() {
             break;
 
         case State::ACTIVE:
+            if(this->mode == PodMode::TOGGLE) {
+                this->runToggle();
+                break;
+            }
             if(button.pressCount() != this->pressCountAtActivation) {
                 int64_t reactionUs = button.lastPressTimeUs() - this->activatedUs;
                 LEDManager::getManager()->setLEDColors(this->colorAfter);
@@ -99,7 +103,7 @@ void PeripheralRole::run() {
                 pressed.cmdSeq = this->cmdSeq;
                 pressed.result = this->mode == PodMode::AVOID ? PressResult::AVOID_HIT : PressResult::HIT;
                 pressed.reactionUs = (int32_t)reactionUs;
-                this->link.send(this->centralMac, &pressed, sizeof(pressed), 8, -1, true);
+                this->link.send(this->centralMac, &pressed, offsetof(Pressed, owner), 8, -1, true);
 
                 this->state = State::DONE;
             }
@@ -114,6 +118,54 @@ void PeripheralRole::run() {
     }
 }
 
+// TOGGLE: a press flips the owner (locally, no round trip) unless the cooldown has not passed since the
+// last flip. PRESSED carries the absolute owner, so a lost frame is corrected by the next one.
+void PeripheralRole::runToggle() {
+    Button& button = Button::get();
+    if(button.pressCount() == this->pressCountAtActivation) {
+        return;
+    }
+    this->pressCountAtActivation = button.pressCount();     // several presses in one pass count once
+
+    int64_t pressUs = button.lastPressTimeUs();
+    if(this->toggleFlips > 0 && pressUs - this->toggleLastFlipUs < this->toggleCooldownUs) {
+        return;
+    }
+    this->toggleLastFlipUs = pressUs;
+    this->toggleFlips++;
+    this->toggleOwner = this->toggleOwner == OWNER_A ? OWNER_B : OWNER_A;
+    this->showToggleOwner();
+
+    Pressed pressed;
+    fillHeader(pressed.header, MsgType::PRESSED, this->setId);
+    pressed.podId = this->podId;
+    pressed.cmdSeq = this->cmdSeq;
+    pressed.result = PressResult::HIT;
+    pressed.reactionUs = (int32_t)(pressUs - this->activatedUs);
+    pressed.owner = this->toggleOwner;
+    pressed.flipCount = this->toggleFlips;
+    this->link.send(this->centralMac, &pressed, sizeof(pressed), 8, -1, true);
+}
+
+// The ring in the colour of the owner. A countdown keeps running across flips: it is timed from the
+// activation, so the effect with the new colour joins at the right point.
+void PeripheralRole::showToggleOwner() {
+    uint8_t color = this->toggleOwner == OWNER_A ? this->colorActive
+                  : this->toggleOwner == OWNER_B ? this->colorAfter : (uint8_t)Color::OFF;
+    LEDManager* leds = LEDManager::getManager();
+    if(this->hasWaitingEffect) {
+        EffectDesc effect = this->waitingEffect;
+        effect.color = color;
+        if(this->toggleEffectStartUs == 0) {
+            this->toggleEffectStartUs = this->waitingEffectStartUs != 0 ? this->waitingEffectStartUs : esp_timer_get_time();
+        }
+        if(leds->playEffect(effect, this->toggleEffectStartUs)) {
+            return;
+        }
+    }
+    leds->setLEDColors(color);
+}
+
 // CHARGE / RELEASE: report the hold start and the end of the hold
 void PeripheralRole::runHold() {
     HoldSession::Event event;
@@ -125,7 +177,7 @@ void PeripheralRole::runHold() {
             pressed.cmdSeq = this->cmdSeq;
             pressed.result = PressResult::HIT;
             pressed.reactionUs = event.reactionUs;
-            this->link.send(this->centralMac, &pressed, sizeof(pressed), 8, -1, true);
+            this->link.send(this->centralMac, &pressed, offsetof(Pressed, owner), 8, -1, true);
             continue;
         }
 
@@ -225,7 +277,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ClaimAck ack;
     fillHeader(ack.header, MsgType::CLAIM_ACK, this->setId);
     ack.podId = this->podId;
-    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD;
+    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
     if(this->state == State::UNCLAIMED) {
@@ -251,8 +303,13 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
     // CHARGE / RELEASE carry hold parameters (appended after the waiting effect, firmware >= 2.9).
     // A shorter ARM is ignored: the pod would not know what to measure.
     bool holdMode = arm.mode == PodMode::CHARGE || arm.mode == PodMode::RELEASE;
-    if(holdMode && frame.len < sizeof(Arm)) {
+    if(holdMode && frame.len < offsetof(Arm, toggle)) {
         ESP_LOGW(TAG, "hold ARM without parameters ignored");
+        return;
+    }
+    // TOGGLE carries its parameters after the (zeroed) hold parameters (firmware >= 2.10)
+    if(arm.mode == PodMode::TOGGLE && frame.len < sizeof(Arm)) {
+        ESP_LOGW(TAG, "toggle ARM without parameters ignored");
         return;
     }
 
@@ -277,6 +334,14 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
         this->holdCommand.colorAfter = arm.colorAfter;
         this->holdCommand.waiting = arm.waiting;
         this->holdCommand.hold = arm.hold;
+    }
+
+    if(arm.mode == PodMode::TOGGLE) {
+        this->toggleOwner = arm.toggle.startOwner <= OWNER_NONE ? arm.toggle.startOwner : OWNER_NONE;
+        this->toggleFlips = 0;
+        this->toggleCooldownUs = (int64_t)arm.toggle.cooldownMs * 1000;
+        this->toggleLastFlipUs = 0;
+        this->toggleEffectStartUs = 0;
     }
 
     int64_t now = esp_timer_get_time();
@@ -315,7 +380,9 @@ void PeripheralRole::activate() {
         this->state = State::HOLDING;
         return;
     }
-    if(!this->hasWaitingEffect || !leds->playEffect(this->waitingEffect, this->waitingEffectStartUs)) {
+    if(this->mode == PodMode::TOGGLE) {
+        this->showToggleOwner();
+    } else if(!this->hasWaitingEffect || !leds->playEffect(this->waitingEffect, this->waitingEffectStartUs)) {
         leds->setLEDColors(this->colorActive);
     }
     // measure from the moment the LED data was sent; only presses after this count
