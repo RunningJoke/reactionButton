@@ -530,6 +530,10 @@
         "domination": {
           "name": "Domination",
           "hint": "Zwei Teams drehen Pods per Tastendruck"
+        },
+        "report": {
+          "name": "An die App melden",
+          "hint": "Ergebnisse senden, auf Weiter, Wiederholen oder Stopp warten"
         }
       },
       "recipe": {

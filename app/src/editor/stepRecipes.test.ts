@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_VARIABLES, blockType, hasErrors, isObject, validateProgram, type Block, type Issue } from "@reactpod/program-model";
+import { BUILTIN_VARIABLES, PROGRAM_FORMAT, blockType, hasErrors, isObject, validateProgram, type Block, type Issue } from "@reactpod/program-model";
 import { DEFAULT_FILES } from "../defaults";
 import { Simulator } from "../simulator/engine";
 import { generateProgram } from "../wizard/generate";
@@ -35,7 +35,7 @@ const DOCS: [string, ProgramJson][] = [
 
 function validate(doc: ProgramJson) {
   const text = JSON.stringify(doc);
-  return validateProgram(PATH, (p) => (p === PATH ? text : DEFAULT_FILES[p]), { programFormat: 4 });
+  return validateProgram(PATH, (p) => (p === PATH ? text : DEFAULT_FILES[p]), { programFormat: PROGRAM_FORMAT });
 }
 
 const key = (i: Issue) => `${i.code}|${i.block ?? ""}|${i.field ?? ""}`;
@@ -174,6 +174,14 @@ describe("add a step: tiles", () => {
     expect(intentUnavailable("domination", { ...doc, peripherals: 0 })).toBe("noPods");
     const added = createStep("domination", doc);
     expect(ownBlocks(added.doc).find((b) => b.name === added.focus)).toMatchObject({ type: "toggle", durationMs: 30000 });
+  });
+
+  it("report needs format 5, runs on without a phone and reports the round's metric", () => {
+    const doc = DOCS[0]![1];
+    expect(intentUnavailable("report", doc, { programFormat: 4 })).toBe("needsFormat");
+    expect(intentUnavailable("report", doc, { programFormat: 5 })).toBeNull();
+    const added = createStep("report", doc);
+    expect(ownBlocks(added.doc).find((b) => b.name === added.focus)).toMatchObject({ type: "communicate", timeoutMs: 3000, metrics: ["reaction"] });
   });
 
   it("starts an empty program", () => {

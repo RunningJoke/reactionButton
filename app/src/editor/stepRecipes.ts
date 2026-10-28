@@ -32,6 +32,7 @@ export const INTENTS = [
   { id: "decide", type: "if" },
   { id: "repeat", type: "repeat" },
   { id: "results", type: "summary" },
+  { id: "report", type: "communicate" },
   { id: "off", type: "remoteResetAll" },
 ] as const;
 
@@ -332,6 +333,10 @@ export function createStep(intent: Intent, doc: ProgramJson, after?: string, opt
     }
     case "results":
       next = patch(next, name, { metric: metric ?? undefined });
+      break;
+    case "report":
+      // runs on after 3 s without a phone (programs.md §7.16); reports the round's metric
+      next = patch(next, name, { timeoutMs: 3000, metrics: metric ? [metric] : undefined });
       break;
     case "off":
       break;

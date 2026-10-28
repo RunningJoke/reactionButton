@@ -530,6 +530,10 @@
         "domination": {
           "name": "Domination",
           "hint": "Two teams flip pods by pressing them"
+        },
+        "report": {
+          "name": "Report to the app",
+          "hint": "Send the results, wait for continue, repeat or stop"
         }
       },
       "recipe": {
