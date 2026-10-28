@@ -3,7 +3,7 @@
  * (docs/firmware/programs.md). The schema describes the structure for other languages and editors;
  * `validateProgram` stays the authority (references between blocks, reachability, limits per pod).
  */
-import { BLOCK_TYPES, COMMON_FIELDS, TARGET_KEYWORDS, TIMER_FIELDS, type FieldDef } from "./blockTypes";
+import { BLOCK_TYPES, COMMON_FIELDS, MAX_LIST_ITEMS, MAX_NAME_CHARS, TARGET_KEYWORDS, TIMER_FIELDS, type FieldDef } from "./blockTypes";
 import { NAMED_COLORS } from "./colors";
 import { LED_COUNT, MAX_PATH, MAX_PERIPHERALS, PROGRAM_FORMAT, PROGRAM_FORMAT_VERSION } from "./limits";
 
@@ -79,6 +79,23 @@ function fieldSchema(field: FieldDef): Schema {
       return { type: "boolean", ...description };
     case "colorPair":
       return { type: "array", items: ref("namedColor"), minItems: 2, maxItems: 2, ...description };
+    case "metricList":
+      return { type: "array", items: { type: "string", minLength: 1, maxLength: MAX_NAME_CHARS }, maxItems: MAX_LIST_ITEMS, ...description };
+    case "variableList":
+      return { type: "array", items: ref("variableName"), maxItems: MAX_LIST_ITEMS, ...description };
+    case "editableMap":
+      return {
+        type: "object",
+        additionalProperties: {
+          type: "object",
+          required: ["min", "max"],
+          properties: { min: { type: "integer" }, max: { type: "integer" } },
+          additionalProperties: false,
+        },
+        propertyNames: { type: "string", minLength: 1, maxLength: MAX_NAME_CHARS },
+        maxProperties: MAX_LIST_ITEMS,
+        ...description,
+      };
   }
 }
 

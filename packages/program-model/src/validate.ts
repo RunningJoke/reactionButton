@@ -5,6 +5,8 @@
 import {
   blockType,
   COMMON_FIELDS,
+  MAX_LIST_ITEMS,
+  MAX_NAME_CHARS,
   MAX_TIMERS,
   PERIODIC_EFFECTS,
   TARGET_KEYWORDS,
@@ -79,6 +81,11 @@ export const ISSUE_CODES = [
   "toggleNeedsDuration",
   "toggleDurationBothForms",
   "countdownNotSupported",
+  "namesInvalid", // communicate: a metric or variable name is empty or longer than 32 characters
+  "namesTooMany", // communicate: more than 8 metrics, variables or editable variables
+  "variableNotDeclared", // communicate: vars / editable name is not a variable of the program
+  "editableInvalid", // communicate: editable is not an object of { min, max } integers with min <= max
+  "timeoutNegative", // communicate: timeoutMs below 0
   // warnings
   "noOutgoing",
   "unreachable",
@@ -243,8 +250,9 @@ export function validateProgram(path: string, source: FileSource, options: Valid
   }
 
   const known = knownVariables(resolved);
+  const declared = new Set(Object.keys(resolved.variables));
   for (const { file, block } of resolved.blocks) {
-    checkBlock(file, block, names, known, out, options, file === path);
+    checkBlock(file, block, names, known, declared, out, options, file === path);
   }
 
   if (resolved.blocks.length === 0) out.error("noBlocks", path);
@@ -296,6 +304,7 @@ function checkBlock(
   block: unknown,
   names: Map<string, string>,
   knownVars: Set<string>,
+  declared: ReadonlySet<string>,
   out: Collector,
   options: ValidateOptions,
   ownFile: boolean,
@@ -333,6 +342,7 @@ function checkBlock(
     }
   }
   checkTypeRules(def, block, file, at, out);
+  if (def.type === "communicate") checkCommunicate(block, file, at, out, declared);
 
   // ports
   let connected = false;
@@ -411,7 +421,77 @@ function checkField(
     case "colorPair":
       if (!Array.isArray(value) || value.length !== 2 || !value.every(isNamedColor)) out.error("colorsNotTwo", file, at(name));
       break;
+    case "metricList":
+    case "variableList":
+      checkNameList(value, name, file, at, out);
+      break;
+    case "editableMap":
+      checkEditable(value, name, file, at, out);
+      break;
   }
+}
+
+/** A metric or variable name of a communicate block: a non-empty string of at most MAX_NAME_CHARS characters. */
+const isListName = (value: unknown): value is string =>
+  typeof value === "string" && value !== "" && Array.from(value).length <= MAX_NAME_CHARS;
+
+function checkNameList(
+  value: unknown,
+  name: string,
+  file: string,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
+  out: Collector,
+) {
+  if (!Array.isArray(value) || !value.every(isListName)) {
+    out.error("namesInvalid", file, at(name, { max: MAX_NAME_CHARS }));
+  } else if (value.length > MAX_LIST_ITEMS) {
+    out.error("namesTooMany", file, at(name, { max: MAX_LIST_ITEMS }));
+  }
+}
+
+/** `editable`: variable name → `{ min, max }` with integers and min <= max (max 8 entries). */
+function checkEditable(
+  value: unknown,
+  name: string,
+  file: string,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
+  out: Collector,
+) {
+  if (!isObject(value)) {
+    out.error("editableInvalid", file, at(name));
+    return;
+  }
+  const entries = Object.entries(value);
+  if (!entries.every(([key]) => isListName(key))) out.error("namesInvalid", file, at(name, { max: MAX_NAME_CHARS }));
+  else if (entries.length > MAX_LIST_ITEMS) out.error("namesTooMany", file, at(name, { max: MAX_LIST_ITEMS }));
+  const valid = entries.every(([, range]) => {
+    const { min, max } = (isObject(range) ? range : {}) as { min?: unknown; max?: unknown };
+    return Number.isInteger(min) && Number.isInteger(max) && (min as number) <= (max as number);
+  });
+  if (!valid) out.error("editableInvalid", file, at(name));
+}
+
+/**
+ * communicate (programs.md §2): `vars` and the names of `editable` must be variables the program
+ * declares (also in includes; a block that writes a variable does not count). `timeoutMs` >= 0.
+ */
+function checkCommunicate(
+  block: Record<string, unknown>,
+  file: string,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
+  out: Collector,
+  declared: ReadonlySet<string>,
+) {
+  const used: [string, string[]][] = [
+    ["vars", Array.isArray(block.vars) ? block.vars.filter((v): v is string => typeof v === "string") : []],
+    ["editable", isObject(block.editable) ? Object.keys(block.editable) : []],
+  ];
+  for (const [field, names] of used) {
+    for (const variable of names) {
+      if (!declared.has(variable)) out.error("variableNotDeclared", file, at(field, { name: variable }));
+    }
+  }
+  if (typeof block.timeoutMs === "number" && block.timeoutMs < 0) out.error("timeoutNegative", file, at("timeoutMs"));
 }
 
 function checkTypeRules(
