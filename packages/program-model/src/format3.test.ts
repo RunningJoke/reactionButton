@@ -22,7 +22,7 @@ const timed = (type: string, fields: Record<string, unknown>) =>
 
 describe("program format 3", () => {
   it("is the app's format", () => {
-    expect(PROGRAM_FORMAT).toBe(3);
+    expect(PROGRAM_FORMAT).toBeGreaterThanOrEqual(3);
   });
 
   it("programFormatOf: effect and countdown fields need 3", () => {

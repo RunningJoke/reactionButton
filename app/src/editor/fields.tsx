@@ -107,6 +107,7 @@ export function ColorField({
   optional,
   defaultValue,
   label,
+  hide,
 }: {
   value: unknown;
   onChange: (value: Color | undefined) => void;
@@ -114,6 +115,8 @@ export function ColorField({
   optional?: boolean;
   defaultValue?: unknown;
   label: string;
+  /** named colours that are not offered (e.g. "off", or the other team's colour) */
+  hide?: readonly string[];
 }) {
   const { t } = useTranslation();
   const named = namedColor(value);
@@ -128,7 +131,7 @@ export function ColorField({
           {defaultValue !== undefined && <span className={styles.swatch} style={{ background: `rgb(${colorToRgb(defaultValue).join(",")})` }} />}
         </button>
       )}
-      {NAMED_COLORS.map((c) => (
+      {NAMED_COLORS.filter((c) => !hide?.includes(c)).map((c) => (
         <button
           key={c}
           type="button"

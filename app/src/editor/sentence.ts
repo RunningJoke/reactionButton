@@ -177,6 +177,16 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
       const after = block.goMs !== undefined ? time(block.goMs) : range(block.minGoMs, block.maxGoMs);
       return join(t("sentence.releaseSignal", { pod: where, color: color(block.goColor), time: after }), limit(block));
     }
+    case "toggle": {
+      const [a, b] = Array.isArray(block.colors) && block.colors.length === 2 ? block.colors : ["red", "blue"];
+      const duration = block.durationMs !== undefined ? time(block.durationMs) : range(block.minDurationMs, block.maxDurationMs);
+      const parts: string[] = [];
+      const start = typeof block.start === "string" ? block.start : "alternate";
+      if (start !== "alternate") parts.push(t(`sentence.toggleStart.${start}`, { a: color(a), b: color(b) }));
+      if (block.cooldownMs !== undefined) parts.push(t("sentence.toggleCooldown", { time: time(block.cooldownMs) }));
+      if (block.includeCentral === false) parts.push(t("sentence.withoutCentral"));
+      return join(t("sentence.toggle", { a: color(a), b: color(b), time: duration }), parts);
+    }
     case "effect": {
       const kind = (EFFECTS as readonly string[]).includes(String(block.effect)) ? String(block.effect) : "solid";
       const target = known(block.target);

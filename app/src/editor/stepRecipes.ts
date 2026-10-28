@@ -13,6 +13,7 @@
 import { BUILTIN_VARIABLES, blockType, isNamedColor, isObject, type Block, type Value } from "@reactpod/program-model";
 import { MISSES } from "../programs/recipes/fragments";
 import { DEFAULT_MAX_MS } from "./holdStep";
+import { DEFAULT_GAME_MS } from "./toggleStep";
 import { addStep, newBlockName, ownBlocks, uniqueName, type ProgramJson } from "./ops";
 import { detectLoops, entryOf, isCatchEarly, mainPort, stepFamily, stepList, stepNeighbours, type Step } from "./structure";
 
@@ -26,6 +27,7 @@ export const INTENTS = [
   { id: "race", type: "remoteMultiPress" },
   { id: "charge", type: "charge" },
   { id: "release", type: "release" },
+  { id: "domination", type: "toggle" },
   { id: "count", type: "setVariable" },
   { id: "decide", type: "if" },
   { id: "repeat", type: "repeat" },
@@ -184,7 +186,7 @@ export function intentUnavailable(
   const def = blockType(type)!;
   if (options.programFormat !== undefined && (def.minFormat ?? 1) > options.programFormat) return "needsFormat";
   if (options.supportedTypes && !options.supportedTypes.includes(type)) return "unsupported";
-  if ((intent === "pod" || intent === "race") && !(Number(doc.peripherals) > 0)) return "noPods";
+  if ((intent === "pod" || intent === "race" || intent === "domination") && !(Number(doc.peripherals) > 0)) return "noPods";
   if (intent === "results" && !recordedMetric(doc, options.after)) return "noMetric";
   return null;
 }
@@ -302,6 +304,10 @@ export function createStep(intent: Intent, doc: ProgramJson, after?: string, opt
       break;
     case "release":
       // letting go of the central goes on
+      break;
+    case "domination":
+      // red against blue for 30 s (the defaults of the block)
+      next = patch(next, name, { durationMs: DEFAULT_GAME_MS });
       break;
     case "race": {
       next = patch(next, name, { hitColor: previousColor(ctx, true), ...(limit ? fixedLimit(limit) : {}), record });

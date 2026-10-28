@@ -26,6 +26,7 @@ const program = (): ProgramJson => ({
     { name: "Glow", type: "effect", effect: "pulse", color: "blue", next: "Pause" },
     { name: "Charge", type: "charge", maxMs: 2000, next: "End" },
     { name: "Let", type: "release", next: "End" },
+    { name: "Game", type: "toggle", durationMs: 20000, next: "End" },
   ],
 });
 
@@ -100,6 +101,52 @@ describe("step sheet", () => {
     expect(screen.getByText("Shortest")).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: /Catch early presses/ }));
     expect(block("Pause").type).toBe("button");
+  });
+
+  it("domination: team colours, length, start, cooldown, results and countdown", () => {
+    render(<Harness name="Game" />);
+    const sheet = screen.getByRole("complementary");
+    expect(sheet.textContent).not.toMatch(/durationMs|cooldownMs|storeA|colors|allA/);
+    expect(screen.getByText(/Domination: red against blue for 20 s/)).toBeTruthy();
+    const team = (which: "A" | "B") => within(screen.getByRole("radiogroup", { name: `Colour of team ${which}` }));
+    // the other team's colour is not offered, off never
+    expect(team("A").queryByRole("radio", { name: "blue" })).toBeNull();
+    expect(team("A").queryByRole("radio", { name: "off" })).toBeNull();
+    fireEvent.click(team("A").getByRole("radio", { name: "green" }));
+    expect(block("Game").colors).toEqual(["green", "blue"]);
+    fireEvent.click(team("B").getByRole("radio", { name: "red" }));
+    expect(block("Game").colors).toEqual(["green", "red"]);
+    fireEvent.click(team("B").getByRole("radio", { name: "blue" }));
+    fireEvent.click(team("A").getByRole("radio", { name: "red" }));
+    expect(block("Game").colors).toBeUndefined(); // the default pair is not written
+    // start
+    const start = () => within(screen.getByRole("group", { name: "Who starts with which colour" }));
+    fireEvent.click(start().getByRole("button", { name: "All team B" }));
+    expect(block("Game").start).toBe("b");
+    fireEvent.click(start().getByRole("button", { name: "Take turns" }));
+    expect(block("Game").start).toBeUndefined();
+    // length: fixed | random
+    fireEvent.click(screen.getByRole("radio", { name: "Random between" }));
+    expect(block("Game")).toMatchObject({ minDurationMs: 20000, maxDurationMs: 40000 });
+    expect(block("Game").durationMs).toBeUndefined();
+    fireEvent.click(screen.getByRole("radio", { name: "Always the same" }));
+    expect(block("Game")).toMatchObject({ durationMs: 20000 });
+    expect(block("Game").minDurationMs).toBeUndefined();
+    // cooldown: steps of 0.1 s
+    fireEvent.click(screen.getByRole("button", { name: /More.*Pause between two presses/ }));
+    expect(block("Game").cooldownMs).toBe(400);
+    // results
+    fireEvent.click(screen.getByRole("switch", { name: /^Pods of team A/ }));
+    expect(block("Game").storeA).toBe("TEAM_A_PODS");
+    fireEvent.click(screen.getByRole("switch", { name: /^Number of flips/ }));
+    expect(block("Game").storeFlips).toBe("FLIPS");
+    fireEvent.click(screen.getByRole("switch", { name: /^Pods of team A/ }));
+    expect(block("Game").storeA).toBeUndefined();
+    // a countdown over the whole game is always possible
+    const countdown = screen.getByRole("switch", { name: /Show the time running out/ }) as HTMLInputElement;
+    expect(countdown.disabled).toBe(false);
+    fireEvent.click(countdown);
+    expect(block("Game").countdown).toBe("drain");
   });
 
   it("pod: chips choose the pod", () => {

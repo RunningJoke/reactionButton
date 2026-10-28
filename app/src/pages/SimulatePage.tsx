@@ -174,6 +174,12 @@ function Pods({ sim }: { sim: SimulationControls }) {
   );
 }
 
+/** "A · 3": the team of a pod in the domination game and its flips (OWNER_A = 0, OWNER_B = 1, nobody = 2). */
+function toggleText(toggle: NonNullable<PodView["toggle"]>, t: (key: string) => string): string {
+  const team = toggle.owner === 0 ? t("simulate.teamA") : toggle.owner === 1 ? t("simulate.teamB") : "–";
+  return `${team} · ${toggle.flips}`;
+}
+
 function PodButton({ pod, size, onPress, onRelease }: { pod: PodView; size: number; onPress: () => void; onRelease: () => void }) {
   const { t } = useTranslation();
   const down = useRef(false);
@@ -211,7 +217,7 @@ function PodButton({ pod, size, onPress, onRelease }: { pod: PodView; size: numb
         onKeyUp={(e) => (e.key === " " || e.key === "Enter") && end()}
         onBlur={end}
       >
-        <LedRing colors={pod.leds} size={size} title={label} subtitle={pod.state === "active" ? t("simulate.pressNow") : undefined} pressed={pod.held} />
+        <LedRing colors={pod.leds} size={size} title={label} subtitle={pod.toggle ? toggleText(pod.toggle, t) : pod.state === "active" ? t("simulate.pressNow") : undefined} pressed={pod.held} />
       </button>
     </div>
   );

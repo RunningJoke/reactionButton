@@ -13,7 +13,8 @@ export type FieldKind =
   | "enum"
   | "variable" /** name of a variable that is written */
   | "metric" /** name of a measurement metric */
-  | "bool";
+  | "bool"
+  | "colorPair"; /** exactly two named colours (toggle `colors`, programFormat 4) */
 
 export type FieldDef = {
   name: string;
@@ -67,7 +68,10 @@ export type PortRole =
   | "ifReleasedEarly" /** charge: released before the onset */
   | "ifFull" /** charge: full charge reached */
   | "ifNoHold" /** release: nobody held the pod */
-  | "ifFalseStart"; /** release (signal): released before the switch */
+  | "ifFalseStart" /** release (signal): released before the switch */
+  | "ifAllA" /** toggle: every pod has team A */
+  | "ifAllB" /** toggle: every pod has team B */
+  | "whenTimeOver"; /** toggle: the game time is over */
 
 export type BlockCategory = "light" | "wait" | "input" | "logic" | "remote" | "stats";
 
@@ -117,7 +121,7 @@ export const COUNTDOWNS = ["secret", "drain", "fill", "dim", "colorShift", "traf
  * limit and alone has `countdownTarget` (which pods show it). "timeout": the fields sit behind the
  * time-limit switch of blocks with `timeoutMs`.
  */
-function countdownFields(kind: "delay" | "timeout", from = false): readonly FieldDef[] {
+function countdownFields(kind: "delay" | "timeout" | "game", from = false): readonly FieldDef[] {
   const level: Pick<FieldDef, "level" | "group"> = kind === "timeout" ? { level: "switch", group: "timeLimit" } : { level: "more" };
   return [
     { name: "countdown", kind: "enum", options: COUNTDOWNS, default: "secret", ...level, minFormat: 3, rejectedByOlder: true },
@@ -131,6 +135,11 @@ function countdownFields(kind: "delay" | "timeout", from = false): readonly Fiel
       : []),
   ];
 }
+
+/** `start` of the toggle block (programs.md §2, programFormat 4). */
+export const TOGGLE_STARTS = ["alternate", "a", "b", "random", "off"] as const;
+/** The variables a toggle block can write at the end. */
+export const TOGGLE_STORES = ["storeA", "storeB", "storeTimeA", "storeTimeB", "storeFlips"] as const;
 
 /** Block types with a time limit besides `delay`, which always has one. */
 export const TIMEOUT_TYPES = ["button", "remotePress", "remoteMultiPress", "charge", "release"] as const;
@@ -351,6 +360,32 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
     ]),
   },
   {
+    // pods flip between two team colours on every press (issue #59, "domination")
+    type: "toggle",
+    category: "remote",
+    ports: ["next", "allA", "allB"],
+    portRoles: { next: "whenTimeOver", allA: "ifAllA", allB: "ifAllB" },
+    waits: true,
+    minFormat: 4,
+    fields: withTimers([
+      { name: "colors", kind: "colorPair", default: ["red", "blue"] },
+      { name: "durationMs", kind: "value" },
+      { name: "minDurationMs", kind: "value" },
+      { name: "maxDurationMs", kind: "value" },
+      { name: "start", kind: "enum", options: TOGGLE_STARTS, default: "alternate" },
+      { name: "cooldownMs", kind: "value", default: 300 },
+      { name: "pods", kind: "value", level: "more" },
+      { name: "includeCentral", kind: "bool", default: true, level: "more" },
+      { name: "syncStartMs", kind: "value", default: 20, level: "more" },
+      ...countdownFields("game"),
+      { name: "storeA", kind: "variable", level: "more" },
+      { name: "storeB", kind: "variable", level: "more" },
+      { name: "storeTimeA", kind: "variable", level: "more" },
+      { name: "storeTimeB", kind: "variable", level: "more" },
+      { name: "storeFlips", kind: "variable", level: "more" },
+    ]),
+  },
+  {
     // release as trigger, or release on a colour switch (issue #58)
     type: "release",
     category: "input",
@@ -416,7 +451,7 @@ export function blockFormatOf(block: unknown): number {
 }
 
 /**
- * The smallest program format revision (programs.md §6) a pod needs to run the program: 1, 2 or 3.
+ * The smallest program format revision (programs.md §6) a pod needs to run the program: 1 to 4.
  * Takes a program or fragment file (its own `blocks`), or a resolved program (`blocks` of
  * `{ file, block }`, includes too). Anything else needs revision 1.
  */

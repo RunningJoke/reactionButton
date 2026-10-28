@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://runningjoke.github.io/reactionButton/spec/program.schema.json",
-  "x-programFormat": 3,
+  "x-programFormat": 4,
   "title": "ReactPod program",
-  "description": "ReactPod program file (/prog/*.json), program format 3. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
+  "description": "ReactPod program file (/prog/*.json), program format 4. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
   "type": "object",
   "required": [
     "name"
@@ -200,6 +200,9 @@
         },
         {
           "$ref": "#/$defs/block_charge"
+        },
+        {
+          "$ref": "#/$defs/block_toggle"
         },
         {
           "$ref": "#/$defs/block_release"
@@ -993,6 +996,118 @@
           "description": "name of the next block"
         },
         "timeout": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        }
+      }
+    },
+    "block_toggle": {
+      "title": "toggle",
+      "description": "needs program format 4",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/blockName"
+        },
+        "type": {
+          "const": "toggle"
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/namedColor"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "default: [\"red\",\"blue\"]"
+        },
+        "durationMs": {
+          "$ref": "#/$defs/value"
+        },
+        "minDurationMs": {
+          "$ref": "#/$defs/value"
+        },
+        "maxDurationMs": {
+          "$ref": "#/$defs/value"
+        },
+        "start": {
+          "enum": [
+            "alternate",
+            "a",
+            "b",
+            "random",
+            "off"
+          ],
+          "description": "default: \"alternate\""
+        },
+        "cooldownMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 300"
+        },
+        "pods": {
+          "$ref": "#/$defs/value"
+        },
+        "includeCentral": {
+          "type": "boolean",
+          "description": "default: true"
+        },
+        "syncStartMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 20"
+        },
+        "countdown": {
+          "enum": [
+            "secret",
+            "drain",
+            "fill",
+            "dim",
+            "colorShift",
+            "trafficLight"
+          ],
+          "description": "default: \"secret\""
+        },
+        "countdownColor": {
+          "$ref": "#/$defs/namedColor",
+          "description": "default: \"red\""
+        },
+        "storeA": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeB": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeTimeA": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeTimeB": {
+          "$ref": "#/$defs/variableName"
+        },
+        "storeFlips": {
+          "$ref": "#/$defs/variableName"
+        },
+        "timerStart": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is entered"
+        },
+        "timerStop": {
+          "type": "string",
+          "minLength": 1,
+          "description": "timer name (program format 2): when the block is left, recorded as the metric of that name"
+        },
+        "next": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "allA": {
+          "$ref": "#/$defs/blockName",
+          "description": "name of the next block"
+        },
+        "allB": {
           "$ref": "#/$defs/blockName",
           "description": "name of the next block"
         }
