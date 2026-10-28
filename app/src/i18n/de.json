@@ -226,9 +226,9 @@
         "ifFull": "Wenn voll geladen",
         "ifNoHold": "Wenn niemand hält",
         "ifFalseStart": "Fehlstart",
-    "ifAllA": "Wenn Team A alle Pods hat",
-    "ifAllB": "Wenn Team B alle Pods hat",
-    "whenTimeOver": "Wenn die Zeit um ist"
+        "ifAllA": "Wenn Team A alle Pods hat",
+        "ifAllB": "Wenn Team B alle Pods hat",
+        "whenTimeOver": "Wenn die Zeit um ist"
       },
       "toStep": "Schritt {{n}}",
       "nextRound": "nächste Runde",
@@ -273,7 +273,8 @@
         "unknown": "Schritt",
         "effect": "Lichteffekt",
         "charge": "Halten zum Laden",
-        "release": "Loslassen"
+        "release": "Loslassen",
+        "toggle": "Domination"
       },
       "colour": "Farbe",
       "leds": "Welche LEDs",
@@ -424,6 +425,33 @@
         "goColour": "Farbe des Signals",
         "signalAfter": "Signal nach dem Halten"
       },
+      "toggle": {
+        "hint": "Jeder Tastendruck dreht einen Pod zwischen zwei Teamfarben. Es gewinnt das Team mit mehr Pods oder mehr Zeit.",
+        "teamA": "Farbe von Team A",
+        "teamB": "Farbe von Team B",
+        "length": "Dauer des Spiels",
+        "duration": "Spieldauer",
+        "start": "Wer startet mit welcher Farbe",
+        "starts": { "alternate": "Abwechselnd", "a": "Alle Team A", "b": "Alle Team B", "random": "Zufällig", "off": "Niemand" },
+        "startHint": {
+            "alternate": "Der erste Pod ist Team A, der zweite Team B und so weiter. Die Zentrale kommt zuletzt.",
+            "a": "Jeder Pod startet in der Farbe von Team A.",
+            "b": "Jeder Pod startet in der Farbe von Team B.",
+            "random": "Jeder Pod bekommt ein zufälliges Team.",
+            "off": "Pods starten dunkel. Der erste Druck macht einen Pod zu Team A."
+        },
+        "cooldown": "Pause zwischen zwei Drücken eines Pods",
+        "endHint": "Das Spiel endet, wenn die Zeit um ist. Es endet früher, wenn ein Team alle Pods hat und dieser Ausgang zu einem Schritt führt.",
+        "results": "Ergebnis merken",
+        "resultsHint": "Pods und Zeit werden pro Team gezählt. Die Zeit addiert sich über alle Pods.",
+        "result": {
+            "podsA": "Pods von Team A",
+            "podsB": "Pods von Team B",
+            "timeA": "Zeit von Team A",
+            "timeB": "Zeit von Team B",
+            "flips": "Anzahl der Wechsel"
+        }
+      },
       "enum": {
         "mode": {
           "release": "Loslassen beendet",
@@ -493,6 +521,10 @@
         "release": {
           "name": "Loslassen",
           "hint": "Das Loslassen ist das Ereignis, oder ein Startsignal"
+        },
+        "domination": {
+          "name": "Domination",
+          "hint": "Zwei Teams drehen Pods per Tastendruck"
         }
       },
       "recipe": {
@@ -747,7 +779,10 @@
     "ifReleasedEarly": "Wenn zu früh losgelassen",
     "ifFull": "Wenn voll geladen",
     "ifNoHold": "Wenn niemand hält",
-    "ifFalseStart": "Fehlstart"
+    "ifFalseStart": "Fehlstart",
+    "ifAllA": "Wenn Team A alle Pods hat",
+    "ifAllB": "Wenn Team B alle Pods hat",
+    "whenTimeOver": "Wenn die Zeit um ist"
   },
   "view": {
     "back": "Zurück",
@@ -790,6 +825,8 @@
   },
   "ports": {
     "next": "weiter",
+    "allA": "alle Team A",
+    "allB": "alle Team B",
     "pressed": "gedrückt",
     "short": "kurz",
     "long": "lang",
@@ -852,6 +889,10 @@
     "release": {
       "name": "Loslassen",
       "help": "Auslöser: Das Loslassen des gehaltenen Knopfs ist das Ereignis. Signal: Nach einer Zeit wechselt die Farbe und der Sportler lässt so schnell wie möglich los (Fehlstart, wenn zu früh). Auf Pods ab Firmware 2.9."
+    },
+    "toggle": {
+      "name": "Domination",
+      "help": "Pods bleiben an und wechseln bei jedem Druck zwischen zwei Teamfarben. Endet, wenn die Zeit um ist (next), oder wenn alle Pods Team A (allA) oder Team B (allB) sind. Auf Pods ab Firmware 2.10."
     }
   },
   "common": {
@@ -1066,6 +1107,39 @@
     },
     "storePercent": {
       "label": "Prozent in Variable speichern"
+    },
+    "colors": {
+      "label": "Teamfarben"
+    },
+    "durationMs": {
+      "label": "Spieldauer (ms)"
+    },
+    "minDurationMs": {
+      "label": "Kürzestes Spiel (ms)"
+    },
+    "maxDurationMs": {
+      "label": "Längstes Spiel (ms)"
+    },
+    "start": {
+      "label": "Startbesitzer"
+    },
+    "cooldownMs": {
+      "label": "Pause zwischen Drücken (ms)"
+    },
+    "storeA": {
+      "label": "Pods von Team A in Variable speichern"
+    },
+    "storeB": {
+      "label": "Pods von Team B in Variable speichern"
+    },
+    "storeTimeA": {
+      "label": "Zeit von Team A in Variable speichern"
+    },
+    "storeTimeB": {
+      "label": "Zeit von Team B in Variable speichern"
+    },
+    "storeFlips": {
+      "label": "Anzahl der Wechsel in Variable speichern"
     }
   },
   "ops": {
@@ -1455,6 +1529,11 @@
     }
   },
   "settingLabels": {
+    "teamAPods": "Pods von Team A",
+    "teamBPods": "Pods von Team B",
+    "teamATime": "Zeit von Team A",
+    "teamBTime": "Zeit von Team B",
+    "flips": "Wechsel",
     "rounds": "Runden",
     "runs": "Rundenzähler",
     "pause": "Pause",
@@ -1592,6 +1671,14 @@
       "chosenPod": "den gewählten Pod"
     },
     "withCountdown": "der Ring zählt herunter",
+    "toggle": "Domination: {{a}} gegen {{b}} für {{time}}",
+    "toggleCooldown": "{{time}} zwischen Drücken",
+    "toggleStart": {
+        "a": "alle starten {{a}}",
+        "b": "alle starten {{b}}",
+        "random": "zufälliger Start",
+        "off": "Pods starten dunkel"
+    },
     "charge": "{{pod}} halten zum Laden · voll nach {{time}}",
     "chargeAccumulate": "{{pod}} durch Halten laden, Loslassen pausiert · voll nach {{time}}",
     "releaseTrigger": "Warten, bis {{pod}} gehalten und losgelassen wird",

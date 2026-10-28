@@ -15,6 +15,7 @@ import { blockCategory, blockIcon } from "./blockStyle";
 import { COUNTDOWN_FIELDS, COUNTDOWN_STYLES, COUNTDOWN_TARGETS, countdownKind, countdownStyle, hasCountdownTime, setCountdown } from "./countdown";
 import { EFFECTS, effectKind, hasEnd, isPeriodic, isTimed, setEffectKind, setEffectTarget, setEndless, usesColor } from "./effectStep";
 import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, limitFieldOf, releaseMode, setChargeMode, setChargeStyle, setGoRandom, setHoldPod, setReleaseMode } from "./holdStep";
+import { DEFAULT_COOLDOWN_MS, DEFAULT_GAME_MS, MAX_COOLDOWN_MS, TOGGLE_RESULTS, TOGGLE_STARTS, durationIsRandom, setDurationRandom, setTeamColor, setToggleStart, teamColors, toggleStart } from "./toggleStep";
 import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
 import { isValidVariableName, ownBlocks, setBlockField, setProgramField, type ProgramJson } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
@@ -79,7 +80,7 @@ export function ProblemList({ issues }: { issues: readonly Issue[] }) {
 /**
  * A time in seconds: a number edits the step, a setting edits the setting (for the whole program).
  */
-function TimeValue({ label, value, doc, onField, apply, min = LIMIT.min }: { label: string; value: unknown; doc: ProgramJson; onField: (ms: number) => void; apply: Apply; min?: number }) {
+function TimeValue({ label, value, doc, onField, apply, min = LIMIT.min, max = LIMIT.max, step = LIMIT.step }: { label: string; value: unknown; doc: ProgramJson; onField: (ms: number) => void; apply: Apply; min?: number; max?: number; step?: number }) {
   const { t } = useTranslation();
   const vars = isObject(doc.variables) ? (doc.variables as Record<string, number>) : {};
   const fmt = (v: number) => secondsText(v, t);
@@ -88,12 +89,12 @@ function TimeValue({ label, value, doc, onField, apply, min = LIMIT.min }: { lab
     if (typeof v !== "number") return <p className={styles.hint}>{t("editor.step.fromSetting", { name: settingLabel(value, t).label })}</p>;
     return (
       <div className={styles.valueBox}>
-        <Stepper label={label} value={v} {...LIMIT} min={min} format={fmt} onChange={(n) => apply(setProgramField(doc, "variables", { ...vars, [value]: n }), `var.${value}`)} />
+        <Stepper label={label} value={v} {...LIMIT} min={min} max={max} step={step} format={fmt} onChange={(n) => apply(setProgramField(doc, "variables", { ...vars, [value]: n }), `var.${value}`)} />
         <p className={styles.hint}>{t("editor.step.settingHint", { name: settingLabel(value, t).label })}</p>
       </div>
     );
   }
-  return <Stepper label={label} value={typeof value === "number" ? value : min} {...LIMIT} min={min} format={fmt} onChange={onField} />;
+  return <Stepper label={label} value={typeof value === "number" ? value : min} {...LIMIT} min={min} max={max} step={step} format={fmt} onChange={onField} />;
 }
 
 /** A count (rounds, red pods): number or setting, like TimeValue. */
@@ -305,6 +306,8 @@ function Essentials({ block, doc, set, apply, labelOf, variables }: FieldProps &
       return <ChargeFields block={block} doc={doc} set={set} apply={apply} />;
     case "release":
       return <ReleaseFields block={block} doc={doc} set={set} apply={apply} />;
+    case "toggle":
+      return <ToggleFields block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -693,6 +696,69 @@ function ReleaseFields({ block, doc, set, apply }: FieldProps) {
   );
 }
 
+/* ---------------------------------------------------------------- domination */
+
+/** Essentials of "Domination": the two team colours, game length, who starts with which team, cooldown, results. */
+function ToggleFields({ block, doc, set, apply, labelOf }: FieldProps & { labelOf: (v: string) => string }) {
+  const { t } = useTranslation();
+  const d = (key: string, o?: Record<string, unknown>) => t(`editor.step.toggle.${key}`, o);
+  const [colorA, colorB] = teamColors(block);
+  const random = durationIsRandom(block);
+  const start = toggleStart(block);
+  return (
+    <>
+      <p className={styles.hint}>{d("hint")}</p>
+      <Field label={d("teamA")}>
+        <ColorField value={colorA} hide={["off", colorB]} label={d("teamA")} onChange={(c) => apply(setTeamColor(doc, block.name, 0, typeof c === "string" ? c : undefined))} />
+      </Field>
+      <Field label={d("teamB")}>
+        <ColorField value={colorB} hide={["off", colorA]} label={d("teamB")} onChange={(c) => apply(setTeamColor(doc, block.name, 1, typeof c === "string" ? c : undefined))} />
+      </Field>
+      <Segmented
+        label={d("length")}
+        value={random ? "random" : "fixed"}
+        options={[
+          { value: "fixed", label: t("editor.step.fixed") },
+          { value: "random", label: t("editor.step.random") },
+        ]}
+        onChange={(v) => apply(setDurationRandom(doc, block.name, v === "random"))}
+      />
+      {random ? (
+        <div className={styles.pair}>
+          <TimeValue label={t("editor.step.shortest")} value={block.minDurationMs} doc={doc} apply={apply} min={1000} onField={(ms) => set("minDurationMs", ms)} />
+          <TimeValue label={t("editor.step.longest")} value={block.maxDurationMs} doc={doc} apply={apply} min={1000} onField={(ms) => set("maxDurationMs", ms)} />
+        </div>
+      ) : (
+        <TimeValue label={d("duration")} value={block.durationMs ?? DEFAULT_GAME_MS} doc={doc} apply={apply} min={1000} onField={(ms) => set("durationMs", ms)} />
+      )}
+      <Field label={d("start")}>
+        <div className={styles.chips}>
+          {TOGGLE_STARTS.map((k) => (
+            <button key={k} type="button" className={inspector.chip} aria-pressed={start === k} onClick={() => apply(setToggleStart(doc, block.name, k))}>
+              {d(`starts.${k}`)}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <p className={styles.hint}>{d(`startHint.${start}`)}</p>
+      <TimeValue label={d("cooldown")} value={block.cooldownMs ?? DEFAULT_COOLDOWN_MS} doc={doc} apply={apply} min={0} max={MAX_COOLDOWN_MS} step={100} onField={(ms) => set("cooldownMs", ms)} />
+      <p className={styles.hint}>{d("endHint")}</p>
+      <Field label={d("results")}>
+        <p className={styles.hint}>{d("resultsHint")}</p>
+        {TOGGLE_RESULTS.map(([field, variable, key]) => (
+          <SwitchRow
+            key={field}
+            label={d(`result.${key}`)}
+            hint={typeof block[field] === "string" ? t("editor.step.keptIn", { name: labelOf(block[field] as string) }) : undefined}
+            checked={typeof block[field] === "string"}
+            onChange={(on) => set(field, on ? variable : undefined, false)}
+          />
+        ))}
+      </Field>
+    </>
+  );
+}
+
 /* ---------------------------------------------------------------- light effect */
 
 /** Essentials of the "Light effect" step: effect, colour, where, how long, wait. */
@@ -816,7 +882,7 @@ function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps 
   const { t } = useTranslation();
   // colour shift asks for its second colour above; only blink, spin, fill and drain have a background
   const mode = block.type === "release" ? releaseMode(block) : block.type === "charge" ? chargeMode(block) : undefined;
-  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "charge" ? ["color2"] : []), ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
+  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "toggle" ? TOGGLE_RESULTS.map((r) => r[0]) : []), ...(block.type === "charge" ? ["color2"] : []), ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
   const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name) && (f.onlyMode === undefined || f.onlyMode === mode));
   if (fields.length === 0) return null;
   const used = fields.some((f) => block[f.name] !== undefined);

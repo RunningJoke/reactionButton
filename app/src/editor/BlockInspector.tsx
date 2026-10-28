@@ -5,6 +5,7 @@ import { Sheet } from "../components/Sheet";
 import { BLOCK_TYPES, blockType, SET_OPS, type FieldDef } from "@reactpod/program-model";
 import type { Block } from "@reactpod/program-model";
 import { blockCategory, blockIcon } from "./blockStyle";
+import { teamColors } from "./toggleStep";
 import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
 import { changeBlockType, deleteBlock, duplicateBlock, isValidBlockName, renameBlock, setBlockField, setProgramField, type ProgramJson } from "./ops";
 import styles from "./Inspector.module.css";
@@ -239,6 +240,18 @@ function FieldRow({ field, block, ctx, onChange }: { field: FieldDef; block: Blo
       );
       break;
     }
+    case "colorPair": {
+      // toggle `colors`: the colours of team A and B
+      const pair = teamColors(block);
+      input = (
+        <>
+          {([0, 1] as const).map((i) => (
+            <ColorField key={i} value={pair[i]} hide={["off"]} label={`${label} ${i === 0 ? "A" : "B"}`} onChange={(c) => onChange(pair.map((p, j) => (j === i ? (c ?? p) : p)), false)} />
+          ))}
+        </>
+      );
+      break;
+    }
     case "variable":
       input = <SuggestField value={value} onChange={onChange} suggestions={ctx.variables} placeholder={placeholder} label={label} />;
       break;
@@ -263,7 +276,8 @@ function FieldRow({ field, block, ctx, onChange }: { field: FieldDef; block: Blo
 function PortRow({ port, block, ctx, hasNext }: { port: string; block: Block; ctx: InspectorContext; hasNext: boolean }) {
   const { t } = useTranslation();
   const target = typeof block[port] === "string" ? (block[port] as string) : "";
-  const fallsBack = hasNext && port !== "next" && typeof block.next === "string";
+  // the toggle block's allA / allB do not fall back to next: the game goes on (programs.md §7.15)
+  const fallsBack = hasNext && port !== "next" && typeof block.next === "string" && block.type !== "toggle";
   return (
     <div className={styles.portRow}>
       <span className={styles.port}>{t(`ports.${port}`)}</span>

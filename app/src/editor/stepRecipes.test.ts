@@ -35,7 +35,7 @@ const DOCS: [string, ProgramJson][] = [
 
 function validate(doc: ProgramJson) {
   const text = JSON.stringify(doc);
-  return validateProgram(PATH, (p) => (p === PATH ? text : DEFAULT_FILES[p]), { programFormat: 3 });
+  return validateProgram(PATH, (p) => (p === PATH ? text : DEFAULT_FILES[p]), { programFormat: 4 });
 }
 
 const key = (i: Issue) => `${i.code}|${i.block ?? ""}|${i.field ?? ""}`;
@@ -164,6 +164,16 @@ describe("add a step: tiles", () => {
     expect(intentUnavailable("repeat", doc)).toBeNull();
     expect(intentUnavailable("race", doc, { supportedTypes: ["led", "delay"] })).toBe("unsupported");
     expect(intentUnavailable("pod", doc)).toBe("noPods");
+  });
+
+  it("domination needs format 4 and pods", () => {
+    const doc = { ...DOCS[1]![1], peripherals: 2 };
+    expect(intentUnavailable("domination", doc, { programFormat: 3 })).toBe("needsFormat");
+    expect(intentUnavailable("domination", doc, { programFormat: 4 })).toBeNull();
+    expect(intentUnavailable("domination", doc, { supportedTypes: ["led", "delay"] })).toBe("unsupported");
+    expect(intentUnavailable("domination", { ...doc, peripherals: 0 })).toBe("noPods");
+    const added = createStep("domination", doc);
+    expect(ownBlocks(added.doc).find((b) => b.name === added.focus)).toMatchObject({ type: "toggle", durationMs: 30000 });
   });
 
   it("starts an empty program", () => {

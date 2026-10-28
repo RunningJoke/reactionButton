@@ -92,6 +92,15 @@ export function blockSummary(block: Block, t: (key: string, options?: Record<str
       if (typeof block.record === "string") parts.push(text(`● ${block.record}`));
       return parts;
     }
+    case "toggle": {
+      const [a, b] = Array.isArray(block.colors) && block.colors.length === 2 ? block.colors : ["red", "blue"];
+      const parts: SummaryPart[] = [
+        { kind: "color", color: a, label: colorLabel(a) },
+        { kind: "color", color: b, label: colorLabel(b) },
+        text(block.durationMs !== undefined ? ms(block.durationMs) : range(block.minDurationMs, block.maxDurationMs)),
+      ];
+      return parts;
+    }
     default:
       return [];
   }
