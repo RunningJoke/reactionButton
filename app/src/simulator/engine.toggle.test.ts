@@ -167,8 +167,8 @@ describe("toggle block", () => {
     sim.advance(1);
     expect(entered(sim).slice(0, 2)).toEqual(["G", "RedWins"]);
     expect(vars(sim)).toMatchObject({ PA: 3, PB: 0, F: 3 });
-    expect(vars(sim).TB).toBeGreaterThan(0);
-    expect(vars(sim).TA + vars(sim).TB).toBeLessThan(3 * 10000);
+    expect(vars(sim).TB!).toBeGreaterThan(0);
+    expect(vars(sim).TA! + vars(sim).TB!).toBeLessThan(3 * 10000);
   });
 
   it("an unconnected allA / allB does not fall back to next: the game goes on", () => {

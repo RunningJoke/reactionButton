@@ -225,7 +225,10 @@
         "ifReleasedEarly": "Wenn zu früh losgelassen",
         "ifFull": "Wenn voll geladen",
         "ifNoHold": "Wenn niemand hält",
-        "ifFalseStart": "Fehlstart"
+        "ifFalseStart": "Fehlstart",
+    "ifAllA": "Wenn Team A alle Pods hat",
+    "ifAllB": "Wenn Team B alle Pods hat",
+    "whenTimeOver": "Wenn die Zeit um ist"
       },
       "toStep": "Schritt {{n}}",
       "nextRound": "nächste Runde",
@@ -725,7 +728,10 @@
     "goTimeBothForms": "Nimm entweder eine feste Zeit oder eine kürzeste und eine längste Zeit, nicht beides",
     "podSingleOnly": "Dieser Schritt braucht genau einen Pod (\"central\" oder eine Zahl), nicht {{value}}",
     "maxMsTooSmall": "Die Zeit für eine volle Ladung muss mindestens {{min}} ms betragen",
-    "countdownTargetNotDelay": "Nur eine Pause kann wählen, wo der Countdown angezeigt wird"
+    "countdownTargetNotDelay": "Nur eine Pause kann wählen, wo der Countdown angezeigt wird",
+    "colorsNotTwo": "Wähle genau zwei Teamfarben (rot, grün, blau, gelb, magenta, cyan oder weiß)",
+    "toggleNeedsDuration": "Lege die Spieldauer fest: eine feste Zeit oder eine kürzeste und eine längste Zeit",
+    "toggleDurationBothForms": "Nimm entweder eine feste Spieldauer oder eine kürzeste und eine längste, nicht beides"
   },
   "portRoles": {
     "then": "Dann",

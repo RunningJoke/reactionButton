@@ -32,9 +32,15 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9"), and `status` has no `timers`.
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10"), and `status` has no `timers`.
    */
   programFormat?: number;
+  /**
+   * Number of connected peripherals: central `status` then lists `pods[]` (config-api.md §5) with the
+   * link features of the pods' firmware (`effects`, `hold` from format 3, `toggle` from format 4).
+   * Default: no `pods` in `status`.
+   */
+  pods?: number;
 };
 
 /** Reports the central keeps until they are acknowledged (#41). */
@@ -60,6 +66,7 @@ export class SimulatedPod {
   generation: number;
   firmware: string;
   readonly programFormat: number;
+  readonly podCount: number | undefined;
   blockTypes: string[];
   /** `status.timers.orphanStops` while a game runs (RUN / PAUSED, programs.md §7.9); set by tests and demos */
   orphanStops = 0;
@@ -93,7 +100,9 @@ export class SimulatedPod {
     this.setId = options.setId ?? "5f3a91c2";
     this.generation = options.generation ?? 1;
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
-    this.firmware = options.firmware ?? (this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+    this.podCount = options.pods;
+    this.firmware =
+      options.firmware ?? (this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -197,8 +206,8 @@ export class SimulatedPod {
     return {
       firmware: this.firmware,
       linkProtocol: 1,
-      // firmware >= 2.9: hold reporting (link protocol revision 2, config-api.md)
-      ...(this.programFormat >= 3 ? { linkRevision: 2 } : {}),
+      // firmware >= 2.9: hold reporting (link protocol revision 2), >= 2.10: toggle (revision 3), config-api.md
+      ...(this.programFormat >= 3 ? { linkRevision: this.programFormat >= 4 ? 3 : 2 } : {}),
       setId: this.setId,
       setName: this.setName,
       pinRequired: this.pin !== "",
@@ -214,7 +223,9 @@ export class SimulatedPod {
       features: [
         "validateInline",
         "listMeta",
+        ...(this.programFormat >= 2 ? ["effects"] : []),
         ...(this.programFormat >= 3 ? ["hold"] : []),
+        ...(this.programFormat >= 4 ? ["toggle"] : []),
         ...(this.results ? ["reports", "remote"] : []),
       ],
       blockTypes: this.blockTypes,
@@ -232,6 +243,19 @@ export class SimulatedPod {
       // central in a game, firmware ≥ 2.8 (config-api.md §5)
       ...(this.role === "central" && (this.state === "RUN" || this.state === "PAUSED") && this.programFormat >= 2
         ? { timers: { orphanStops: this.orphanStops } }
+        : {}),
+      ...(this.role === "central" && this.podCount !== undefined
+        ? {
+            pods: Array.from({ length: this.podCount }, (_, id) => ({
+              id,
+              mac: `24:6f:28:00:00:${id.toString(16).padStart(2, "0")}`,
+              alive: true,
+              lastSeenMs: 40,
+              effects: this.programFormat >= 2,
+              ...(this.programFormat >= 3 ? { hold: true } : {}),
+              ...(this.programFormat >= 4 ? { toggle: true } : {}),
+            })),
+          }
         : {}),
       ...(this.results ? { athlete: this.athlete, reports: { pending: this.pendingReports.length, dropped: this.droppedReports } } : {}),
     };

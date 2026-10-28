@@ -84,13 +84,35 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.9 fields in info: program format 3 with the effect block", () => {
+  it("reports the firmware 2.10 fields in info: program format 4 with the toggle block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.9", setName: "Halle 2", pinRequired: false, programFormat: 3 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "hold"]); // hold reporting, link revision 2
-    expect(info.linkRevision).toBe(2);
+    expect(info).toMatchObject({ firmware: "2.10", setName: "Halle 2", pinRequired: false, programFormat: 4 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle"]);
+    expect(info.linkRevision).toBe(3);
     expect(info.blockTypes).toContain("repeat");
-    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release"]));
+    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle"]));
+  });
+
+  it("simulates a central with programFormat 3: no toggle block, link revision 2", () => {
+    const pod = new SimulatedPod({ programFormat: 3, pods: 2 });
+    const info = call(pod, { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.9", programFormat: 3, linkRevision: 2 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold"]);
+    expect(info.blockTypes).not.toContain("toggle");
+    expect(call(pod, { op: "status" }).pods).toMatchObject([{ id: 0, hold: true }, { id: 1, hold: true }]);
+    expect((call(pod, { op: "status" }).pods as Record<string, unknown>[])[0]).not.toHaveProperty("toggle");
+  });
+
+  it("lists status.pods[].toggle and accepts a toggle program; a format 3 pod rejects it", () => {
+    const pod = new SimulatedPod({ files: DEFAULT_FILES, pods: 2 });
+    expect(call(pod, { op: "status" }).pods).toMatchObject([{ id: 0, toggle: true }, { id: 1, toggle: true }]);
+    expect(call(pod, { op: "validate", path: "/prog/domination.json" })).toMatchObject({ ok: true });
+    const old = new SimulatedPod({ files: DEFAULT_FILES, programFormat: 3 });
+    expect(call(old, { op: "validate", path: "/prog/domination.json" })).toMatchObject({ ok: false, error: "invalid_program" });
+  });
+
+  it("has no pods list in status unless it is asked for", () => {
+    expect(call(new SimulatedPod(), { op: "status" })).not.toHaveProperty("pods");
   });
 
   it("simulates a central with programFormat 2: no effect block", () => {
@@ -225,7 +247,7 @@ describe("SimulatedPod (demo of reports and remote control, #41 / #42)", () => {
 
   it("keeps 8 reports until ack, tags the athlete, answers commands only while waiting", () => {
     const pod = new SimulatedPod({ results: true });
-    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "hold", "reports", "remote"]);
+    expect(call(pod, { op: "info" }).features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote"]);
     expect(call(pod, { op: "command", name: "continue" })).toMatchObject({ error: "not_ready" });
     expect(call(pod, { op: "session", athlete: "ath_42" })).toMatchObject({ ok: true, athlete: "ath_42" });
     for (let i = 0; i < 9; i++) pod.emitSampleReport(() => 0.5);
