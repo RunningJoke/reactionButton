@@ -264,30 +264,128 @@ class Network {
   }
 }
 
+export type Stats = { count: number; average: number; best: number; worst: number };
+
+function summarize(values: readonly number[]): Stats {
+  const count = values.length;
+  const sum = values.reduce((a, b) => a + b, 0);
+  return {
+    count,
+    average: count ? Math.trunc(sum / count) : 0,
+    best: count ? Math.min(...values) : 0,
+    worst: count ? Math.max(...values) : 0,
+  };
+}
+
+/** Measurement log of a communicate report: at most this many values are listed (programs.md §7.16). */
+const REPORT_LOG_LIMIT = 48;
+/** Reports the central keeps until they are acknowledged (programs.md §7.16). */
+const REPORT_BUFFER = 8;
+
 class Results {
   private readonly metrics = new Map<string, number[]>();
   readonly all: Measurement[] = [];
+  /** since the last report: the first values in order (listed in the report) … */
+  private periodLog: Measurement[] = [];
+  /** … values beyond the log (counted in valuesDropped, still in the stats) */
+  private periodDropped = 0;
+  /** every value since the last report, per metric, for the report's stats */
+  private readonly periodValues = new Map<string, number[]>();
 
   record(t: number, metric: string, pod: number, ms: number) {
     this.metrics.set(metric, [...(this.metrics.get(metric) ?? []), ms]);
     this.all.push({ t, metric, pod, ms });
+    this.periodValues.set(metric, [...(this.periodValues.get(metric) ?? []), ms]);
+    if (this.periodLog.length < REPORT_LOG_LIMIT) this.periodLog.push({ t, metric, pod, ms });
+    else this.periodDropped++;
   }
-  stats(metric: string) {
-    const values = this.metrics.get(metric) ?? [];
-    const count = values.length;
-    const sum = values.reduce((a, b) => a + b, 0);
-    return {
-      count,
-      average: count ? Math.trunc(sum / count) : 0,
-      best: count ? Math.min(...values) : 0,
-      worst: count ? Math.max(...values) : 0,
-    };
+  stats(metric: string): Stats {
+    return summarize(this.metrics.get(metric) ?? []);
   }
   reset(metric: string) {
     this.metrics.delete(metric);
   }
   names() {
     return [...this.metrics.keys()];
+  }
+  /**
+   * The period of a report (programs.md §7.16 steps 1 and 2): the listed values (empty or missing
+   * `metrics` = all), the stats per listed metric with values, the dropped count; then the log is cleared.
+   */
+  takePeriod(metrics: readonly string[] | undefined): { values: Measurement[]; stats: Record<string, Stats>; dropped: number } {
+    const listed = (metric: string) => !metrics || metrics.length === 0 || metrics.includes(metric);
+    const values = this.periodLog.filter((m) => listed(m.metric));
+    const stats: Record<string, Stats> = {};
+    for (const [metric, list] of this.periodValues) if (listed(metric) && list.length > 0) stats[metric] = summarize(list);
+    const dropped = this.periodDropped;
+    this.periodLog = [];
+    this.periodDropped = 0;
+    this.periodValues.clear();
+    return { values, stats, dropped };
+  }
+}
+
+export type Report = {
+  id: number;
+  program: string;
+  setId: string;
+  athlete?: string;
+  cycle: number;
+  startMs: number;
+  endMs: number;
+  values: Measurement[];
+  stats: Record<string, Stats>;
+  vars: Record<string, number>;
+  valuesDropped?: number;
+};
+
+/** The central's report buffer (programs.md §7.16): RAM, ids count from 1 and are not reused until a reboot. */
+class Reports {
+  readonly pending: Report[] = [];
+  dropped = 0;
+  private nextId = 1;
+  private cycle = 0;
+  /** time of the previous report, or of the program start */
+  private since = 0;
+
+  constructor(
+    private readonly program: string,
+    private readonly setId: string,
+    private readonly athlete: string,
+  ) {}
+
+  /** A program start: the cycles and the start of the first report begin again; the buffer stays. */
+  start() {
+    this.cycle = 0;
+    this.since = 0;
+  }
+
+  build(now: number, period: ReturnType<Results["takePeriod"]>, vars: Record<string, number>): Report {
+    const report: Report = {
+      id: this.nextId++,
+      program: this.program,
+      setId: this.setId,
+      ...(this.athlete ? { athlete: this.athlete } : {}),
+      cycle: ++this.cycle,
+      startMs: this.since,
+      endMs: now,
+      values: period.values,
+      stats: period.stats,
+      vars,
+      ...(period.dropped > 0 ? { valuesDropped: period.dropped } : {}),
+    };
+    this.since = now;
+    this.pending.push(report);
+    if (this.pending.length > REPORT_BUFFER) {
+      this.pending.shift();
+      this.dropped++;
+    }
+    return report;
+  }
+
+  /** `ack`: removes the report and all older ones. */
+  ack(reportId: number) {
+    while (this.pending.length > 0 && this.pending[0]!.id <= reportId) this.pending.shift();
   }
 }
 
@@ -302,8 +400,23 @@ type Ctx = {
   results: Results;
   random: Random;
   centralPodId: number;
+  reports: Reports;
+  /** a paused block is entered again (restartCurrentBlock): no second report (programs.md §7.16) */
+  resuming: boolean;
   log: (kind: LogKind, text: string) => void;
 };
+
+/** A client command answering a waiting communicate block (config-api.md §5 `command`). */
+export type Command = "continue" | "repeat" | "stop";
+
+/** What a client sees of a waiting communicate block: its report and the editable variables. */
+export type CommunicateView = {
+  block: string;
+  report: Report;
+  editable: Record<string, { min: number; max: number; value: number }>;
+};
+
+export type SetVariablesError = "not_ready" | "not_editable" | "out_of_range";
 
 /* ------------------------------------------------------------------ blocks */
 
@@ -331,7 +444,26 @@ type SimBlock = {
   pendingLight?: () => number | undefined;
   /** toggle: owner and flips of the central while the game runs */
   centralToggle?: () => { owner: number; flips: number } | null;
+  /** communicate: a client command answers the waiting block; false when nothing waits */
+  command?: (name: Command) => boolean;
+  /** communicate: the waiting block's report and editable variables, null when nothing waits */
+  view?: (ctx: Ctx) => CommunicateView | null;
 };
+
+/** `metrics` / `vars` of a communicate block: a list of names (the model limits it to 8). */
+function nameList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((n): n is string => typeof n === "string") : [];
+}
+
+/** `editable` of a communicate block: variable name → { min, max } (integers). */
+function editableOf(value: unknown): Record<string, { min: number; max: number }> {
+  const out: Record<string, { min: number; max: number }> = {};
+  if (!isObject(value)) return out;
+  for (const [name, range] of Object.entries(value)) {
+    if (isObject(range) && Number.isInteger(range.min) && Number.isInteger(range.max)) out[name] = { min: range.min as number, max: range.max as number };
+  }
+  return out;
+}
 
 const randomBetween = (random: Random, min: number, max: number) => {
   const lo = Math.max(0, min);
@@ -1229,6 +1361,68 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
       };
     }
 
+    case "communicate": {
+      // programs.md §7.16: enter builds the report and keeps it in the buffer, then waits for a client
+      // command, a press of the central's button or the timeout (in that order)
+      const metrics = nameList(raw.metrics);
+      const varNames = nameList(raw.vars);
+      const editable = editableOf(raw.editable);
+      const color = colorToRgb(raw.color ?? "cyan");
+      const portOf: Record<Command, string> = { continue: "next", repeat: "repeat", stop: "stop" };
+      /** the report of this entry while the block waits; null when it is not waiting */
+      let report: Report | null = null;
+      let answer: string | null = null;
+      let countAtEnter = 0;
+      let enterTime = 0;
+      let timeout = 0;
+      return {
+        ...base,
+        programStart: () => {
+          report = null;
+          answer = null;
+        },
+        enter: (ctx) => {
+          // a resumed block (restartCurrentBlock) keeps its report, its press baseline and builds no second one
+          if (!ctx.resuming) {
+            countAtEnter = ctx.button.pressCount;
+            const period = ctx.results.takePeriod(metrics);
+            const vars = Object.fromEntries(varNames.map((name) => [name, ctx.vars.get(name)]));
+            report = ctx.reports.build(ctx.now(), period, vars);
+            ctx.log("info", `REPORT,${report.id},${report.cycle}`);
+          }
+          answer = null;
+          enterTime = ctx.now();
+          timeout = raw.timeoutMs === undefined ? 0 : Math.max(0, ctx.vars.read(v("timeoutMs")));
+          ctx.leds.fill(color);
+          ctx.effect = null;
+        },
+        exit: () => {
+          report = null;
+          answer = null;
+        },
+        execute: (ctx) => {
+          if (answer !== null) return answer;
+          if (ctx.button.pressCount !== countAtEnter) return "pressed";
+          if (timeout > 0 && ctx.now() - enterTime >= timeout) return "timeout";
+          return "running";
+        },
+        deadline: () => (report !== null && timeout > 0 ? enterTime + timeout : undefined),
+        command: (name) => {
+          if (report === null) return false;
+          answer = portOf[name];
+          return true;
+        },
+        view: (ctx) =>
+          report === null
+            ? null
+            : {
+                block: base.name,
+                report,
+                editable: Object.fromEntries(Object.entries(editable).map(([name, range]) => [name, { ...range, value: ctx.vars.get(name) }])),
+              },
+      };
+    }
+
     case "repeat": {
       // RepeatBlock.cpp, programs.md §7.10: counted on execute (once per entry), not on enter
       let counter = 0;
@@ -1291,9 +1485,18 @@ export type Snapshot = {
   steps: number;
   /** like `status.timers` (config-api.md §5): `timerStop`s without a running timer since the start */
   timers: { orphanStops: number };
+  /** the communicate block that waits for the client (like `status.waiting`), else null */
+  waiting: CommunicateView | null;
 };
 
-export type SimulatorOptions = { seed?: number; logLimit?: number };
+export type SimulatorOptions = {
+  seed?: number;
+  logLimit?: number;
+  /** the program's path, the set id and the athlete of the reports (programs.md §7.16) */
+  program?: string;
+  setId?: string;
+  athlete?: string;
+};
 
 export class Simulator {
   readonly peripherals: number;
@@ -1316,12 +1519,17 @@ export class Simulator {
   /** running timers: name → start time (programs.md §7.9) */
   private readonly timers = new Map<string, number>();
   private orphanStops = 0;
+  /** the report buffer lives as long as the simulator: a program start does not clear it */
+  private readonly reports: Reports;
+  /** PAUSED (programs.md §7.16): nothing runs and a communicate block does not wait until restartCurrentBlock */
+  private paused = false;
 
   constructor(program: ResolvedProgram, options: SimulatorOptions = {}) {
     const doc = program.doc ?? {};
     this.peripherals = typeof doc.peripherals === "number" && Number.isInteger(doc.peripherals) ? Math.max(0, doc.peripherals) : 0;
     this.centralId = this.peripherals;
     this.logLimit = options.logLimit ?? 500;
+    this.reports = new Reports(options.program ?? "", options.setId ?? "", options.athlete ?? "");
     for (const { block } of program.blocks) {
       if (!isObject(block)) continue;
       const sim = createBlock(block);
@@ -1359,8 +1567,12 @@ export class Simulator {
       results: new Results(),
       random: createRandom(seed),
       centralPodId: this.centralId,
+      reports: this.reports,
+      resuming: false,
       log: (kind, text) => this.log(kind, text),
     };
+    this.reports.start();
+    this.paused = false;
     this.stepsInPass = 0;
     // BlockManager::start: onProgramStart of every block, all timers stopped, no orphan stops
     for (const block of this.blocks.values()) block.programStart?.();
@@ -1495,7 +1707,57 @@ export class Simulator {
       log: [...this.logEntries],
       steps: this.entered,
       timers: { orphanStops: this.orphanStops },
+      waiting: this.waitingView(),
     };
+  }
+
+  /** The waiting communicate block; none while PAUSED (programs.md §7.16). */
+  private waitingView(): CommunicateView | null {
+    if (this.paused || !this.current) return null;
+    return this.blocks.get(this.current)?.view?.(this.ctx) ?? null;
+  }
+
+  /** A client `command` (config-api.md §5): answers the waiting communicate block. False if none waits. */
+  command(name: Command): boolean {
+    if (!this.running || this.paused || !this.current) return false;
+    if (!this.blocks.get(this.current)?.command?.(name)) return false;
+    this.version++;
+    return true;
+  }
+
+  /**
+   * A client `setVariables`: only while a communicate block waits, only its editable variables, within
+   * min … max. All or nothing (config-api.md §5).
+   */
+  setVariables(values: Record<string, number>): "ok" | SetVariablesError {
+    const view = this.waitingView();
+    if (!view) return "not_ready";
+    const entries = Object.entries(values);
+    for (const [name, value] of entries) {
+      const range = view.editable[name];
+      if (!range) return "not_editable";
+      if (!Number.isInteger(value) || value < range.min || value > range.max) return "out_of_range";
+    }
+    for (const [name, value] of entries) this.ctx.vars.set(name, value);
+    this.version++;
+    return "ok";
+  }
+
+  /** The report buffer: reports not acknowledged yet, oldest first, and how many were dropped. */
+  reportBuffer(): { pending: Report[]; dropped: number } {
+    return { pending: [...this.reports.pending], dropped: this.reports.dropped };
+  }
+
+  /** `ack`: removes a report and the older ones from the buffer (config-api.md §5). */
+  ack(reportId: number) {
+    this.reports.ack(reportId);
+    this.version++;
+  }
+
+  /** The pod is PAUSED (a peripheral is lost): nothing runs and a waiting block stops waiting. */
+  pause() {
+    this.paused = true;
+    this.version++;
   }
 
   /**
@@ -1505,7 +1767,14 @@ export class Simulator {
    */
   restartCurrentBlock() {
     if (!this.running || !this.current) return;
-    this.enter(this.current, false);
+    this.paused = false;
+    // Block::resume (programs.md §7.16): a communicate block keeps its report, no second one is built
+    this.ctx.resuming = true;
+    try {
+      this.enter(this.current, false);
+    } finally {
+      this.ctx.resuming = false;
+    }
     this.version++;
   }
 
@@ -1517,6 +1786,10 @@ export class Simulator {
   /* -------------------------------------------------------------- engine pass */
 
   private pass(options: RunOptions): "idle" | "paused" {
+    if (this.paused) {
+      this.endPass(); // PAUSED: no block runs until restartCurrentBlock
+      return "idle";
+    }
     while (this.running && this.stepsInPass < MAX_STEPS_PER_PASS) {
       const block = this.blocks.get(this.current!)!;
       const port = block.execute(this.ctx);

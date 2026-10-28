@@ -207,6 +207,10 @@
       "noPresets": "Keine Bibliotheksteile verknüpft. Das Programm ist eigenständig."
     },
     "step": {
+      "communicate": {
+        "hint": "Sendet einen Bericht der Messungen seit dem letzten, dann wartet der Ablauf auf die App: weiter, wiederholen oder stopp. Ein Druck geht ebenfalls weiter.",
+        "noLimit": "Keine Grenze"
+      },
       "viewSteps": "Schritte",
       "viewBlocks": "Blöcke",
       "view": "Ansicht",
@@ -274,7 +278,8 @@
         "effect": "Lichteffekt",
         "charge": "Halten zum Laden",
         "release": "Loslassen",
-        "toggle": "Domination"
+        "toggle": "Domination",
+        "communicate": "Bericht und Antwort"
       },
       "colour": "Farbe",
       "leds": "Welche LEDs",
@@ -608,6 +613,17 @@
       "holdLimitOn": "Zu lang nach {{time}}"
     }
   },
+  "list": {
+    "add": "Hinzufügen",
+    "addOption": "Hinzufügen …",
+    "addTo": "Zu {{label}} hinzufügen",
+    "remove": "{{name}} entfernen",
+    "min": "Min",
+    "max": "Max",
+    "minOf": "Minimum von {{name}}",
+    "maxOf": "Maximum von {{name}}",
+    "metricPlaceholder": "z. B. reaction"
+  },
   "simulate": {
     "title": "Simulation",
     "open": "Simulieren",
@@ -654,7 +670,15 @@
     "metricsHint": "Die Zeiten sind deine Klicks, keine Messungen eines Pods.",
     "log": "Protokoll",
     "copyTrace": "Trace kopieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "report": {
+      "title": "Wartet auf die App",
+      "number": "Bericht {{id}} · Zyklus {{cycle}}",
+      "continue": "Weiter",
+      "repeat": "Wiederholen",
+      "stop": "Stopp",
+      "range": "{{min}} bis {{max}}"
+    }
   },
   "menu": {
     "title": "Menü",
@@ -830,6 +854,7 @@
     "leds_other": "{{count}} LEDs",
     "allLeds": "alle LEDs",
     "waitPress": "auf Druck warten",
+    "report": "Bericht",
     "pod": "Pod",
     "pods": "Pods",
     "allPods": "alle Pods",
@@ -848,7 +873,9 @@
     "false": "falsch",
     "avoidHit": "rot gedrückt",
     "body": "Runde",
-    "done": "fertig"
+    "done": "fertig",
+    "repeat": "wiederholen",
+    "stop": "stopp"
   },
   "blocks": {
     "led": {
@@ -906,6 +933,10 @@
     "toggle": {
       "name": "Domination",
       "help": "Pods bleiben an und wechseln bei jedem Druck zwischen zwei Teamfarben. Endet, wenn die Zeit um ist (next), oder wenn alle Pods Team A (allA) oder Team B (allB) sind. Auf Pods ab Firmware 2.10."
+    },
+    "communicate": {
+      "name": "Bericht und Antwort",
+      "help": "Sendet die Messungen seit dem letzten Bericht an die App und wartet auf weiter, wiederholen, stopp, einen Druck oder die Zeit. Braucht Firmware 2.11 auf der Zentrale."
     }
   },
   "common": {
@@ -941,6 +972,18 @@
     "shortMs": {
       "label": "Kurz drücken bis (ms)",
       "help": "Kürzere Drücke gehen zu „kurz“, längere zu „lang“."
+    },
+    "metrics": {
+      "label": "Messungen im Bericht",
+      "help": "Welche Messungen der Bericht enthält (keine = alle)."
+    },
+    "vars": {
+      "label": "Variablen im Bericht",
+      "help": "Ihre Werte zum Zeitpunkt des Berichts."
+    },
+    "editable": {
+      "label": "Von der App änderbar",
+      "help": "Variablen, die die App ändern darf, während der Block wartet, innerhalb Min und Max."
     },
     "timeoutMs": {
       "label": "Zeitlimit (ms)",
@@ -1685,6 +1728,9 @@
     },
     "withCountdown": "der Ring zählt herunter",
     "toggle": "Domination: {{a}} gegen {{b}} für {{time}}",
+    "communicate": "Bericht senden, dann auf die App warten",
+    "communicateMetrics": "Messungen {{names}}",
+    "communicateTimeout": "Antwort innerhalb {{time}}",
     "toggleCooldown": "{{time}} zwischen Drücken",
     "toggleStart": {
         "a": "alle starten {{a}}",

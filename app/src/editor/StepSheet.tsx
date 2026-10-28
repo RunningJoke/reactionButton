@@ -10,13 +10,14 @@ import { AlertTriangle, ArrowDown, ArrowUp, CircleAlert, Copy, Plus, SlidersHori
 import { Sheet } from "../components/Sheet";
 import { blockType, fieldLevel, IF_OPS, isObject, type Block, type FieldDef, type Issue, type SwitchId } from "@reactpod/program-model";
 import { Segmented, Stepper, SwitchRow } from "../wizard/controls";
-import { BlockExpertFields, type InspectorContext } from "./BlockInspector";
+import { BlockExpertFields, PortRow, type InspectorContext } from "./BlockInspector";
+import { EditableField, NameListField, editableValue, nameItems } from "./ListFields";
 import { blockCategory, blockIcon } from "./blockStyle";
 import { COUNTDOWN_FIELDS, COUNTDOWN_STYLES, COUNTDOWN_TARGETS, countdownKind, countdownStyle, hasCountdownTime, setCountdown } from "./countdown";
 import { EFFECTS, effectKind, hasEnd, isPeriodic, isTimed, setEffectKind, setEffectTarget, setEndless, usesColor } from "./effectStep";
 import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, limitFieldOf, releaseMode, setChargeMode, setChargeStyle, setGoRandom, setHoldPod, setReleaseMode } from "./holdStep";
 import { DEFAULT_COOLDOWN_MS, DEFAULT_GAME_MS, MAX_COOLDOWN_MS, TOGGLE_RESULTS, TOGGLE_STARTS, durationIsRandom, setDurationRandom, setTeamColor, setToggleStart, teamColors, toggleStart } from "./toggleStep";
-import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
+import { ColorField, LedsField, NumberInput, SuggestField, ValueField } from "./fields";
 import { isValidVariableName, ownBlocks, setBlockField, setProgramField, type ProgramJson } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
 import { stepSentence, type SentenceOptions } from "./sentence";
@@ -146,7 +147,7 @@ export function StepSheet({ block, step, issues, sentence, expert, ctx }: StepSh
       <div className={styles.body}>
         <p className={styles.story}>{stepSentence(block, t, sentence)}</p>
         <ProblemList issues={issues} />
-        <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} />
+        <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} ctx={ctx} />
         {switches.map((id) => (
           <FeatureSwitch key={id} id={id} block={block} doc={doc} set={set} apply={apply} toggle={toggle} inLoop={!!step?.inLoop} />
         ))}
@@ -202,7 +203,7 @@ type FieldProps = {
 
 /* ---------------------------------------------------------------- essentials */
 
-function Essentials({ block, doc, set, apply, labelOf, variables }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[] }) {
+function Essentials({ block, doc, set, apply, labelOf, variables, ctx }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; ctx: InspectorContext }) {
   const { t } = useTranslation();
   switch (block.type) {
     case "led":
@@ -308,6 +309,8 @@ function Essentials({ block, doc, set, apply, labelOf, variables }: FieldProps &
       return <ReleaseFields block={block} doc={doc} set={set} apply={apply} />;
     case "toggle":
       return <ToggleFields block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} />;
+    case "communicate":
+      return <CommunicateFields block={block} doc={doc} set={set} apply={apply} ctx={ctx} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -699,6 +702,32 @@ function ReleaseFields({ block, doc, set, apply }: FieldProps) {
 /* ---------------------------------------------------------------- domination */
 
 /** Essentials of "Domination": the two team colours, game length, who starts with which team, cooldown, results. */
+/**
+ * communicate (programs.md §7.16): the time limit and the ports the client's answers and the button
+ * lead to. The lists and the editable variables are under "More options".
+ */
+function CommunicateFields({ block, set, ctx }: FieldProps & { ctx: InspectorContext }) {
+  const { t } = useTranslation();
+  const timeout = typeof block.timeoutMs === "number" ? block.timeoutMs : undefined;
+  return (
+    <>
+      <p className={styles.hint}>{t("editor.step.communicate.hint")}</p>
+      <Field label={t("fields.timeoutMs.label")}>
+        <NumberInput
+          value={timeout}
+          min={0}
+          placeholder={t("editor.step.communicate.noLimit")}
+          label={t("fields.timeoutMs.label")}
+          onChange={(n) => set("timeoutMs", n ? n : undefined, false)}
+        />
+      </Field>
+      {(["pressed", "timeout", "repeat", "stop"] as const).map((port) => (
+        <PortRow key={port} port={port} block={block} ctx={ctx} hasNext />
+      ))}
+    </>
+  );
+}
+
 function ToggleFields({ block, doc, set, apply, labelOf }: FieldProps & { labelOf: (v: string) => string }) {
   const { t } = useTranslation();
   const d = (key: string, o?: Record<string, unknown>) => t(`editor.step.toggle.${key}`, o);
@@ -951,6 +980,15 @@ function MoreField({ field, block, doc, set, apply, variables, metrics }: FieldP
       break;
     case "metric":
       input = <SuggestField value={value} suggestions={metrics} placeholder={t("fields.notSet")} label={label} onChange={(v) => set(field.name, v)} />;
+      break;
+    case "metricList":
+      input = <NameListField items={nameItems(value)} choices={[]} label={label} placeholder={t("list.metricPlaceholder")} onChange={(v) => set(field.name, v)} />;
+      break;
+    case "variableList":
+      input = <NameListField items={nameItems(value)} choices={variables} label={label} placeholder="" onChange={(v) => set(field.name, v)} />;
+      break;
+    case "editableMap":
+      input = <EditableField value={editableValue(value)} choices={variables} label={label} onChange={(v) => set(field.name, v)} />;
       break;
     default:
       return null;
