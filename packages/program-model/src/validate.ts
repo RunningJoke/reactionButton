@@ -75,6 +75,9 @@ export const ISSUE_CODES = [
   "goTimeBothForms",
   "podSingleOnly",
   "maxMsTooSmall",
+  "colorsNotTwo",
+  "toggleNeedsDuration",
+  "toggleDurationBothForms",
   // warnings
   "noOutgoing",
   "unreachable",
@@ -404,6 +407,9 @@ function checkField(
     case "bool":
       if (typeof value !== "boolean") out.error("notBool", file, at(name));
       break;
+    case "colorPair":
+      if (!Array.isArray(value) || value.length !== 2 || !value.every(isNamedColor)) out.error("colorsNotTwo", file, at(name));
+      break;
   }
 }
 
@@ -421,6 +427,15 @@ function checkTypeRules(
     out.error("randomTimeoutPair", file, at("minTimeoutMs"));
   }
   checkModes(def, block, file, at, out);
+  // toggle: the game length is required, in one of two forms (like tools/validate_programs.py check_toggle)
+  if (def.type === "toggle") {
+    const range = block.minDurationMs !== undefined && block.maxDurationMs !== undefined;
+    if (block.durationMs !== undefined && (block.minDurationMs !== undefined || block.maxDurationMs !== undefined)) {
+      out.error("toggleDurationBothForms", file, at("durationMs"));
+    } else if (block.durationMs === undefined && !range) {
+      out.error("toggleNeedsDuration", file, at("durationMs"));
+    }
+  }
   // effect: wait for something that never ends (a variable duration is not known here)
   if (def.type === "effect" && block.wait === true && typeof block.effect === "string" && PERIODIC_EFFECTS.includes(block.effect)) {
     const duration = block.durationMs;
@@ -540,6 +555,7 @@ const RANGES: Record<string, readonly [string, string]> = {
   button: ["minTimeoutMs", "maxTimeoutMs"],
   charge: ["minTimeoutMs", "maxTimeoutMs"],
   release: ["minGoMs", "maxGoMs"],
+  toggle: ["minDurationMs", "maxDurationMs"],
 };
 
 /**
