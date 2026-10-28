@@ -94,9 +94,33 @@ type Peripheral = {
   button: Button;
   /** ring effect (effect block, countdown) over `color`; ARM, RESET and a press replace it */
   effect: RingEffect | null;
+  /** toggle activation (link protocol revision 3): the pod flips on its own and stays armed */
+  toggle?: ToggleState;
 };
 
-type PodEvent = { podId: number; cmdSeq: number; avoidHit: boolean; reactionMs: number };
+/** Owners of the toggle block: team A, team B, nobody (link-protocol.md §2.3). */
+export const OWNER_A = 0;
+export const OWNER_B = 1;
+export const OWNER_NONE = 2;
+
+type ToggleState = {
+  owner: number;
+  flips: number;
+  cooldownMs: number;
+  lastFlipAt: number;
+  colors: [Rgb, Rgb];
+  /** the waiting effect (countdown over the game) in the colour of the owner, or null */
+  waiting: ((color: Rgb) => RingEffect | null) | null;
+};
+
+type PodEvent = {
+  podId: number;
+  cmdSeq: number;
+  avoidHit: boolean;
+  reactionMs: number;
+  /** only toggle activations: the owner after the press and the flips since the ARM; `at` = receive time */
+  toggle?: { owner: number; flipCount: number; at: number };
+};
 
 type ArmCommand = {
   mode: "hit" | "avoid";
@@ -105,6 +129,8 @@ type ArmCommand = {
   startAt?: number;
   /** countdown over the time limit, builds the effect from the time the pod lights */
   countdown?: (litAt: number) => RingEffect | null;
+  /** PodMode TOGGLE: `colorActive` is team A, `colorAfter` team B */
+  toggle?: { startOwner: number; cooldownMs: number; waiting: ((color: Rgb) => RingEffect | null) | null };
 };
 
 /** The peripherals as the central's IPodNetwork sees them. */
@@ -146,6 +172,16 @@ class Network {
     pod.colorAfter = command.colorAfter ?? OFF;
     const litAt = command.startAt !== undefined && command.startAt > now ? command.startAt : now;
     pod.effect = command.countdown?.(litAt) ?? null;
+    pod.toggle = command.toggle
+      ? {
+          owner: command.toggle.startOwner,
+          flips: 0,
+          cooldownMs: command.toggle.cooldownMs,
+          lastFlipAt: 0,
+          colors: [command.colorActive, command.colorAfter ?? OFF],
+          waiting: command.toggle.waiting,
+        }
+      : undefined;
     if (command.startAt !== undefined && command.startAt > now) {
       pod.state = "scheduled";
       pod.startAt = command.startAt;
@@ -162,6 +198,7 @@ class Network {
     pod.state = "ready";
     pod.color = OFF;
     pod.effect = null;
+    pod.toggle = undefined;
   }
 
   /** an `effect` block aimed at a peripheral */
@@ -178,6 +215,10 @@ class Network {
   press(id: number, now: number) {
     const pod = this.pods[id];
     if (!pod || !pod.button.press(now) || pod.state !== "active") return;
+    if (pod.toggle) {
+      this.flip(pod, pod.toggle, id, now);
+      return;
+    }
     pod.color = pod.colorAfter;
     pod.effect = null; // a press stops the countdown
     pod.state = "done";
@@ -192,10 +233,34 @@ class Network {
     return this.events.shift();
   }
 
+  /** PeripheralRole::runToggle: flip unless the cooldown since the last flip has not passed; PRESSED carries the absolute owner */
+  private flip(pod: Peripheral, toggle: ToggleState, id: number, now: number) {
+    if (toggle.flips > 0 && now - toggle.lastFlipAt < toggle.cooldownMs) return;
+    toggle.lastFlipAt = now;
+    toggle.flips++;
+    toggle.owner = toggle.owner === OWNER_A ? OWNER_B : OWNER_A;
+    this.showOwner(pod, toggle);
+    this.events.push({
+      podId: id,
+      cmdSeq: pod.cmdSeq,
+      avoidHit: false,
+      reactionMs: now - pod.activatedAt,
+      toggle: { owner: toggle.owner, flipCount: toggle.flips, at: now },
+    });
+  }
+
+  /** the ring in the colour of the owner; a countdown goes on across flips (same start time) */
+  private showOwner(pod: Peripheral, toggle: ToggleState) {
+    const color = toggle.owner === OWNER_NONE ? OFF : toggle.colors[toggle.owner]!;
+    pod.color = color;
+    pod.effect = toggle.waiting?.(color) ?? null;
+  }
+
   private activate(pod: Peripheral, now: number) {
     pod.state = "active";
     pod.color = pod.colorActive;
     pod.activatedAt = now;
+    if (pod.toggle) this.showOwner(pod, pod.toggle);
   }
 }
 
@@ -264,6 +329,8 @@ type SimBlock = {
   forceTimeout?: (ctx: Ctx) => PortResult;
   /** time at which the block still lights pods without any input (syncStartMs) */
   pendingLight?: () => number | undefined;
+  /** toggle: owner and flips of the central while the game runs */
+  centralToggle?: () => { owner: number; flips: number } | null;
 };
 
 const randomBetween = (random: Random, min: number, max: number) => {
@@ -711,6 +778,169 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
       };
     }
 
+    case "toggle": {
+      // programs.md §7.15, ToggleBlock.cpp: pods flip between two team colours on every press
+      const includeCentral = raw.includeCentral !== false;
+      const teamColors: [Rgb, Rgb] =
+        Array.isArray(raw.colors) && raw.colors.length === 2
+          ? [remoteColor(raw.colors[0], colorToRgb("red")), remoteColor(raw.colors[1], colorToRgb("blue"))]
+          : [colorToRgb("red"), colorToRgb("blue")];
+      const startMode = typeof raw.start === "string" ? raw.start : "alternate";
+      const countdown = countdownOf(raw);
+      const stores = [str(raw.storeA), str(raw.storeB), str(raw.storeTimeA), str(raw.storeTimeB), str(raw.storeFlips)];
+      let podCount = 0;
+      let startAt = 0;
+      let endAt = 0;
+      let cooldown = 0;
+      let centralLit = false;
+      let pressCountAtLight = 0;
+      let centralLastFlip = 0;
+      let waiting: ((color: Rgb) => RingEffect | null) | null = null;
+      // per index (peripherals 0 … podCount−1, the central last): owner, accepted flips, time of the last owner change
+      let participants: boolean[] = [];
+      let owner: number[] = [];
+      let flips: number[] = [];
+      let changedAt: number[] = [];
+      let teamMs: [number, number] = [0, 0];
+      const cmdSeqs: number[] = [];
+      const colorOf = (o: number): Rgb => (o === OWNER_NONE ? OFF : teamColors[o]!);
+      const showCentral = (ctx: Ctx) => {
+        const color = colorOf(owner[podCount]!);
+        ctx.leds.fill(color);
+        ctx.effect = waiting?.(color) ?? null; // same start time as the pods: a flip joins the animation
+      };
+      // the owner of an index changes at `at`: the time up to then goes to the old owner
+      const flip = (index: number, newOwner: number, at: number) => {
+        at = Math.max(at, changedAt[index]!);
+        if (owner[index] !== OWNER_NONE) teamMs[owner[index]! as 0 | 1] += at - changedAt[index]!;
+        changedAt[index] = at;
+        owner[index] = newOwner;
+      };
+      const allSame = (o: number) => participants.some(Boolean) && participants.every((p, i) => !p || owner[i] === o);
+      const finish = (ctx: Ctx, at: number, port: string): PortResult => {
+        const teamPods = [0, 0];
+        let totalFlips = 0;
+        for (let i = 0; i <= podCount; i++) {
+          if (!participants[i]) continue;
+          flip(i, owner[i]!, at); // adds the time up to `at` to the owner
+          totalFlips += flips[i]!;
+          if (owner[i] !== OWNER_NONE) teamPods[owner[i]!]!++;
+          // the ring keeps the colour, a press no longer changes it (plain activation, same colour before and after)
+          const color = colorOf(owner[i]!);
+          if (i === podCount) {
+            ctx.leds.fill(color);
+            ctx.effect = null;
+          } else {
+            ctx.network.arm(i, { mode: "hit", colorActive: color, colorAfter: color }, ctx.now());
+          }
+        }
+        const values = [teamPods[0]!, teamPods[1]!, teamMs[0], teamMs[1], totalFlips];
+        stores.forEach((name, i) => name !== undefined && ctx.vars.set(name, values[i]!));
+        return port;
+      };
+      return {
+        ...base,
+        enter: (ctx) => {
+          centralLit = false;
+          ctx.effect = null;
+          teamMs = [0, 0];
+          participants = [];
+          owner = [];
+          flips = [];
+          changedAt = [];
+          waiting = null;
+          const connected = ctx.network.podCount;
+          const wanted = raw.pods === undefined ? connected : ctx.vars.read(v("pods"));
+          podCount = Math.min(Math.max(wanted, 0), Math.min(connected, MAX_MULTI_PODS));
+          const fixed = raw.durationMs !== undefined;
+          const duration = randomBetween(ctx.random, ctx.vars.read(v(fixed ? "durationMs" : "minDurationMs")), ctx.vars.read(v(fixed ? "durationMs" : "maxDurationMs")));
+          cooldown = Math.min(Math.max(raw.cooldownMs === undefined ? 300 : ctx.vars.read(v("cooldownMs")), 0), 65535);
+          const lead = Math.max(raw.syncStartMs === undefined ? 20 : ctx.vars.read(v("syncStartMs")), 0);
+          startAt = ctx.now() + lead;
+          endAt = startAt + Math.max(duration, 0);
+          if (countdown.style && duration > 0) waiting = (lit) => countdown.effect(lit, startAt, endAt);
+          let ordinal = 0;
+          for (let i = 0; i <= podCount; i++) {
+            const central = i === podCount;
+            if (central && !includeCentral) continue;
+            let startOwner = OWNER_NONE;
+            switch (startMode) {
+              case "a":
+                startOwner = OWNER_A;
+                break;
+              case "b":
+                startOwner = OWNER_B;
+                break;
+              case "alternate":
+                startOwner = ordinal & 1 ? OWNER_B : OWNER_A;
+                break;
+              case "random":
+                startOwner = ctx.random.below(2) === 0 ? OWNER_A : OWNER_B;
+                break;
+            }
+            owner[i] = startOwner;
+            flips[i] = 0;
+            changedAt[i] = startAt;
+            participants[i] = true;
+            ordinal++;
+            if (central) continue;
+            cmdSeqs[i] = ctx.network.arm(
+              i,
+              {
+                mode: "hit",
+                colorActive: teamColors[0],
+                colorAfter: teamColors[1],
+                startAt: lead > 0 ? startAt : undefined,
+                toggle: { startOwner, cooldownMs: cooldown, waiting },
+              },
+              ctx.now(),
+            );
+          }
+        },
+        execute: (ctx) => {
+          const centralIndex = podCount;
+          let flipped = false;
+          if (participants[centralIndex] && !centralLit && ctx.now() >= startAt) {
+            showCentral(ctx);
+            centralLit = true;
+            pressCountAtLight = ctx.button.pressCount;
+          }
+          for (let event = ctx.network.poll(); event; event = ctx.network.poll()) {
+            const t = event.toggle;
+            if (!t || event.podId >= podCount || t.flipCount === 0 || !participants[event.podId]) continue;
+            if (event.cmdSeq !== cmdSeqs[event.podId] || t.owner > OWNER_B || t.at > endAt) continue; // not part of this game
+            if (t.flipCount - flips[event.podId]! <= 0) continue; // duplicate or older frame
+            flips[event.podId] = t.flipCount;
+            if (owner[event.podId] !== t.owner) {
+              flip(event.podId, t.owner, t.at);
+              flipped = true;
+            }
+          }
+          if (centralLit && ctx.button.pressCount !== pressCountAtLight) {
+            pressCountAtLight = ctx.button.pressCount; // several presses in one pass count once
+            const pressAt = ctx.button.lastPressTime;
+            if ((flips[centralIndex] === 0 || pressAt - centralLastFlip >= cooldown) && pressAt <= endAt) {
+              centralLastFlip = pressAt;
+              flips[centralIndex]!++;
+              flip(centralIndex, owner[centralIndex] === OWNER_A ? OWNER_B : OWNER_A, pressAt);
+              showCentral(ctx);
+              flipped = true;
+            }
+          }
+          if (flipped) {
+            // allA / allB are only checked after a flip, and only when connected (no fallback to next)
+            if (base.targets.allA !== undefined && allSame(OWNER_A)) return finish(ctx, ctx.now(), "allA");
+            if (base.targets.allB !== undefined && allSame(OWNER_B)) return finish(ctx, ctx.now(), "allB");
+          }
+          if (ctx.now() >= endAt) return finish(ctx, endAt, "next");
+          return "running";
+        },
+        deadline: () => endAt,
+        pendingLight: () => (participants[podCount] && !centralLit ? startAt : undefined),
+        centralToggle: () => (participants[podCount] && centralLit ? { owner: owner[podCount]!, flips: flips[podCount]! } : null),
+      };
+    }
+
     case "remoteResetAll": {
       const ledsOff = raw.ledsOff !== false;
       return {
@@ -1043,6 +1273,8 @@ export type PodView = {
   /** a peripheral that is lit and waits for its press */
   state: PeripheralState | "central";
   held: boolean;
+  /** toggle block: owner (`OWNER_A`, `OWNER_B`, `OWNER_NONE`) and accepted flips while the game runs */
+  toggle?: { owner: number; flips: number };
 };
 
 export type Snapshot = {
@@ -1238,8 +1470,17 @@ export class Simulator {
       leds: renderRing(Array.from({ length: LED_COUNT }, () => p.color), p.effect, this.time),
       state: p.state,
       held: p.button.down,
+      ...(p.toggle ? { toggle: { owner: p.toggle.owner, flips: p.toggle.flips } } : {}),
     }));
-    pods.push({ id: this.centralId, central: true, leds: renderRing(this.ctx.leds, this.ctx.effect, this.time), state: "central", held: this.ctx.button.down });
+    const centralToggle = this.current ? this.blocks.get(this.current)?.centralToggle?.() : null;
+    pods.push({
+      id: this.centralId,
+      central: true,
+      leds: renderRing(this.ctx.leds, this.ctx.effect, this.time),
+      state: "central",
+      held: this.ctx.button.down,
+      ...(centralToggle ? { toggle: centralToggle } : {}),
+    });
     const results = this.ctx.results;
     const metrics = [...new Set([...results.names(), ...results.all.map((m) => m.metric)])].map((metric) => ({ metric, ...results.stats(metric) }));
     return {
