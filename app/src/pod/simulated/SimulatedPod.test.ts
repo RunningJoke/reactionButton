@@ -299,8 +299,8 @@ describe("SimulatedPod (reports and remote ops, program format 5, firmware 2.11)
     expect(call(pod, { op: "setVariables", values: { RUNS: 3 } })).toMatchObject({ error: "not_editable" });
     expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 0 } })).toMatchObject({ error: "out_of_range" });
     expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 51 } })).toMatchObject({ error: "out_of_range" });
-    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 2.5 } })).toMatchObject({ error: "out_of_range" });
-    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: "3" } })).toMatchObject({ error: "out_of_range" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 2.5 } })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: "3" } })).toMatchObject({ error: "bad_request" });
     expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 50, RUNS: 3 } })).toMatchObject({ error: "not_editable" });
     expect(pod.variables.get("MAX_LOOPS")).toBe(12); // nothing was written
     expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 50 } })).toEqual({ op: "setVariables", ok: true, variables: { MAX_LOOPS: 50 } });

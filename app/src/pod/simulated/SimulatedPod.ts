@@ -328,9 +328,11 @@ export class SimulatedPod {
         const editable = this.waiting!.editable;
         const values = Object.entries(req.values as Json);
         for (const [name, value] of values) {
+          // same order of checks as CentralRole::opSetVariables
+          if (typeof value !== "number" || !Number.isInteger(value)) throw new ApiFailure("bad_request", `'${name}' must be an integer`);
           const range = editable[name];
           if (!range) throw new ApiFailure("not_editable", `'${name}' is not editable while the block waits`);
-          if (typeof value !== "number" || !Number.isInteger(value) || value < range.min || value > range.max) {
+          if (value < range.min || value > range.max) {
             throw new ApiFailure("out_of_range", `'${name}' must be an integer from ${range.min} to ${range.max}`);
           }
         }
