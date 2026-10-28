@@ -63,6 +63,11 @@ class Block {
         // Called every time the block becomes the current block (also when it re-enters itself).
         virtual void enter(BlockContext& ctx) {}
 
+        // Called instead of enter() when a pause (restartCurrentBlock) enters the block again.
+        // The block was not left, so blocks that must not repeat their entry work (e.g. building
+        // a report) override this. The default is enter().
+        virtual void resume(BlockContext& ctx) { this->enter(ctx); }
+
         // Called once per pass while the block is current.
         virtual BlockStatus execute(BlockContext& ctx) = 0;
 

@@ -313,7 +313,11 @@ void BlockManager::enterCurrent(bool applyTimers) {
         timer.startMs = millis();
         timer.running = true;
     }
-    block->enter(*this->context);
+    if(applyTimers) {
+        block->enter(*this->context);
+    } else {
+        block->resume(*this->context);      // pause: same entry, see Block::resume()
+    }
     if(this->enterHook != nullptr) {
         this->enterHook(block->getName().c_str());
     }

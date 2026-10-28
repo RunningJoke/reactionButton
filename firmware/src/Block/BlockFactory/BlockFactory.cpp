@@ -14,6 +14,7 @@
 #include "Block/ChargeBlock/ChargeBlock.h"
 #include "Block/ReleaseBlock/ReleaseBlock.h"
 #include "Block/ToggleBlock/ToggleBlock.h"
+#include "Block/CommunicateBlock/CommunicateBlock.h"
 
 namespace {
     template<typename T>
@@ -42,6 +43,7 @@ namespace {
         {"charge",           &createBlock<ChargeBlock>},
         {"release",          &createBlock<ReleaseBlock>},
         {"toggle",           &createBlock<ToggleBlock>},
+        {"communicate",      &createBlock<CommunicateBlock>},
     };
 }
 

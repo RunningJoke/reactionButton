@@ -54,6 +54,11 @@ class CentralRole : public IRole {
         void opSelect(JsonObjectConst request, JsonDocument& response);
         void opStart(JsonDocument& response);
         void opEffect(JsonObjectConst request, JsonDocument& response);
+        void opReports(JsonDocument& response);
+        void opAck(JsonObjectConst request, JsonDocument& response);
+        void opCommand(JsonObjectConst request, JsonDocument& response);
+        void opSetVariables(JsonObjectConst request, JsonDocument& response);
+        void opSession(JsonObjectConst request, JsonDocument& response);
 
         State state = State::MENU;
         ProgramCatalog catalog;

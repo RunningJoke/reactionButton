@@ -12,6 +12,8 @@
 #include "Config/ConfigApi.h"
 #include "Config/SerialConsole.h"
 #include "Diagnostics/Diag.h"
+#include "Results/Reports.h"
+#include "Block/CommunicateBlock/CommunicateBlock.h"
 #ifdef REACTPOD_BLE_ESPNOW_TEST
 #include "TestHw/BleEspNowTest.h"
 #endif
@@ -205,6 +207,10 @@ bool CentralRole::startGame() {
     PodEvent stale;
     while(this->network.pollEvent(stale)) {}
 
+    // the report log and the cycle counter belong to this program run
+    Reports::get().beginProgram(this->catalog.get(this->selectedModel).path.c_str(),
+                                Settings::getOrCreateSetId(), millis());
+
     if(!BlockManager::getManager()->start(&this->network)) {
         this->fail("Program could not be started");
         return false;
@@ -316,6 +322,22 @@ void CentralRole::describe(JsonObject status) {
     status["requiredPeripherals"] = this->requiredPeripherals;
     status["radio"] = this->network.isStarted();
     status["syncing"] = this->network.isSyncing();
+    status["athlete"] = Reports::get().athlete();
+    JsonObject reports = status["reports"].to<JsonObject>();
+    reports["pending"] = (uint32_t)Reports::get().pending();
+    reports["dropped"] = Reports::get().droppedReports();
+    if(CommunicateBlock* waiting = CommunicateBlock::waiting()) {
+        JsonObject w = status["waiting"].to<JsonObject>();
+        w["block"] = waiting->getName();
+        JsonObject editable = w["editable"].to<JsonObject>();
+        VariableManager* vars = VariableManager::getManager();
+        for(const CommunicateBlock::Editable& e : waiting->editable()) {
+            JsonObject m = editable[e.name].to<JsonObject>();
+            m["min"] = e.min;
+            m["max"] = e.max;
+            m["value"] = vars->get(e.var);
+        }
+    }
     this->network.describe(status["pods"].to<JsonArray>());
 
     if(this->state == State::RUN || this->state == State::PAUSED) {
@@ -348,6 +370,16 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         response["state"] = stateName(this->state);
     } else if(strcmp(op, "effect") == 0) {
         this->opEffect(request, response);
+    } else if(strcmp(op, "reports") == 0) {
+        this->opReports(response);
+    } else if(strcmp(op, "ack") == 0) {
+        this->opAck(request, response);
+    } else if(strcmp(op, "command") == 0) {
+        this->opCommand(request, response);
+    } else if(strcmp(op, "setVariables") == 0) {
+        this->opSetVariables(request, response);
+    } else if(strcmp(op, "session") == 0) {
+        this->opSession(request, response);
     } else if(strcmp(op, "stop") == 0) {
         // back to the program menu: restart as central (answer first)
         Settings::setBootRole(1);
@@ -470,6 +502,121 @@ void CentralRole::opEffect(JsonObjectConst request, JsonDocument& response) {
     response["ok"] = true;
     response["effect"] = LEDManager::effectName(effect.effect);
     response["startAtUs"] = startAtUs;
+}
+
+// Report buffer: every report not acknowledged yet, oldest first
+void CentralRole::opReports(JsonDocument& response) {
+    response["ok"] = true;
+    JsonArray list = response["reports"].to<JsonArray>();
+    for(const Reports::Report& report : Reports::get().reports()) {
+        Reports::write(report, list.add<JsonObject>());
+    }
+}
+
+void CentralRole::opAck(JsonObjectConst request, JsonDocument& response) {
+    JsonVariantConst id = request["reportId"];
+    if(!id.is<int64_t>() || id.as<int64_t>() < 0) {
+        ConfigApi::setError(response, "bad_request", "'reportId' must be a report id (number)");
+        return;
+    }
+    Reports::get().ack((uint32_t)id.as<int64_t>());
+    response["ok"] = true;
+    response["pending"] = (uint32_t)Reports::get().pending();
+}
+
+// Answers the waiting communicate block (programs.md §7.16)
+void CentralRole::opCommand(JsonObjectConst request, JsonDocument& response) {
+    const char* name = request["name"] | "";
+    CommunicateBlock::Command command = CommunicateBlock::Command::NONE;
+    if(strcmp(name, "continue") == 0) command = CommunicateBlock::Command::CONTINUE;
+    else if(strcmp(name, "repeat") == 0) command = CommunicateBlock::Command::REPEAT;
+    else if(strcmp(name, "stop") == 0) command = CommunicateBlock::Command::STOP;
+    else {
+        ConfigApi::setError(response, "bad_request", "'name' must be continue, repeat or stop");
+        return;
+    }
+    CommunicateBlock* waiting = CommunicateBlock::waiting();
+    if(waiting == nullptr) {
+        ConfigApi::setError(response, "not_ready", "no communicate block waits");
+        return;
+    }
+    waiting->command(command);
+    response["ok"] = true;
+    response["name"] = name;
+}
+
+// All or nothing: every value is checked before the first one is written
+void CentralRole::opSetVariables(JsonObjectConst request, JsonDocument& response) {
+    CommunicateBlock* waiting = CommunicateBlock::waiting();
+    if(waiting == nullptr) {
+        ConfigApi::setError(response, "not_ready", "no communicate block waits");
+        return;
+    }
+    JsonVariantConst values = request["values"];
+    if(!values.is<JsonObjectConst>()) {
+        ConfigApi::setError(response, "bad_request", "'values' must be an object: name -> integer");
+        return;
+    }
+
+    const std::vector<CommunicateBlock::Editable>& editable = waiting->editable();
+    auto findEditable = [&editable](const std::string& name) -> const CommunicateBlock::Editable* {
+        for(const CommunicateBlock::Editable& e : editable) {
+            if(e.name == name) return &e;
+        }
+        return nullptr;
+    };
+
+    for(JsonPairConst pair : values.as<JsonObjectConst>()) {
+        std::string name = pair.key().c_str();
+        if(!pair.value().is<int64_t>()) {
+            ConfigApi::setError(response, "bad_request", "'" + String(name.c_str()) + "' must be an integer");
+            return;
+        }
+        const CommunicateBlock::Editable* e = findEditable(name);
+        if(e == nullptr) {
+            ConfigApi::setError(response, "not_editable", "'" + String(name.c_str()) + "' is not editable now");
+            return;
+        }
+        int64_t value = pair.value().as<int64_t>();
+        if(value < e->min || value > e->max) {
+            ConfigApi::setError(response, "out_of_range", "'" + String(name.c_str()) + "' must be within "
+                                + String((int32_t)e->min) + " ... " + String((int32_t)e->max));
+            return;
+        }
+    }
+
+    VariableManager* vars = VariableManager::getManager();
+    JsonObject out = response["variables"].to<JsonObject>();
+    for(JsonPairConst pair : values.as<JsonObjectConst>()) {
+        std::string name = pair.key().c_str();
+        const CommunicateBlock::Editable* e = findEditable(name);
+        int64_t value = pair.value().as<int64_t>();
+        vars->set(e->var, value);
+        out[name] = vars->get(e->var);
+    }
+    response["ok"] = true;
+}
+
+// Athlete id of the following reports. Allowed before a game and while a communicate block waits.
+void CentralRole::opSession(JsonObjectConst request, JsonDocument& response) {
+    bool idle = this->state == State::MENU || this->state == State::DISCOVERY || this->state == State::CONFIRM;
+    if(!idle && CommunicateBlock::waiting() == nullptr) {
+        ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
+        return;
+    }
+    JsonVariantConst athlete = request["athlete"];
+    if(!athlete.is<const char*>()) {
+        ConfigApi::setError(response, "bad_request", "'athlete' must be a string (\"\" clears it)");
+        return;
+    }
+    std::string id = athlete.as<const char*>();
+    if(id.length() > Reports::MAX_ATHLETE) {
+        ConfigApi::setError(response, "bad_request", "'athlete' longer than 40 bytes");
+        return;
+    }
+    Reports::get().setAthlete(id);
+    response["ok"] = true;
+    response["athlete"] = id;
 }
 
 void CentralRole::opStart(JsonDocument& response) {
