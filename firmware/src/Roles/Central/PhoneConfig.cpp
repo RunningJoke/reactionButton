@@ -182,6 +182,13 @@ void PhoneConfig::service() {
         // a new client: it has to authenticate again (PIN)
         this->sessionConnection = connectionCount;
         this->api.newSession();
+        // drop what the previous client left behind (half a request in line, unread bytes in
+        // rxBuffer). Done here in the main loop: the BLE task owns the producer side. Bytes the new
+        // client writes between onConnect and this pass are dropped too; a client needs MTU
+        // exchange / service discovery first, which takes far longer than one loop pass.
+        this->line.clear();
+        this->discarding = false;
+        xStreamBufferReset(rxBuffer);
     }
 
     if(this->advertisedRevision != Settings::setNameRevision()) {
