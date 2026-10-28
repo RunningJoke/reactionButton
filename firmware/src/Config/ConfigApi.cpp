@@ -198,6 +198,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("listMeta");
     features.add("effects");
     features.add("hold");
+    features.add("toggle");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

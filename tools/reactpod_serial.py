@@ -375,11 +375,12 @@ def print_pods(status: dict):
     if not pods:
         say("  (no peripherals connected)")
         return
-    say("  id  mac                alive  hold   last seen   tx ok  retries  lost   rx   ack avg/max (us)")
+    say("  id  mac                alive  hold   toggle last seen   tx ok  retries  lost   rx   ack avg/max (us)")
     for p in pods:
         link = p.get("link", {})
         hold = "-" if "hold" not in p else str(p["hold"])    # hold: firmware >= 2.9 (link revision 2)
-        say(f"  {p['id']:<3} {p['mac']:<18} {str(p['alive']):<6} {hold:<5} {p['lastSeenMs']:>6} ms  "
+        toggle = "-" if "toggle" not in p else str(p["toggle"])    # toggle: firmware >= 2.10 (link revision 3)
+        say(f"  {p['id']:<3} {p['mac']:<18} {str(p['alive']):<6} {hold:<5} {toggle:<6} {p['lastSeenMs']:>6} ms  "
             f"{link.get('txFrames', 0):>6} {link.get('txRetries', 0):>8} {link.get('txLost', 0):>5} "
             f"{link.get('rxFrames', 0):>5}   {link.get('ackUsAvg', 0)}/{link.get('ackUsMax', 0)}")
 

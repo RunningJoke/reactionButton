@@ -77,6 +77,8 @@ function fieldSchema(field: FieldDef): Schema {
       return { type: "string", minLength: 1, description: "measurement metric name" };
     case "bool":
       return { type: "boolean", ...description };
+    case "colorPair":
+      return { type: "array", items: ref("namedColor"), minItems: 2, maxItems: 2, ...description };
   }
 }
 

@@ -21,6 +21,8 @@ struct PodEvent {
     uint8_t flags = 0;                  // RELEASED: Protocol::RELEASED_FLAG_*
     uint32_t heldMs = 0;                // RELEASED: hold time measured on the peripheral
     uint32_t chargeMs = 0;              // RELEASED: charge at the end
+    uint8_t owner = Protocol::OWNER_NONE;   // PRESSED of a TOGGLE activation: owner after the press (absolute)
+    uint16_t flipCount = 0;             // PRESSED of a TOGGLE activation: flips since the ARM; 0 = no toggle data
 
     int32_t reactionMs() const { return (this->reactionUs + 500) / 1000; }
 };
@@ -38,6 +40,9 @@ struct ArmCommand {
 
     // PodMode CHARGE / RELEASE only (needs IPodNetwork::supportsHold)
     Protocol::HoldParams hold = {};
+
+    // PodMode TOGGLE only (needs IPodNetwork::supportsToggle). colorActive is team A, colorAfter team B.
+    Protocol::ToggleParams toggle = {};
 };
 
 /**
@@ -70,6 +75,10 @@ class IPodNetwork {
         // Whether the pod measures holds (PodMode CHARGE / RELEASE, RELEASED frames). False for pods
         // with an older link protocol: the hold blocks take their timeout port at once.
         virtual bool supportsHold(uint8_t podId) const { return false; }
+
+        // Whether the pod flips colours on every press (PodMode TOGGLE, PRESSED owner / flipCount). False for
+        // pods with an older link protocol: the toggle block leaves them out of the game.
+        virtual bool supportsToggle(uint8_t podId) const { return false; }
 
         // Plays an effect on a pod's ring, starting at startAtUs (network time, 0 = now).
         // Does not arm or reset the pod. EffectId::NONE stops it and switches the LEDs off.

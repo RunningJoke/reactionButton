@@ -18,7 +18,7 @@
 
 CentralRole::CentralRole() {
     // the button was held to select CENTRAL at boot; that hold must not count as a menu press
-    this->waitForBootRelease = digitalRead(PIN_BUTTON_PRESS) == LOW;
+    this->waitForBootRelease = Button::get().isDown();
 
 #ifdef REACTPOD_BLE_ESPNOW_TEST
     BleEspNowTest::get().begin(&this->phone);
@@ -231,7 +231,8 @@ void CentralRole::drawProgress() {
 
 bool CentralRole::runModelSelector() {
 
-    auto buttonPressed = digitalRead(PIN_BUTTON_PRESS) == LOW;
+    // debounced driver (updated once per loop pass in run()), same as the game blocks
+    bool buttonPressed = Button::get().isDown();
 
     if(this->waitForBootRelease) {
         if(!buttonPressed) {
@@ -242,7 +243,7 @@ bool CentralRole::runModelSelector() {
 
     if(buttonPressed) {
         if(this->modelSelectorCounter == 0) {
-            this->modelSelectorPressStart = millis();
+            this->modelSelectorPressStart = Button::get().lastPressTime();
             this->modelSelectorCounter++;
         } else {
             // the counter increases every ~10 ms while the button is held

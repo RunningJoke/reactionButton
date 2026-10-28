@@ -20,9 +20,9 @@ export const COUNTDOWN_TARGETS = ["central", "all", "peripherals"] as const;
 
 /**
  * `pause`: the step is a time (delay, catch-early press); `limit`: it has a time limit that can be
- * switched on; null: the step has no countdown.
+ * switched on; `game`: the game length of a toggle step is always its time; null: the step has no countdown.
  */
-export function countdownKind(block: Block): "pause" | "limit" | null {
+export function countdownKind(block: Block): "pause" | "limit" | "game" | null {
   switch (block.type) {
     case "delay":
       return "pause";
@@ -33,6 +33,8 @@ export function countdownKind(block: Block): "pause" | "limit" | null {
     case "charge":
     case "release":
       return "limit";
+    case "toggle":
+      return "game";
     default:
       return null;
   }
@@ -41,7 +43,7 @@ export function countdownKind(block: Block): "pause" | "limit" | null {
 /** Does the step have a time the countdown can run over? */
 export function hasCountdownTime(block: Block): boolean {
   const kind = countdownKind(block);
-  return kind === "pause" || (kind === "limit" && switchState(block, "timeLimit"));
+  return kind === "pause" || kind === "game" || (kind === "limit" && switchState(block, "timeLimit"));
 }
 
 export function countdownStyle(block: Block): CountdownStyle | null {

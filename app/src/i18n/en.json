@@ -225,7 +225,10 @@
         "ifReleasedEarly": "If released too early",
         "ifFull": "If fully charged",
         "ifNoHold": "If nobody holds",
-        "ifFalseStart": "False start"
+        "ifFalseStart": "False start",
+        "ifAllA": "If team A has every pod",
+        "ifAllB": "If team B has every pod",
+        "whenTimeOver": "When time is up"
       },
       "toStep": "step {{n}}",
       "nextRound": "next round",
@@ -270,7 +273,8 @@
         "unknown": "Step",
         "effect": "Light effect",
         "charge": "Hold to charge",
-        "release": "Let go"
+        "release": "Let go",
+        "toggle": "Domination"
       },
       "colour": "Colour",
       "leds": "Which LEDs",
@@ -421,6 +425,33 @@
         "goColour": "Colour of the signal",
         "signalAfter": "Signal after the hold"
       },
+      "toggle": {
+        "hint": "Every press flips a pod between two team colours. The team with more pods, or more time, wins.",
+        "teamA": "Colour of team A",
+        "teamB": "Colour of team B",
+        "length": "Length of the game",
+        "duration": "Game length",
+        "start": "Who starts with which colour",
+        "starts": { "alternate": "Take turns", "a": "All team A", "b": "All team B", "random": "Random", "off": "Nobody" },
+        "startHint": {
+            "alternate": "The first pod is team A, the second team B, and so on. The central comes last.",
+            "a": "Every pod starts in the colour of team A.",
+            "b": "Every pod starts in the colour of team B.",
+            "random": "Every pod gets a random team.",
+            "off": "Pods start dark. The first press makes a pod team A."
+        },
+        "cooldown": "Pause between two presses of a pod",
+        "endHint": "The game ends when the time is up. It ends earlier when one team holds every pod, if that outcome leads to a step.",
+        "results": "Keep the result",
+        "resultsHint": "Pods and time are counted per team. Time adds up over all pods.",
+        "result": {
+            "podsA": "Pods of team A",
+            "podsB": "Pods of team B",
+            "timeA": "Time of team A",
+            "timeB": "Time of team B",
+            "flips": "Number of flips"
+        }
+      },
       "enum": {
         "mode": {
           "release": "Letting go ends it",
@@ -490,6 +521,10 @@
         "release": {
           "name": "Let go",
           "hint": "Letting go is the event, or a start signal"
+        },
+        "domination": {
+          "name": "Domination",
+          "hint": "Two teams flip pods by pressing them"
         }
       },
       "recipe": {
@@ -589,6 +624,8 @@
     "peripheral": "Pod {{id}}",
     "press": "Press {{pod}}",
     "pressNow": "press now",
+    "teamA": "A",
+    "teamB": "B",
     "controls": "Controls",
     "run": "Run",
     "pause": "Pause",
@@ -725,7 +762,11 @@
     "goTimeBothForms": "Use either one fixed time or a shortest and a longest time, not both",
     "podSingleOnly": "This step needs one pod (\"central\" or a number), not {{value}}",
     "maxMsTooSmall": "The time for a full charge must be at least {{min}} ms",
-    "countdownTargetNotDelay": "Only a pause can choose where the countdown is shown"
+    "countdownTargetNotDelay": "Only a pause can choose where the countdown is shown",
+    "countdownNotSupported": "Only pauses, presses, holds, races and dominations can show a countdown",
+    "colorsNotTwo": "Choose exactly two team colours (red, green, blue, yellow, magenta, cyan or white)",
+    "toggleNeedsDuration": "Set the game length: a fixed time or a shortest and a longest time",
+    "toggleDurationBothForms": "Use either one fixed game length or a shortest and a longest length, not both"
   },
   "portRoles": {
     "then": "Then",
@@ -741,7 +782,10 @@
     "ifReleasedEarly": "If released too early",
     "ifFull": "If fully charged",
     "ifNoHold": "If nobody holds",
-    "ifFalseStart": "False start"
+    "ifFalseStart": "False start",
+    "ifAllA": "If team A has every pod",
+    "ifAllB": "If team B has every pod",
+    "whenTimeOver": "When time is up"
   },
   "view": {
     "back": "Back",
@@ -784,6 +828,8 @@
   },
   "ports": {
     "next": "next",
+    "allA": "all team A",
+    "allB": "all team B",
     "pressed": "pressed",
     "short": "short",
     "long": "long",
@@ -846,6 +892,10 @@
     "release": {
       "name": "Let go",
       "help": "Trigger: letting go of the held button is the event. Signal: the colour switches after a time and the athlete lets go as fast as possible (false start if too early). Needs firmware 2.9 on pods."
+    },
+    "toggle": {
+      "name": "Domination",
+      "help": "Pods stay lit and flip between two team colours on every press. Ends when the time is up (next), or when every pod is team A (allA) or team B (allB). Needs firmware 2.10 on pods."
     }
   },
   "common": {
@@ -1060,6 +1110,39 @@
     },
     "storePercent": {
       "label": "Store percentage in variable"
+    },
+    "colors": {
+      "label": "Team colours"
+    },
+    "durationMs": {
+      "label": "Game length (ms)"
+    },
+    "minDurationMs": {
+      "label": "Shortest game (ms)"
+    },
+    "maxDurationMs": {
+      "label": "Longest game (ms)"
+    },
+    "start": {
+      "label": "Start owners"
+    },
+    "cooldownMs": {
+      "label": "Cooldown between presses (ms)"
+    },
+    "storeA": {
+      "label": "Store pods of team A in variable"
+    },
+    "storeB": {
+      "label": "Store pods of team B in variable"
+    },
+    "storeTimeA": {
+      "label": "Store time of team A in variable"
+    },
+    "storeTimeB": {
+      "label": "Store time of team B in variable"
+    },
+    "storeFlips": {
+      "label": "Store number of flips in variable"
     }
   },
   "ops": {
@@ -1449,6 +1532,11 @@
     }
   },
   "settingLabels": {
+    "teamAPods": "Pods of team A",
+    "teamBPods": "Pods of team B",
+    "teamATime": "Time of team A",
+    "teamBTime": "Time of team B",
+    "flips": "Flips",
     "rounds": "Rounds",
     "runs": "Round counter",
     "pause": "Pause",
@@ -1586,6 +1674,14 @@
       "chosenPod": "the chosen pod"
     },
     "withCountdown": "the ring counts down",
+    "toggle": "Domination: {{a}} against {{b}} for {{time}}",
+    "toggleCooldown": "{{time}} between presses",
+    "toggleStart": {
+        "a": "everyone starts {{a}}",
+        "b": "everyone starts {{b}}",
+        "random": "random start",
+        "off": "pods start dark"
+    },
     "charge": "Hold {{pod}} to charge · full after {{time}}",
     "chargeAccumulate": "Charge {{pod}} by holding, letting go pauses · full after {{time}}",
     "releaseTrigger": "Wait for {{pod}} to be held and let go",

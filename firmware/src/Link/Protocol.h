@@ -20,6 +20,7 @@
  *                                ◄─── RESET
  *                                ◄─── EFFECT (effect, start time)   only to pods with LINK_FEATURE_EFFECTS
  *   RELEASED (hold report) ─────────►                 CHARGE / RELEASE activations, LINK_FEATURE_HOLD
+ *   PRESSED (owner, flipCount) ─────►                 TOGGLE activations, LINK_FEATURE_TOGGLE
  *
  * Program store sync (see StoreSync): PING and PONG carry the store generation and hash.
  * The pod with the older store reads the other pod's manifest and changed files with
@@ -34,6 +35,9 @@
  * Link protocol revision 2 (firmware 2.9) adds hold reporting (LINK_FEATURE_HOLD): PodMode
  * CHARGE / RELEASE, the RELEASED frame and the hold parameters appended to ARM.
  *
+ * Link protocol revision 3 (firmware 2.10) adds toggle (LINK_FEATURE_TOGGLE): PodMode TOGGLE, the toggle
+ * parameters appended to ARM and owner / flipCount appended to PRESSED.
+ *
  *   SYNC_READ_REQ (path, offset) ───►
  *                                ◄─── SYNC_READ_RESP (offset, total, data)
  */
@@ -41,7 +45,7 @@ namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
     const uint8_t VERSION = 1;          // frame header version, see "Extensions" above
-    const uint8_t REVISION = 2;         // link protocol revision (reported as info.linkRevision)
+    const uint8_t REVISION = 3;         // link protocol revision (reported as info.linkRevision)
     const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
@@ -62,12 +66,14 @@ namespace Protocol {
     // ClaimAck::linkFeatures (firmware >= 2.8; a shorter CLAIM_ACK means 0)
     const uint8_t LINK_FEATURE_EFFECTS = 0x01;     // EFFECT frames and the ARM waiting effect
     const uint8_t LINK_FEATURE_HOLD = 0x02;        // PodMode CHARGE / RELEASE, ARM hold parameters, RELEASED (firmware >= 2.9)
+    const uint8_t LINK_FEATURE_TOGGLE = 0x04;      // PodMode TOGGLE, ARM toggle parameters, PRESSED owner / flipCount (firmware >= 2.10)
 
     enum class PodMode : uint8_t {
         HIT = 1,    // pod should be pressed
         AVOID = 2,  // pod must not be pressed
         CHARGE = 3, // hold to charge (charge block), needs LINK_FEATURE_HOLD
         RELEASE = 4,// hold, release is the event (release block), needs LINK_FEATURE_HOLD
+        TOGGLE = 5, // every press flips the pod between two colours (toggle block), needs LINK_FEATURE_TOGGLE
     };
 
     enum class PressResult : uint8_t {
@@ -140,6 +146,19 @@ namespace Protocol {
     };
     static_assert(sizeof(HoldParams) == 36, "HoldParams must stay 36 bytes");
 
+    // Team owning a toggle pod (Pressed::owner, ToggleParams::startOwner). A is colorActive of ARM, B is colorAfter.
+    const uint8_t OWNER_A = 0;
+    const uint8_t OWNER_B = 1;
+    const uint8_t OWNER_NONE = 2;      // unowned: the pod is dark until its first press, which makes it A
+
+    // Parameters of a TOGGLE activation (4 bytes), see link-protocol.md §2.3
+    struct __attribute__((packed)) ToggleParams {
+        uint8_t startOwner;     // OWNER_*
+        uint8_t reserved;
+        uint16_t cooldownMs;    // minimum time between two flips of the pod
+    };
+    static_assert(sizeof(ToggleParams) == 4, "ToggleParams must stay 4 bytes");
+
     struct __attribute__((packed)) Header {
         uint8_t magic;
         uint8_t version;
@@ -203,6 +222,7 @@ namespace Protocol {
         int64_t startAtUs;      // central clock; 0 = light up immediately
         EffectDesc waiting;     // appended, optional: played instead of colorActive while waiting for the press
         HoldParams hold;        // appended after waiting, only for PodMode CHARGE / RELEASE (waiting is then always present)
+        ToggleParams toggle;    // appended after hold, only for PodMode TOGGLE (waiting and hold are then present, hold zeroed)
     };
 
     // central -> peripheral: play an effect on the ring. Does not change the activation state.
@@ -224,6 +244,8 @@ namespace Protocol {
         uint8_t cmdSeq;
         PressResult result;
         int32_t reactionUs;     // LED on -> button press, measured on the peripheral
+        uint8_t owner;          // appended, TOGGLE only: owner after this press (OWNER_*), absolute
+        uint16_t flipCount;     // appended, TOGGLE only: flips since the ARM, 1 for the first
     };
 
     const uint8_t RELEASED_FLAG_FALSE_START = 0x01;    // RELEASE signal: released before the switch
@@ -302,9 +324,9 @@ namespace Protocol {
             case MsgType::CLAIM_ACK: return offsetof(ClaimAck, linkFeatures);
             case MsgType::PING: return sizeof(Ping);
             case MsgType::PONG: return sizeof(Pong);
-            case MsgType::ARM: return offsetof(Arm, waiting);       // waiting and hold are appended
+            case MsgType::ARM: return offsetof(Arm, waiting);       // waiting, hold and toggle are appended
             case MsgType::RESET: return sizeof(Reset);
-            case MsgType::PRESSED: return sizeof(Pressed);
+            case MsgType::PRESSED: return offsetof(Pressed, owner);   // owner and flipCount are appended
             case MsgType::SYNC_READ_REQ: return sizeof(SyncReadReq);
             case MsgType::SYNC_READ_RESP: return offsetof(SyncReadResp, data);   // + len bytes
             case MsgType::EFFECT: return sizeof(Effect);

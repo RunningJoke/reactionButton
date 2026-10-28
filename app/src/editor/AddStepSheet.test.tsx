@@ -66,6 +66,19 @@ describe("Add a step sheet", () => {
     }
   });
 
+  it("adds domination for a pod with format 4, greyed for format 3", () => {
+    const withPods = { ...solo, peripherals: 2 } as ProgramJson;
+    const onAdd = vi.fn();
+    render(<AddStepSheet doc={withPods} after="Hit" programFormat={4} onAdd={onAdd} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Domination/ }));
+    expect((onAdd.mock.calls[0]![0] as ProgramJson).blocks).toContainEqual(expect.objectContaining({ type: "toggle", durationMs: 30000 }));
+    cleanup();
+    render(<AddStepSheet doc={withPods} programFormat={3} onAdd={() => {}} onClose={() => {}} />);
+    const tile = screen.getByRole("button", { name: /Domination/ }) as HTMLButtonElement;
+    expect(tile.disabled).toBe(true);
+    expect(tile.textContent).toContain("needs newer firmware");
+  });
+
   it("shows block types and library parts in expert mode", () => {
     useExpertModeStore.setState({ on: true });
     const onAdd = vi.fn();

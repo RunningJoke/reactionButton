@@ -1,0 +1,51 @@
+{
+  "_comment": "Shared cases of tools/validate_programs.py (tools/test_validate_programs.py) and the app validator (packages/program-model/src/validatorCases.test.ts): both must agree. Every case is one program with 2 peripherals and these blocks plus a final LED block 'L'. valid: no error; warns: at least one warning (default: not checked).",
+  "cases": [
+    { "name": "toggle: minimal", "valid": true, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 20000, "next": "L" }] },
+    {
+      "name": "toggle: every field",
+      "valid": true,
+      "blocks": [
+        {
+          "name": "T", "type": "toggle", "pods": 2, "includeCentral": false, "colors": ["green", "magenta"], "start": "random", "durationMs": 20000,
+          "cooldownMs": 500, "syncStartMs": 0, "countdown": "drain", "countdownColor": "white", "storeA": "PA", "storeB": "PB", "storeTimeA": "TA",
+          "storeTimeB": "TB", "storeFlips": "F", "next": "L", "allA": "L", "allB": "L"
+        }
+      ]
+    },
+    { "name": "toggle: random game length", "valid": true, "blocks": [{ "name": "T", "type": "toggle", "minDurationMs": 5000, "maxDurationMs": 9000, "next": "L" }] },
+    { "name": "toggle: reversed random length only warns", "valid": true, "warns": true, "blocks": [{ "name": "T", "type": "toggle", "minDurationMs": 9000, "maxDurationMs": 5000, "next": "L" }] },
+    { "name": "toggle: countdown needs no time limit", "valid": true, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "countdown": "fill", "next": "L" }] },
+    { "name": "toggle: colors with one entry", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "colors": ["red"], "next": "L" }] },
+    { "name": "toggle: colors with three entries", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "colors": ["red", "blue", "green"], "next": "L" }] },
+    { "name": "toggle: colors not a list", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "colors": "red", "next": "L" }] },
+    { "name": "toggle: colors with a hex colour", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "colors": ["red", "#0000ff"], "next": "L" }] },
+    { "name": "toggle: no duration", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "next": "L" }] },
+    { "name": "toggle: only a shortest duration", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "minDurationMs": 1000, "next": "L" }] },
+    { "name": "toggle: both duration forms", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "minDurationMs": 1000, "maxDurationMs": 2000, "next": "L" }] },
+    { "name": "toggle: unknown start", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "start": "both", "next": "L" }] },
+    { "name": "toggle: includeCentral is not a bool", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "includeCentral": "yes", "next": "L" }] },
+    { "name": "toggle: empty store name", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "storeA": "", "next": "L" }] },
+    { "name": "toggle: store name is a number", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "storeFlips": 3, "next": "L" }] },
+    { "name": "toggle: allA leads nowhere", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "allA": "Nope", "next": "L" }] },
+    { "name": "toggle: unknown countdown style", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "countdown": "blink", "next": "L" }] },
+    { "name": "toggle: countdownTarget belongs to delay", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "countdownTarget": "all", "next": "L" }] },
+    { "name": "toggle: cooldown is not a number", "valid": false, "blocks": [{ "name": "T", "type": "toggle", "durationMs": 5000, "cooldownMs": 1.5, "next": "L" }] },
+    { "name": "countdown on a delay", "valid": true, "blocks": [{ "name": "D", "type": "delay", "ms": 3000, "countdown": "drain", "next": "L" }] },
+    { "name": "countdown on a button without time limit", "valid": false, "blocks": [{ "name": "B", "type": "button", "countdown": "drain", "next": "L" }] },
+    { "name": "countdown on a button with time limit", "valid": true, "blocks": [{ "name": "B", "type": "button", "timeoutMs": 2000, "countdown": "drain", "next": "L" }] },
+    { "name": "countdown on a led block", "valid": false, "blocks": [{ "name": "X", "type": "led", "color": "red", "countdown": "drain", "next": "L" }] },
+    { "name": "effect: wait for an endless blink", "valid": false, "blocks": [{ "name": "E", "type": "effect", "effect": "blink", "wait": true, "next": "L" }] },
+    { "name": "effect: wait for a blink with a duration", "valid": true, "blocks": [{ "name": "E", "type": "effect", "effect": "blink", "wait": true, "durationMs": 1000, "next": "L" }] },
+    { "name": "repeat: the body leads back", "valid": true, "blocks": [{ "name": "R", "type": "repeat", "count": 2, "body": "W", "done": "L" }, { "name": "W", "type": "delay", "ms": 10, "next": "R" }] },
+    { "name": "repeat: the body does not lead back only warns", "valid": true, "warns": true, "blocks": [{ "name": "R", "type": "repeat", "count": 2, "body": "W", "done": "L" }, { "name": "W", "type": "delay", "ms": 10, "next": "L" }] },
+    { "name": "peripherals: named colour", "valid": true, "blocks": [{ "name": "P", "type": "remotePress", "pod": 0, "color": "yellow", "next": "L" }] },
+    { "name": "peripherals: only named colours", "valid": false, "blocks": [{ "name": "P", "type": "remotePress", "pod": 0, "color": "#ff8800", "next": "L" }] },
+    { "name": "peripherals: only named colours in a race", "valid": false, "blocks": [{ "name": "P", "type": "remoteMultiPress", "hitColor": [1, 2, 3], "next": "L" }] },
+    { "name": "central: any colour", "valid": true, "blocks": [{ "name": "X", "type": "led", "color": "#ff8800", "next": "L" }] },
+    { "name": "release signal needs a time", "valid": false, "blocks": [{ "name": "X", "type": "release", "mode": "signal", "next": "L" }] },
+    { "name": "charge needs one pod", "valid": false, "blocks": [{ "name": "X", "type": "charge", "maxMs": 2000, "pod": "all", "next": "L" }] },
+    { "name": "unknown block type", "valid": false, "blocks": [{ "name": "X", "type": "toggel", "next": "L" }] },
+    { "name": "unknown port target", "valid": false, "blocks": [{ "name": "X", "type": "delay", "ms": 10, "next": "Nowhere" }] }
+  ]
+}

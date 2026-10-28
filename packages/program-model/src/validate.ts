@@ -75,6 +75,10 @@ export const ISSUE_CODES = [
   "goTimeBothForms",
   "podSingleOnly",
   "maxMsTooSmall",
+  "colorsNotTwo",
+  "toggleNeedsDuration",
+  "toggleDurationBothForms",
+  "countdownNotSupported",
   // warnings
   "noOutgoing",
   "unreachable",
@@ -404,6 +408,9 @@ function checkField(
     case "bool":
       if (typeof value !== "boolean") out.error("notBool", file, at(name));
       break;
+    case "colorPair":
+      if (!Array.isArray(value) || value.length !== 2 || !value.every(isNamedColor)) out.error("colorsNotTwo", file, at(name));
+      break;
   }
 }
 
@@ -421,6 +428,15 @@ function checkTypeRules(
     out.error("randomTimeoutPair", file, at("minTimeoutMs"));
   }
   checkModes(def, block, file, at, out);
+  // toggle: the game length is required, in one of two forms (like tools/validate_programs.py check_toggle)
+  if (def.type === "toggle") {
+    const range = block.minDurationMs !== undefined && block.maxDurationMs !== undefined;
+    if (block.durationMs !== undefined && (block.minDurationMs !== undefined || block.maxDurationMs !== undefined)) {
+      out.error("toggleDurationBothForms", file, at("durationMs"));
+    } else if (block.durationMs === undefined && !range) {
+      out.error("toggleNeedsDuration", file, at("durationMs"));
+    }
+  }
   // effect: wait for something that never ends (a variable duration is not known here)
   if (def.type === "effect" && block.wait === true && typeof block.effect === "string" && PERIODIC_EFFECTS.includes(block.effect)) {
     const duration = block.durationMs;
@@ -436,6 +452,11 @@ function checkTypeRules(
     if (!alternatives.some((fields) => fields.every(set))) {
       out.error("countdownNeedsTimeLimit", file, at("countdown", { countdown: String(block.countdown), limit: alternatives.map((f) => f.join(" + ")).join(" or ") }));
     }
+  }
+  // countdown fields on a block type without a time (like tools/validate_programs.py)
+  const countdownFields = ["countdown", "countdownColor", "countdownFrom", "countdownTarget"];
+  if (countdownFields.some((f) => block[f] !== undefined) && def.type !== "delay" && def.type !== "toggle" && !(TIMEOUT_TYPES as readonly string[]).includes(def.type)) {
+    out.error("countdownNotSupported", file, at("countdown"));
   }
   if (block.countdownTarget !== undefined && def.type !== "delay") out.error("countdownTargetNotDelay", file, at("countdownTarget"));
   if (def.type === "charge" && typeof block.maxMs === "number" && block.maxMs < 1) out.error("maxMsTooSmall", file, at("maxMs", { min: 1 }));
@@ -540,6 +561,7 @@ const RANGES: Record<string, readonly [string, string]> = {
   button: ["minTimeoutMs", "maxTimeoutMs"],
   charge: ["minTimeoutMs", "maxTimeoutMs"],
   release: ["minGoMs", "maxGoMs"],
+  toggle: ["minDurationMs", "maxDurationMs"],
 };
 
 /**

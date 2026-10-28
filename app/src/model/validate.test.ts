@@ -24,7 +24,7 @@ describe("shipped programs", () => {
     for (const [path, issues] of results) {
       expect(issues.filter((i) => i.severity === "error"), path).toEqual([]);
     }
-    expect(results.size).toBe(13); // index + 12 programs
+    expect(results.size).toBe(14); // index + 13 programs
   });
 
   it("finds the same block counts as tools/validate_programs.py", () => {
@@ -38,6 +38,7 @@ describe("shipped programs", () => {
       "/prog/run.json": 12,
       "/prog/run5.json": 12,
       "/prog/duo.json": 15,
+      "/prog/domination.json": 11,
     };
     for (const [path, count] of Object.entries(expected)) {
       expect(resolveProgram(path, (p) => DEFAULT_FILES[p]).blocks.length, path).toBe(count);

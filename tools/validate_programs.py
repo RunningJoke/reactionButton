@@ -20,7 +20,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "firmware" / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
 
-PROGRAM_FORMAT = 3   # revision of the block types below
+PROGRAM_FORMAT = 4   # revision of the block types below
 
 NAMED_COLORS = {"off", "black", "red", "green", "blue", "yellow", "magenta", "cyan", "white"}
 
@@ -49,7 +49,12 @@ BLOCK_TYPES = {
     "release":          (["next", "noHold", "falseStart", "timeout"], [],
                          ["goMs", "minGoMs", "maxGoMs", "holdTimeoutMs", "maxHoldMs", "timeoutMs"], [],
                          ["holdColor", "heldColor", "goColor"]),
+    # programFormat 4: pods change team colour on every press ("colors" is checked in check_toggle)
+    "toggle":           (["next", "allA", "allB"], [],
+                         ["pods", "durationMs", "minDurationMs", "maxDurationMs", "cooldownMs", "syncStartMs"], [], []),
 }
+TOGGLE_STARTS = {"a", "b", "alternate", "random", "off"}
+TOGGLE_STORES = ("storeA", "storeB", "storeTimeA", "storeTimeB", "storeFlips")
 
 # blocks with modes: mode field -> (options, default), field -> the only mode it exists in
 MODES = {
@@ -72,6 +77,7 @@ COUNTDOWN_FIELDS = {
     "remoteMultiPress": ["countdownColor"],
     "charge":           ["countdownColor"],
     "release":          ["countdownColor"],
+    "toggle":           ["countdownColor"],
 }
 COUNTDOWNS = {"secret", "drain", "fill", "dim", "colorShift", "trafficLight"}
 EFFECTS = {"solid", "fill", "drain", "dim", "colorShift", "trafficLight", "blink", "pulse", "spin", "off"}
@@ -176,6 +182,8 @@ class Validator:
         if btype == "repeat" and "storeIndex" in block and not isinstance(block["storeIndex"], str):
             self.error(where, "'storeIndex' must be a variable name")
         self.check_format3(where, btype, block)
+        if btype == "toggle":
+            self.check_toggle(where, block)
         if btype in ("led", "effect"):
             for led in block.get("leds", []):
                 if not isinstance(led, int) or not 0 <= led < 18:
@@ -189,6 +197,25 @@ class Validator:
                     self.error(where, f"port '{port}' points to unknown block '{block[port]}'")
         if not connected:
             print(f"  note: {where} has no outgoing connection, the program ends there")
+
+    def check_toggle(self, where, block):
+        """toggle block (programFormat 4): two named colours, start owner, game length."""
+        colors = block.get("colors")
+        if colors is not None and not (isinstance(colors, list) and len(colors) == 2 and all(
+                isinstance(c, str) and c.lower() in NAMED_COLORS for c in colors)):
+            self.error(where, "'colors' must be two named colours")
+        if block.get("start", "alternate") not in TOGGLE_STARTS:
+            self.error(where, f"unknown start '{block.get('start')}' (known: {', '.join(sorted(TOGGLE_STARTS))})")
+        if "includeCentral" in block and not isinstance(block["includeCentral"], bool):
+            self.error(where, "'includeCentral' must be true or false")
+        has_range = "minDurationMs" in block and "maxDurationMs" in block
+        if "durationMs" in block and ("minDurationMs" in block or "maxDurationMs" in block):
+            self.error(where, "use either 'durationMs' or 'minDurationMs' + 'maxDurationMs', not both")
+        elif "durationMs" not in block and not has_range:
+            self.error(where, "needs 'durationMs' or 'minDurationMs' + 'maxDurationMs'")
+        for name in TOGGLE_STORES:
+            if name in block and (not isinstance(block[name], str) or block[name] == ""):
+                self.error(where, f"'{name}' must be a variable name")
 
     def check_format3(self, where, btype, block):
         """effect block and countdown fields (programFormat 3)."""
@@ -213,7 +240,7 @@ class Validator:
         if not any(f in block for f in ("countdown", "countdownColor", "countdownFrom", "countdownTarget")):
             return
         if btype not in COUNTDOWN_FIELDS:
-            self.error(where, "countdown fields are only valid on delay, button, remotePress, remoteMultiPress, charge and release")
+            self.error(where, "countdown fields are only valid on delay, button, remotePress, remoteMultiPress, charge, release and toggle")
             return
         for field in ("countdownColor", "countdownFrom"):
             if field not in block:
@@ -230,7 +257,7 @@ class Validator:
         countdown = block.get("countdown", "secret")
         if countdown not in COUNTDOWNS:
             self.error(where, f"unknown countdown '{countdown}' (known: {', '.join(sorted(COUNTDOWNS))})")
-        elif countdown != "secret" and btype != "delay":
+        elif countdown != "secret" and btype not in ("delay", "toggle"):
             random_timeout = "minTimeoutMs" in block and "maxTimeoutMs" in block
             def positive(field):  # charge / release: 0 or less means no limit
                 value = block.get(field)
@@ -321,7 +348,8 @@ class Validator:
             return v if isinstance(v, int) else self.variables.get(v) if isinstance(v, str) else None
         for file, block in blocks:
             fields = {"delay": ("minMs", "maxMs"), "button": ("minTimeoutMs", "maxTimeoutMs"),
-                      "charge": ("minTimeoutMs", "maxTimeoutMs"), "release": ("minGoMs", "maxGoMs")}.get(block.get("type"))
+                      "charge": ("minTimeoutMs", "maxTimeoutMs"), "release": ("minGoMs", "maxGoMs"),
+                      "toggle": ("minDurationMs", "maxDurationMs")}.get(block.get("type"))
             if not fields:
                 continue
             low, high = value(block.get(fields[0])), value(block.get(fields[1]))

@@ -84,10 +84,10 @@ The file/line references of fixed items point to the old code and are kept for h
 | ID | Issue |
 |---|---|
 | L1 ◐ | Placeholder UUIDs `12345678-1234-…`. These could collide with other hobby devices. Generate a random 128-bit base UUID |
-| L2 | `static ColorSet* X = new …` in a header: every translation unit gets its own copies ([ColorSet.h](../../firmware/src/ColorSet/ColorSet.h)) |
+| L2 ✅ | `static ColorSet* X = new …` in a header: every translation unit gets its own copies ([ColorSet.h](../../firmware/src/ColorSet/ColorSet.h)) |
 | L3 ✅ | `setMinPreferred(0x06)` is immediately overwritten by `setMinPreferred(0x12)`. This is a copy-paste from the Arduino example; `setMaxPreferred` was probably intended |
-| L4 | Dead code / stubs: `Peripheral::setLedColor`, `peripheralId`, `findNextBlockIndex`, `phoneOverride*`, `centralTimer`, COUNTER/COUNTDOWN, `esp_task_wdt.h`, SPIFFS + `homepage.html`, empty `customPartitions.csv`, `IBuzzerMode.cpp`, `ColorSet.cpp` |
-| L5 | Flash config says 2 MB (`CONFIG_ESPTOOLPY_FLASHSIZE_2MB`), but `partitions.csv` uses 4 MB. Only one app slot, so OTA is impossible *(verify actual flash size)* |
+| L4 ✅ | Dead code / stubs: `Peripheral::setLedColor`, `peripheralId`, `findNextBlockIndex`, `phoneOverride*`, `centralTimer`, COUNTER/COUNTDOWN, `esp_task_wdt.h`, SPIFFS + `homepage.html`, empty `customPartitions.csv`, `IBuzzerMode.cpp`, `ColorSet.cpp` |
+| L5 ✅ | Flash config says 2 MB (`CONFIG_ESPTOOLPY_FLASHSIZE_2MB`), but `partitions.csv` uses 4 MB. Only one app slot, so OTA is impossible *(verify actual flash size)* |
 | L6 ✅ | `BlockManager::runBlocks` builds `String` objects for name lookups on every pass (heap churn) |
 | L7 | Naming is inconsistent: ServerMode = peripheral role, "model" = program, "buzzer" = pod. Some comments are out of date (e.g. "more than 2 seconds") |
 | L8 | No automated tests, no CI build |
