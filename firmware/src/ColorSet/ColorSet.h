@@ -8,11 +8,13 @@ struct ColorSet {
     uint8_t blue;
 };
 
-static ColorSet* BLACK = new ColorSet{0,0,0};
-static ColorSet* RED = new ColorSet{255,0,0};
-static ColorSet* GREEN = new ColorSet{0,255,0};
-static ColorSet* BLUE = new ColorSet{0,0,255};
-static ColorSet* YELLOW = new ColorSet{255,255,0};
-static ColorSet* MAGENTA = new ColorSet{255,0,255};
-static ColorSet* CYAN = new ColorSet{0,255,255};
-static ColorSet* WHITE = new ColorSet{255,255,255};
+// One shared instance per colour, defined in ColorSet.cpp. The pointers are constant-initialised
+// (no dynamic init), so they are valid in static initialisers of other translation units too.
+extern ColorSet* const BLACK;
+extern ColorSet* const RED;
+extern ColorSet* const GREEN;
+extern ColorSet* const BLUE;
+extern ColorSet* const YELLOW;
+extern ColorSet* const MAGENTA;
+extern ColorSet* const CYAN;
+extern ColorSet* const WHITE;
