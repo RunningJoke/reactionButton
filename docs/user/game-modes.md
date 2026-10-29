@@ -73,14 +73,18 @@ and only presses that start after the LED came on count.
 
 ```mermaid
 flowchart LR
-    SL["StartLoop<br/>RUNS += 1"] --> EP([EnterProgram])
+    SC["StartCycle<br/>timer 'cycle' starts"] --> SL["StartLoop<br/>RUNS += 1"] --> EP([EnterProgram])
     EP -.-> EL{"EndLoop<br/>RUNS >= MAX_LOOPS?"}
     EL -- no --> SL
-    EL -- yes --> SR["StartReset<br/>LEDs blue"] --> SU["Summary<br/>metric 'reaction'"] --> RD["ResetDelay<br/>3000 ms"] --> CL["ClearLED"] --> RV["ResetRuns<br/>RUNS = 0"] --> SL
+    EL -- yes --> SR["StartReset<br/>LEDs blue, timer 'cycle' stops"] --> SU["Summary<br/>metric 'reaction'"] --> RP{"Report<br/>communicate, ≤ 3 s"}
+    RP -- "press / timeout / continue / repeat" --> CL["ClearLED"] --> RV["ResetRuns<br/>RUNS = 0"] --> SC
+    RP -- stop --> EN["End<br/>LEDs off"]
 ```
 
 After `MAX_LOOPS` rounds the summary (count, average, best, worst reaction time) is
-printed on the serial console. The ring is blue for 3 s, then the next cycle starts.
+printed on the serial console and a report is sent to the app (firmware 2.11). The ring stays
+blue until a press, the app's answer or 3 s, then the next cycle starts. `repeat` from the app
+discards the report and plays the cycle again; `stop` ends the program.
 
 ### 3.2 SOLO (`solo.json`)
 
