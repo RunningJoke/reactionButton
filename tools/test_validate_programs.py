@@ -51,7 +51,7 @@ class ValidatorCases(unittest.TestCase):
                     self.assertTrue(warnings, "expected a warning")
 
     def test_program_format(self):
-        self.assertEqual(validate_programs.PROGRAM_FORMAT, 5)
+        self.assertEqual(validate_programs.PROGRAM_FORMAT, 6)
         self.assertIn("toggle", validate_programs.BLOCK_TYPES)
         self.assertIn("communicate", validate_programs.BLOCK_TYPES)
 

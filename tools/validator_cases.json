@@ -73,6 +73,18 @@
     { "name": "communicate: editable range not integers", "valid": false, "variables": { "MAX_LOOPS": 3 }, "blocks": [{ "name": "C", "type": "communicate", "editable": { "MAX_LOOPS": { "min": 1.5, "max": 3 } }, "next": "L" }] },
     { "name": "communicate: editable without max", "valid": false, "variables": { "MAX_LOOPS": 3 }, "blocks": [{ "name": "C", "type": "communicate", "editable": { "MAX_LOOPS": { "min": 1 } }, "next": "L" }] },
     { "name": "communicate: colour must be a colour", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "color": "nope", "next": "L" }] },
-    { "name": "communicate: repeat leads nowhere", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "repeat": "Nowhere", "next": "L" }] }
+    { "name": "communicate: repeat leads nowhere", "valid": false, "blocks": [{ "name": "C", "type": "communicate", "repeat": "Nowhere", "next": "L" }] },
+    { "name": "summary: plain summary", "valid": true, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "next": "L" }] },
+    { "name": "summary: bar with target and show time", "valid": true, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 450, "showMs": 3000, "next": "L" }] },
+    { "name": "summary: bar with target from a variable", "valid": true, "variables": { "TARGET": 400 }, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": "TARGET", "next": "L" }] },
+    { "name": "summary: bar without showMs (default 3 s)", "valid": true, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 450, "next": "L" }] },
+    { "name": "summary: showMs 0 (until the next LED change)", "valid": true, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 450, "showMs": 0, "next": "L" }] },
+    { "name": "summary: show without targetMs", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "next": "L" }] },
+    { "name": "summary: targetMs 0", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 0, "next": "L" }] },
+    { "name": "summary: targetMs above 60 s", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 60001, "next": "L" }] },
+    { "name": "summary: targetMs not a whole number", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 450.5, "next": "L" }] },
+    { "name": "summary: negative showMs", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 450, "showMs": -1, "next": "L" }] },
+    { "name": "summary: showMs above 60 s", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": true, "targetMs": 450, "showMs": 60001, "next": "L" }] },
+    { "name": "summary: show must be a boolean", "valid": false, "blocks": [{ "name": "S", "type": "summary", "metric": "reaction", "show": "yes", "next": "L" }] }
   ]
 }

@@ -20,7 +20,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "firmware" / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
 
-PROGRAM_FORMAT = 5   # revision of the block types below
+PROGRAM_FORMAT = 6   # revision of the block types below
 
 NAMED_COLORS = {"off", "black", "red", "green", "blue", "yellow", "magenta", "cyan", "white"}
 
@@ -36,7 +36,8 @@ BLOCK_TYPES = {
     "remoteMultiPress": (["next", "avoidHit", "timeout"], [], ["pods", "avoid", "timeoutMs", "syncStartMs"], [],
                          ["hitColor", "avoidColor"]),
     "remoteResetAll":   (["next"], [], ["pods"], [], []),
-    "summary":          (["next"], ["metric"], [], [], []),
+    # programFormat 6: "show" bar on the central's ring (check_summary)
+    "summary":          (["next"], ["metric"], ["targetMs", "showMs"], [], []),
     "repeat":           (["next", "body", "done"], ["count"], ["count"], [], []),
     # programFormat 3: ring effect; colours are named (also on the central)
     "effect":           (["next"], ["effect"], ["durationMs", "periodMs", "brightness", "syncStartMs"], [],
@@ -188,6 +189,8 @@ class Validator:
             self.check_toggle(where, block)
         if btype == "communicate":
             self.check_communicate(where, block)
+        if btype == "summary":
+            self.check_summary(where, block)
         if btype in ("led", "effect"):
             for led in block.get("leds", []):
                 if not isinstance(led, int) or not 0 <= led < 18:
@@ -258,6 +261,20 @@ class Validator:
                 self.error(where, f"'editable' uses '{name}', which the program does not declare")
         if is_int(block.get("timeoutMs")) and block["timeoutMs"] < 0:
             self.error(where, "'timeoutMs' must be 0 or more")
+
+    def check_summary(self, where, block):
+        """summary block (programFormat 6): the bar on the central's ring needs a target; the ranges of both times."""
+        def is_int(value):
+            return isinstance(value, int) and not isinstance(value, bool)
+
+        if "show" in block and not isinstance(block["show"], bool):
+            self.error(where, "'show' must be true or false")
+        if block.get("show") is True and "targetMs" not in block:
+            self.error(where, "'show' needs 'targetMs' (the target time in ms)")
+        if is_int(block.get("targetMs")) and not 1 <= block["targetMs"] <= 60000:
+            self.error(where, "'targetMs' must be 1 to 60000")
+        if is_int(block.get("showMs")) and not 0 <= block["showMs"] <= 60000:
+            self.error(where, "'showMs' must be 0 to 60000")
 
     def check_format3(self, where, btype, block):
         """effect block and countdown fields (programFormat 3)."""

@@ -17,8 +17,8 @@ const report = (fields: Record<string, unknown>, variables: Record<string, numbe
   validate([{ name: "C", type: "communicate", next: "L", ...fields }, LED], format, variables);
 
 describe("program format 5 (communicate)", () => {
-  it("is the app's format", () => {
-    expect(PROGRAM_FORMAT).toBe(5);
+  it("is at least the format of communicate", () => {
+    expect(PROGRAM_FORMAT).toBeGreaterThanOrEqual(5);
   });
 
   it("programFormatOf: communicate needs 5", () => {

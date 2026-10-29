@@ -303,7 +303,8 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
     category: "stats",
     ports: ["next"],
     portRoles: { next: "then" },
-    waits: false,
+    // waits only with `show` (programFormat 6): the bar stays on the ring for showMs
+    waits: true,
     fields: withTimers([
       { name: "metric", kind: "metric", required: true, level: "expert" },
       { name: "storeAverage", kind: "variable" },
@@ -311,6 +312,10 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "storeWorst", kind: "variable" },
       { name: "storeCount", kind: "variable" },
       { name: "reset", kind: "bool", default: true, level: "more" },
+      // programFormat 6: the average as a bar on the central's ring, green / amber / red against targetMs
+      { name: "show", kind: "bool", default: false, level: "more", minFormat: 6, rejectedByOlder: true },
+      { name: "targetMs", kind: "value", level: "more", minFormat: 6, rejectedByOlder: true },
+      { name: "showMs", kind: "value", default: 3000, level: "more", minFormat: 6, rejectedByOlder: true },
     ]),
   },
   {

@@ -6,7 +6,7 @@
  * FIRMWARE VERSION (reported in HELLO frames)
 */
 #define FW_VERSION_MAJOR 2
-#define FW_VERSION_MINOR 12
+#define FW_VERSION_MINOR 13
 
 /**
  * PIN DEFINITIONS

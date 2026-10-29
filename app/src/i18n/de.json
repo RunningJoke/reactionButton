@@ -801,7 +801,10 @@
     "namesTooMany": "Höchstens {{max}} Metriken, Variablen oder einstellbare Variablen",
     "variableNotDeclared": "{{name}} ist keine Variable dieses Programms: lege sie unter \"variables\" fest",
     "editableInvalid": "Jede einstellbare Variable braucht ganze Zahlen als Minimum und Maximum, das Minimum nicht über dem Maximum",
-    "timeoutNegative": "Die Zeitgrenze darf nicht negativ sein"
+    "timeoutNegative": "Die Zeitgrenze darf nicht negativ sein",
+    "summaryNeedsTarget": "Der Balken braucht eine Zielzeit (targetMs)",
+    "summaryTargetRange": "Die Zielzeit muss eine ganze Zahl von 1 bis 60000 ms sein",
+    "summaryShowRange": "Die Zeit, die der Balken steht, muss eine ganze Zahl von 0 bis 60000 ms sein"
   },
   "portRoles": {
     "then": "Dann",
@@ -918,7 +921,7 @@
     },
     "summary": {
       "name": "Auswertung",
-      "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
+      "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole. Kann den Durchschnitt einige Sekunden als Balken auf dem Ring zeigen."
     },
     "repeat": {
       "name": "Wiederholen",
@@ -1073,6 +1076,18 @@
     },
     "reset": {
       "label": "Messungen danach zurücksetzen"
+    },
+    "show": {
+      "label": "Balken auf dem Ring zeigen",
+      "help": "Der Mittelwert als Balken auf dem Ring der Zentrale, einige Sekunden lang: grün = besser als das Ziel, gelb = bis 1,5-faches Ziel, rot = langsamer. Braucht Pod-Firmware 2.13."
+    },
+    "targetMs": {
+      "label": "Ziel (ms)",
+      "help": "Der Balken ist bei dieser Zeit halb voll, bei der doppelten Zeit leer, bei 0 ms voll."
+    },
+    "showMs": {
+      "label": "Zeigen für (ms)",
+      "help": "Wie lange der Balken steht. 0 = bis zur nächsten Lichtänderung, das Programm wartet dann nicht."
     },
     "count": {
       "label": "Runden",
