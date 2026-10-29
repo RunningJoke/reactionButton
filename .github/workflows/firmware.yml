@@ -1,12 +1,12 @@
-# Builds the firmware and checks the shipped programs on every PR and push to main.
+# Builds the firmware, checks the shipped programs and runs the tools tests on every PR and push to main.
 name: Firmware
 
 on:
   push:
     branches: [main]
-    paths: ["firmware/**", "tools/validate_programs.py", ".github/workflows/firmware.yml"]
+    paths: ["firmware/**", "tools/*.py", "tools/*.json", ".github/workflows/firmware.yml"]
   pull_request:
-    paths: ["firmware/**", "tools/validate_programs.py", ".github/workflows/firmware.yml"]
+    paths: ["firmware/**", "tools/*.py", "tools/*.json", ".github/workflows/firmware.yml"]
   workflow_call:
 
 permissions:
@@ -28,6 +28,7 @@ jobs:
           key: pio-${{ hashFiles('firmware/platformio.ini', 'firmware/sdkconfig.NewBoard') }}
       - run: pip install platformio
       - run: python tools/validate_programs.py
+      - run: pip install bleak pyserial && python -m unittest discover -s tools -p "test_*.py"
       - run: pio run -d firmware -e NewBoard
       - name: Flash usage
         run: |
