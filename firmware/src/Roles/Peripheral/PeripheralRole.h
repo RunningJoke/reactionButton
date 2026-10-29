@@ -46,6 +46,8 @@ class PeripheralRole : public IRole {
         void describe(JsonObject status) override;
         bool control(const char* op, JsonObjectConst request, JsonDocument& response) override;
         bool storeEditable() const override;
+        // UNCLAIMED and READY: no activation is armed, so a press or a frame is seen within 1 ms
+        bool idle() const override { return this->state == State::UNCLAIMED || this->state == State::READY; }
 
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };

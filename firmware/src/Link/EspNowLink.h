@@ -47,6 +47,10 @@ class EspNowLink {
         // Handles send results and retries. Call once per loop pass.
         void service();
 
+        // Waits up to ms for a frame in the receive queue (or sleeps ms when the radio is off).
+        // Used by the loop in idle states only (#21): a frame wakes it at once.
+        void idleWait(uint32_t ms);
+
         static bool sameMac(const uint8_t* a, const uint8_t* b) { return memcmp(a, b, 6) == 0; }
 
         bool isStarted() const { return this->started; }

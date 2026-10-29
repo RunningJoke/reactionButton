@@ -17,6 +17,9 @@ class RoleManager {
         void boot(Role role);
         void run();
 
+        // The role may wait for the next radio frame (IRole::idle); false before boot()
+        bool idle() const;
+
         // The active role, nullptr before boot()
         IRole* current() const { return this->role; }
 

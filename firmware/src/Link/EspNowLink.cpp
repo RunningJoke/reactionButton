@@ -259,6 +259,16 @@ void EspNowLink::service() {
     }
 }
 
+void EspNowLink::idleWait(uint32_t ms) {
+    if(!this->started || this->rxQueue == nullptr) {
+        vTaskDelay(pdMS_TO_TICKS(ms));
+        return;
+    }
+    // peek: the frame stays queued for receive(), which runs in the next loop pass
+    RxFrame frame;
+    xQueuePeek(this->rxQueue, &frame, pdMS_TO_TICKS(ms));
+}
+
 bool EspNowLink::receive(RxFrame& frame) {
     if(!this->started) {
         return false;

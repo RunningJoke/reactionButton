@@ -46,3 +46,7 @@ void RoleManager::run() {
     // after the role: an effect started in this pass already showed its first frame
     LEDManager::getManager()->service();
 }
+
+bool RoleManager::idle() const {
+    return this->role != nullptr && this->role->idle();
+}

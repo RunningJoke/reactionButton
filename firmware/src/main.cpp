@@ -8,6 +8,7 @@
 #include "Store/ProgramStore.h"
 #include "Settings/Settings.h"
 #include "Diagnostics/Diag.h"
+#include "Link/EspNowLink.h"
 
 uint64_t timestamp = 0;
 
@@ -77,7 +78,12 @@ void setup() {
 void loop() {
 
   Battery::service();
-  RoleManager::getManager()->run();
+  RoleManager* roles = RoleManager::getManager();
+  roles->run();
 
-
+  // Idle states (IRole::idle): nothing is due, so wait up to 1 ms for a radio frame instead of
+  // spinning. Armed activations keep the fast loop (timing.md §1).
+  if(roles->idle()) {
+    EspNowLink::get().idleWait(1);
+  }
 }

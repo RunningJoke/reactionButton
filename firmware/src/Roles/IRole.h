@@ -30,4 +30,8 @@ class IRole {
 
         // Whether "validate" may load a program into the block engine right now
         virtual bool engineIdle() const { return true; }
+
+        // Whether nothing is due before the next radio frame or button edge, so the loop may wait
+        // for up to 1 ms instead of spinning (#21, timing.md §1). False during an armed activation.
+        virtual bool idle() const { return false; }
 };
