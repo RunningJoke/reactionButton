@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Activity, AlertTriangle, BookLock, ChevronRight, FileJson, Info, KeyRound, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
+import { Activity, AlertTriangle, BookLock, ChevronRight, FileJson, Info, KeyRound, Lightbulb, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
 import { LedRing } from "../components/LedRing";
@@ -126,11 +126,79 @@ function Connected() {
         )}
       </section>
 
+      {role === "central" && <PodList />}
       <PodTraining />
       <SyncSection states={states} readOnly={readOnly} />
       <FileGroups list={list} status={status} />
       <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />
     </>
+  );
+}
+
+/**
+ * The pods of the set (status.pods, central): number and identity colour (firmware ≥ 2.13), and a Blink
+ * button per pod to find it (feature `identify`). Older firmware shows the list without the extra fields.
+ */
+function PodList() {
+  const { t } = useTranslation();
+  const session = usePodSession();
+  const client = session.client;
+  const pods = session.status?.pods ?? [];
+  const canBlink = session.info?.features?.includes("identify") ?? false;
+  const [blinking, setBlinking] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (!client || pods.length === 0) return null;
+
+  const blink = async (pod: number) => {
+    setBlinking(pod);
+    setError(null);
+    try {
+      await client.blink(pod);
+    } catch (e) {
+      setError(e instanceof PodError && e.code === "busy" ? t("pod.podList.blinkBusy") : t("pod.podList.blinkFailed"));
+    } finally {
+      setBlinking(null);
+    }
+  };
+
+  const blinkButton = (pod: number, label: string, aria: string) =>
+    canBlink && (
+      <button className={styles.blinkButton} onClick={() => void blink(pod)} disabled={blinking !== null} aria-label={aria}>
+        {blinking === pod ? <Loader size={18} aria-hidden className={styles.spin} /> : <Lightbulb size={18} aria-hidden />}
+        {label}
+      </button>
+    );
+
+  return (
+    <section className={page.section}>
+      <h2>
+        <Lightbulb size={16} aria-hidden /> {t("pod.podList.title")}
+      </h2>
+      <ul className={styles.podList}>
+        {canBlink && (
+          <li className={styles.podRow}>
+            <span className={styles.colorDot} style={{ background: "var(--led-white)" }} aria-hidden />
+            <span className={styles.podLabel}>{t("pod.podList.central")}</span>
+            {blinkButton(-1, t("pod.podList.blink"), t("pod.podList.blinkCentralAria"))}
+          </li>
+        )}
+        {pods.map((pod) => {
+          const number = pod.number ?? pod.id + 1;
+          return (
+            <li key={pod.id} className={styles.podRow}>
+              {pod.color && <span className={styles.colorDot} style={{ background: pod.color }} aria-hidden />}
+              <span className={styles.podLabel}>
+                {t("pod.podList.number", { number })}
+                {!pod.alive && <span className={styles.offline}> {t("pod.podList.offline")}</span>}
+              </span>
+              {blinkButton(pod.id, t("pod.podList.blink"), t("pod.podList.blinkAria", { number }))}
+            </li>
+          );
+        })}
+      </ul>
+      {canBlink && <p className={styles.note}>{t("pod.podList.blinkHint")}</p>}
+      {error && <p className={styles.warn}>{error}</p>}
+    </section>
   );
 }
 

@@ -26,7 +26,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle), and
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.13", the newest firmware with pause, liveBle and identify), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
    * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
@@ -48,6 +48,9 @@ export type SimulatedPodOptions = {
 const REPORT_BUFFER = 8;
 
 type Json = Record<string, unknown>;
+
+/** Identity colours of pods 1 … 7 (firmware LEDManager/Identity.h): red, green, blue, magenta, cyan, orange, violet. */
+const IDENTITY_COLORS = ["#ff0000", "#00ff00", "#0000ff", "#ff00ff", "#00ffff", "#ff8000", "#8000ff"];
 
 class ApiFailure extends Error {
   constructor(
@@ -111,11 +114,16 @@ export class SimulatedPod {
     this.liveBleOption = options.liveBle;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 5 ? "2.13" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
     this.pin = options.pin ?? "";
+  }
+
+  /** firmware ≥ 2.13: identity (number, colour, blink), feature `identify`, link revision 4 */
+  private get identifies(): boolean {
+    return Number(this.firmware.split(".")[1]) >= 13;
   }
 
   /** firmware ≥ 2.11 (program format 5): the reports and the remote ops, features `reports` and `remote` */
@@ -198,6 +206,7 @@ export class SimulatedPod {
             "setName",
             "auth",
             ...(this.remote ? ["reports", "ack", "session", "command", "setVariables", "pause", "resume"] : []),
+            ...(this.role === "central" && this.identifies ? ["blink"] : []),
           ],
           transport: "simulated",
         };
@@ -219,6 +228,8 @@ export class SimulatedPod {
         return this.auth(req);
       case "setName":
         return this.storeSetName(req);
+      case "blink":
+        return this.blink(req);
       case "setPin":
         throw new ApiFailure("bad_request", "the PIN can only be set or cleared over USB serial");
       case "reports":
@@ -240,7 +251,7 @@ export class SimulatedPod {
       firmware: this.firmware,
       linkProtocol: 1,
       // firmware >= 2.9: hold reporting (link protocol revision 2), >= 2.10: toggle (revision 3), config-api.md
-      ...(this.programFormat >= 3 ? { linkRevision: this.programFormat >= 4 ? 3 : 2 } : {}),
+      ...(this.programFormat >= 3 ? { linkRevision: this.identifies ? 4 : this.programFormat >= 4 ? 3 : 2 } : {}),
       setId: this.setId,
       setName: this.setName,
       pinRequired: this.pin !== "",
@@ -261,6 +272,7 @@ export class SimulatedPod {
         ...(this.programFormat >= 4 ? ["toggle"] : []),
         ...(this.remote ? ["reports", "remote", "pause"] : []),
         ...(this.liveBle ? ["liveBle"] : []),
+        ...(this.identifies ? ["identify"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -293,6 +305,7 @@ export class SimulatedPod {
               effects: this.programFormat >= 2,
               ...(this.programFormat >= 3 ? { hold: true } : {}),
               ...(this.programFormat >= 4 ? { toggle: true } : {}),
+              ...(this.identifies ? { number: id + 1, color: IDENTITY_COLORS[id % IDENTITY_COLORS.length] } : {}),
             })),
           }
         : {}),
@@ -317,6 +330,20 @@ export class SimulatedPod {
     return Object.fromEntries(
       Object.entries(this.waiting?.editable ?? {}).map(([name, range]) => [name, { ...range, value: this.variables.get(name) ?? 0 }]),
     );
+  }
+
+  /** firmware ≥ 2.13 (config-api.md §5): blinks a pod of the set, or the central ("pod" -1 or missing) for 2 s. */
+  private blink(req: Json): Json {
+    if (this.role !== "central" || !this.identifies) throw new ApiFailure("bad_request", "unknown op 'blink' (try 'help')");
+    if (this.state !== "MENU" && this.state !== "DISCOVERY" && this.state !== "CONFIRM") {
+      throw new ApiFailure("busy", `state is ${this.state}`);
+    }
+    const pod = req.pod === undefined ? -1 : req.pod;
+    if (typeof pod !== "number" || !Number.isInteger(pod) || pod < -1 || pod >= (this.podCount ?? 0)) {
+      throw new ApiFailure("bad_request", "'pod' must be a connected pod id or -1 (the central)");
+    }
+    if (pod >= 0 && this.programFormat < 2) throw new ApiFailure("not_ready", "pod has older firmware (no effects)");
+    return { pod, durationMs: 2000 };
   }
 
   private remoteOp(op: string, req: Json): Json {

@@ -19,6 +19,18 @@
     "reconnecting": "Verbinde neu…"
   },
   "pod": {
+    "podList": {
+      "title": "Pods dieses Sets",
+      "central": "Dieser Pod (Zentrale)",
+      "number": "Pod {{number}}",
+      "offline": "antwortet nicht",
+      "blink": "Blinken",
+      "blinkAria": "Pod {{number}} blinken",
+      "blinkCentralAria": "Diesen Pod blinken",
+      "blinkHint": "Blinken lässt einen Pod zwei Sekunden lang aufleuchten, damit du ihn findest. Nur vor dem Spielstart möglich.",
+      "blinkBusy": "Ein Pod kann nur vor dem Spielstart blinken.",
+      "blinkFailed": "Der Pod konnte nicht blinken."
+    },
     "intro": "Mit einer Zentrale im Programmmenü verbinden.",
     "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
     "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",

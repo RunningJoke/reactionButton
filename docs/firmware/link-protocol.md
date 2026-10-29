@@ -37,7 +37,7 @@ All frames start with an 8-byte header (packed, little endian):
 | `CLAIM` | C → P | podId | central takes the peripheral into its set |
 | `CLAIM_ACK` | P → C | podId, linkFeatures (≥ 2.8, appended) | peripheral accepts and says what it understands (§7) |
 | `PING` | P → C | t1 (µs, peripheral clock, stamped at transmission), store generation + hash | heartbeat every 200 ms + clock sync + store state |
-| `PONG` | C → P | t1, t2 (central rx time), t3 (central tx time), store generation + hash, flags (bit 0: sync allowed) | clock sync answer + store state |
+| `PONG` | C → P | t1, t2 (central rx time), t3 (central tx time), store generation + hash, flags (bit 0: sync allowed, bit 1: identify, §2.4) | clock sync answer + store state |
 | `ARM` | C → P | cmdSeq, mode (HIT/AVOID/CHARGE/RELEASE/TOGGLE), colorActive, colorAfter, startAtUs, waiting effect (≥ 2.8, appended, optional), hold parameters (≥ 2.9, appended, only CHARGE / RELEASE), toggle parameters (≥ 2.10, appended, only TOGGLE) | light up now (`startAtUs = 0`) or at a central-clock time |
 | `RESET` | C → P | – | switch off, cancel a pending activation |
 | `PRESSED` | P → C | podId, cmdSeq, result (HIT/AVOID_HIT), reactionUs, owner + flipCount (≥ 2.10, appended, only TOGGLE) | button pressed while active. For CHARGE / RELEASE: a hold started (§2.2). For TOGGLE: the pod flipped (§2.3) |
@@ -46,7 +46,8 @@ All frames start with an 8-byte header (packed, little endian):
 | `SYNC_READ_RESP` | either | reqId, status, offset, total, len, data (≤ 200 bytes) | the chunk |
 | `EFFECT` (11) | C → P | EffectDesc (12 bytes), startAtUs | play an effect on the ring (≥ 2.8, only to pods with the `effects` feature) |
 
-Colour indices: `0 red, 1 green, 2 blue, 3 yellow, 4 magenta, 5 cyan, 6 white, 255 off`.
+Colour indices: `0 red, 1 green, 2 blue, 3 yellow, 4 magenta, 5 cyan, 6 white, 255 off`. `7 orange` and `8 violet`
+are the identity colours of the pods (firmware ≥ 2.13, §2.4); a central does not send them.
 
 ### 2.1 Ring effects (firmware ≥ 2.8)
 
@@ -194,6 +195,24 @@ reordered) is dropped.
   game with a plain HIT ARM whose `colorActive` and `colorAfter` are the final colour, so the ring keeps the colour and
   a press no longer flips it (the `PRESSED` of that ARM carries another `cmdSeq` and is ignored). `remoteResetAll` switches it off.
 - A toggle ARM shorter than 72 bytes is ignored.
+
+### 2.4 Pod identity (link protocol revision 4, firmware ≥ 2.13)
+
+A pod has a **number** 1 … 7 (its pod id + 1) and a fixed **colour** from a palette of seven
+(red, green, blue, magenta, cyan, orange, violet; no yellow, no white). It shows the number as that many
+LEDs in its colour, the rest dark. The palette is `Identity::PALETTE` in `LEDManager/Identity.h`; the central
+reports both in `status.pods[]` (`number`, `color` as `#rrggbb`), so the app draws the same.
+
+- **Menu flag:** the central sets `PONG_FLAG_IDENTIFY` (bit 1 of the PONG flags) while it is in the program
+  menu, discovery or confirm. A pod spins its number (`spin`, one turn per 3 s) while the flag is set, and goes
+  dark when it is cleared (game start, pause, error). Older firmware ignores the bit, so no feature bit is needed.
+- **After a claim:** the number is shown static for 1.5 s (`FLASH`), then the menu flag decides.
+- **Never during a game:** the flag is off in RUN and PAUSED, and an ARM always takes the ring.
+- **Blink:** the central sends an EFFECT (`blink`, the pod's colour, 500 ms period, 2 s, end off) to a pod with the
+  `effects` feature. The pod's identity comes back after the effect. The central itself blinks white.
+  Config API op `blink` (config-api.md §5), only in menu, discovery and confirm.
+- **Before the claim:** an unclaimed pod shows yellow (waiting for a central) with one segment of two LEDs in a
+  colour and at a position taken from its MAC. Unclaimed pods can be told apart, the yellow stays dominant.
 
 ## 3. Transport rules (`EspNowLink`)
 
@@ -387,6 +406,8 @@ leaves it out of the game and logs a warning (programs.md §7.15).
 **Link protocol revision.** The header `version` (1) says whether pods can talk at all and never changes
 for compatible extensions. The *revision* counts the compatible extensions: revision 1 = firmware 2.0 … 2.8
 (effects came with 2.8 as a feature bit), revision 2 = firmware 2.9 (hold reporting, feature bit 1),
-**revision 3 = firmware 2.10** (toggle, feature bit 2). It is
+**revision 3 = firmware 2.10** (toggle, feature bit 2), **revision 4 = firmware 2.13** (identity, §2.4: PONG flag bit 1,
+colours 7 and 8; no feature bit, an older pod ignores the flag). It is
 `Protocol::REVISION` and reported as `info.linkRevision` ([config-api.md](config-api.md) §5). The per-pod
-`hold` and `toggle` flags in `status.pods[]` tell whether a pod supports revision 2 / 3.
+`hold` and `toggle` flags in `status.pods[]` tell whether a pod supports revision 2 / 3. `number` and `color` in
+`status.pods[]` are the identity (revision 4, central firmware ≥ 2.13).

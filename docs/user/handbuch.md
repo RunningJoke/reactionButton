@@ -58,7 +58,8 @@ Eine Ladung reicht für etwa eine Stunde Spielzeit. Eine Akkuanzeige ist geplant
 Du brauchst: so viele Pods, wie das Spiel verlangt (siehe §6), ausgeschaltet.
 
 1. **Ziel-Pods einschalten.** Jeder zeigt etwa 2 Sekunden ein blaues Lauflicht und leuchtet dann
-   **gelb**: Er wartet auf einen Central.
+   **gelb**: Er wartet auf einen Central. Der gelbe Ring hat eine kurze farbige Markierung, bei jedem
+   Ziel anders, damit du sie unterscheiden kannst.
 2. **Central einschalten:** Einen weiteren Pod einschalten und **die Oberseite gedrückt halten,
    solange das blaue Lauflicht läuft**. Loslassen, wenn es erlischt. Ein kleines Lichtmuster zeigt
    jetzt das erste Spiel des **Programm-Menüs**.
@@ -68,7 +69,9 @@ Du brauchst: so viele Pods, wie das Spiel verlangt (siehe §6), ausgeschaltet.
    2 Sekunden), loslassen.
 5. **Auf die Ziele warten:** Der Central zeigt blaue Lichtpaare, ein Paar pro benötigtem Ziel.
    Die gelben Ziele gehen nacheinander aus, sobald sie dabei sind. Sind alle da, leuchtet der
-   Central **grün**.
+   Central **grün**. Solange er wartet, zeigt jedes Ziel, das dabei ist, seine Nummer: so viele
+   Lichter wie seine Nummer, in seiner eigenen Farbe (Pod 1 ein Licht, Pod 2 zwei Lichter usw.).
+   Die Farben sind dieselben wie in der App.
 6. **Start:** Den Central einmal drücken. Los geht's!
 
 Ein anderes Spiel: den Central aus- und wieder einschalten (dabei wie in Schritt 2 die Oberseite
@@ -108,6 +111,8 @@ selbst an; das macht die App (siehe §8.6).
   nächsten Central an.
 - In der App kannst du einem Set einen **Namen** geben (z. B. „Halle A“). Diesen Namen siehst du beim
   Verbinden per Bluetooth.
+- **Einen Pod finden:** In der App, im Reiter Pod unter *Pods dieses Sets*, neben dem Pod *Blinken*
+  drücken: Er blinkt zwei Sekunden lang. Das geht vor dem Spielstart.
 
 Bleibt ein Ziel gelb und macht nie mit, gehört es wahrscheinlich zu einem anderen Set. Dann wie
 oben beschrieben zurücksetzen.
@@ -272,6 +277,7 @@ unter Einstellungen.
 | „Der Pod ist beschäftigt“ in der App | Ein Spiel läuft. Central aus- und ins Menü wieder einschalten. |
 | Die App fragt nach einer PIN | Das Set ist geschützt. Den Besitzer fragen oder die PIN über USB löschen. |
 | Ich will ein anderes Spiel | Central aus- und wieder einschalten (Oberseite während des blauen Lauflichts halten) und neu wählen. |
+| Welcher Pod ist welcher? | In der App (Reiter Pod, *Pods dieses Sets*) neben einem Pod *Blinken* drücken: er blinkt zwei Sekunden lang. |
 
 ---
 
@@ -280,8 +286,11 @@ unter Einstellungen.
 | Pod | Licht | Bedeutung |
 |---|---|---|
 | jeder | blaues Lauflicht (2 s) | startet. Jetzt die Oberseite halten, um ihn zum Central zu machen |
-| Ziel | gelb | wartet auf den Central seines Sets |
+| Ziel | gelb mit einer kurzen farbigen Markierung | wartet auf den Central seines Sets. Die Markierung ist bei jedem Ziel anders |
+| Ziel | so viele Lichter wie seine Nummer, in seiner Farbe, läuft langsam um | eingestiegen: seine Nummer (während der Central auf die Ziele wartet) |
+| Ziel | blinkt 2 s | per *Blinken* in der App gefunden |
 | Ziel | weißer Blitz | Set vergessen (gelb, 3 s gehalten) |
+| Central | blinkt 2 s weiß | der Central selbst, per *Blinken* in der App gefunden |
 | Ziel | dunkel | bereit |
 | Ziel | grün / rot | drücken / nicht drücken |
 | Central | kleines Muster | Programm-Menü: kurz = nächstes Spiel, halten = auswählen |
