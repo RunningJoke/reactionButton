@@ -124,9 +124,9 @@ Rules:
 ### `info`
 ```json
 → {"op":"info"}
-← {"op":"info","ok":true,"firmware":"2.10","linkProtocol":1,"linkRevision":3,"setId":"5f3a91c2","setName":"","pinRequired":false,
+← {"op":"info","ok":true,"firmware":"2.13","linkProtocol":1,"linkRevision":4,"setId":"5f3a91c2","setName":"","pinRequired":false,
    "generation":7,"storeHash":"0a1b2c3d","freeBytes":1801234,"maxFileSize":16384,
-   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":4,"features":["validateInline","listMeta","effects","hold","toggle"],
+   "maxPathLength":31,"maxRequest":12288,"maxGetChunk":4096,"mtu":247,"programFormat":4,"features":["validateInline","listMeta","effects","hold","toggle","battery"],
    "blockTypes":["led","delay","button","if","setVariable","remotePress",
                  "remoteMultiPress","remoteResetAll","summary","repeat","effect","charge","release","toggle"]}
 ```
@@ -155,6 +155,14 @@ exists, and `put` / `delete` / `setName` answer `busy` from DISCOVERY on. `repor
 (firmware ≥ 2.11) = the ops `command`, `setVariables` and `session`. Both come with the block type `communicate`
 (`programFormat` ≥ 5, programs.md §7.16). `pause` (firmware ≥ 2.12) = the ops `pause` and `resume` and the
 state flag `phonePaused` (below).
+
+`battery` (firmware ≥ 2.13) = the battery level is reported: `battery {percent, mv}` in `status` (the pod itself)
+and `pods[].battery` in the central `status` (the peripherals, from their PING, link-protocol.md §2 and §7). `percent` is
+the charge of one Li-ion cell (3.30 V = 0 %, 4.20 V = 100 %, piecewise linear, firmware `Battery.cpp`), `mv` the cell voltage.
+Missing = unknown (no reading yet, or an older pod). The pod reads the voltage through a 1:1 divider on GPIO 5 (16 samples,
+refreshed every 3 s). A pod on USB reads the charge voltage, so it shows nearly 100 % while charging.
+Thresholds: below 15 % a pod blinks amber while it is idle (not during a game); below 5 % the central refuses to start
+a game (`low_battery`, see `start`). `linkRevision` 4 is the same feature on the link.
 
 ### `list`
 ```json
@@ -215,10 +223,10 @@ switched off when a program is selected.
 | op | Role | Request fields | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `heap {free, minFree}` (bytes, firmware ≥ 2.12), `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `ble {connected, intervalMs}` (firmware ≥ 2.12, BLE connection; `intervalMs` 0 = not known yet, else the connection interval in ms), `pods[] {id, mac, alive, lastSeenMs, effects, hold, toggle, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `heap {free, minFree}` (bytes, firmware ≥ 2.12), `battery {percent, mv}` (firmware ≥ 2.13, missing = unknown), `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `ble {connected, intervalMs}` (firmware ≥ 2.12, BLE connection; `intervalMs` 0 = not known yet, else the connection interval in ms), `pods[] {id, mac, alive, lastSeenMs, effects, hold, toggle, battery (firmware ≥ 2.13, `{percent, mv}`), link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | menu: `programs[] {index, name, path, peripherals}`, `selected` |
 | `select` | central, menu | `program`: index, path or name | loads the program, radio on, searching for peripherals. BLE stays connected (firmware ≥ 2.12, §1) |
-| `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing |
+| `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing. `low_battery` (firmware ≥ 2.13) while the central or a pod is below 5 % (the confirm press then flashes the ring red for 1 s) |
 | `press` | any | – | simulates a short press of this pod's button (not for the menu) |
 | `effect` | any (firmware ≥ 2.8) | `effect` (name), optional `color`, `color2`, `brightness`, `durationMs`, `periodMs`, `segment` (spin), `from` / `to` (dim), `value` (level, %), `reverse`, `endOff`, `delayMs`. Central also `target`: `"self"` (default), a pod id, `"pods"`, `"all"` | test op: plays a ring effect ([link-protocol.md](link-protocol.md) §2.1). Pods and the central start at the same network time, now + `delayMs` (default 50 ms with pods, else 0). Response: `effect`, central also `startAtUs`, `sent[]`, `skipped[]` (pods without effect support). `busy` while a game runs (central) or the pod is armed (peripheral) |
 | `stop` | central | – | ends the program; the pod restarts as central into the menu |
@@ -251,7 +259,7 @@ firmware; the `charge` and `release` blocks then take their `timeout` port at on
 older firmware; the `toggle` block leaves such a pod out of the game.
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
-changes from DISCOVERY on, a validate during a game, or a sync), `not_ready`, `not_editable`,
+changes from DISCOVERY on, a validate during a game, or a sync), `not_ready`, `low_battery` (start, firmware ≥ 2.13), `not_editable`,
 `out_of_range` (`setVariables`), `not_running` (`pause`: the game is not in RUN), `not_paused`
 (`resume`: no phone pause is active).
 

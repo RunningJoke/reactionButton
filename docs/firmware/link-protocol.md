@@ -36,7 +36,7 @@ All frames start with an 8-byte header (packed, little endian):
 | `HELLO` | P → broadcast | fwMajor, fwMinor | unclaimed peripheral announces itself (every 250 ms) |
 | `CLAIM` | C → P | podId | central takes the peripheral into its set |
 | `CLAIM_ACK` | P → C | podId, linkFeatures (≥ 2.8, appended) | peripheral accepts and says what it understands (§7) |
-| `PING` | P → C | t1 (µs, peripheral clock, stamped at transmission), store generation + hash | heartbeat every 200 ms + clock sync + store state |
+| `PING` | P → C | t1 (µs, peripheral clock, stamped at transmission), store generation + hash, batteryMv (appended, firmware ≥ 2.13) | heartbeat every 200 ms + clock sync + store state + battery |
 | `PONG` | C → P | t1, t2 (central rx time), t3 (central tx time), store generation + hash, flags (bit 0: sync allowed) | clock sync answer + store state |
 | `ARM` | C → P | cmdSeq, mode (HIT/AVOID/CHARGE/RELEASE/TOGGLE), colorActive, colorAfter, startAtUs, waiting effect (≥ 2.8, appended, optional), hold parameters (≥ 2.9, appended, only CHARGE / RELEASE), toggle parameters (≥ 2.10, appended, only TOGGLE) | light up now (`startAtUs = 0`) or at a central-clock time |
 | `RESET` | C → P | – | switch off, cancel a pending activation |
@@ -376,6 +376,7 @@ firmware versions:
 | 0 | `effects` | ≥ 2.8 | EFFECT frames and the ARM waiting effect (§2.1) |
 | 1 | `hold` | ≥ 2.9 | PodMode CHARGE / RELEASE, the hold parameters in ARM and the RELEASED frame (§2.2) |
 | 2 | `toggle` | ≥ 2.10 | PodMode TOGGLE, the toggle parameters in ARM and owner / flipCount in PRESSED (§2.3) |
+| 3 | `battery` | ≥ 2.13 | `batteryMv` appended to PING: cell voltage in mV, 0 = unknown (§1, config-api.md §5) |
 
 A central with older firmware ignores `linkFeatures` and never sends EFFECT or a hold ARM. A central with
 newer firmware treats a pod with older firmware as "no effects": blocks show a static colour
@@ -390,3 +391,7 @@ for compatible extensions. The *revision* counts the compatible extensions: revi
 **revision 3 = firmware 2.10** (toggle, feature bit 2). It is
 `Protocol::REVISION` and reported as `info.linkRevision` ([config-api.md](config-api.md) §5). The per-pod
 `hold` and `toggle` flags in `status.pods[]` tell whether a pod supports revision 2 / 3.
+**Revision 4 = firmware 2.13** (battery, feature bit 3). The PING of a peripheral ends with `batteryMv` (uint16,
+cell voltage in mV, 0 = unknown). A PING of older firmware is shorter: the level is unknown. The central keeps the
+value per pod and reports it as `status.pods[].battery`; a pod reports its own level as `status.battery`
+([config-api.md](config-api.md) §5). `info.linkRevision` is 4 from firmware 2.13 on.

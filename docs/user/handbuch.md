@@ -49,7 +49,18 @@ eigene, probierst sie am Bildschirm aus und speicherst Ergebnisse.
 - Er wird beim Laden warm und leuchtet. Du kannst ihn weiter benutzen.
 - Nie unbeaufsichtigt laden.
 
-Eine Ladung reicht für etwa eine Stunde Spielzeit. Eine Akkuanzeige ist geplant.
+Eine Ladung reicht für etwa eine Stunde Spielzeit. Der Akkustand steht in der App (Seite Pod, ab Firmware 2.13) und
+auf der Startanzeige (siehe unten). Am USB-Kabel misst der Pod die Ladespannung, deshalb zeigt er beim Laden fast voll.
+
+### Akkustand und Akku leer
+
+- **Einschalten:** 2 Sekunden lang füllt sich der Lichtring wie eine Anzeige: bis zum Ladestand des Akkus, in
+  **Grün** über 50 %, **Gelb-Orange** von 20 bis 50 %, **Rot** unter 20 %. Der Stand wird gemessen, bevor die
+  Lichter angehen. Die Oberseite in diesen 2 Sekunden gedrückt halten, um den Pod zum Central zu machen, wie bisher.
+- **Unter 15 %:** ein Pod, der in seinem Set wartet (nicht im Spiel), blinkt einmal pro Sekunde **gelb-orange**.
+  Bald laden.
+- **Unter 5 %:** das Spiel startet nicht. Wenn du am Central bestätigst, blitzt sein Ring eine Sekunde **rot**.
+  Zuerst den Pod (oder das Central) laden.
 
 ---
 
@@ -267,6 +278,7 @@ unter Einstellungen.
 | Der Central zeigt ein Spielmuster, aber kein Ziel macht mit | Ziele müssen an und gelb sein. Ein Ziel aus einem anderen Set bleibt gelb: zurücksetzen (gelb, 3 s halten, weißer Blitz). |
 | Der Central bleibt bei blauen Paaren | Zu wenig Ziele für dieses Spiel: mehr Pods einschalten oder ein Spiel für weniger Pods wählen. |
 | Alles gelb am Central während des Spiels | Ein Ziel ist weg (Akku, Reichweite, ausgeschaltet). Zurückholen; das Spiel läuft von selbst weiter. |
+| Der Central blitzt rot beim Bestätigen | Ein Akku ist unter 5 %. Pods (und Central) laden und dann neu starten. |
 | Der Central blinkt rot | Er hat keine Spiele oder ein Spiel ist kaputt. Mit der App verbinden und *Standard wiederherstellen*. |
 | Die App findet den Pod per Bluetooth nicht | Der Central muss im Programm-Menü sein (mit gehaltener Oberseite einschalten). Chrome oder Edge verwenden. Am Computer hilft oft Bluetooth aus- und wieder einschalten. |
 | „Der Pod ist beschäftigt“ in der App | Ein Spiel läuft. Central aus- und ins Menü wieder einschalten. |
@@ -281,6 +293,8 @@ unter Einstellungen.
 |---|---|---|
 | jeder | blaues Lauflicht (2 s) | startet. Jetzt die Oberseite halten, um ihn zum Central zu machen |
 | Ziel | gelb | wartet auf den Central seines Sets |
+| jeder | Ring füllt sich 2 s: grün, gelb-orange oder rot | Akkustand (beim Einschalten). Oberseite halten, um ihn zum Central zu machen |
+| Ziel | langsames gelb-oranges Blinken, einmal pro Sekunde | Akku unter 15 %, wartet im Set (nicht im Spiel) |
 | Ziel | weißer Blitz | Set vergessen (gelb, 3 s gehalten) |
 | Ziel | dunkel | bereit |
 | Ziel | grün / rot | drücken / nicht drücken |
@@ -290,6 +304,7 @@ unter Einstellungen.
 | Central | alles grün | bereit: drücken zum Start |
 | Central | alles gelb | Pause, ein Ziel fehlt |
 | Central | rot, langsam blinkend | Fehler: keine Spiele oder ein kaputtes Spiel |
+| Central | rot, 1 s aufblitzen beim Bestätigen | das Spiel startet nicht: ein Akku ist unter 5 % |
 
 ---
 

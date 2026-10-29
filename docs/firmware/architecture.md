@@ -9,7 +9,7 @@
   USB-C ───►│ charger / step-up ──► ESP32-C3 module    │
             │                                          │
             │   GPIO 3  ◄── push button (active LOW)   │
-            │   GPIO 5  ◄── battery voltage (unused)   │
+            │   GPIO 5  ◄── battery voltage (÷2)       │
             │   GPIO 7  ──► 18 × WS2812 LED ring       │
             │   GPIO 0  ◄── ADC read once for seeding  │
             └──────────────────────────────────────────┘
@@ -32,7 +32,7 @@ PCB and casing sources are in `hardware/pcb` (KiCad) and `hardware/casing` (Free
 
 ```
 src/
-├── main.cpp                  setup(): boot animation, role selection; loop(): run role
+├── main.cpp                  setup(): battery gauge, role selection; loop(): battery, run role
 ├── _Definitions.h            firmware version, pins, ESP-NOW channel, phone BLE UUIDs
 ├── Roles/
 │   ├── RoleManager.*         creates CentralRole or PeripheralRole at boot
@@ -54,6 +54,7 @@ src/
 │   └── Console.*             USB serial port object (HWCDC) + ESP-IDF log redirection
 ├── Diagnostics/Diag.*        reset reason + last step across reboots (crash breadcrumbs)
 ├── Settings/Settings.*       values in flash (NVS): set id, store generation, boot role
+├── Battery/Battery.*         cell voltage on GPIO 5 (16-sample average), percent, low-battery thresholds
 ├── Store/
 │   ├── ProgramStore.*        program files: list, CRC, manifest, atomic commit, generation
 │   └── StoreSync.*           pod-to-pod sync of the program store over ESP-NOW
@@ -111,7 +112,7 @@ classDiagram
 ```mermaid
 flowchart TD
     A[Power on] --> B[setup: Serial, SPIFFS, pins]
-    B --> C[Boot animation 2 s<br/>blue dot runs around ring]
+    B --> C[Battery gauge 2 s<br/>ring filled to the charge, measured first]
     C --> D{Button held<br/>at end of animation?}
     D -- yes --> E[CentralRole<br/>BLE 'ReactPod xxxx' for the phone]
     D -- no --> F[PeripheralRole<br/>ESP-NOW, HELLO broadcasts]

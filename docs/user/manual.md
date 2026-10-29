@@ -48,7 +48,17 @@ try them on screen and keep results.
 - It gets warm and lights up while charging. You can keep using it.
 - Never charge unattended.
 
-A charge lasts about an hour of play. A battery display is planned.
+A charge lasts about an hour of play. The level is shown in the app (pod page, from firmware 2.13) and by the
+boot gauge below. On USB the pod measures the charger's voltage, so it shows nearly full while it charges.
+
+### Battery gauge and low battery
+
+- **Switch on:** for 2 seconds the light ring fills up like a gauge: up to the charge of the battery, in
+  **green** above 50 %, **amber** from 20 to 50 %, **red** below 20 %. The level is measured before the lights
+  come on. Hold the top during these 2 seconds to make the pod the central, as before.
+- **Below 15 %:** a pod waiting in its set (not in a game) blinks **amber** once a second. Charge it soon.
+- **Below 5 %:** the game does not start. When you confirm on the central, its ring flashes **red** for a
+  second. Charge the pod (or the central) first.
 
 ---
 
@@ -259,6 +269,7 @@ Settings.
 | The central shows a game pattern but no target joins | Targets must be on and yellow. A target of another set stays yellow: clear it (hold 3 s while yellow, white flash). |
 | The central stays on blue pairs | Not enough targets for this game: switch on more pods, or choose a game for fewer pods. |
 | All yellow on the central during a game | A target is lost (battery, out of range, switched off). Bring it back; the game continues by itself. |
+| The central flashes red when you confirm | A battery is below 5 %. Charge the pods (and the central) and start again. |
 | The central blinks red | It has no games or a game is broken. Connect with the app and use *Restore defaults*. |
 | The app can't find the pod over Bluetooth | The central must be in the program menu (switch on while holding the top). Use Chrome or Edge. On a computer, switching Bluetooth off and on often helps. |
 | "The pod is busy" in the app | A game is running. Switch the central off and on into the menu. |
@@ -273,6 +284,8 @@ Settings.
 |---|---|---|
 | any | blue light running around (2 s) | starting. Hold the top now to make it the central |
 | target | yellow | waiting for the central of its set |
+| any | ring fills up for 2 s: green, amber or red | battery level (switch on). Hold the top to make it the central |
+| target | slow amber blink, once a second | battery below 15 %, waiting in the set (not during a game) |
 | target | white flash | set forgotten (held 3 s while yellow) |
 | target | dark | ready |
 | target | green / red | press / don't press |
@@ -282,6 +295,7 @@ Settings.
 | central | all green | ready: press to start |
 | central | all yellow | paused, a target is missing |
 | central | red, blinking slowly | error: no games or a broken game |
+| central | red flash for 1 s when you confirm | the game does not start: a battery is below 5 % |
 
 ---
 
