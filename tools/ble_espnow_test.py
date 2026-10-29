@@ -537,7 +537,7 @@ def print_summary(summary: dict):
     c = summary["central"]
     say(f"   central loop: max gap {c.get('loopGapUsMax')} us, gaps > 2 ms {c.get('loopGaps2ms')}, > 10 ms {c.get('loopGaps10ms')}")
     ble = summary.get("ble") or {}
-    say(f"   BLE on pod: on {ble.get('on')}, connected {ble.get('connected')}, interval {ble.get('intervalMs')} ms, "
+    say(f"   BLE on pod: on {ble.get('on')}, connected {ble.get('connected')}, interval {ble.get('intervalMs')} ms, latency {ble.get('latency')}, "
         f"indications ok {c.get('indicateOk')} timeouts {c.get('indicateTimeouts')}, lines {c.get('txLines')} "
         f"dropped {c.get('txDropped')}, send max {c.get('txSendUsMax')} us")
     for p in summary["peripheralClock"]:
@@ -620,6 +620,7 @@ async def main_async(args) -> int:
                  "The others must be pressed by hand (--manual-press) or the game waits.")
 
         central.request("bleTest", keepBle=args.mode != "off", intervalMs=args.interval_ms,
+                        latency=args.latency,
                         loadBytes=args.load_bytes, loadPeriodMs=args.load_period_ms if args.mode != "off" else 0)
 
         ble = None
@@ -725,6 +726,8 @@ def main():
     parser.add_argument("--mode", choices=["off", "advertise", "phone"], default="phone")
     parser.add_argument("--minutes", type=float, default=30)
     parser.add_argument("--out", default="ble-espnow", help="prefix of the output files")
+    parser.add_argument("--latency", type=int, default=0,
+                        help="peripheral latency the central requests with the interval: connection events it may skip (0 = none)")
     parser.add_argument("--interval-ms", type=int, default=75, help="connection interval the central requests in the game (0 = none)")
     parser.add_argument("--load-bytes", type=int, default=1024, help="size of one load line")
     parser.add_argument("--load-period-ms", type=int, default=2000,

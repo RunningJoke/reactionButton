@@ -1,5 +1,6 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
+#include <esp_bt.h>
 #include <WiFi.h>
 #include "EspNowLink.h"
 #include "Diagnostics/Diag.h"
@@ -24,7 +25,10 @@ bool EspNowLink::begin(uint8_t channel) {
     Diag::step("radio: WiFi.mode");
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
-    esp_wifi_set_ps(WIFI_PS_NONE);      // radio always on: lowest latency
+    // radio always on for the lowest latency. With BLE on (central keeping a phone connected) the
+    // WiFi driver aborts unless modem sleep is enabled: the coexistence scheduler shares the radio.
+    bool bleOn = esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED;
+    esp_wifi_set_ps(bleOn ? WIFI_PS_MIN_MODEM : WIFI_PS_NONE);
     if(esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) != ESP_OK) {
         ESP_LOGE(TAG, "cannot set channel %u", channel);
         return false;
