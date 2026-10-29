@@ -26,7 +26,7 @@ firmware/data/
     ├── weiche.json        small programs: metadata + includes
     ├── …
     └── lib/
-        ├── loop.json      shared round counter + summary
+        ├── loop.json      shared cycle: round counter, cycle timer, summary, report
         ├── star.json      star game logic
         ├── random.json    random game logic
         └── multi.json     run / avoid game logic
@@ -53,7 +53,7 @@ The order in this list is the order in the menu. Short press = next entry, long 
   "menu": [ { "leds": [7, 9, 11], "color": "blue" } ],
   "variables": { "MAX_LOOPS": 12 },
   "include": ["/prog/lib/loop.json", "/prog/lib/random.json"],
-  "start": "StartLoop",
+  "start": "StartCycle",
   "blocks": [ ]
 }
 ```
@@ -469,9 +469,16 @@ RESULT,<millis>,<metric>,<podId>,<value_ms>
 SUMMARY,<metric>,<count>,<average>,<best>,<worst>
 ```
 
-The shipped programs use the metric `reaction`. `lib/loop.json` prints a summary after
-every `MAX_LOOPS` rounds and stores `AVG_REACTION` / `BEST_REACTION`. A program can then
-branch on those, for example to show a colour by performance.
+The shipped programs use the metric `reaction` (`run` / `run5` also record `lap`, the time
+from the lights to the last press). `lib/loop.json` times each cycle (`cycle`, from
+`StartCycle` to the end of the last round), prints a summary after every `MAX_LOOPS` rounds
+and stores `AVG_REACTION` / `BEST_REACTION`. A program can then branch on those, for example
+to show a colour by performance. Then its `Report` block (`communicate`, §2) sends a report
+with all metrics and `RUNS` / `MAX_LOOPS` and waits up to 3 s with a blue ring: a press or
+`continue` starts the next cycle, `repeat` starts it again (the report is discarded), `stop`
+ends the program (block `End`). Without a phone the game goes on after 3 s as before.
+Programs that include `lib/loop.json` start at `StartCycle`; a reset of `RUNS` must link to
+`StartCycle`, not `StartLoop`, so the cycle timer restarts.
 
 To add a new kind of measurement (e.g. press duration or misses), a block calls
 `ctx.results.record("<metric>", podId, value)`. No other code needs to change.
@@ -546,9 +553,10 @@ changes, increase `programFormat` (§6).
 - Port selection (`BlockManager::run`): the block's result port is used if it is connected.
   Otherwise, if the block's port 0 is called `next` (every type except `if`), `next` is used.
   If that is not connected either, the program ends (`running = false`, no error).
-- After a pause (a peripheral was lost, state PAUSED) the central re-enters the current
-  block (`BlockManager::restartCurrentBlock`: `exit` + `enter`). Its timers restart and
-  random values are drawn again.
+- After a pause (a peripheral was lost, or a phone `pause`, state PAUSED) the central re-enters
+  the current block (`BlockManager::restartCurrentBlock`: `exit` + `enter`). Its timers restart and
+  random values are drawn again. A pause does not change the block; `communicate` is the
+  exception (§7.16).
 - Values that name a variable are read when the block uses them (see the table below).
   An unknown variable reads as 0 (`VariableManager::resolve` creates it with 0).
 
@@ -950,6 +958,8 @@ Unconnected ports fall back to `next` (§7.1); with no `next` the program ends.
 discarded).
 
 **Pause.** While PAUSED the block does not wait: `command` and `setVariables` answer
-`not_ready`, `status` has no `waiting`. `restartCurrentBlock` resumes the block
-(`Block::resume()`, by default `enter()`) without building a second report: the block keeps
-the report of this entry, sets its LEDs again and restarts the timeout.
+`not_ready`, `status` has no `waiting`. This holds for a peripheral lost and for a phone pause
+(`pause` / `resume`, config-api.md §5). A phone pause can start while the block waits.
+`restartCurrentBlock` resumes the block (`Block::resume()`, by default `enter()`) without building
+a second report: the block keeps the report of this entry, sets its LEDs again and restarts the
+timeout. The client answers after `resume`, with the same report.

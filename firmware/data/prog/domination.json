@@ -1,12 +1,12 @@
 {
   "version": 1,
   "name": "Domination",
-  "description": "Demo of the toggle block (programFormat 4, firmware 2.10). Two teams run between the pods and the central and press them: every press flips a pod between red and blue (cooldown 0.5 s). After 20 s, or as soon as all pods have one colour, the pods stay lit in their final colour for 3 s. The score is in the variables RED_PODS / BLUE_PODS (pods), RED_MS / BLUE_MS (owned time) and FLIPS. Needs two peripherals with firmware 2.10 (link feature 'toggle'); older pods are left out of the game.",
+  "description": "Demo of the toggle block (programFormat 4, firmware 2.10). Two teams run between the pods and the central and press them: every press flips a pod between red and blue (cooldown 0.5 s). After 20 s, or as soon as all pods have one colour, the pods stay lit in their final colour for 3 s. The score is in the variables RED_PODS / BLUE_PODS (pods), RED_MS / BLUE_MS (owned time) and FLIPS. Needs two peripherals with firmware 2.10 (link feature 'toggle'); older pods are left out of the game. Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "peripherals": 2,
   "menu": [ { "leds": [0, 6, 12], "color": "red" }, { "leds": [3, 9, 15], "color": "blue" } ],
   "variables": { "MAX_LOOPS": 2 },
   "include": ["/prog/lib/loop.json"],
-  "start": "StartLoop",
+  "start": "StartCycle",
   "blocks": [
     { "name": "EnterProgram", "type": "delay", "ms": 500, "next": "Game" },
     { "name": "Game",         "type": "toggle", "includeCentral": true, "colors": ["red", "blue"], "start": "alternate",

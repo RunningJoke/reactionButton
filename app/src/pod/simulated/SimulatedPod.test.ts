@@ -78,7 +78,7 @@ describe("SimulatedPod (config API)", () => {
 
   it("validates programs with their includes", () => {
     const pod = new SimulatedPod({ files: { ...DEFAULT_FILES, "/prog/bad.json": JSON.stringify({ name: "Bad", blocks: [{ name: "Hit", type: "buton" }] }) } });
-    expect(call(pod, { op: "validate", path: "/prog/duo.json" })).toMatchObject({ ok: true, blocks: 15 });
+    expect(call(pod, { op: "validate", path: "/prog/duo.json" })).toMatchObject({ ok: true, blocks: 17 });
     const bad = call(pod, { op: "validate", path: "/prog/bad.json" });
     expect(bad).toMatchObject({ ok: false, error: "invalid_program" });
     expect(bad.message).toContain("'Hit'");
@@ -86,8 +86,8 @@ describe("SimulatedPod (config API)", () => {
 
   it("reports the firmware 2.11 fields in info: program format 5 with the communicate block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.11", setName: "Halle 2", pinRequired: false, programFormat: 5 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote"]);
+    expect(info).toMatchObject({ firmware: "2.12", setName: "Halle 2", pinRequired: false, programFormat: 5 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle"]);
     expect(info.linkRevision).toBe(3);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate"]));
@@ -209,7 +209,7 @@ describe("SimulatedPod (config API)", () => {
     const pod = new SimulatedPod({ files: DEFAULT_FILES });
     const generation = pod.generation;
     const good = DEFAULT_FILES["/prog/duo.json"]!;
-    expect(call(pod, { op: "validate", path: "/prog/new.json", data: good })).toMatchObject({ ok: true, path: "/prog/new.json", blocks: 15 });
+    expect(call(pod, { op: "validate", path: "/prog/new.json", data: good })).toMatchObject({ ok: true, path: "/prog/new.json", blocks: 17 });
     const bad = call(pod, { op: "validate", path: "/prog/new.json", data: JSON.stringify({ name: "X", blocks: [{ name: "Hit", type: "buton" }] }) });
     expect(bad).toMatchObject({ ok: false, error: "invalid_program" });
     expect(bad.message).toContain("'Hit'");
@@ -225,6 +225,21 @@ describe("SimulatedPod (config API)", () => {
     expect(call(pod, { op: "setName", name: "ä".repeat(9) })).toMatchObject({ error: "bad_request" });
     expect(call(pod, { op: "setName", name: "a\tb" })).toMatchObject({ error: "bad_request" });
     expect(call(pod, { op: "setName" })).toMatchObject({ ok: true, setName: "" });
+  });
+
+  it("answers busy to store changes outside the menu, and reports liveBle with the ble status", () => {
+    const pod = new SimulatedPod({ files: { "/prog/a.json": "{}" }, pods: 1 });
+    expect(call(pod, { op: "info" }).features).toContain("liveBle");
+    expect(call(pod, { op: "status" })).toMatchObject({ heap: { free: expect.any(Number), minFree: expect.any(Number) }, ble: { connected: true, intervalMs: 0 } });
+    pod.state = "DISCOVERY";
+    expect(call(pod, { op: "put", path: "/prog/a.json", data: "[]" })).toMatchObject({ error: "busy" });
+    expect(call(pod, { op: "delete", path: "/prog/a.json" })).toMatchObject({ error: "busy" });
+    expect(call(pod, { op: "setName", name: "x" })).toMatchObject({ error: "busy" });
+    pod.state = "RUN";
+    expect(call(pod, { op: "status" })).toMatchObject({ ble: { connected: true, intervalMs: 100 } });
+    pod.state = "MENU";
+    expect(call(pod, { op: "put", path: "/prog/a.json", data: "[]" })).toMatchObject({ ok: true });
+    expect(new SimulatedPod({ liveBle: false }).handle('{"op":"info"}')).not.toContain("liveBle");
   });
 
   it("needs the PIN for writes when one is set", () => {
@@ -268,6 +283,19 @@ describe("SimulatedPod (reports and remote ops, program format 5, firmware 2.11)
     expect(pod.pendingReports.map((r) => r.id)).toEqual([6, 7, 8, 9]);
     expect(call(pod, { op: "command", name: "repeat" })).toMatchObject({ ok: true });
     expect(call(pod, { op: "command", name: "repeat" })).toMatchObject({ error: "not_ready" });
+  });
+
+  it("pages the reports with from / max and reports total and more (firmware 2.12)", () => {
+    const pod = new SimulatedPod(solo);
+    for (let i = 0; i < 3; i++) pod.emitSampleReport(() => 0.5);
+    expect(call(pod, { op: "reports", max: 2 })).toMatchObject({ total: 3, more: true });
+    expect((call(pod, { op: "reports", max: 2 }) as { reports: Json[] }).reports.map((r) => r.id)).toEqual([1, 2]);
+    const second = call(pod, { op: "reports", from: 2, max: 2 }) as { reports: Json[]; more: boolean };
+    expect(second.reports.map((r) => r.id)).toEqual([3]);
+    expect(second.more).toBe(false);
+    expect((call(pod, { op: "reports", from: 9 }) as { reports: Json[] }).reports).toEqual([]);
+    expect(call(pod, { op: "reports" })).toMatchObject({ total: 3, more: false });
+    expect(call(pod, { op: "reports", max: "2" })).toMatchObject({ error: "bad_request" });
   });
 
   it("lists the waiting block and its editable variables in status", () => {
@@ -318,5 +346,20 @@ describe("SimulatedPod (reports and remote ops, program format 5, firmware 2.11)
     expect(call(pod, { op: "session", athlete: "x" })).toMatchObject({ error: "busy" });
     pod.emitSampleReport(() => 0.5);
     expect(call(pod, { op: "session", athlete: "" })).toMatchObject({ ok: true, athlete: "" });
+  });
+
+  it("pauses only in RUN and stays paused until resume; the waiting block keeps waiting after resume", () => {
+    const pod = new SimulatedPod(solo);
+    expect(call(pod, { op: "pause" })).toMatchObject({ error: "not_running" });
+    expect(call(pod, { op: "resume" })).toMatchObject({ error: "not_paused" });
+    pod.state = "RUN";
+    pod.emitSampleReport(() => 0.5);
+    expect(call(pod, { op: "pause" })).toEqual({ op: "pause", ok: true, state: "PAUSED" });
+    expect(call(pod, { op: "pause" })).toMatchObject({ error: "not_running" });
+    expect(call(pod, { op: "status" })).toMatchObject({ state: "PAUSED", phonePaused: true });
+    expect(call(pod, { op: "status" })).not.toHaveProperty("waiting");
+    expect(call(pod, { op: "resume" })).toEqual({ op: "resume", ok: true, state: "RUN" });
+    expect(call(pod, { op: "status" })).toMatchObject({ state: "RUN", phonePaused: false, waiting: { block: "Report" } });
+    expect(call(pod, { op: "resume" })).toMatchObject({ error: "not_paused" });
   });
 });

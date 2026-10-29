@@ -42,6 +42,7 @@ void CentralRole::setState(State state) {
     JsonDocument event;
     event["event"] = "state";
     event["state"] = stateName(state);
+    event["phonePaused"] = this->phonePaused;
     if(state != State::MENU && this->catalog.size() > 0) {
         event["program"] = this->catalog.get(this->selectedModel).path;
     }
@@ -68,6 +69,17 @@ void CentralRole::fail(const char* message) {
     this->setState(State::ERROR);
 }
 
+// PAUSED -> RUN: the current block is re-entered (re-arms the pods, no second report)
+void CentralRole::continueRun() {
+    LEDManager::getManager()->turnOff();
+    this->network.setSyncAllowed(false);
+    // presses that came in while paused belong to the pause, not to the block
+    PodEvent stale;
+    while(this->network.pollEvent(stale)) {}
+    BlockManager::getManager()->restartCurrentBlock();
+    this->setState(State::RUN);
+}
+
 void CentralRole::run() {
     if(this->rebootAtUs != 0 && esp_timer_get_time() >= this->rebootAtUs) {
         Console.flush();
@@ -79,9 +91,11 @@ void CentralRole::run() {
         this->network.service();
     }
 
+    // BLE requests are handled in every state: the phone stays connected during the game (liveBle)
+    this->phone.service();
+
     switch(this->state) {
         case State::MENU:
-            this->phone.service();
             if(ProgramStore::get().hash() != this->menuStoreHash) {
                 this->reloadMenu();     // programs changed via BLE or serial
             }
@@ -123,12 +137,9 @@ void CentralRole::run() {
             break;
 
         case State::PAUSED:
-            if(this->network.allAlive()) {
+            if(!this->phonePaused && this->network.allAlive()) {
                 Console.println("All peripherals back, game continues");
-                LEDManager::getManager()->turnOff();
-                this->network.setSyncAllowed(false);
-                BlockManager::getManager()->restartCurrentBlock();
-                this->setState(State::RUN);
+                this->continueRun();
             }
             break;
 
@@ -160,9 +171,9 @@ bool CentralRole::startProgram() {
     int64_t required = vars->getVariable("REQUIRED_PERIPHERALS");
     this->requiredPeripherals = (uint8_t)constrain(required, (int64_t)0, (int64_t)MAX_PERIPHERALS);
 
-    // the phone is only needed in the menu; free the radio for the pod link
-    Diag::step("select: BLE stop");
-    this->phone.stop();
+    // BLE stays on (liveBle, ADR 0005): the phone keeps its connection and gets the game interval
+    Diag::step("select: BLE game mode");
+    this->phone.enterGame();
 
     if(this->requiredPeripherals == 0) {
         return true;    // central only, no radio needed
@@ -278,7 +289,8 @@ bool CentralRole::runModelSelector() {
 // ---------------------------------------------------------------- configuration API
 
 bool CentralRole::storeEditable() const {
-    if(this->state == State::RUN) {
+    // program files change in the menu (and after an error) only: not while a game is prepared, runs or is paused
+    if(this->state != State::MENU && this->state != State::ERROR) {
         return false;
     }
     return !this->network.isSyncing();
@@ -290,6 +302,7 @@ bool CentralRole::engineIdle() const {
 
 void CentralRole::describe(JsonObject status) {
     status["state"] = stateName(this->state);
+    status["phonePaused"] = this->phonePaused;
 
     if(this->catalog.size() > 0) {
         const ProgramCatalog::ProgramInfo& program = this->catalog.get(this->selectedModel);
@@ -301,6 +314,7 @@ void CentralRole::describe(JsonObject status) {
     }
 
     status["requiredPeripherals"] = this->requiredPeripherals;
+    this->phone.describe(status["ble"].to<JsonObject>());
     status["radio"] = this->network.isStarted();
     status["syncing"] = this->network.isSyncing();
     status["athlete"] = Reports::get().athlete();
@@ -349,7 +363,7 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
     } else if(strcmp(op, "effect") == 0) {
         this->opEffect(request, response);
     } else if(strcmp(op, "reports") == 0) {
-        this->opReports(response);
+        this->opReports(request, response);
     } else if(strcmp(op, "ack") == 0) {
         this->opAck(request, response);
     } else if(strcmp(op, "command") == 0) {
@@ -358,6 +372,10 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         this->opSetVariables(request, response);
     } else if(strcmp(op, "session") == 0) {
         this->opSession(request, response);
+    } else if(strcmp(op, "pause") == 0) {
+        this->opPause(response);
+    } else if(strcmp(op, "resume") == 0) {
+        this->opResume(response);
     } else if(strcmp(op, "stop") == 0) {
         // back to the program menu: restart as central (answer first)
         Settings::setBootRole(1);
@@ -478,12 +496,31 @@ void CentralRole::opEffect(JsonObjectConst request, JsonDocument& response) {
     response["startAtUs"] = startAtUs;
 }
 
-// Report buffer: every report not acknowledged yet, oldest first
-void CentralRole::opReports(JsonDocument& response) {
+// Report buffer: every report not acknowledged yet, oldest first. Paging (optional, for BLE):
+// "from" = index into the unacknowledged reports (default 0), "max" = how many (default all).
+// Without either field all reports are returned, as before. "total" = all unacknowledged reports,
+// "more" = true if reports follow this page. After an ack the indexes move: ack the page first.
+void CentralRole::opReports(JsonObjectConst request, JsonDocument& response) {
+    JsonVariantConst fromValue = request["from"];
+    JsonVariantConst maxValue = request["max"];
+    if((!fromValue.isNull() && !fromValue.is<int64_t>()) || (!maxValue.isNull() && !maxValue.is<int64_t>())) {
+        ConfigApi::setError(response, "bad_request", "'from' and 'max' must be numbers");
+        return;
+    }
+    const std::vector<Reports::Report>& all = Reports::get().reports();
+    size_t total = all.size();
+    size_t from = fromValue.isNull() ? 0 : (size_t)constrain(fromValue.as<int64_t>(), (int64_t)0, (int64_t)total);
+    size_t count = total - from;
+    if(!maxValue.isNull()) {
+        count = (size_t)constrain(maxValue.as<int64_t>(), (int64_t)0, (int64_t)count);
+    }
+
     response["ok"] = true;
+    response["total"] = (uint32_t)total;
+    response["more"] = from + count < total;
     JsonArray list = response["reports"].to<JsonArray>();
-    for(const Reports::Report& report : Reports::get().reports()) {
-        Reports::write(report, list.add<JsonObject>());
+    for(size_t i = from; i < from + count; i++) {
+        Reports::write(all[i], list.add<JsonObject>());
     }
 }
 
@@ -595,6 +632,40 @@ void CentralRole::opSession(JsonObjectConst request, JsonDocument& response) {
     Reports::get().setAthlete(id);
     response["ok"] = true;
     response["athlete"] = id;
+}
+
+// Pauses the game like a lost peripheral, but only "resume" ends it (config-api.md §5)
+void CentralRole::opPause(JsonDocument& response) {
+    if(this->state != State::RUN) {
+        ConfigApi::setError(response, "not_running", String("state is ") + stateName(this->state) + ", not RUN");
+        return;
+    }
+    Console.println("Paused by phone, game paused");
+    this->phonePaused = true;
+    LEDManager::getManager()->setLEDColors(YELLOW);
+    this->network.setSyncAllowed(true);
+    this->setState(State::PAUSED);
+    response["ok"] = true;
+    response["state"] = stateName(this->state);
+}
+
+// Ends a phone pause. With a peripheral still missing the pod-loss pause goes on (PAUSED) and
+// the game continues when it is back.
+void CentralRole::opResume(JsonDocument& response) {
+    if(this->state != State::PAUSED || !this->phonePaused) {
+        ConfigApi::setError(response, "not_paused", "the game is not paused by the phone");
+        return;
+    }
+    this->phonePaused = false;
+    if(this->network.allAlive()) {
+        Console.println("Resumed by phone, game continues");
+        this->continueRun();
+    } else {
+        Console.println("Resumed by phone, a peripheral is still missing: game stays paused");
+        this->setState(State::PAUSED);      // state event: phonePaused is now false
+    }
+    response["ok"] = true;
+    response["state"] = stateName(this->state);
 }
 
 void CentralRole::opStart(JsonDocument& response) {

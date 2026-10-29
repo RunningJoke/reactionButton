@@ -7,6 +7,8 @@ simulates and uploads them.
 
 **Config App:** https://runningjoke.github.io/reactionButton/ (PWA, works offline, demo pod built in)
 
+**New here?** Read the [user manual](docs/user/manual.md): the pod, the games and the app, without technical terms.
+
 | Part | Folder | Docs |
 |---|---|---|
 | Firmware (PlatformIO, Arduino + ESP-IDF) | [firmware/](firmware/) | [docs/firmware/](docs/firmware/README.md) |
@@ -14,7 +16,7 @@ simulates and uploads them.
 | Config App (React + TypeScript PWA) | [app/](app/) | [docs/app/spec.md](docs/app/spec.md) |
 | Reference clients and validator (Python) | [tools/](tools/) | [config-api.md](docs/firmware/config-api.md) |
 | PCB (KiCad) and casing (FreeCAD) | [hardware/](hardware/) | |
-| User manual, game modes | [docs/user/](docs/user/) | |
+| User manual, game modes | [docs/user/](docs/user/) | [manual.md](docs/user/manual.md) |
 | Decisions | [docs/decisions/](docs/decisions/) | |
 
 ## Quick start

@@ -16,6 +16,8 @@ export type ApiErrorCode =
   | "not_ready"
   | "not_editable" /** setVariables: the variable is not in the waiting block's `editable` (firmware ≥ 2.11) */
   | "out_of_range" /** setVariables: a value is not an integer within min … max (firmware ≥ 2.11) */
+  | "not_running" /** pause: the game is not in RUN (firmware ≥ 2.12) */
+  | "not_paused" /** resume: no phone pause is active (firmware ≥ 2.12) */
   | "auth_required" /** a PIN is set: put / delete / setName need `auth` first (firmware ≥ 2.6) */
   | "auth_failed"; /** wrong PIN, or a retry within 3 s */
 
@@ -69,8 +71,12 @@ export type InfoResponse = ResponseBase & {
   features?: PodFeature[];
 };
 
-/** `validateInline`: validate accepts `data`; `listMeta`: list reports program metadata. */
-export type PodFeature = "validateInline" | "listMeta" | (string & {});
+/**
+ * `validateInline`: validate accepts `data`; `listMeta`: list reports program metadata;
+ * `pause` (firmware ≥ 2.12): the ops pause and resume.
+ * `liveBle` (firmware ≥ 2.12): the central keeps BLE during the game, file changes answer `busy` from DISCOVERY on.
+ */
+export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | (string & {});
 
 export type FileEntry = {
   path: string;
@@ -126,6 +132,24 @@ export type StatusResponse = ResponseBase & {
   /** BLE only (firmware ≥ 2.7) */
   mtu?: number;
   store: { generation: number; hash: string };
+  /** central: the game is paused by the phone (`pause`, firmware ≥ 2.12); missing = false */
+  phonePaused?: boolean;
+  /** firmware ≥ 2.12 */
+  heap?: { free: number; minFree: number };
+  /** central, firmware ≥ 2.12: BLE connection; intervalMs 0 = not known yet */
+  ble?: { connected: boolean; intervalMs: number };
+};
+
+/**
+ * `reports` (firmware ≥ 2.11). Request fields `from` (index into the unacknowledged reports,
+ * default 0) and `max` (count, default all) page the answer; without them all are returned.
+ * `total` = unacknowledged reports, `more` = reports follow this page (paging: firmware ≥ 2.12).
+ */
+export type ReportsRequest = { from?: number; max?: number };
+export type ReportsResponse = ResponseBase & {
+  reports: Record<string, unknown>[];
+  total?: number;
+  more?: boolean;
 };
 
 /** Event lines on the USB serial port (§5 Events). */

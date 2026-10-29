@@ -39,6 +39,7 @@ class ToggleBlock : public Block {
         enum class Start : uint8_t { A, B, ALTERNATE, RANDOM, OFF };
 
         uint8_t colorOf(uint8_t owner) const;
+        void armCentral(BlockContext& ctx);     // the central's light at startAtUs (timer, see enter)
         void showCentral(BlockContext& ctx);
         void flip(uint8_t index, uint8_t owner, int64_t atUs);
         bool allSame(uint8_t owner) const;

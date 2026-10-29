@@ -1,9 +1,10 @@
 {
   "version": 1,
+  "description": "Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "name": "Weiche",
   "peripherals": 2,
   "menu": [ { "leds": [7, 11], "color": "blue" }, { "leds": [9], "color": "yellow" } ],
   "variables": { "MAX_LOOPS": 255 },
   "include": ["/prog/lib/loop.json", "/prog/lib/star.json"],
-  "start": "StartLoop"
+  "start": "StartCycle"
 }

@@ -1,5 +1,7 @@
 # Current Capabilities & Game Modes
 
+Technical reference. For a non-technical guide, see the [user manual](manual.md).
+
 ## 1. What the firmware can do today
 
 | Capability | Status |
@@ -16,12 +18,16 @@
 | Multi-target activation with "avoid" targets | ✅ |
 | Round counting with automatic restart (`MAX_LOOPS`) | ✅ |
 | Phone override of the round count (`MaxLoop` characteristic) | ✅ (only in the program menu) |
+| Ring effects (pulse, spin, level, traffic light, countdown) | ✅ firmware 2.9 |
+| Hold / release / charge / toggle interactions | ✅ firmware 2.9 / 2.10 |
+| Reports per cycle, continue / repeat / stop and variables from the app (`communicate`) | ✅ firmware 2.11 (USB; over BLE during the game: #39) |
 | Reaction times: peripheral (measured on the pod) and central (press edge) | ✅ recorded |
 | Results as CSV on the serial console, summary per cycle | ✅ |
-| Results on the LED ring or the phone | ❌ |
-| COUNTER / COUNTDOWN action modes on peripherals | ❌ (stubs) |
-| Battery measurement / low-battery warning | ❌ |
-| Power saving / auto power-off | ❌ |
+| Results in the app | 🟡 reports exist (2.11); live over BLE with #39 |
+| Results on the LED ring | ❌ (#25) |
+| Countdown on timed blocks | ✅ (`countdown` option, firmware 2.9) |
+| Battery measurement / low-battery warning | ❌ (#19) |
+| Power saving / auto power-off | ❌ (#21) |
 | OTA firmware update | ❌ (not planned, flash over USB) |
 
 ## 2. Program menu
@@ -41,6 +47,10 @@ The menu and patterns come from the JSON files (`"menu"`).
 | 6 | `prog/run.json` | RUN | 1 + 2, 0 avoid | 12 | 5, 7, 9 C |
 | 7 | `prog/run5.json` | RUN5 | 1 + 4, 2 avoid | 12 | 5 C, 7 R, 9 C, 11 R, 13 C |
 | 8 | `prog/duo.json` | DUO (new, not in the manual) | 1 + 1 | 10 | 8, 10 B |
+| 9 | `prog/effects.json` | EFFECTS (demo) | 1 + 1 | – | 6, 12 magenta, 9 Y |
+| 10 | `prog/charge.json` | CHARGE (demo) | 1 + 1 | – | 3, 9, 15 C |
+| 11 | `prog/release.json` | RELEASE (demo) | 1 + 1 | – | 4, 13 green |
+| 12 | `prog/domination.json` | DOMINATION (team game) | 1 + 2 | – | 0, 6, 12 R, 3, 9, 15 B |
 
 **Duo**: the central and one peripheral take turns, each after a random 0.5–2 s pause.
 A target that is not pressed within 5 s counts as a miss (variable `MISSES`). It is
@@ -63,14 +73,18 @@ and only presses that start after the LED came on count.
 
 ```mermaid
 flowchart LR
-    SL["StartLoop<br/>RUNS += 1"] --> EP([EnterProgram])
+    SC["StartCycle<br/>timer 'cycle' starts"] --> SL["StartLoop<br/>RUNS += 1"] --> EP([EnterProgram])
     EP -.-> EL{"EndLoop<br/>RUNS >= MAX_LOOPS?"}
     EL -- no --> SL
-    EL -- yes --> SR["StartReset<br/>LEDs blue"] --> SU["Summary<br/>metric 'reaction'"] --> RD["ResetDelay<br/>3000 ms"] --> CL["ClearLED"] --> RV["ResetRuns<br/>RUNS = 0"] --> SL
+    EL -- yes --> SR["StartReset<br/>LEDs blue, timer 'cycle' stops"] --> SU["Summary<br/>metric 'reaction'"] --> RP{"Report<br/>communicate, ≤ 3 s"}
+    RP -- "press / timeout / continue / repeat" --> CL["ClearLED"] --> RV["ResetRuns<br/>RUNS = 0"] --> SC
+    RP -- stop --> EN["End<br/>LEDs off"]
 ```
 
 After `MAX_LOOPS` rounds the summary (count, average, best, worst reaction time) is
-printed on the serial console. The ring is blue for 3 s, then the next cycle starts.
+printed on the serial console and a report is sent to the app (firmware 2.11). The ring stays
+blue until a press, the app's answer or 3 s, then the next cycle starts. `repeat` from the app
+discards the report and plays the cycle again; `stop` ends the program.
 
 ### 3.2 SOLO (`solo.json`)
 

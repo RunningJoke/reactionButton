@@ -17,6 +17,8 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py command continue      # answer a waiting communicate block
     python tools/reactpod_serial.py set-variables MAX_LOOPS=5 RUNS=0
     python tools/reactpod_serial.py session ath_42        # athlete id for the following reports ("" = clear)
+    python tools/reactpod_serial.py pause                 # pause a running game from the phone (firmware >= 2.12)
+    python tools/reactpod_serial.py resume                # end the phone pause
     python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
 
@@ -228,8 +230,9 @@ class PodSerial:
             elif self.show != "none":
                 say(color(text, "1;32"))
         elif kind == "state" and self.show != "none":
+            phone = "  (paused by phone)" if event.get("phonePaused") else ""
             say(color(f"[state] {event.get('state')}  pods {event.get('pods')}/{event.get('required')}"
-                      f"  {event.get('program', '')}", "1;34"))
+                      f"  {event.get('program', '')}{phone}", "1;34"))
         elif kind == "block" and self.show == "all":
             say(color(f"[block] {event.get('name')}", "2"))
         elif kind == "report" and self.show != "none":
@@ -669,6 +672,8 @@ def main():
     p = sub.add_parser("set-variables", help="change editable variables of a waiting communicate block: NAME=value ...")
     p.add_argument("values", nargs="+", metavar="NAME=value")
     p = sub.add_parser("session", help="athlete id copied into the following reports (\"\" = clear it)"); p.add_argument("athlete")
+    sub.add_parser("pause", help="pause a running game (firmware >= 2.12); only resume ends it")
+    sub.add_parser("resume", help="end a pause made by pause (firmware >= 2.12)")
     p = sub.add_parser("cmd", help="send one raw command (JSON or text form)"); p.add_argument("text")
     p = sub.add_parser("push", help="upload program files"); p.add_argument("directory")
     p = sub.add_parser("pull", help="download program files"); p.add_argument("directory")
@@ -745,6 +750,8 @@ def main():
             say(json.dumps(pod.request("setVariables", check=False, values=values), indent=2))
         elif args.command == "session":
             say(json.dumps(pod.request("session", check=False, athlete=args.athlete), indent=2, ensure_ascii=False))
+        elif args.command in ("pause", "resume"):
+            say(json.dumps(pod.request(args.command, check=False), indent=2))
         elif args.command == "reboot":
             status = pod.reboot(args.role)
             if status:

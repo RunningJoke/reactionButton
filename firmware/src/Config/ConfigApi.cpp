@@ -1,6 +1,7 @@
 #include "ConfigApi.h"
 #include "Config/Console.h"
 #include <SPIFFS.h>
+#include <esp_system.h>
 #include "_Definitions.h"
 #include "Config/SerialConsole.h"
 #include "Link/Protocol.h"
@@ -143,7 +144,7 @@ void ConfigApi::opHelp(JsonDocument& response) {
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
         const char* central[] = {"programs", "select", "start", "press", "effect", "stop",
-                                 "reports", "ack", "command", "setVariables", "session"};
+                                 "reports", "ack", "command", "setVariables", "session", "pause", "resume"};
         for(const char* op : central) ops.add(op);
     } else {
         ops.add("press");
@@ -167,6 +168,9 @@ void ConfigApi::opStatus(JsonDocument& response) {
     JsonObject st = response["store"].to<JsonObject>();
     st["generation"] = store.generation();
     st["hash"] = hex32(store.hash());
+    JsonObject heap = response["heap"].to<JsonObject>();
+    heap["free"] = (uint32_t)esp_get_free_heap_size();
+    heap["minFree"] = (uint32_t)esp_get_minimum_free_heap_size();
     Diag::describe(response["lastReset"].to<JsonObject>());
     if(role != nullptr) {
         role->describe(response.as<JsonObject>());
@@ -202,6 +206,8 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("toggle");
     features.add("reports");
     features.add("remote");
+    features.add("pause");
+    features.add("liveBle");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));
@@ -244,6 +250,11 @@ void ConfigApi::opReboot(JsonObjectConst request, JsonDocument& response) {
 
 void ConfigApi::opSetName(JsonObjectConst request, JsonDocument& response) {
     if(!this->checkWriteAccess(response)) {
+        return;
+    }
+    IRole* role = RoleManager::getManager()->current();
+    if(role != nullptr && !role->storeEditable()) {
+        setError(response, "busy", "the set name cannot be changed now (game running or prepared)");
         return;
     }
     JsonVariantConst value = request["name"];

@@ -400,11 +400,11 @@ describe("effect block, firmware semantics", () => {
 });
 
 describe("shipped effects.json", () => {
-  const load = () => validateProgram("/prog/effects.json", (p) => DEFAULT_FILES[p], { programFormat: 3 });
+  const load = () => validateProgram("/prog/effects.json", (p) => DEFAULT_FILES[p], { programFormat: 5 });
 
-  it("is valid for a format 3 pod and a format 2 pod rejects it", () => {
+  it("is valid for a format 5 pod (the cycle report) and a format 4 pod rejects it", () => {
     expect(load().issues.filter((i) => i.severity === "error")).toEqual([]);
-    const old = validateProgram("/prog/effects.json", (p) => DEFAULT_FILES[p], { programFormat: 2 });
+    const old = validateProgram("/prog/effects.json", (p) => DEFAULT_FILES[p], { programFormat: 4 });
     expect(old.issues.some((i) => i.severity === "error")).toBe(true);
   });
 

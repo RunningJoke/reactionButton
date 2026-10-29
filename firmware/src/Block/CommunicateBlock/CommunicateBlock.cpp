@@ -2,6 +2,7 @@
 #include "Block/JsonUtil.h"
 #include "Config/SerialConsole.h"
 #include "Results/Reports.h"
+#include "Roles/Central/PhoneConfig.h"
 
 CommunicateBlock* CommunicateBlock::waitingBlock = nullptr;
 
@@ -131,6 +132,7 @@ void CommunicateBlock::sendReport(BlockContext& ctx) {
     out["event"] = "report";
     Reports::write(report, out);
     SerialConsole::emit(event);
+    PhoneConfig::publishEvent(event);   // and to the phone over BLE, if connected (liveBle)
 }
 
 void CommunicateBlock::startWaiting(BlockContext& ctx) {

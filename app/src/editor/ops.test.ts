@@ -127,7 +127,7 @@ describe("step list operations", () => {
     expect(get("CentralMiss").next).toBe("RemotePause");
     expect(get("RemotePause").next).toBe("CentralOff");
     expect(get("CentralOff").next).toBe("RemoteTarget");
-    expect(order(doc).slice(0, 8)).toEqual(["[repeat]", "1 EnterProgram", "2 CentralOn", "3 CentralPress", "3.1 CentralMiss", "4 RemotePause", "5 CentralOff", "6 RemoteTarget"]);
+    expect(order(doc).slice(0, 8)).toEqual(["1 StartCycle", "[repeat]", "2 EnterProgram", "3 CentralOn", "4 CentralPress", "4.1 CentralMiss", "5 RemotePause", "6 CentralOff"]);
     expect(errors(doc)).toEqual([]);
     const entered = run(doc);
     // the new order is what runs: miss → pause → central off → remote target
@@ -145,7 +145,7 @@ describe("step list operations", () => {
     // the press and its miss branch both continue with what now follows them
     expect(get("CentralPress")).toMatchObject({ pressed: "RemotePause", timeout: "CentralMiss" });
     expect(get("CentralMiss").next).toBe("RemotePause");
-    expect(order(doc).slice(0, 6)).toEqual(["[repeat]", "1 EnterProgram", "2 CentralOn", "3 CentralOff", "4 CentralPress", "4.1 CentralMiss"]);
+    expect(order(doc).slice(0, 6)).toEqual(["1 StartCycle", "[repeat]", "2 EnterProgram", "3 CentralOn", "4 CentralOff", "5 CentralPress"]);
     expect(errors(doc)).toEqual([]);
     expect(run(doc).length).toBeGreaterThan(20);
   });
