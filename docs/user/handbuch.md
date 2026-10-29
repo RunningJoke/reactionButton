@@ -3,7 +3,7 @@
 Für Trainerinnen und Trainer, Sportlerinnen und Sportler und alle, die mit ReactPods trainieren
 wollen. Technisches Wissen ist nicht nötig. Die englische Fassung ist [manual.md](manual.md),
 die bebilderte Kurzanleitung [anleitung.pdf](anleitung.pdf), die technischen Details der Spiele
-stehen in [game-modes.md](game-modes.md).
+stehen in [game-modes.md](game-modes.md). Einheiten planen: [Trainerleitfaden](trainerleitfaden.md).
 
 > **Sicherheit:** ReactPods niemals unbeaufsichtigt laden. Sie werden beim Laden warm.
 
@@ -174,6 +174,7 @@ Ist der Pod mit einer **PIN** geschützt, fragt die App danach, bevor du etwas �
 | Seite | Was du dort machst |
 |---|---|
 | **Pod** | Das verbundene Set: Name, Firmware, welche Spiele drauf sind und ob sie zur App passen. Änderungen auf den Pod übertragen oder die Originalspiele wiederherstellen. Set umbenennen. |
+| **Trainingsansicht** (von der Seite Pod aus) | Mehrere verbundene Sets nebeneinander, eine Karte je Set: wer trainiert, der letzte Bericht und, solange ein Spiel wartet, Weiter / Wiederholen / Stopp und die Werte für die nächste Runde. Spiel pausieren und fortsetzen (Firmware 2.12). Siehe §8.6. |
 | **Programme** | Alle Spiele: die auf dem Pod, die mitgelieferten und deine eigenen. Öffnen, um zu sehen, wie ein Spiel abläuft; kopieren, importieren, exportieren. |
 | **Editor** | Ein Spiel ändern oder Schritt für Schritt ein neues bauen (§8.3). |
 | **Simulation** | Ein Spiel am Bildschirm spielen: virtuelle Pods antippen statt echter. Gut zum Prüfen eigener Spiele. |
@@ -239,6 +240,19 @@ Live-Ergebnisse brauchen Firmware 2.12 oder neuer auf dem Central:
 Damit bekommt die Seite **Pod** während des Spiels einen Bereich *Training*: wer gerade trainiert,
 der letzte Bericht und die Knöpfe **Weiter**, **Wiederholen** (Durchgang noch einmal, das Ergebnis
 zählt nicht) und **Stopp**. Bis dahin sagt die App, dass der Pod noch keine Ergebnisse sendet.
+
+Die **Trainingsansicht** (auf der Seite Pod, unter dem Menü-Link) zeigt alle verbundenen Sets auf
+einem Bildschirm, eine Karte je Set. Ein zweites Set verbindest du mit *Weiteres Set verbinden* im
+Verbindungsdialog; ein Demo-Pod geht genauso. Eine Karte zeigt den Zustand des Sets (Menü, Suche,
+läuft, pausiert, wartet auf dich), wer trainiert, den letzten Bericht und die Knöpfe dieses Sets.
+Während ein Spiel wartet, bietet die Karte **Weiter**, **Wiederholen** und **Stopp** sowie je Wert,
+den du für die nächste Runde ändern darfst, ein Zahlenfeld. **Pause** und **Weiter** (Spiel) brauchen
+Firmware 2.12.
+
+Lass die App beim Training offen. Der Bildschirm bleibt an, solange die Ansicht offen ist. Schläft
+das Telefon oder geht die App in den Hintergrund, bricht aber die Bluetooth-Verbindung ab. Die App
+verbindet sich dann, solange sie offen ist, selbst neu. Berichte, die inzwischen kamen, werden
+nachgeholt und gespeichert.
 
 Ergebnisse in ein Online-Sportlerprofil (Vereinsplattform) hochzuladen ist eine Vorschau-Funktion
 unter Einstellungen.

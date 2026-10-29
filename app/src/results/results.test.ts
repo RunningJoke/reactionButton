@@ -12,7 +12,7 @@ import { formatMs, reportDuration, summarizeReports } from "./stats";
 
 function reset(durable = true) {
   const storage = new MemoryResultStorage(durable);
-  useResults.setState({ loaded: false, athletes: [], sessions: [], reports: [], sets: {}, storage, durable });
+  useResults.setState({ loaded: false, athletes: [], sessions: [], reports: [], sets: {}, platformDeletes: [], storage, durable });
   return storage;
 }
 
@@ -151,6 +151,38 @@ describe("results store", () => {
     expect(status()).toBe("uploaded");
     await useResults.getState().setDiscarded(report.id, true);
     expect(status()).toBe("pending");
+  });
+});
+
+describe("deletions on the platform", () => {
+  it("queues a linked athlete and an uploaded session, and keeps the queue across a restart", async () => {
+    const storage = reset();
+    const mia = await useResults.getState().addAthlete("Mia");
+    await useResults.getState().updateAthlete(mia.id, { platformId: "athlete-1", platformOrgId: "org-1" });
+    await useResults.getState().assign("1a2b3c4d", mia.id);
+    await useResults.getState().receiveReport(podReport({ id: 1 }));
+    const sessionId = useResults.getState().sessions[0]!.id;
+    await useResults.getState().recordUpload(sessionId, "remote-session", []);
+
+    await useResults.getState().deleteSession(sessionId);
+    expect(useResults.getState().platformDeletes).toEqual([expect.objectContaining({ kind: "session", orgId: "org-1", platformId: "remote-session" })]);
+    await useResults.getState().deleteAthlete(mia.id);
+    expect(useResults.getState().platformDeletes.map((d) => [d.kind, d.platformId])).toEqual([
+      ["session", "remote-session"],
+      ["athlete", "athlete-1"],
+    ]);
+
+    useResults.setState({ loaded: false, platformDeletes: [] });
+    await useResults.getState().load();
+    expect(useResults.getState().platformDeletes).toHaveLength(2);
+    expect(await storage.getMeta("platformDeletes")).toHaveLength(2);
+  });
+
+  it("queues nothing for an athlete or session the platform never had", async () => {
+    reset();
+    const noa = await useResults.getState().addAthlete("Noa");
+    await useResults.getState().deleteAthlete(noa.id);
+    expect(useResults.getState().platformDeletes).toEqual([]);
   });
 });
 

@@ -138,12 +138,15 @@ export class PlatformClient {
     return this.request<PlatformAthlete>("POST", `/v1/orgs/${encodeURIComponent(orgId)}/athletes`, input);
   }
   /** Idempotent by the app's session and report ids (P22). */
-  uploadTraining(orgId: string, sessions: SessionIn[], idempotencyKey?: string) {
-    return this.request<UploadResult>(
-      "POST",
-      `/v1/orgs/${encodeURIComponent(orgId)}/training/upload`,
-      { sessions },
-      idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
-    );
+  uploadTraining(orgId: string, sessions: SessionIn[]) {
+    return this.request<UploadResult>("POST", `/v1/orgs/${encodeURIComponent(orgId)}/training/upload`, { sessions });
+  }
+  /** Deletes the athlete profile with its sessions and reports (P24). */
+  deleteAthlete(orgId: string, athleteId: string) {
+    return this.request<{ ok: true }>("DELETE", `/v1/orgs/${encodeURIComponent(orgId)}/athletes/${encodeURIComponent(athleteId)}`);
+  }
+  /** Deletes a training session with its reports (coaches for their teams). */
+  deleteTrainingSession(orgId: string, sessionId: string) {
+    return this.request<{ ok: true }>("DELETE", `/v1/orgs/${encodeURIComponent(orgId)}/training/sessions/${encodeURIComponent(sessionId)}`);
   }
 }

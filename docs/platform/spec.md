@@ -184,7 +184,7 @@ a program revision or a preset.
 ```mermaid
 flowchart LR
     POD["Pod set (central)"] -- "results / RESULT lines" --> APP["Config App (offline queue)"]
-    APP -- "POST /v1/sessions (Idempotency-Key)" --> API["Platform API"]
+    APP -- "POST /v1/orgs/{orgId}/training/upload" --> API["Platform API"]
     API --> DB[("Postgres")]
     COACH["Coach / athlete / AI client"] -- "stats, leaderboards" --> API
 ```
@@ -215,7 +215,10 @@ uploads them ([#48](https://github.com/RunningJoke/reactionButton/issues/48)).
   coaches: their teams). An athlete sees the results of their own (claimed) profile, viewers see
   none. Leaderboards are visible to every member of the team.
 - Corrections: a coach can delete a report or a whole session (audit logged). Deleting an athlete
-  deletes their results (P24).
+  deletes their results (P24). The app passes its deletions on: a linked athlete or an uploaded
+  session deleted on the phone is deleted on the platform too, queued like the uploads when the
+  phone is offline or signed out (`DELETE .../athletes/{id}`, `DELETE .../training/sessions/{id}`).
+- Idempotency: the body ids (P22) are the only dedupe key; there is no `Idempotency-Key` header.
 - **Firmware dependency**: without the `reports` feature (#41) there are no live results; the
   API needs no change for it, it only receives fewer reports.
 
@@ -404,7 +407,7 @@ flowchart TB
 | Area | Endpoints | Scope |
 |---|---|---|
 | Auth | `POST /auth/login` (202), `POST /auth/verify` (token or email + code → session token), `POST /auth/logout`; later OAuth: `/oauth/authorize`, `/oauth/token`, `/oauth/register`, `/.well-known/oauth-authorization-server` | – |
-| Me | `GET/PATCH/DELETE /me`, `GET /me/sessions`, `DELETE /me/sessions/{sessionId}`, `GET /me/export` | `profile` |
+| Me | `GET/PATCH/DELETE /me` (`GET` lists the athlete profiles the user claimed, with their `athleteId`), `GET /me/sessions`, `DELETE /me/sessions/{sessionId}`, `GET /me/export` | `profile` |
 | Clubs | `GET/POST /orgs`, `GET/PATCH/DELETE /orgs/{orgId}`, `POST /orgs/{orgId}/leave`, `POST /orgs/{orgId}/transfer` | `org:read`, `org:write` |
 | Members | `GET /orgs/{orgId}/members`, `PATCH/DELETE /orgs/{orgId}/members/{userId}` | `org:*` |
 | Invitations | `GET/POST /orgs/{orgId}/invites`, `DELETE /orgs/{orgId}/invites/{inviteId}`, `POST /invites/accept` (also claims an athlete profile) | `org:*` |
@@ -426,7 +429,6 @@ Conventions:
 - JSON, UTF-8; errors as `application/problem+json` with a stable `code`
   (program validation issues reuse the app's issue codes).
 - Cursor pagination (`?cursor=&limit=`), `ETag` + `If-Match` on updates (no lost writes).
-- `Idempotency-Key` header on all `POST`s that create data from offline queues.
 - Breaking changes only with `/v2`; additive changes are announced in `GET /meta`.
 - CORS only for the app origins (Pages, localhost, Capacitor schemes).
 

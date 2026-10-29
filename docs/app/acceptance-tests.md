@@ -80,6 +80,25 @@ them must work exactly as before (AT-R6).
 | AT-R5 | Settings → Platform: server of a test platform, sign in with the mail code, choose a club; link the athlete (new profile, consent); go offline, record reports, go online | the reports appear in the profile once; **Upload now** again creates no duplicates; discarding a report later updates only its flag |
 | AT-R6 | Real central without `reports` (firmware 2.7) | Pod tab says it sends no results yet; sync, push and all programs work as before |
 
+## L – Several sets and the training view (P9, #46, spec §9.5)
+
+Needs firmware 2.12 (`reports`, `remote`, `pause`, `liveBle`) for AT-L1…L7 and a second set (second central in the menu). The demo pod needs no hardware: AT-L8 covers it.
+
+| ID | Steps | Expected |
+|---|---|---|
+| AT-L1 | Pod: connect set A (Bluetooth), chip → *Add another set* → connect set B | two cards on Pod → *Training view*, each with its set name; the set connected last is marked *Active* |
+| AT-L2 | Both sets in a game, each at a *Report* block: tap *Continue* on set B only | only set B's card leaves *Waiting for you*; set A keeps its block and its values |
+| AT-L3 | Card of a waiting set: set *MAX_LOOPS* to 20 and *Set*; then *Continue* | the pod's next round uses 20 loops; a value outside 1–50 is refused on the card, nothing is sent |
+| AT-L4 | Game running on a set: *Pause*, wait 10 s, *Resume* | pod PAUSED (all yellow) while paused, then the game goes on in the same round |
+| AT-L5 | Switch set A off for 20 s during a game, switch it on again; do not touch the app | card shows *Reconnecting…*, then *Connected* without a tap; reports sent during the drop appear on the session after the reconnect (none lost, none twice) |
+| AT-L6 | Reload the app with two sets in the pods' reach | each set is picked again with one tap; the reports the pods kept are shown in the sessions |
+| AT-L7 | Training view open, phone unattended for 3 min (screen on) | screen stays on; with the screen locked BLE drops and the app reconnects after unlock (known PWA limit, document only) |
+| AT-L8 | Demo pod: connect, *Add another set* → demo pod again | two cards "ReactPod …" and "Halle 2", distinct set ids; demo report and *Continue* on one card do not change the other |
+| AT-L9 | Central with firmware 2.10 (no `reports`) in the training view | card says the firmware cannot send results yet; no Continue / Pause buttons; the athlete can still be chosen |
+| AT-L10 | Central with firmware 2.11 (no `liveBle`, no `pause`) | card notes that Bluetooth goes off during a game; no Pause button; Continue / Repeat / Stop work |
+| AT-L11 | Four sets (or four demo sets) in the training view on a phone 360 px wide, light and dark theme | one column, no horizontal scroll, all buttons at least 44 px, text readable in both themes |
+| AT-L12 | Connect a set that is connected already (same pod, second connection) | no second card; the existing card is active |
+
 ## E – Block builder (P8, [editor-ux.md](editor-ux.md))
 
 Demo pod or no pod unless stated; phone width (360 px) unless stated. "Format 1 pod" = a
@@ -130,3 +149,4 @@ central with firmware before 2.8 (or the demo pod set to `programFormat` 1).
 | AT-R1 … AT-R6 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle; P7 |
 | AT-E1 … AT-E14 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle; P8 |
 | AT-U1 … AT-U6 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle |
+| AT-L1 … AT-L12 | – | – | 2.12 | open | P9 (#46), ready for test; not run yet |

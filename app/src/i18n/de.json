@@ -15,7 +15,8 @@
   "connection": {
     "disconnected": "Nicht verbunden",
     "connecting": "Verbinde…",
-    "connected": "Verbunden"
+    "connected": "Verbunden",
+    "reconnecting": "Verbinde neu…"
   },
   "pod": {
     "intro": "Mit einer Zentrale im Programmmenü verbinden.",
@@ -69,7 +70,8 @@
     "missingFile": "fehlt",
     "dialog": {
       "title": "Pod-Verbindung",
-      "close": "Schließen"
+      "close": "Schließen",
+      "addSet": "Weiteres Set verbinden"
     },
     "notConnected": "Kein Pod verbunden",
     "connectButton": "Verbinden",
@@ -1292,7 +1294,7 @@
     "deleteAthlete": "Person löschen",
     "deleteAthleteText_one": "{{name}} und {{count}} Training werden von diesem Handy gelöscht.",
     "deleteAthleteText_other": "{{name}} und {{count}} Trainings werden von diesem Handy gelöscht.",
-    "deleteAthleteRemote": "Bereits hochgeladene Ergebnisse bleiben auf der Plattform. Lösche sie dort.",
+    "deleteAthleteRemote": "Das verknüpfte Profil und seine Ergebnisse werden auch auf der Plattform gelöscht, sobald die App online und angemeldet ist.",
     "athleteName": "Name oder Spitzname",
     "athleteNameHint": "Nur auf diesem Handy gespeichert, bis du ein Plattform-Profil verknüpfst.",
     "athleteMissing": "Diese Person gibt es (nicht mehr).",
@@ -1335,7 +1337,7 @@
     "deleteSession": "Training löschen",
     "deleteSessionText_one": "Das Training mit {{count}} Bericht wird von diesem Handy gelöscht.",
     "deleteSessionText_other": "Das Training mit {{count}} Berichten wird von diesem Handy gelöscht.",
-    "deleteSessionRemote": "Auf der Plattform bleibt es. Lösche es dort.",
+    "deleteSessionRemote": "Auch auf der Plattform wird es gelöscht, sobald die App online und angemeldet ist.",
     "cycle": "Durchgang {{cycle}}",
     "reportN": "Bericht {{n}}",
     "discarded": "verworfen",
@@ -1377,7 +1379,45 @@
       "busy": "Die Person lässt sich nur im Programm-Menü oder während der Pod auf die App wartet wechseln.",
       "not_ready": "Der Pod wartet gerade nicht auf die App.",
       "timeout": "Der Pod hat nicht geantwortet.",
-      "disconnected": "Die Verbindung ist abgebrochen."
+      "disconnected": "Die Verbindung ist abgebrochen.",
+      "not_running": "Das Spiel läuft nicht, es kann also nicht pausiert werden.",
+      "not_paused": "Das Spiel ist nicht von der App pausiert.",
+      "out_of_range": "Der Wert liegt außerhalb des erlaubten Bereichs."
+    },
+    "view": {
+      "link": "Trainingsansicht",
+      "title": "Trainingsansicht",
+      "intro": "Eine Karte je verbundenem Set. Lass die App offen: Der Bildschirm bleibt an, solange diese Ansicht offen ist. Schläft das Telefon oder ist der Tab im Hintergrund, bricht die Bluetooth-Verbindung ab. Die App verbindet dann selbst neu.",
+      "addSet": "Set hinzufügen",
+      "connect": "Set verbinden",
+      "empty": "Kein Set verbunden. Verbinde ein Set, um sein Training hier zu verfolgen.",
+      "connecting": "Verbindet…",
+      "active": "Aktiv",
+      "usePod": "Im Pod-Tab zeigen",
+      "waiting": "Wartet auf dich",
+      "waitingFor": "Das Programm wartet bei „{{block}}“: weiter, wiederholen oder stoppen, oder die Werte für die nächste Runde ändern.",
+      "oldFirmware": "Die Firmware dieses Pods kann noch keine Ergebnisse senden (ab Firmware 2.11 mit Reports). Die Person lässt sich trotzdem wählen.",
+      "noLiveBle": "Vor Firmware 2.12 geht die Bluetooth-Verbindung während eines Spiels aus. Die App verbindet neu, wenn das Set wieder da ist.",
+      "pause": "Pause",
+      "resume": "Weiter",
+      "pausedSent": "Das Spiel ist pausiert.",
+      "resumedSent": "Das Spiel läuft weiter.",
+      "variablesSent": "Werte gesendet.",
+      "setVariable": "Setzen",
+      "range": "{{min}} bis {{max}}",
+      "invalid": "Gib eine ganze Zahl von {{min}} bis {{max}} ein.",
+      "state": {
+        "MENU": "Menü",
+        "DISCOVERY": "Suche",
+        "CONFIRM": "Bestätigen",
+        "RUN": "Läuft",
+        "PAUSED": "Pausiert",
+        "ERROR": "Fehler",
+        "unknown": "Unbekannt",
+        "connecting": "Verbindet…",
+        "reconnecting": "Verbinde neu…",
+        "disconnected": "Nicht verbunden"
+      }
     }
   },
   "platform": {

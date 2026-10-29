@@ -13,6 +13,7 @@ import { AthletePage } from "../pages/AthletePage";
 import { SessionPage } from "../pages/SessionPage";
 import { LoginPage } from "../pages/LoginPage";
 import { WizardPage } from "../wizard/WizardPage";
+import { TrainingPage } from "../pages/TrainingPage";
 
 
 // Hash routing: works offline, on any host path and inside the Capacitor webview.
@@ -22,6 +23,7 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/pod" element={<PodPage />} />
+          <Route path="/training" element={<TrainingPage />} />
           <Route path="/programs" element={<ProgramsPage />} />
           <Route path="/programs/view" element={<ProgramViewPage />} />
           <Route path="/programs/new" element={<WizardPage />} />

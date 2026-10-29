@@ -10,6 +10,7 @@ export function useAutoUpload() {
   const settings = usePlatformSettings();
   const enabled = settings.autoUpload && canUpload(settings);
   const reports = useResults((s) => s.reports);
+  const platformDeletes = useResults((s) => s.platformDeletes);
   const loaded = useResults((s) => s.loaded);
 
   useEffect(() => {
@@ -32,5 +33,5 @@ export function useAutoUpload() {
       clearTimeout(timer);
       window.removeEventListener("online", run);
     };
-  }, [enabled, loaded, reports]);
+  }, [enabled, loaded, reports, platformDeletes]);
 }

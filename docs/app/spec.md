@@ -108,7 +108,7 @@ app/
 │   │   ├── protocol.ts          request / response types, PodError
 │   │   ├── client.ts            PodClient: one request at a time, ids, timeouts, resend on "overflow"
 │   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC check both ways
-│   │   ├── session.ts           connection state for the UI: connect, info / status / list, read-only role, log
+│   │   ├── session.ts           sessions per set (#46, list + active one): connect, reconnect, info / status / list, read-only role, log
 │   │   ├── sync.ts              compare local vs pod, push / restore plan, push execution
 │   │   └── syncActions.ts       sync for the UI: states of the connected set, keep pod / mine, push, delete
 │   ├── store/                   local persistence (Storage interface + IndexedDB adapter), workspace (local programs + menu)
@@ -471,6 +471,47 @@ Implementation notes (`src/pod/sync.ts`):
   `/programs.json`. User programs on the pod are not deleted, only removed from the menu.
   Confirmation dialog. The defaults are bundled with the app from `../firmware/data` at build time.
 
+### 9.5 Several sets and the training view (#46, phase P9)
+
+- **Sessions.** One session per connected set (`src/pod/session.ts`): transport, PodClient, `info`,
+  `status`, `list`, files and log. The sessions form a list (`usePodSessions`); one of them is the
+  *active* session. The Pod, Programs and Sync pages read the active session through `usePodSession`
+  as before. A new connection (connect dialog, *Add another set*) becomes the active session. A
+  connection to a set that is connected already is dropped and the existing session stays active. A
+  set that is reconnecting is replaced by a new connection to the same set.
+- **Reconnect.** A BLE link that drops is opened again while the page lives, without the device
+  chooser: first try after 1 s, the delay doubles per failed try up to 30 s. The set keeps its
+  card; its state is *Reconnecting*. When the link is up again the app runs `info`, `status`, `list`,
+  then **`reports` → store → `ack`** (the reports the pod kept while the link was down, see
+  [`results/podLink.ts`](../../app/src/results/podLink.ts)). Files come from the cache. A user
+  disconnect ends the session without a retry. Serial and the demo pod end the session on a drop.
+- **After a reload** the app knows no set. Each set is picked again with one tap; the pod still holds
+  its unacknowledged reports and sends them with `reports`.
+- **Training view** (route `/training`, linked from the Pod page; the header keeps the Pod tab
+  highlighted). One card per session:
+  - set name, state (`status.state`: MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR, or connecting /
+    reconnecting / not connected), *Waiting for you* while a `communicate` block waits;
+  - athlete: same list and assignment as the Training section of the Pod tab;
+  - last report: values and statistics, link to the session;
+  - while a block waits: **Continue**, **Repeat**, **Stop** (`command`) and one number input per
+    editable variable of `status.waiting.editable` (`setVariables`, range checked before sending);
+  - **Pause** / **Resume** (`pause` / `resume`) in RUN or while the phone holds a pause;
+  - *Show in Pod tab* makes the card's session the active one; *Disconnect* ends it.
+  Cards are one column on phones and two from 720 px.
+- **Feature detection** (`info.features`, a missing field means the old behaviour): without
+  `reports` the card says that the firmware cannot send results; without `remote` there are no
+  commands; without `pause` there is no pause button; without `liveBle` (firmware < 2.12) the card
+  notes that Bluetooth goes off during a game.
+- **Status** is read again on `state` and `report` events and after each command.
+- **Wake lock.** While the training view is open the app requests a screen wake lock
+  (`navigator.wakeLock`, screen). Without the API nothing happens; a refused request changes nothing.
+  **Known PWA limit:** the screen can still lock, and a hidden tab or a sleeping phone suspends the
+  page and drops BLE. The sessions reconnect while the page lives; reports sent in the meantime wait
+  on the pod until the reconnect fetches them.
+- **Demo pod.** Each connection to the demo pod gets a set of its own: `5f3a91c2` (no name), `9b2e7d40`
+  "Halle 2", `c71f0a8e` "Halle 3", `3e6d9b15` "Halle 4". While a demo report waits the demo game is in
+  RUN; `stop` ends it (MENU).
+
 ---
 
 ## 10. i18n and design
@@ -533,6 +574,7 @@ Implementation notes (`src/pod/sync.ts`):
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
 | P7 | Athletes, result history, platform upload (#47, #48 app side) | AT-R* pass | done (AT-R* passed 2026-10-26); real pods need `reports` / `remote` (#41, #42) for live results |
 | P8 | Block builder for first-timers and coaches ([editor-ux.md](editor-ux.md)): format 2 in model + simulator, step sheet, step list, game wizard, add a step by intent, program sheet, Adjust, expert mode | AT-E* pass | done (AT-E* passed 2026-10-26) |
+| P9 | Several sets at once (#46): session list, BLE reconnect with reports fetch and ack, training view `/training` (cards, live state, communicate controls, pause / resume), wake lock, demo pod with two sets (§9.5) | AT-L* pass | ready for test |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](acceptance-tests.md).
 **Firmware / API changes the app needs** are requested as **GitHub issues** in this repository

@@ -115,6 +115,10 @@ export type UploadSummary = {
   reports: number;
   failed: number;
   skipped: number;
+  /** deletions the platform confirmed (or that were gone already, 404) */
+  deleted: number;
+  /** deletions the platform refused for good (e.g. not a coach any more); the local delete stays */
+  deleteFailed: number;
   /** stopped early: sign in again */
   unauthorized: boolean;
   error?: string;
@@ -131,18 +135,48 @@ export type UploadDeps = {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** Uploads everything pending once. Results are written to the results store. */
+/**
+ * Repeats the deletions made on this phone while the platform was out of reach (or the app signed out).
+ * A deletion stays queued when the platform cannot be reached; 404 means it is gone already.
+ */
+async function runPlatformDeletes(client: PlatformClient, summary: UploadSummary): Promise<void> {
+  for (const d of useResults.getState().platformDeletes) {
+    try {
+      if (d.kind === "athlete") await client.deleteAthlete(d.orgId, d.platformId);
+      else await client.deleteTrainingSession(d.orgId, d.platformId);
+      summary.deleted += 1;
+    } catch (e) {
+      const error = e instanceof PlatformError ? e : new PlatformError(0, "network", String(e));
+      if (error.status === 401) {
+        summary.unauthorized = true;
+        return;
+      }
+      if (error.retryable) continue; // keep it for the next run
+      if (error.status === 404) {
+        summary.deleted += 1; // gone on the platform already
+      } else {
+        summary.deleteFailed += 1;
+        summary.error = error.code;
+      }
+    }
+    await useResults.getState().finishPlatformDelete(d.id);
+  }
+}
+
+/** Repeats the queued platform deletions, then uploads everything pending once. Results are written to the results store. */
 export async function runUpload({ client, orgId, sleep = defaultSleep, attempts = 3 }: UploadDeps): Promise<UploadSummary> {
   const results = useResults.getState();
   const { batches, skipped } = planUpload(results.sessions, results.reports, results.athletes, orgId);
-  const summary: UploadSummary = { sessions: 0, reports: 0, failed: 0, skipped: skipped.length, unauthorized: false };
+  const summary: UploadSummary = { sessions: 0, reports: 0, failed: 0, skipped: skipped.length, deleted: 0, deleteFailed: 0, unauthorized: false };
+
+  await runPlatformDeletes(client, summary);
+  if (summary.unauthorized) return summary;
 
   for (const batch of batches) {
-    const key = crypto.randomUUID(); // same key for the retries of this request
     let done = false;
     for (let attempt = 1; !done; attempt++) {
       try {
-        const res = await client.uploadTraining(orgId, batch.sessions, key);
+        const res = await client.uploadTraining(orgId, batch.sessions);
         const remote = new Map(res.sessions.map((s) => [s.clientId, s.id]));
         for (const [sessionId, sent] of batch.sent) {
           await useResults.getState().recordUpload(sessionId, remote.get(sessionId) ?? sessionId, sent);

@@ -65,7 +65,7 @@ async function linkedAthleteWithReports(n: number, values = 2) {
 }
 
 beforeEach(() => {
-  useResults.setState({ loaded: true, athletes: [], sessions: [], reports: [], sets: {}, storage: new MemoryResultStorage(true), durable: true });
+  useResults.setState({ loaded: true, athletes: [], sessions: [], reports: [], sets: {}, platformDeletes: [], storage: new MemoryResultStorage(true), durable: true });
 });
 
 describe("platform client", () => {
@@ -119,7 +119,7 @@ describe("upload queue", () => {
     expect(first).toMatchObject({ sessions: 1, reports: 2, failed: 0 });
     expect(calls).toHaveLength(3);
     expect(calls.map((c) => c.body)).toEqual([calls[0]!.body, calls[0]!.body, calls[0]!.body]);
-    expect(new Set(calls.map((c) => c.headers["Idempotency-Key"])).size).toBe(1);
+    expect(calls.every((c) => !("Idempotency-Key" in c.headers))).toBe(true); // idempotent by the body ids (P22)
     expect(calls[0]!.url).toBe(`https://api.example.org/v1/orgs/${ORG}/training/upload`);
     const session = useResults.getState().sessions[0]!;
     expect(session.upload.remoteId).toBe(`remote-${session.id}`);
@@ -145,5 +145,45 @@ describe("upload queue", () => {
 
     const signedOut = fakeFetch([problem(401, "unauthorized")]);
     expect(await runUpload({ client: new PlatformClient({ baseUrl: "https://x", fetch: signedOut.fetch }), orgId: ORG, sleep: noSleep })).toMatchObject({ unauthorized: true });
+  });
+});
+
+describe("platform deletions", () => {
+  const queued = () => [
+    { id: "d1", kind: "athlete" as const, orgId: ORG, platformId: ATHLETE },
+    { id: "d2", kind: "session" as const, orgId: ORG, platformId: "remote-s" },
+    { id: "d3", kind: "session" as const, orgId: ORG, platformId: "remote-t" },
+  ];
+
+  it("repeats queued deletions; gone (404) counts as done, an unreachable platform keeps the queue", async () => {
+    useResults.setState({ platformDeletes: queued() });
+    const { fetch, calls } = fakeFetch([json({ ok: true }), problem(404, "not_found"), new TypeError("offline")]);
+    const client = new PlatformClient({ baseUrl: "https://api.example.org", token: "tok", fetch });
+
+    const summary = await runUpload({ client, orgId: ORG, sleep: noSleep });
+    expect(summary).toMatchObject({ deleted: 2, deleteFailed: 0, unauthorized: false });
+    expect(calls.map((c) => [c.method, c.url])).toEqual([
+      ["DELETE", `https://api.example.org/v1/orgs/${ORG}/athletes/${ATHLETE}`],
+      ["DELETE", `https://api.example.org/v1/orgs/${ORG}/training/sessions/remote-s`],
+      ["DELETE", `https://api.example.org/v1/orgs/${ORG}/training/sessions/remote-t`],
+    ]);
+    expect(useResults.getState().platformDeletes.map((d) => d.id)).toEqual(["d3"]);
+  });
+
+  it("drops a deletion the platform refuses for good (not a coach any more) and reports it", async () => {
+    useResults.setState({ platformDeletes: queued().slice(1, 2) });
+    const { fetch } = fakeFetch([problem(403, "forbidden")]);
+    const summary = await runUpload({ client: new PlatformClient({ baseUrl: "https://x", fetch }), orgId: ORG, sleep: noSleep });
+    expect(summary).toMatchObject({ deleted: 0, deleteFailed: 1, error: "forbidden" });
+    expect(useResults.getState().platformDeletes).toEqual([]);
+  });
+
+  it("keeps the queue and stops when signed out", async () => {
+    useResults.setState({ platformDeletes: queued() });
+    const { fetch, calls } = fakeFetch([problem(401, "unauthorized")]);
+    const summary = await runUpload({ client: new PlatformClient({ baseUrl: "https://x", fetch }), orgId: ORG, sleep: noSleep });
+    expect(summary).toMatchObject({ unauthorized: true, deleted: 0 });
+    expect(calls).toHaveLength(1);
+    expect(useResults.getState().platformDeletes).toHaveLength(3);
   });
 });
