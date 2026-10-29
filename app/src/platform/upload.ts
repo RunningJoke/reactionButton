@@ -5,7 +5,7 @@
  */
 import { create } from "zustand";
 import type { Athlete, StoredReport, TrainingSession } from "../results/report";
-import { needsUpload, useResults } from "../results/results";
+import { needsUpload, useResults, type PlatformDelete } from "../results/results";
 import { PlatformError, UPLOAD_LIMITS, type PlatformClient, type ReportIn, type SessionIn } from "./api";
 
 export type UploadBatch = {
@@ -135,32 +135,69 @@ export type UploadDeps = {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** Outcome of one run over the deletion queue. */
+export type DeleteOutcome = Pick<UploadSummary, "deleted" | "deleteFailed" | "unauthorized" | "error">;
+
+/** The run in progress: a second caller (sign-in and the upload at the same time) shares it. */
+let deleting: Promise<DeleteOutcome> | null = null;
+
+async function deleteOne(client: PlatformClient, d: PlatformDelete): Promise<void> {
+  if (d.kind === "session") {
+    await client.deleteTrainingSession(d.orgId, d.platformId);
+    return;
+  }
+  if (d.kind === "myAthlete") {
+    await client.deleteMyAthleteProfile(d.orgId, d.platformId);
+    return;
+  }
+  try {
+    await client.deleteAthlete(d.orgId, d.platformId);
+  } catch (e) {
+    // a coach's delete refused: the profile may be the user's own, claimed after the last sign-in on this phone
+    if (!(e instanceof PlatformError && e.status === 403)) throw e;
+    try {
+      await client.deleteMyAthleteProfile(d.orgId, d.platformId);
+    } catch {
+      throw e;
+    }
+  }
+}
+
 /**
  * Repeats the deletions made on this phone while the platform was out of reach (or the app signed out).
  * A deletion stays queued when the platform cannot be reached; 404 means it is gone already.
+ * Runs on sign-in and on app start too, independent of the auto-upload setting (#48).
  */
-async function runPlatformDeletes(client: PlatformClient, summary: UploadSummary): Promise<void> {
-  for (const d of useResults.getState().platformDeletes) {
-    try {
-      if (d.kind === "athlete") await client.deleteAthlete(d.orgId, d.platformId);
-      else await client.deleteTrainingSession(d.orgId, d.platformId);
-      summary.deleted += 1;
-    } catch (e) {
-      const error = e instanceof PlatformError ? e : new PlatformError(0, "network", String(e));
-      if (error.status === 401) {
-        summary.unauthorized = true;
-        return;
+export function runPlatformDeletes(client: PlatformClient): Promise<DeleteOutcome> {
+  if (!deleting) {
+    deleting = (async () => {
+      const outcome: DeleteOutcome = { deleted: 0, deleteFailed: 0, unauthorized: false };
+      for (const d of useResults.getState().platformDeletes) {
+        try {
+          await deleteOne(client, d);
+          outcome.deleted += 1;
+        } catch (e) {
+          const error = e instanceof PlatformError ? e : new PlatformError(0, "network", String(e));
+          if (error.status === 401) {
+            outcome.unauthorized = true;
+            return outcome;
+          }
+          if (error.retryable) continue; // keep it for the next run
+          if (error.status === 404) {
+            outcome.deleted += 1; // gone on the platform already
+          } else {
+            outcome.deleteFailed += 1;
+            outcome.error = error.code;
+          }
+        }
+        await useResults.getState().finishPlatformDelete(d.id);
       }
-      if (error.retryable) continue; // keep it for the next run
-      if (error.status === 404) {
-        summary.deleted += 1; // gone on the platform already
-      } else {
-        summary.deleteFailed += 1;
-        summary.error = error.code;
-      }
-    }
-    await useResults.getState().finishPlatformDelete(d.id);
+      return outcome;
+    })().finally(() => {
+      deleting = null;
+    });
   }
+  return deleting;
 }
 
 /** Repeats the queued platform deletions, then uploads everything pending once. Results are written to the results store. */
@@ -169,7 +206,7 @@ export async function runUpload({ client, orgId, sleep = defaultSleep, attempts 
   const { batches, skipped } = planUpload(results.sessions, results.reports, results.athletes, orgId);
   const summary: UploadSummary = { sessions: 0, reports: 0, failed: 0, skipped: skipped.length, deleted: 0, deleteFailed: 0, unauthorized: false };
 
-  await runPlatformDeletes(client, summary);
+  Object.assign(summary, await runPlatformDeletes(client));
   if (summary.unauthorized) return summary;
 
   for (const batch of batches) {

@@ -25,7 +25,14 @@ export class PlatformError extends Error {
 }
 
 export type Meta = { api: "v1"; version: string; programFormat: number; features: string[] };
-export type User = { id: string; email: string; displayName?: string; locale: "en" | "de" };
+export type User = {
+  id: string;
+  email: string;
+  displayName?: string;
+  locale: "en" | "de";
+  /** athlete profiles this user claimed (GET /v1/me); missing on older platforms */
+  athleteProfiles?: { athleteId: string; orgId: string; name: string }[];
+};
 export type Org = { id: string; name: string; kind: string; role: string; teamIds: string[] };
 export type PlatformAthlete = {
   id: string;
@@ -144,6 +151,13 @@ export class PlatformClient {
   /** Deletes the athlete profile with its sessions and reports (P24). */
   deleteAthlete(orgId: string, athleteId: string) {
     return this.request<{ ok: true }>("DELETE", `/v1/orgs/${encodeURIComponent(orgId)}/athletes/${encodeURIComponent(athleteId)}`);
+  }
+  /** The signed-in user deletes the athlete profile they claimed, with its results and links (self-delete). */
+  deleteMyAthleteProfile(orgId: string, athleteId: string) {
+    return this.request<{ ok: true }>(
+      "DELETE",
+      `/v1/orgs/${encodeURIComponent(orgId)}/me/athletes/${encodeURIComponent(athleteId)}`,
+    );
   }
   /** Deletes a training session with its reports (coaches for their teams). */
   deleteTrainingSession(orgId: string, sessionId: string) {

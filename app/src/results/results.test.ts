@@ -71,7 +71,7 @@ describe("results store", () => {
     const a = await store.receiveReport(podReport({ id: 1 }));
     const b = await store.receiveReport(podReport({ id: 2, cycle: 4 }));
     expect(a.durable).toBe(true);
-    expect(b.report.sessionId).toBe(a.report.sessionId);
+    expect(b.report!.sessionId).toBe(a.report!.sessionId);
 
     await useResults.getState().assign("1a2b3c4d", cem.id); // another athlete: new session
     const c = await useResults.getState().receiveReport(podReport({ id: 3 }));
@@ -82,30 +82,30 @@ describe("results store", () => {
       [cem.id, "/prog/dreieck.json"],
       [cem.id, "/prog/solo.json"],
     ]);
-    expect(new Set([a, b, c, d].map((x) => x.report.id)).size).toBe(4);
+    expect(new Set([a, b, c, d].map((x) => x.report!.id)).size).toBe(4);
     expect(sessions.every((s) => /^[0-9a-f-]{36}$/.test(s.id))).toBe(true);
   });
 
   it("uses the athlete the pod names (#42) and keeps unassigned reports", async () => {
     const mia = await useResults.getState().addAthlete("Mia");
     const unassigned = await useResults.getState().receiveReport(podReport({ id: 1 }));
-    expect(useResults.getState().sessions.find((s) => s.id === unassigned.report.sessionId)!.athleteId).toBeNull();
+    expect(useResults.getState().sessions.find((s) => s.id === unassigned.report!.sessionId)!.athleteId).toBeNull();
     const tagged = await useResults.getState().receiveReport(podReport({ id: 2, athlete: mia.id }));
-    expect(useResults.getState().sessions.find((s) => s.id === tagged.report.sessionId)!.athleteId).toBe(mia.id);
+    expect(useResults.getState().sessions.find((s) => s.id === tagged.report!.sessionId)!.athleteId).toBe(mia.id);
 
     // a pod with `session` support sent no athlete: recorded before anybody was chosen
     await useResults.getState().assign("1a2b3c4d", mia.id);
     const early = await useResults.getState().receiveReport(podReport({ id: 3 }), { podTagsAthlete: true });
-    expect(useResults.getState().sessions.find((s) => s.id === early.report.sessionId)!.athleteId).toBeNull();
+    expect(useResults.getState().sessions.find((s) => s.id === early.report!.sessionId)!.athleteId).toBeNull();
     const old = await useResults.getState().receiveReport(podReport({ id: 4 }));
-    expect(useResults.getState().sessions.find((s) => s.id === old.report.sessionId)!.athleteId).toBe(mia.id);
+    expect(useResults.getState().sessions.find((s) => s.id === old.report!.sessionId)!.athleteId).toBe(mia.id);
   });
 
   it("stores a report received twice only once", async () => {
     const first = await useResults.getState().receiveReport(podReport());
     const again = await useResults.getState().receiveReport(podReport());
     expect(again.duplicate).toBe(true);
-    expect(again.report.id).toBe(first.report.id);
+    expect(again.report!.id).toBe(first.report!.id);
     expect(useResults.getState().reports).toHaveLength(1);
     // the pod restarted: same pod id, other content → a new report
     expect((await useResults.getState().receiveReport(podReport({ startMs: 10, endMs: 20 }))).duplicate).toBe(false);
@@ -117,7 +117,7 @@ describe("results store", () => {
     await useResults.getState().assign("1a2b3c4d", mia.id);
     await useResults.getState().receiveReport(podReport({ id: 1 }));
     const second = await useResults.getState().receiveReport(podReport({ id: 2 }));
-    expect((await useResults.getState().discardLast("1a2b3c4d"))!.id).toBe(second.report.id);
+    expect((await useResults.getState().discardLast("1a2b3c4d"))!.id).toBe(second.report!.id);
 
     useResults.setState({ loaded: false, athletes: [], sessions: [], reports: [], sets: {} });
     await useResults.getState().load();
@@ -135,7 +135,7 @@ describe("results store", () => {
 
   it("derives the upload state of a session", async () => {
     const mia = await useResults.getState().addAthlete("Mia");
-    const { report } = await useResults.getState().receiveReport(podReport());
+    const report = (await useResults.getState().receiveReport(podReport())).report!;
     const status = () => {
       const s = useResults.getState();
       return sessionUploadStatus(s.sessions[0]!, s.athletes, s.reports);

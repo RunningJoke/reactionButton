@@ -17,6 +17,8 @@ export type PlatformSettings = {
   orgName?: string;
   /** upload by itself when online */
   autoUpload: boolean;
+  /** platform athlete ids the signed-in user claimed (from /v1/me at sign-in): their own profile is deleted by self-delete */
+  claimedAthleteIds?: string[];
 };
 
 const STORAGE_KEY = "reactpod.platform";
@@ -52,7 +54,7 @@ export const usePlatformSettings = create<Store>((set, get) => {
       persist();
     },
     signOut() {
-      set({ token: "", tokenExpiresAt: undefined, email: undefined, orgId: undefined, orgName: undefined });
+      set({ token: "", tokenExpiresAt: undefined, email: undefined, orgId: undefined, orgName: undefined, claimedAthleteIds: undefined });
       persist();
     },
   };

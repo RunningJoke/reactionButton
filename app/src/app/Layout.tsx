@@ -9,6 +9,7 @@ import { UpdatePrompt } from "./UpdatePrompt";
 import { useWorkspace } from "../store/workspace";
 import { useResults } from "../results/results";
 import { useAutoUpload } from "../platform/useAutoUpload";
+import { useDeletionQueue } from "../platform/useDeletionQueue";
 import styles from "./Layout.module.css";
 
 export function Layout() {
@@ -21,6 +22,7 @@ export function Layout() {
   const loadResults = useResults((s) => s.load);
   useEffect(() => void loadResults(), [loadResults]);
   useAutoUpload();
+  useDeletionQueue();
 
   return (
     <div className={styles.shell}>
