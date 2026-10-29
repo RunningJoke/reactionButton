@@ -42,6 +42,7 @@ void CentralRole::setState(State state) {
     JsonDocument event;
     event["event"] = "state";
     event["state"] = stateName(state);
+    event["phonePaused"] = this->phonePaused;
     if(state != State::MENU && this->catalog.size() > 0) {
         event["program"] = this->catalog.get(this->selectedModel).path;
     }
@@ -66,6 +67,17 @@ void CentralRole::reloadMenu() {
 void CentralRole::fail(const char* message) {
     Console.println(message);
     this->setState(State::ERROR);
+}
+
+// PAUSED -> RUN: the current block is re-entered (re-arms the pods, no second report)
+void CentralRole::continueRun() {
+    LEDManager::getManager()->turnOff();
+    this->network.setSyncAllowed(false);
+    // presses that came in while paused belong to the pause, not to the block
+    PodEvent stale;
+    while(this->network.pollEvent(stale)) {}
+    BlockManager::getManager()->restartCurrentBlock();
+    this->setState(State::RUN);
 }
 
 void CentralRole::run() {
@@ -123,12 +135,9 @@ void CentralRole::run() {
             break;
 
         case State::PAUSED:
-            if(this->network.allAlive()) {
+            if(!this->phonePaused && this->network.allAlive()) {
                 Console.println("All peripherals back, game continues");
-                LEDManager::getManager()->turnOff();
-                this->network.setSyncAllowed(false);
-                BlockManager::getManager()->restartCurrentBlock();
-                this->setState(State::RUN);
+                this->continueRun();
             }
             break;
 
@@ -290,6 +299,7 @@ bool CentralRole::engineIdle() const {
 
 void CentralRole::describe(JsonObject status) {
     status["state"] = stateName(this->state);
+    status["phonePaused"] = this->phonePaused;
 
     if(this->catalog.size() > 0) {
         const ProgramCatalog::ProgramInfo& program = this->catalog.get(this->selectedModel);
@@ -358,6 +368,10 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         this->opSetVariables(request, response);
     } else if(strcmp(op, "session") == 0) {
         this->opSession(request, response);
+    } else if(strcmp(op, "pause") == 0) {
+        this->opPause(response);
+    } else if(strcmp(op, "resume") == 0) {
+        this->opResume(response);
     } else if(strcmp(op, "stop") == 0) {
         // back to the program menu: restart as central (answer first)
         Settings::setBootRole(1);
@@ -595,6 +609,40 @@ void CentralRole::opSession(JsonObjectConst request, JsonDocument& response) {
     Reports::get().setAthlete(id);
     response["ok"] = true;
     response["athlete"] = id;
+}
+
+// Pauses the game like a lost peripheral, but only "resume" ends it (config-api.md §5)
+void CentralRole::opPause(JsonDocument& response) {
+    if(this->state != State::RUN) {
+        ConfigApi::setError(response, "not_running", String("state is ") + stateName(this->state) + ", not RUN");
+        return;
+    }
+    Console.println("Paused by phone, game paused");
+    this->phonePaused = true;
+    LEDManager::getManager()->setLEDColors(YELLOW);
+    this->network.setSyncAllowed(true);
+    this->setState(State::PAUSED);
+    response["ok"] = true;
+    response["state"] = stateName(this->state);
+}
+
+// Ends a phone pause. With a peripheral still missing the pod-loss pause goes on (PAUSED) and
+// the game continues when it is back.
+void CentralRole::opResume(JsonDocument& response) {
+    if(this->state != State::PAUSED || !this->phonePaused) {
+        ConfigApi::setError(response, "not_paused", "the game is not paused by the phone");
+        return;
+    }
+    this->phonePaused = false;
+    if(this->network.allAlive()) {
+        Console.println("Resumed by phone, game continues");
+        this->continueRun();
+    } else {
+        Console.println("Resumed by phone, a peripheral is still missing: game stays paused");
+        this->setState(State::PAUSED);      // state event: phonePaused is now false
+    }
+    response["ok"] = true;
+    response["state"] = stateName(this->state);
 }
 
 void CentralRole::opStart(JsonDocument& response) {

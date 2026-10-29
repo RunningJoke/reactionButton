@@ -141,7 +141,8 @@ says that the firmware knows the block type `toggle` (`programFormat` ≥ 4) and
 [link-protocol.md](link-protocol.md) §2.3; the pods may still be older: `status.pods[].toggle`.
 `reports` (firmware ≥ 2.11) = the report buffer, the `report` event and the ops `reports` / `ack`; `remote`
 (firmware ≥ 2.11) = the ops `command`, `setVariables` and `session`. Both come with the block type `communicate`
-(`programFormat` ≥ 5, programs.md §7.16).
+(`programFormat` ≥ 5, programs.md §7.16). `pause` (firmware ≥ 2.12) = the ops `pause` and `resume` and the
+state flag `phonePaused` (below).
 
 ### `list`
 ```json
@@ -220,12 +221,15 @@ switched off when a program is selected.
 | `command` | central (firmware ≥ 2.11) | `name`: `continue`, `repeat` or `stop` | answers a waiting `communicate` block (programs.md §7.16). `not_ready` if no block waits |
 | `setVariables` | central (firmware ≥ 2.11) | `values`: object name → integer | only while a `communicate` block waits, only names in its `editable`, within `min` … `max`. All or nothing. Response: `variables` (the new values). Errors: `not_ready`, `not_editable`, `out_of_range` |
 | `session` | central (firmware ≥ 2.11) | `athlete`: string, max 40 bytes; `""` clears it | an opaque athlete id copied into every following report (RAM, lost on reboot). Allowed in MENU, DISCOVERY, CONFIRM and while a `communicate` block waits, else `busy`. Response: `athlete` |
+| `pause` | central (firmware ≥ 2.12, feature `pause`) | – | pauses a running game from the phone: state PAUSED, all yellow, the current block is left (see below). Only in RUN, else `not_running`. Response: `state` (`PAUSED`) |
+| `resume` | central (firmware ≥ 2.12, feature `pause`) | – | ends a phone pause: the current block is re-entered (a `communicate` block keeps its report, programs.md §7.16) and the game continues. Only after a `pause`, else `not_paused`. Response: `state` (`RUN`, or `PAUSED` while a peripheral is still missing) |
 
 Reports (firmware ≥ 2.11, `reports` and `remote` in `info.features`): the report buffer is
 RAM only, so `stop` (which restarts the pod) and every reboot clear it, and report ids start
 again at 1. Until BLE stays on during the game (#39), reports reach a client over USB serial
 only. Central `status` then also has `athlete` (`""` = none), `reports {pending, dropped}`
 and, while a `communicate` block waits, `waiting {block, editable {<name>: {min, max, value}}}`.
+Central `status.phonePaused` (firmware ≥ 2.12) is true while a phone pause holds the game (state PAUSED).
 
 `pods[].effects` (firmware ≥ 2.8): the pod plays ring effects. `false` for pods with older
 firmware; effects then fall back to a static colour on that pod.
@@ -235,7 +239,22 @@ firmware; the `charge` and `release` blocks then take their `timeout` port at on
 older firmware; the `toggle` block leaves such a pod out of the game.
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
-changes during a game or a sync), `not_ready`, `not_editable`, `out_of_range` (`setVariables`).
+changes during a game or a sync), `not_ready`, `not_editable`, `out_of_range` (`setVariables`),
+`not_running` (`pause`: the game is not in RUN), `not_paused` (`resume`: no phone pause is active).
+
+**Pause and resume (firmware ≥ 2.12).** There are two kinds of PAUSED. Both show state `PAUSED`, all yellow:
+- *Peripheral lost* (automatic): a pod silent for 1.5 s. The game continues by itself when all pods are back.
+- *Phone pause* (`pause`, `phonePaused: true`): the game does not continue by itself. Only `resume` ends it.
+
+Both leave the current block and re-enter it on the way back (programs.md §7.1, §7.16): the timeouts
+restart, and a `communicate` block builds no second report. Presses that arrive while PAUSED are dropped
+when the game continues. The two kinds combine like this:
+- `pause` in RUN gives PAUSED with `phonePaused: true`. A peripheral lost while RUN is detected first, as
+  usual; `pause` is then refused (`not_running`) until the peripheral is back.
+- A peripheral lost while phone-paused changes nothing. With all pods back, `resume` is still needed.
+- `resume` with all pods back gives RUN. With a peripheral still missing, the state stays PAUSED with
+  `phonePaused: false`: the game continues when that peripheral is back (the pod-loss rule).
+- `command`, `setVariables` and `session` behave as in any PAUSED state (`not_ready` / `busy`).
 
 ### Events (USB serial)
 
@@ -244,7 +263,7 @@ Besides responses, the serial port carries event lines, also one JSON object per
 | Event | Fields |
 |---|---|
 | `boot` | `role`, `firmware`, `lastReset {reason, lastStep}`: after every start. `reason` = `panic`/`*watchdog`/`brownout` means a crash, `lastStep` says where |
-| `state` | `state`, `program`, `pods`, `required`: every central state change (MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR) |
+| `state` | `state`, `program`, `pods`, `required`, `phonePaused` (bool, firmware ≥ 2.12): every central state change (MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR) |
 | `block` | `name`, `t`: only while `trace` is on |
 | `report` | firmware ≥ 2.11, from a `communicate` block (programs.md §7.16): `id`, `program`, `setId`, `athlete` (if set), `cycle`, `startMs`, `endMs`, `values[] {t, metric, pod, ms}`, `stats {<metric>: {count, average, best, worst}}`, `vars {<name>: value}`, `valuesDropped` (if > 0) |
 

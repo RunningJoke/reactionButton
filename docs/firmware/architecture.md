@@ -155,7 +155,9 @@ stateDiagram-v2
     DISCOVERY --> CONFIRM : claimed == required (blue progress bar)
     CONFIRM --> RUN : new press (LEDs green)
     RUN --> PAUSED : a pod silent > 1.5 s (all yellow)
-    PAUSED --> RUN : all pods back, restart current block
+    RUN --> PAUSED : phone "pause" (phonePaused)
+    PAUSED --> RUN : all pods back, restart current block (not while phonePaused)
+    PAUSED --> RUN : phone "resume" with all pods back, restart current block
 ```
 
 - **MENU**: the menu is read from `/programs.json` (`ProgramCatalog`). The current
@@ -167,8 +169,10 @@ stateDiagram-v2
   SOLO (0 peripherals) does not start the radio at all.
 - **CONFIRM**: a press that starts after CONFIRM was entered starts the program. Events
   that arrived before are discarded.
-- **PAUSED**: the game resumes automatically. The current block is left and re-entered,
-  which re-arms its pods.
+- **PAUSED**: the game resumes automatically when a lost peripheral is back. The current block is
+  left and re-entered, which re-arms its pods. A phone `pause` (RUN only, `phonePaused` flag)
+  does not resume by itself: only `resume` does, and a peripheral lost meanwhile still holds the
+  game until it is back (config-api.md §5).
 - **ERROR**: red blink, reboot needed.
 
 ## 6. Block engine

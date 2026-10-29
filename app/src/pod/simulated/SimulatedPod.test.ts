@@ -87,7 +87,7 @@ describe("SimulatedPod (config API)", () => {
   it("reports the firmware 2.11 fields in info: program format 5 with the communicate block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
     expect(info).toMatchObject({ firmware: "2.11", setName: "Halle 2", pinRequired: false, programFormat: 5 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote"]);
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause"]);
     expect(info.linkRevision).toBe(3);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate"]));
@@ -318,5 +318,20 @@ describe("SimulatedPod (reports and remote ops, program format 5, firmware 2.11)
     expect(call(pod, { op: "session", athlete: "x" })).toMatchObject({ error: "busy" });
     pod.emitSampleReport(() => 0.5);
     expect(call(pod, { op: "session", athlete: "" })).toMatchObject({ ok: true, athlete: "" });
+  });
+
+  it("pauses only in RUN and stays paused until resume; the waiting block keeps waiting after resume", () => {
+    const pod = new SimulatedPod(solo);
+    expect(call(pod, { op: "pause" })).toMatchObject({ error: "not_running" });
+    expect(call(pod, { op: "resume" })).toMatchObject({ error: "not_paused" });
+    pod.state = "RUN";
+    pod.emitSampleReport(() => 0.5);
+    expect(call(pod, { op: "pause" })).toEqual({ op: "pause", ok: true, state: "PAUSED" });
+    expect(call(pod, { op: "pause" })).toMatchObject({ error: "not_running" });
+    expect(call(pod, { op: "status" })).toMatchObject({ state: "PAUSED", phonePaused: true });
+    expect(call(pod, { op: "status" })).not.toHaveProperty("waiting");
+    expect(call(pod, { op: "resume" })).toEqual({ op: "resume", ok: true, state: "RUN" });
+    expect(call(pod, { op: "status" })).toMatchObject({ state: "RUN", phonePaused: false, waiting: { block: "Report" } });
+    expect(call(pod, { op: "resume" })).toMatchObject({ error: "not_paused" });
   });
 });
