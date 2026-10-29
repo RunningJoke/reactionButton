@@ -20,10 +20,11 @@ Technical reference. For a non-technical guide, see the [user manual](manual.md)
 | Phone override of the round count (`MaxLoop` characteristic) | ✅ (only in the program menu) |
 | Ring effects (pulse, spin, level, traffic light, countdown) | ✅ firmware 2.9 |
 | Hold / release / charge / toggle interactions | ✅ firmware 2.9 / 2.10 |
-| Reports per cycle, continue / repeat / stop and variables from the app (`communicate`) | ✅ firmware 2.11 (USB; over BLE during the game: #39) |
+| Reports per cycle, continue / repeat / stop and variables from the app (`communicate`) | ✅ firmware 2.11 (USB), over BLE during the game from 2.12 |
 | Reaction times: peripheral (measured on the pod) and central (press edge) | ✅ recorded |
 | Results as CSV on the serial console, summary per cycle | ✅ |
-| Results in the app | 🟡 reports exist (2.11); live over BLE with #39 |
+| Results in the app | ✅ live over BLE from firmware 2.12 |
+| Pause / resume from the phone | ✅ firmware 2.12 |
 | Results on the LED ring | ❌ (#25) |
 | Countdown on timed blocks | ✅ (`countdown` option, firmware 2.9) |
 | Battery measurement / low-battery warning | ❌ (#19) |

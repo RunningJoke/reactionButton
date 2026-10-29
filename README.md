@@ -7,7 +7,7 @@ simulates and uploads them.
 
 **Config App:** https://runningjoke.github.io/reactionButton/ (PWA, works offline, demo pod built in)
 
-**New here?** Read the [user manual](docs/user/manual.md): the pod, the games and the app, without technical terms.
+**New here?** Read the [user manual](docs/user/manual.md): the pod, the games and the app, without technical terms. Coaches: [training guide](docs/user/coach-guide.md) (layouts, games per goal, a sample session).
 
 | Part | Folder | Docs |
 |---|---|---|

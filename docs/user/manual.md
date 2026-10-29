@@ -2,7 +2,7 @@
 
 For coaches, athletes and anyone who wants to train with ReactPods. No technical knowledge needed.
 A German short guide with pictures is in [anleitung.pdf](anleitung.pdf); the technical
-details of each game are in [game-modes.md](game-modes.md).
+details of each game are in [game-modes.md](game-modes.md). Planning sessions: [coach guide](coach-guide.md).
 
 > **Safety:** never leave ReactPods charging unattended. They get warm while charging.
 
