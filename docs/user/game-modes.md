@@ -29,7 +29,7 @@ Technical reference. For a non-technical guide, see the [user manual](manual.md)
 | Countdown on timed blocks | ✅ (`countdown` option, firmware 2.9) |
 | Battery measurement / low-battery warning, battery gauge at power-on | ✅ firmware 2.13 |
 | Pod numbers and colours, blink a pod from the app | ✅ firmware 2.13 |
-| Power saving / auto power-off | ❌ (#21) |
+| Power saving / auto power-off (deep sleep after 10 min idle, idle loop waits) | ✅ firmware 2.14 |
 | OTA firmware update | ❌ (not planned, flash over USB) |
 
 ## 2. Program menu
