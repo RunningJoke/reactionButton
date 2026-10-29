@@ -19,6 +19,7 @@
  * - Remembers which pods play effects / measure holds (CLAIM_ACK linkFeatures); older pods get no
  *   EFFECT frames, no hold activations and a plain ARM.
  * - Runs the program store sync with the peripherals (StoreSync), only while allowed.
+ * - Tells the pods whether they show their identity (PONG_FLAG_IDENTIFY, see setIdentify).
  */
 class PodNetwork : public IPodNetwork {
     public:
@@ -32,6 +33,9 @@ class PodNetwork : public IPodNetwork {
 
         // Program store sync in both directions; switch off while a game runs
         void setSyncAllowed(bool allowed);
+
+        // The pods show their identity (number and colour, spinning) while this is on: menu, discovery, confirm
+        void setIdentify(bool on) { this->identify = on; }
 
         bool allAlive() const;
 
@@ -78,6 +82,7 @@ class PodNetwork : public IPodNetwork {
         std::deque<PodEvent> events;
         StoreSync sync{0};
         bool syncAllowed = true;
+        bool identify = false;
 
         bool acceptNew = false;
         uint8_t maxPods = 0;

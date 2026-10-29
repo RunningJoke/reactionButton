@@ -18,3 +18,5 @@ extern ColorSet* const YELLOW;
 extern ColorSet* const MAGENTA;
 extern ColorSet* const CYAN;
 extern ColorSet* const WHITE;
+extern ColorSet* const ORANGE;
+extern ColorSet* const VIOLET;

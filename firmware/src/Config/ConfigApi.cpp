@@ -143,7 +143,7 @@ void ConfigApi::opHelp(JsonDocument& response) {
     }
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
-        const char* central[] = {"programs", "select", "start", "press", "effect", "stop",
+        const char* central[] = {"programs", "select", "start", "press", "effect", "blink", "stop",
                                  "reports", "ack", "command", "setVariables", "session", "pause", "resume"};
         for(const char* op : central) ops.add(op);
     } else {
@@ -208,6 +208,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("remote");
     features.add("pause");
     features.add("liveBle");
+    features.add("identify");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

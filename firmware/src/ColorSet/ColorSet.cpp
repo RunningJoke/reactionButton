@@ -8,6 +8,8 @@ static ColorSet yellowValue{255, 255, 0};
 static ColorSet magentaValue{255, 0, 255};
 static ColorSet cyanValue{0, 255, 255};
 static ColorSet whiteValue{255, 255, 255};
+static ColorSet orangeValue{255, 128, 0};
+static ColorSet violetValue{128, 0, 255};
 
 ColorSet* const BLACK = &blackValue;
 ColorSet* const RED = &redValue;
@@ -17,3 +19,5 @@ ColorSet* const YELLOW = &yellowValue;
 ColorSet* const MAGENTA = &magentaValue;
 ColorSet* const CYAN = &cyanValue;
 ColorSet* const WHITE = &whiteValue;
+ColorSet* const ORANGE = &orangeValue;
+ColorSet* const VIOLET = &violetValue;
