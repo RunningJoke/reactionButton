@@ -2,7 +2,7 @@
 
 How to plan sessions with ReactPods: where to put the pods, which game fits which goal, and
 how to run a group. For switching on, the light codes and the app, see the
-[user manual](manual.md).
+[user manual](manual.md). Deutsch: [Trainerleitfaden](trainerleitfaden.md).
 
 ---
 

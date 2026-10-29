@@ -3,7 +3,7 @@
 Für Trainerinnen und Trainer, Sportlerinnen und Sportler und alle, die mit ReactPods trainieren
 wollen. Technisches Wissen ist nicht nötig. Die englische Fassung ist [manual.md](manual.md),
 die bebilderte Kurzanleitung [anleitung.pdf](anleitung.pdf), die technischen Details der Spiele
-stehen in [game-modes.md](game-modes.md).
+stehen in [game-modes.md](game-modes.md). Einheiten planen: [Trainerleitfaden](trainerleitfaden.md).
 
 > **Sicherheit:** ReactPods niemals unbeaufsichtigt laden. Sie werden beim Laden warm.
 
