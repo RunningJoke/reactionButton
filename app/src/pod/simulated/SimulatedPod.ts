@@ -28,7 +28,7 @@ export type SimulatedPodOptions = {
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
    * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.11"), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
-   * `command`, `setVariables`, `session`); `emitSampleReport()` makes a demo report.
+   * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
   programFormat?: number;
   /**
@@ -74,6 +74,8 @@ export class SimulatedPod {
 
   /** athlete id from `session` ("" = none) */
   athlete = "";
+  /** PAUSED by `pause` (firmware ≥ 2.12): only `resume` ends it; a lost peripheral does not, here */
+  phonePaused = false;
   /** the communicate block that waits (programs.md §7.16), or null; set by `emitSampleReport()` */
   waiting: { block: string; editable: Record<string, { min: number; max: number }> } | null = null;
   /** variables of the demo program (RUNS, MAX_LOOPS); `setVariables` changes the editable ones */
@@ -183,7 +185,7 @@ export class SimulatedPod {
             "validate",
             "setName",
             "auth",
-            ...(this.remote ? ["reports", "ack", "session", "command", "setVariables"] : []),
+            ...(this.remote ? ["reports", "ack", "session", "command", "setVariables", "pause", "resume"] : []),
           ],
           transport: "simulated",
         };
@@ -212,6 +214,8 @@ export class SimulatedPod {
       case "session":
       case "command":
       case "setVariables":
+      case "pause":
+      case "resume":
         if (this.remote) return this.remoteOp(op, req);
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
       default:
@@ -243,7 +247,7 @@ export class SimulatedPod {
         ...(this.programFormat >= 2 ? ["effects"] : []),
         ...(this.programFormat >= 3 ? ["hold"] : []),
         ...(this.programFormat >= 4 ? ["toggle"] : []),
-        ...(this.remote ? ["reports", "remote"] : []),
+        ...(this.remote ? ["reports", "remote", "pause"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -277,6 +281,7 @@ export class SimulatedPod {
       ...(this.remote
         ? {
             athlete: this.athlete,
+            phonePaused: this.phonePaused,
             reports: { pending: this.pendingReports.length, dropped: this.droppedReports },
             ...(this.isWaiting() ? { waiting: { block: this.waiting!.block, editable: this.editableView() } } : {}),
           }
@@ -308,6 +313,20 @@ export class SimulatedPod {
         // removes this report and the older ones
         while (this.pendingReports.length > 0 && (this.pendingReports[0]!.id as number) <= reportId) this.pendingReports.shift();
         return {};
+      }
+      case "pause": {
+        // only in RUN; the same state as a lost peripheral (config-api.md §5)
+        if (this.state !== "RUN") throw new ApiFailure("not_running", `state is ${this.state}, not RUN`);
+        this.state = "PAUSED";
+        this.phonePaused = true;
+        return { state: this.state };
+      }
+      case "resume": {
+        if (this.state !== "PAUSED" || !this.phonePaused) throw new ApiFailure("not_paused", "the game is not paused by the phone");
+        // the demo pod has no peripheral loss, so the game always continues
+        this.phonePaused = false;
+        this.state = "RUN";
+        return { state: this.state };
       }
       case "session": {
         if (typeof req.athlete !== "string" || byteLength(req.athlete) > 40) {

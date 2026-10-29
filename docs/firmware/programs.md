@@ -546,9 +546,10 @@ changes, increase `programFormat` (§6).
 - Port selection (`BlockManager::run`): the block's result port is used if it is connected.
   Otherwise, if the block's port 0 is called `next` (every type except `if`), `next` is used.
   If that is not connected either, the program ends (`running = false`, no error).
-- After a pause (a peripheral was lost, state PAUSED) the central re-enters the current
-  block (`BlockManager::restartCurrentBlock`: `exit` + `enter`). Its timers restart and
-  random values are drawn again.
+- After a pause (a peripheral was lost, or a phone `pause`, state PAUSED) the central re-enters
+  the current block (`BlockManager::restartCurrentBlock`: `exit` + `enter`). Its timers restart and
+  random values are drawn again. A pause does not change the block; `communicate` is the
+  exception (§7.16).
 - Values that name a variable are read when the block uses them (see the table below).
   An unknown variable reads as 0 (`VariableManager::resolve` creates it with 0).
 
@@ -950,6 +951,8 @@ Unconnected ports fall back to `next` (§7.1); with no `next` the program ends.
 discarded).
 
 **Pause.** While PAUSED the block does not wait: `command` and `setVariables` answer
-`not_ready`, `status` has no `waiting`. `restartCurrentBlock` resumes the block
-(`Block::resume()`, by default `enter()`) without building a second report: the block keeps
-the report of this entry, sets its LEDs again and restarts the timeout.
+`not_ready`, `status` has no `waiting`. This holds for a peripheral lost and for a phone pause
+(`pause` / `resume`, config-api.md §5). A phone pause can start while the block waits.
+`restartCurrentBlock` resumes the block (`Block::resume()`, by default `enter()`) without building
+a second report: the block keeps the report of this entry, sets its LEDs again and restarts the
+timeout. The client answers after `resume`, with the same report.

@@ -22,6 +22,9 @@ class CommunicateBlock;
  *   RUN        block engine runs.
  *   PAUSED     a peripheral stopped answering: all yellow. When it is back, the current
  *              block is restarted (re-arms the pods) and the game continues.
+ *              phonePaused: the client paused it ("pause", RUN only). Then the game does not
+ *              continue by itself; "resume" ends it, and a peripheral lost meanwhile still
+ *              holds it (config-api.md §5).
  *   ERROR      red blinking: program error or radio failure.
  *
  * Every state change is reported as {"event":"state",...} on the serial console.
@@ -61,10 +64,14 @@ class CentralRole : public IRole {
         void opCommand(JsonObjectConst request, JsonDocument& response);
         void opSetVariables(JsonObjectConst request, JsonDocument& response);
         void opSession(JsonObjectConst request, JsonDocument& response);
+        void opPause(JsonDocument& response);
+        void opResume(JsonDocument& response);
+        void continueRun();
         // the communicate block that waits for the client; none while PAUSED (programs.md §7.16)
         CommunicateBlock* waitingBlock() const;
 
         State state = State::MENU;
+        bool phonePaused = false;          // PAUSED by "pause"; only "resume" ends it
         ProgramCatalog catalog;
         PhoneConfig phone;
         PodNetwork network;
