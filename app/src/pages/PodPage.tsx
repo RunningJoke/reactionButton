@@ -165,7 +165,7 @@ function PodList() {
   const canBlink = session.info?.features?.includes("identify") ?? false;
   const [blinking, setBlinking] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  if (!client || pods.length === 0) return null;
+  if (!client || (pods.length === 0 && !canBlink)) return null;
 
   const blink = async (pod: number) => {
     setBlinking(pod);
