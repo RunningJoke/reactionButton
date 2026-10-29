@@ -1,12 +1,12 @@
 {
   "version": 1,
   "name": "Charge",
-  "description": "Demo of the charge block (programFormat 3, firmware 2.9). Per round: the central charges first - hold its button, the ring fills green after 0.2 s and is full after 2 s more (the idle ring drains as a countdown, 8 s). Release = score, release before 0.2 s = red blink, full = the ring flashes. Then pod 0 is charged in accumulate mode (brightness style, 3 s to full): releasing keeps the charge for a moment, it drains over 1.5 s, hold again to go on. Full or 8 s ends the pod's turn. CENTRAL_CHARGE / POD_CHARGE (ms) and the percentages are variables, the metric 'charge' is recorded. Needs one peripheral with firmware 2.9 (link feature 'hold'), else its turn is skipped.",
+  "description": "Demo of the charge block (programFormat 3, firmware 2.9). Per round: the central charges first - hold its button, the ring fills green after 0.2 s and is full after 2 s more (the idle ring drains as a countdown, 8 s). Release = score, release before 0.2 s = red blink, full = the ring flashes. Then pod 0 is charged in accumulate mode (brightness style, 3 s to full): releasing keeps the charge for a moment, it drains over 1.5 s, hold again to go on. Full or 8 s ends the pod's turn. CENTRAL_CHARGE / POD_CHARGE (ms) and the percentages are variables, the metric 'charge' is recorded. Needs one peripheral with firmware 2.9 (link feature 'hold'), else its turn is skipped. Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "peripherals": 1,
   "menu": [ { "leds": [3, 9, 15], "color": "cyan" } ],
   "variables": { "MAX_LOOPS": 3 },
   "include": ["/prog/lib/loop.json"],
-  "start": "StartLoop",
+  "start": "StartCycle",
   "blocks": [
     { "name": "EnterProgram",  "type": "delay", "ms": 500, "next": "CentralCharge" },
     { "name": "CentralCharge", "type": "charge", "pod": "central", "onsetMs": 200, "maxMs": 2000, "style": "fill", "color": "green",

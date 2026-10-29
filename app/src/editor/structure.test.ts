@@ -53,17 +53,20 @@ describe("step list of the shipped programs", () => {
     const program = flat("/prog/stern.json");
     const steps = stepList(program);
     expect(view(steps)).toEqual([
+      "1 StartCycle",
       "[repeat] EndLoop",
-      "  1 EnterProgram",
-      "  2 CentralOn",
-      "  3 CentralPress",
-      "  4 CentralOff",
-      "  5 SelectPod",
-      "  6 RemoteTarget",
-      "7 StartReset",
-      "8 Summary",
-      "9 ResetDelay",
-      "10 ClearLED",
+      "  2 EnterProgram",
+      "  3 CentralOn",
+      "  4 CentralPress",
+      "  5 CentralOff",
+      "  6 SelectPod",
+      "  7 RemoteTarget",
+      "8 StartReset",
+      "9 Summary",
+      "10 Report",
+      "  10.1 End",
+      "11 ClearLED",
+      "12 ResetRuns",
     ]);
     const [loop] = detectLoops(program);
     expect(loop).toMatchObject({
@@ -73,22 +76,22 @@ describe("step list of the shipped programs", () => {
       counterVar: "RUNS",
       countValue: "MAX_LOOPS",
       after: "StartReset",
-      hidden: ["StartLoop", "EndLoop", "ResetRuns"],
+      hidden: ["StartLoop", "EndLoop"],
       body: ["EnterProgram", "CentralOn", "CentralPress", "CentralOff", "SelectPod", "RemoteTarget"],
     });
     // inside the round the last step simply goes on with the next round: no jump shown
-    expect(steps[6]!.branches).toEqual([]);
-    // after the summary the program starts again
-    expect(steps[10]!.branches).toEqual([{ port: "next", role: "then", target: "ResetRuns" }]);
+    expect(steps[7]!.branches).toEqual([]);
+    // after the report and the reset the cycle starts again at StartCycle (a jump back to the first step)
+    expect(steps[13]!.branches).toEqual([{ port: "next", role: "then", target: "StartCycle" }]);
   });
 
   it("shows run5 with the red-pod branch under its step", () => {
     const steps = stepList(flat("/prog/run5.json"));
-    expect(view(steps).slice(0, 6)).toEqual(["[repeat] EndLoop", "  1 EnterProgram", "  2 ActivateAll", "    2.1 Fail", "    2.2 FailDelay", "  3 ResetAll"]);
-    expect(steps[2]!.branches).toEqual([{ port: "avoidHit", role: "ifRedHit", target: "Fail" }]);
-    expect(steps[3]).toMatchObject({ branchOf: { block: "ActivateAll", port: "avoidHit" }, inLoop: "EndLoop", depth: 2 });
+    expect(view(steps).slice(0, 6)).toEqual(["1 StartCycle", "[repeat] EndLoop", "  2 EnterProgram", "  3 ActivateAll", "    3.1 Fail", "    3.2 FailDelay"]);
+    expect(steps[3]!.branches).toEqual([{ port: "avoidHit", role: "ifRedHit", target: "Fail" }]);
+    expect(steps[4]).toMatchObject({ branchOf: { block: "ActivateAll", port: "avoidHit" }, inLoop: "EndLoop", depth: 2 });
     // Fail → FailDelay → ResetAll rejoins right after its fork: no jump
-    expect(steps[4]!.branches).toEqual([]);
+    expect(steps[5]!.branches).toEqual([]);
   });
 
   it("numbers both answers of a decision on", () => {
@@ -96,17 +99,17 @@ describe("step list of the shipped programs", () => {
     const decide = steps.find((s) => s.block === "IsCentral")!;
     expect(decide.branches.map((b) => b.role)).toEqual(["ifYes", "ifNo"]);
     expect(steps.filter((s) => s.branchOf?.block === "IsCentral").map((s) => `${s.number} ${s.block}`)).toEqual([
-      "3.1 CentralOn",
-      "3.2 CentralPress",
-      "3.3 CentralOff",
-      "3.4 RemoteTarget",
+      "4.1 CentralOn",
+      "4.2 CentralPress",
+      "4.3 CentralOff",
+      "4.4 RemoteTarget",
     ]);
   });
 
   it("shows misses as branches in duo", () => {
     const steps = stepList(flat("/prog/duo.json"));
     expect(steps.find((s) => s.block === "CentralPress")!.branches).toEqual([{ port: "timeout", role: "ifTooSlow", target: "CentralMiss" }]);
-    expect(steps.find((s) => s.block === "RemoteMiss")).toMatchObject({ number: "6.1", branches: [] });
+    expect(steps.find((s) => s.block === "RemoteMiss")).toMatchObject({ number: "7.1", branches: [] });
   });
 
   for (const path of LIBRARY) {

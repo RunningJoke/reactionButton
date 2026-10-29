@@ -1,12 +1,12 @@
 {
   "version": 1,
   "name": "Duo",
-  "description": "Two pods: the central and one peripheral take turns. Each target lights after a random 0.5-2 s pause, so the player has to react instead of anticipate. A target that is not pressed within 5 s counts as a miss (MISSES). 10 rounds, then the summary.",
+  "description": "Two pods: the central and one peripheral take turns. Each target lights after a random 0.5-2 s pause, so the player has to react instead of anticipate. A target that is not pressed within 5 s counts as a miss (MISSES). 10 rounds, then the summary. Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "peripherals": 1,
   "menu": [ { "leds": [8, 10], "color": "blue" } ],
   "variables": { "MAX_LOOPS": 10, "MISSES": 0 },
   "include": ["/prog/lib/loop.json"],
-  "start": "StartLoop",
+  "start": "StartCycle",
   "blocks": [
     { "name": "EnterProgram", "type": "delay", "minMs": 500, "maxMs": 2000, "next": "CentralOn" },
     { "name": "CentralOn",    "type": "led", "color": "green", "next": "CentralPress" },

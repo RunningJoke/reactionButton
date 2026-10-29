@@ -1,11 +1,11 @@
 {
-  "description": "Run: all pods light at once, AVOID_COUNT of them red. Press all green pods; pressing a red one fails the round (1 s red). Needs lib/loop.json.",
+  "description": "Run: all pods light at once, AVOID_COUNT of them red. Press all green pods; pressing a red one fails the round (1 s red). The lap (metric 'lap') is the time from the lights to the last press or the red press. Needs lib/loop.json (programFormat 5, firmware 2.11).",
   "variables": {
     "AVOID_COUNT": 0
   },
   "blocks": [
     { "name": "EnterProgram", "type": "delay", "ms": 3000, "next": "ActivateAll" },
-    { "name": "ActivateAll",  "type": "remoteMultiPress", "pods": "REQUIRED_PERIPHERALS", "avoid": "AVOID_COUNT", "record": "reaction", "next": "ResetAll", "avoidHit": "Fail" },
+    { "name": "ActivateAll",  "type": "remoteMultiPress", "pods": "REQUIRED_PERIPHERALS", "avoid": "AVOID_COUNT", "record": "reaction", "timerStart": "lap", "timerStop": "lap", "next": "ResetAll", "avoidHit": "Fail" },
     { "name": "Fail",         "type": "led", "color": "red", "next": "FailDelay" },
     { "name": "FailDelay",    "type": "delay", "ms": 1000, "next": "ResetAll" },
     { "name": "ResetAll",     "type": "remoteResetAll", "next": "EndLoop" }
