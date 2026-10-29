@@ -20,6 +20,8 @@ void consoleBegin() {
     Console.begin();
     emptyFree = Console.availableForWrite();
     esp_log_set_vprintf(&logToConsole);
+    // every ADC2 read of the battery (Battery.cpp) configures GPIO 5 again and would log a line at INFO
+    esp_log_level_set("gpio", ESP_LOG_WARN);
 }
 
 void consoleKick() {
