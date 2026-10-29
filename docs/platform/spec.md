@@ -1,5 +1,9 @@
 # ReactPod Platform – Specification
 
+> **On hold (2026-10-29, [ADR 0007](../decisions/0007-platform-on-hold.md)).** Platform development is
+> halted until further notice. New app and firmware work does not take the platform into account. The
+> existing code, the API contract and the app ↔ platform protocol stay in place unchanged.
+
 Status: **draft** (2026-10-19), PL0 implemented, PL1 and PL2 implemented (API) · Decisions: [ADR 0003](../decisions/0003-community-platform.md),
 [ADR 0004](../decisions/0004-platform-architecture.md)
 

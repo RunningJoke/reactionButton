@@ -203,13 +203,13 @@ If the pod is protected with a **PIN**, the app asks for it before you change an
 | Page | What you do there |
 |---|---|
 | **Pod** | See the connected set: name, firmware, which games are on it, and whether they match the app. Push your changes to the pod, or restore the original games. Rename the set. |
-| **Training view** (from the Pod page) | Several connected sets side by side, one card per set: who trains, the last report and, while a game waits, Continue / Repeat / Stop and the values for the next round. Pause and resume a game (firmware 2.12). See §8.6. |
+| **Training view** (from the Pod page) | The connected set on one card: who trains, the last report and, while a game waits, Continue / Repeat / Stop and the values for the next round. Pause and resume a game (firmware 2.12). See §8.6. |
 | **Programs** | All games: the ones on your pod, the shipped ones and your own. Open one to see how it works, copy it, import or export it. |
 | **Editor** | Change a game or build a new one, step by step (§8.3). |
 | **Simulate** | Play a game on screen: tap the virtual pods instead of the real ones. Good for checking your own games. |
 | **Menu** | Choose which games are in the pod's menu, in what order, and the light pattern of each. Opened from the Pod page. |
 | **Results** | Athletes, training sessions and their reaction times; statistics and CSV export. |
-| **Settings** (gear icon) | Language, expert mode, platform sign-in (preview), advanced tools. |
+| **Settings** (gear icon) | Language, expert mode, platform sign-in (preview, development paused), advanced tools. |
 
 ---
 
@@ -268,9 +268,8 @@ With them, the **Pod** page gets a *Training* section during a game: who trains 
 report, and the buttons **Continue**, **Repeat** (do the cycle again, the result is not counted)
 and **Stop**. Until then the app tells you that the pod sends no results yet.
 
-**Training view** (on the Pod page, below the menu link) shows every connected set on one screen,
-one card per set. Connect a second set with *Add another set* in the connection dialog; a demo pod
-can be added the same way. A card shows the set's state (menu, discovery, running, paused, waiting
+**Training view** (on the Pod page, below the menu link) shows the connected set on one card. The
+app follows one set at a time; connecting another set ends the first connection. The card shows the set's state (menu, discovery, running, paused, waiting
 for you), who trains, the last report and the controls of that set. While a game waits, the card
 offers **Continue**, **Repeat** and **Stop** and a number field per value you may change for the
 next round. **Pause** and **Resume** need firmware 2.12.
@@ -279,7 +278,8 @@ Keep the app open during training. The screen stays on while the view is open, b
 sleeps or the app goes to the background, Bluetooth drops. The app then connects again by itself
 while it is open. Reports that came in meanwhile are fetched and stored, so they are not lost.
 
-Uploading results to an online athlete profile (club platform) is a preview feature under
+Uploading results to an online athlete profile (club platform) is a preview feature (development
+paused) under
 Settings.
 
 **Deleting an athlete** removes the athlete and all their training sessions and results on this

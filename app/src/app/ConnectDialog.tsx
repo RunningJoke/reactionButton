@@ -15,7 +15,6 @@ export function ConnectDialog() {
   const { t } = useTranslation();
   const open = useConnectDialog((s) => s.open);
   const hide = useConnectDialog((s) => s.hide);
-  const addSet = useConnectDialog((s) => s.addSet);
   const state = usePodSession((s) => s.state);
   const ref = useRef<HTMLDialogElement>(null);
   const previous = useRef(state);
@@ -50,7 +49,7 @@ export function ConnectDialog() {
             </button>
           </div>
           <ErrorBanner />
-          {state === "connected" && !addSet ? <ConnectedPod /> : <ConnectOptions busy={state === "connecting"} />}
+          {state === "connected" ? <ConnectedPod /> : <ConnectOptions busy={state === "connecting"} />}
         </div>
       )}
     </dialog>
@@ -145,9 +144,6 @@ function ConnectedPod() {
         </div>
       </div>
       <div className={styles.footer}>
-        <button className={styles.secondary} onClick={() => useConnectDialog.getState().showAddSet()}>
-          {t("pod.dialog.addSet")}
-        </button>
         <button className={styles.danger} onClick={() => void session.disconnect()}>
           <Unplug size={18} aria-hidden /> {t("pod.disconnect")}
         </button>

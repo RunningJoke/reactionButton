@@ -17,6 +17,7 @@ simulates and uploads them.
 | Reference clients and validator (Python) | [tools/](tools/) | [config-api.md](docs/firmware/config-api.md) |
 | PCB (KiCad) and casing (FreeCAD) | [hardware/](hardware/) | |
 | User manual, game modes | [docs/user/](docs/user/) | [manual.md](docs/user/manual.md) |
+| Community platform (Hono + Postgres): **on hold**, see [ADR 0007](docs/decisions/0007-platform-on-hold.md) | [platform/](platform/) | [docs/platform/spec.md](docs/platform/spec.md) |
 | Decisions | [docs/decisions/](docs/decisions/) | |
 
 ## Quick start

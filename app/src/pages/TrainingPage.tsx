@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useStore, type StoreApi } from "zustand";
-import { Pause, Play, Plus, Repeat, Square, Unplug, UserPlus } from "lucide-react";
+import { Pause, Play, Repeat, Square, Unplug, UserPlus } from "lucide-react";
 import { useConnectDialog } from "../app/connectDialogStore";
 import { useScreenWakeLock } from "../app/wakeLock";
 import type { PodClient } from "../pod/client";
 import { PodError } from "../pod/protocol";
-import { disconnectPod, hasFeature, setActivePod, setLabel, usePodSessions, type PodSession } from "../pod/session";
+import { disconnectPod, hasFeature, setLabel, usePodSessions, type PodSession } from "../pod/session";
 import { sendAthlete, sendCommand, sendPause, sendResume, sendVariables, type CommandName } from "../results/podReports";
 import { reportsOfSession, useResults } from "../results/results";
 import { formatMs, reportDuration, summarizeValues } from "../results/stats";
@@ -18,15 +18,14 @@ import styles from "./Results.module.css";
 import view from "./TrainingPage.module.css";
 
 /**
- * Training view (#46): one card per connected set, on its own tab-less route `/training` (linked from
- * the Pod tab). Each card shows the set's state, athlete, last report and, while a `communicate` block
+ * Training view (#46): a card for the connected set, on its own tab-less route `/training` (linked from
+ * the Pod tab). One set at a time (several sets at once are on hold, see connectPod). Each card shows the set's state, athlete, last report and, while a `communicate` block
  * waits, the controls for it. The screen stays on while the view is open (wake lock, see wakeLock.ts).
  */
 export function TrainingPage() {
   const { t } = useTranslation();
   const entries = usePodSessions((s) => s.entries);
-  const activeId = usePodSessions((s) => s.activeId);
-  const showAddSet = useConnectDialog((s) => s.showAddSet);
+  const showConnect = useConnectDialog((s) => s.show);
   const load = useResults((s) => s.load);
   useEffect(() => void load(), [load]);
   useScreenWakeLock(entries.length > 0);
@@ -36,22 +35,19 @@ export function TrainingPage() {
       <section className={page.section} aria-labelledby="training-title">
         <div className={styles.heading}>
           <h2 id="training-title">{t("training.view.title")}</h2>
-          <button className={styles.iconButton} onClick={showAddSet} aria-label={t("training.view.addSet")} title={t("training.view.addSet")}>
-            <Plus size={22} aria-hidden />
-          </button>
         </div>
         <p className={styles.muted}>{t("training.view.intro")}</p>
         {entries.length === 0 ? (
           <div className={page.empty}>
             <p>{t("training.view.empty")}</p>
-            <button className={`${page.bigButton} ${page.primary}`} onClick={showAddSet}>
+            <button className={`${page.bigButton} ${page.primary}`} onClick={showConnect}>
               {t("training.view.connect")}
             </button>
           </div>
         ) : (
           <div className={view.cards}>
             {entries.map((entry) => (
-              <SetCard key={entry.id} store={entry.store} active={entry.id === activeId} />
+              <SetCard key={entry.id} store={entry.store} />
             ))}
           </div>
         )}
@@ -60,7 +56,7 @@ export function TrainingPage() {
   );
 }
 
-function SetCard({ store, active }: { store: StoreApi<PodSession>; active: boolean }) {
+function SetCard({ store }: { store: StoreApi<PodSession> }) {
   const { t, i18n } = useTranslation();
   const session = useStore(store, (s) => s);
   const errorText = (e: unknown) => {
@@ -135,7 +131,7 @@ function SetCard({ store, active }: { store: StoreApi<PodSession>; active: boole
     }, t(`training.sent.${name}`));
 
   return (
-    <article className={view.card} data-state={state} data-active={active || undefined} aria-labelledby={`card-${id}`}>
+    <article className={view.card} data-state={state} aria-labelledby={`card-${id}`}>
       <header className={view.header}>
         <h3 id={`card-${id}`} className={view.title}>
           {setLabel(session) ?? t("training.view.connecting")}
@@ -145,7 +141,6 @@ function SetCard({ store, active }: { store: StoreApi<PodSession>; active: boole
             {stateLabel}
           </span>
           {waiting && <span className={view.badge} data-tone="accent">{t("training.view.waiting")}</span>}
-          {active && <span className={view.badge}>{t("training.view.active")}</span>}
         </div>
       </header>
 
@@ -243,11 +238,6 @@ function SetCard({ store, active }: { store: StoreApi<PodSession>; active: boole
       )}
 
       <div className={styles.row}>
-        {!active && (
-          <button className={styles.button} onClick={() => setActivePod(id)}>
-            {t("training.view.usePod")}
-          </button>
-        )}
         <button className={`${styles.button} ${styles.danger}`} onClick={() => void disconnectPod(id)}>
           <Unplug size={18} aria-hidden /> {t("pod.disconnect")}
         </button>

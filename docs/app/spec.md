@@ -40,6 +40,8 @@ Program format and block semantics: [docs/firmware/programs.md](../firmware/prog
 - Editing library fragments (`/prog/lib/*` is read-only).
 - Cloud storage / accounts (later a remote database may replace the local store, see §6).
   Planned as the community platform: [docs/platform/spec.md](../platform/spec.md) (§5.4 app integration).
+  **The platform is on hold** ([ADR 0007](../decisions/0007-platform-on-hold.md)): new app features are
+  designed without it; the existing platform client (preview) stays in place and keeps working.
 - Firmware OTA (not planned, [ADR 0006](../decisions/0006-no-ota.md)).
 
 ---
@@ -471,14 +473,17 @@ Implementation notes (`src/pod/sync.ts`):
   `/programs.json`. User programs on the pod are not deleted, only removed from the menu.
   Confirmation dialog. The defaults are bundled with the app from `../firmware/data` at build time.
 
-### 9.5 Several sets and the training view (#46, phase P9)
+### 9.5 Training view and reconnect (#46, phase P9)
+
+**Several sets at once are on hold (decision 2026-10-29).** The hardware test on a phone showed only
+one set and no way to switch, so *Add another set* was removed. It needs more investigation before it
+comes back (#46).
 
 - **Sessions.** One session per connected set (`src/pod/session.ts`): transport, PodClient, `info`,
-  `status`, `list`, files and log. The sessions form a list (`usePodSessions`); one of them is the
-  *active* session. The Pod, Programs and Sync pages read the active session through `usePodSession`
-  as before. A new connection (connect dialog, *Add another set*) becomes the active session. A
-  connection to a set that is connected already is dropped and the existing session stays active. A
-  set that is reconnecting is replaced by a new connection to the same set.
+  `status`, `list`, files and log. The sessions form a list (`usePodSessions`) with one *active*
+  session, which the Pod, Programs and Sync pages read through `usePodSession`. **One set at a time:**
+  `connectPod` ends every existing session before it opens the new one. The list stays as the
+  structure for several sets later.
 - **Reconnect.** A BLE link that drops is opened again while the page lives, without the device
   chooser: first try after 1 s, the delay doubles per failed try up to 30 s. The set keeps its
   card; its state is *Reconnecting*. When the link is up again the app runs `info`, `status`, `list`,
@@ -488,7 +493,7 @@ Implementation notes (`src/pod/sync.ts`):
 - **After a reload** the app knows no set. Each set is picked again with one tap; the pod still holds
   its unacknowledged reports and sends them with `reports`.
 - **Training view** (route `/training`, linked from the Pod page; the header keeps the Pod tab
-  highlighted). One card per session:
+  highlighted). One card for the connected set:
   - set name, state (`status.state`: MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR, or connecting /
     reconnecting / not connected), *Waiting for you* while a `communicate` block waits;
   - athlete: same list and assignment as the Training section of the Pod tab;
@@ -496,8 +501,7 @@ Implementation notes (`src/pod/sync.ts`):
   - while a block waits: **Continue**, **Repeat**, **Stop** (`command`) and one number input per
     editable variable of `status.waiting.editable` (`setVariables`, range checked before sending);
   - **Pause** / **Resume** (`pause` / `resume`) in RUN or while the phone holds a pause;
-  - *Show in Pod tab* makes the card's session the active one; *Disconnect* ends it.
-  Cards are one column on phones and two from 720 px.
+  - *Disconnect* ends it.
 - **Feature detection** (`info.features`, a missing field means the old behaviour): without
   `reports` the card says that the firmware cannot send results; without `remote` there are no
   commands; without `pause` there is no pause button; without `liveBle` (firmware < 2.12) the card
@@ -595,7 +599,7 @@ Implementation notes (`src/pod/sync.ts`):
 | P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
 | P7 | Athletes, result history, platform upload (#47, #48 app side) | AT-R* pass | done (AT-R* passed 2026-10-26); real pods need `reports` / `remote` (#41, #42) for live results |
 | P8 | Block builder for first-timers and coaches ([editor-ux.md](editor-ux.md)): format 2 in model + simulator, step sheet, step list, game wizard, add a step by intent, program sheet, Adjust, expert mode | AT-E* pass | done (AT-E* passed 2026-10-26) |
-| P9 | Several sets at once (#46): session list, BLE reconnect with reports fetch and ack, training view `/training` (cards, live state, communicate controls, pause / resume), wake lock, demo pod with two sets (§9.5) | AT-L* pass | ready for test |
+| P9 | Training view and reconnect (#46): BLE reconnect with reports fetch and ack, training view `/training` (live state, communicate controls, pause / resume), wake lock (§9.5). Several sets at once: on hold | AT-L* pass (multi-set tests on hold) | ready for test |
 
 Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](acceptance-tests.md).
 **Firmware / API changes the app needs** are requested as **GitHub issues** in this repository

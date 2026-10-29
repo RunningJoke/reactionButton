@@ -209,13 +209,13 @@ Ist der Pod mit einer **PIN** geschützt, fragt die App danach, bevor du etwas �
 | Seite | Was du dort machst |
 |---|---|
 | **Pod** | Das verbundene Set: Name, Firmware, welche Spiele drauf sind und ob sie zur App passen. Änderungen auf den Pod übertragen oder die Originalspiele wiederherstellen. Set umbenennen. |
-| **Trainingsansicht** (von der Seite Pod aus) | Mehrere verbundene Sets nebeneinander, eine Karte je Set: wer trainiert, der letzte Bericht und, solange ein Spiel wartet, Weiter / Wiederholen / Stopp und die Werte für die nächste Runde. Spiel pausieren und fortsetzen (Firmware 2.12). Siehe §8.6. |
+| **Trainingsansicht** (von der Seite Pod aus) | Das verbundene Set auf einer Karte: wer trainiert, der letzte Bericht und, solange ein Spiel wartet, Weiter / Wiederholen / Stopp und die Werte für die nächste Runde. Spiel pausieren und fortsetzen (Firmware 2.12). Siehe §8.6. |
 | **Programme** | Alle Spiele: die auf dem Pod, die mitgelieferten und deine eigenen. Öffnen, um zu sehen, wie ein Spiel abläuft; kopieren, importieren, exportieren. |
 | **Editor** | Ein Spiel ändern oder Schritt für Schritt ein neues bauen (§8.3). |
 | **Simulation** | Ein Spiel am Bildschirm spielen: virtuelle Pods antippen statt echter. Gut zum Prüfen eigener Spiele. |
 | **Menü** | Welche Spiele im Menü des Pods stehen, in welcher Reihenfolge und mit welchem Lichtmuster. Über die Seite Pod erreichbar. |
 | **Ergebnisse** | Sportler, Trainingseinheiten und ihre Reaktionszeiten; Statistik und CSV-Export. |
-| **Einstellungen** (Zahnrad) | Sprache, Expertenmodus, Plattform-Anmeldung (Vorschau), erweiterte Werkzeuge. |
+| **Einstellungen** (Zahnrad) | Sprache, Expertenmodus, Plattform-Anmeldung (Vorschau, Entwicklung pausiert), erweiterte Werkzeuge. |
 
 ---
 
@@ -276,9 +276,9 @@ Damit bekommt die Seite **Pod** während des Spiels einen Bereich *Training*: we
 der letzte Bericht und die Knöpfe **Weiter**, **Wiederholen** (Durchgang noch einmal, das Ergebnis
 zählt nicht) und **Stopp**. Bis dahin sagt die App, dass der Pod noch keine Ergebnisse sendet.
 
-Die **Trainingsansicht** (auf der Seite Pod, unter dem Menü-Link) zeigt alle verbundenen Sets auf
-einem Bildschirm, eine Karte je Set. Ein zweites Set verbindest du mit *Weiteres Set verbinden* im
-Verbindungsdialog; ein Demo-Pod geht genauso. Eine Karte zeigt den Zustand des Sets (Menü, Suche,
+Die **Trainingsansicht** (auf der Seite Pod, unter dem Menü-Link) zeigt das verbundene Set auf
+einer Karte. Die App betreut ein Set zur Zeit; verbindest du ein anderes Set, endet die erste
+Verbindung. Die Karte zeigt den Zustand des Sets (Menü, Suche,
 läuft, pausiert, wartet auf dich), wer trainiert, den letzten Bericht und die Knöpfe dieses Sets.
 Während ein Spiel wartet, bietet die Karte **Weiter**, **Wiederholen** und **Stopp** sowie je Wert,
 den du für die nächste Runde ändern darfst, ein Zahlenfeld. **Pause** und **Weiter** (Spiel) brauchen
@@ -290,6 +290,7 @@ verbindet sich dann, solange sie offen ist, selbst neu. Berichte, die inzwischen
 nachgeholt und gespeichert.
 
 Ergebnisse in ein Online-Sportlerprofil (Vereinsplattform) hochzuladen ist eine Vorschau-Funktion
+(Entwicklung pausiert)
 unter Einstellungen.
 
 **Eine Person löschen** entfernt die Person und alle ihre Trainingseinheiten und Ergebnisse auf

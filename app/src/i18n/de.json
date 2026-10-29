@@ -83,8 +83,7 @@
     "missingFile": "fehlt",
     "dialog": {
       "title": "Pod-Verbindung",
-      "close": "Schließen",
-      "addSet": "Weiteres Set verbinden"
+      "close": "Schließen"
     },
     "battery": "Akku",
     "batteryUnknown": "keine Messung",
@@ -1424,13 +1423,10 @@
     "view": {
       "link": "Trainingsansicht",
       "title": "Trainingsansicht",
-      "intro": "Eine Karte je verbundenem Set. Lass die App offen: Der Bildschirm bleibt an, solange diese Ansicht offen ist. Schläft das Telefon oder ist der Tab im Hintergrund, bricht die Bluetooth-Verbindung ab. Die App verbindet dann selbst neu.",
-      "addSet": "Set hinzufügen",
+      "intro": "Hier verfolgst du das Training des verbundenen Sets. Lass die App offen: Der Bildschirm bleibt an, solange diese Ansicht offen ist. Schläft das Telefon oder ist der Tab im Hintergrund, bricht die Bluetooth-Verbindung ab. Die App verbindet dann selbst neu.",
       "connect": "Set verbinden",
       "empty": "Kein Set verbunden. Verbinde ein Set, um sein Training hier zu verfolgen.",
       "connecting": "Verbindet…",
-      "active": "Aktiv",
-      "usePod": "Im Pod-Tab zeigen",
       "waiting": "Wartet auf dich",
       "waitingFor": "Das Programm wartet bei „{{block}}“: weiter, wiederholen oder stoppen, oder die Werte für die nächste Runde ändern.",
       "oldFirmware": "Die Firmware dieses Pods kann noch keine Ergebnisse senden (ab Firmware 2.11 mit Reports). Die Person lässt sich trotzdem wählen.",
