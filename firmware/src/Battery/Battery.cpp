@@ -41,7 +41,9 @@ uint8_t Battery::percentOf(uint16_t cellMv)
 }
 
 // The pin reads half the cell voltage (divider 100 k / 100 k). analogReadMilliVolts is calibrated.
-// A failed conversion returns 0 (ADC2 can be busy with the radio): such samples do not count.
+// GPIO 5 is ADC2: ESP-IDF 4.4 refuses ADC2 on the C3 (errata) unless CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3
+// is set (sdkconfig.NewBoard). A failed conversion returns 0 (ADC2 can be busy with the radio): such samples
+// do not count.
 uint16_t Battery::sampleMilliVolts()
 {
     uint32_t sum = 0;
@@ -61,7 +63,9 @@ void Battery::measure()
     lastUpdateMs = millis();
     uint16_t cell = sampleMilliVolts();
     if(cell != 0) {
-        mv = cell;      // a failed read keeps the last value
+        // single readings scatter by about ±150 mV (ADC2, charger ripple): smooth over the updates.
+        // A failed read keeps the last value.
+        mv = mv == 0 ? cell : (uint16_t)((mv * 3u + cell) / 4u);
     }
 }
 

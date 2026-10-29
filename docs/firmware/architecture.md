@@ -54,7 +54,7 @@ src/
 │   └── Console.*             USB serial port object (HWCDC) + ESP-IDF log redirection
 ├── Diagnostics/Diag.*        reset reason + last step across reboots (crash breadcrumbs)
 ├── Settings/Settings.*       values in flash (NVS): set id, store generation, boot role
-├── Battery/Battery.*         cell voltage on GPIO 5 (16-sample average), percent, low-battery thresholds
+├── Battery/Battery.*         cell voltage on GPIO 5 (ADC2: needs `CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3` in sdkconfig; 32-sample average, smoothed over the updates), percent, low-battery thresholds
 ├── Store/
 │   ├── ProgramStore.*        program files: list, CRC, manifest, atomic commit, generation
 │   └── StoreSync.*           pod-to-pod sync of the program store over ESP-NOW

@@ -39,7 +39,7 @@ class Battery {
         static void describe(JsonObject status);
 
     private:
-        static const uint8_t BATTERY_SAMPLES = 16;
+        static const uint8_t BATTERY_SAMPLES = 32;
         static const uint32_t BATTERY_UPDATE_MS = 3000;
 
         static uint16_t sampleMilliVolts();
