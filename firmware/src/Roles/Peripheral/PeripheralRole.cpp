@@ -3,9 +3,6 @@
 #include "LEDManager/LEDManager.h"
 #include "Input/Button.h"
 #include "Settings/Settings.h"
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-#include "TestHw/BleEspNowTest.h"
-#endif
 #include "Config/ConfigApi.h"
 #include "LEDManager/EffectJson.h"
 
@@ -82,9 +79,6 @@ void PeripheralRole::run() {
         case State::SCHEDULED:
             if(now >= this->scheduledLocalUs) {
                 this->activate();
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-                BleEspNowTest::get().onScheduledStart(this->activatedUs - this->scheduledLocalUs);
-#endif
             }
             break;
 
@@ -347,19 +341,11 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
     int64_t now = esp_timer_get_time();
     if(arm.startAtUs != 0 && this->clock.isSynced()) {
         this->scheduledLocalUs = this->clock.toLocal(arm.startAtUs);
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-        BleEspNowTest::get().onScheduledArm(this->scheduledLocalUs - now);
-#endif
         if(this->scheduledLocalUs > now) {
             this->state = State::SCHEDULED;
             LEDManager::getManager()->turnOff();
             return;
         }
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-        this->activate();   // late delivery, as below; also counted as a (late) start
-        BleEspNowTest::get().onScheduledStart(this->activatedUs - this->scheduledLocalUs);
-        return;
-#endif
     }
     // immediate, or the start time has already passed (late delivery)
     this->activate();
@@ -412,9 +398,6 @@ bool PeripheralRole::storeEditable() const {
 void PeripheralRole::describe(JsonObject status) {
     status["state"] = stateName(this->state);
     status["syncing"] = this->sync.isPulling();
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    BleEspNowTest::get().describe(status, false);
-#endif
     if(this->state == State::UNCLAIMED) {
         return;
     }
@@ -451,15 +434,6 @@ bool PeripheralRole::control(const char* op, JsonObjectConst request, JsonDocume
         response["state"] = stateName(this->state);
         return true;
     }
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    if(strcmp(op, "bleTest") == 0) {
-        BleEspNowTest::get().control(request, response, false);
-        response["state"] = stateName(this->state);     // short status for the test script's polling
-        response["synced"] = this->clock.isSynced();
-        response["offsetUs"] = this->clock.offset();
-        return true;
-    }
-#endif
     if(strcmp(op, "effect") == 0) {
         // test op: play an effect on this pod's ring
         if(this->state == State::ACTIVE || this->state == State::HOLDING || this->state == State::SCHEDULED) {

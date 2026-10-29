@@ -39,7 +39,6 @@ class PhoneConfig {
         bool getMaxLoops(int64_t& maxLoops) const;
 
         // Indicates one line (with '\n') in MTU-sized pieces, waiting for each confirmation.
-        // Used by sendLine, and by the indication task of the BLE+ESP-NOW test build.
         void indicateLine(const std::string& out);
 
     private:

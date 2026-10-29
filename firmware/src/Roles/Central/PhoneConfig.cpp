@@ -5,9 +5,6 @@
 #include <BLE2902.h>
 #include "_Definitions.h"
 #include "Settings/Settings.h"
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-#include "TestHw/BleEspNowTest.h"
-#endif
 
 // shared between the BLE task (callbacks) and the main loop
 static StreamBufferHandle_t rxBuffer = nullptr;
@@ -75,9 +72,6 @@ void PhoneConfig::start() {
         CHAR_RESPONSE_UUID, BLECharacteristic::PROPERTY_INDICATE
     );
     this->responseCharacteristic->addDescriptor(new BLE2902());
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    BleEspNowTest::get().attachResponse(this->responseCharacteristic);
-#endif
 
     pService->start();
 
@@ -156,11 +150,6 @@ void PhoneConfig::sendLine(const std::string& text) {
     }
     std::string out = text;
     out += '\n';
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    if(BleEspNowTest::get().queueLine(out)) {
-        return;     // test build: indicated by the test's own task, the loop does not wait
-    }
-#endif
     this->indicateLine(out);
 }
 
