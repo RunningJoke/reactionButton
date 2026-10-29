@@ -237,3 +237,17 @@
 .danger:hover {
   background: color-mix(in srgb, var(--error) 10%, transparent);
 }
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch);
+  margin-right: auto;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}

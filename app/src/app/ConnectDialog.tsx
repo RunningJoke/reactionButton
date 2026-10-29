@@ -145,7 +145,9 @@ function ConnectedPod() {
         </div>
       </div>
       <div className={styles.footer}>
-        <button onClick={() => useConnectDialog.getState().showAddSet()}>{t("pod.dialog.addSet")}</button>
+        <button className={styles.secondary} onClick={() => useConnectDialog.getState().showAddSet()}>
+          {t("pod.dialog.addSet")}
+        </button>
         <button className={styles.danger} onClick={() => void session.disconnect()}>
           <Unplug size={18} aria-hidden /> {t("pod.disconnect")}
         </button>

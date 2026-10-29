@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Settings } from "lucide-react";
-import { NAV_ITEMS } from "./navigation";
+import { NAV_ITEMS, tabOfRoute } from "./navigation";
 import { ConnectionChip } from "./ConnectionChip";
 import { ConnectDialog } from "./ConnectDialog";
 import { UpdatePrompt } from "./UpdatePrompt";
@@ -14,7 +14,8 @@ import styles from "./Layout.module.css";
 export function Layout() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const current = NAV_ITEMS.find((item) => pathname.startsWith(item.path));
+  // a page that is reached from a tab (the training view, #46) keeps that tab's title and highlight
+  const current = NAV_ITEMS.find((item) => pathname.startsWith(item.path)) ?? NAV_ITEMS.find((item) => item.path === tabOfRoute(pathname));
   const load = useWorkspace((s) => s.load);
   useEffect(() => void load(), [load]);
   const loadResults = useResults((s) => s.load);

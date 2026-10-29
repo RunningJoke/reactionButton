@@ -21,3 +21,8 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const DEFAULT_PATH = "/programs";
+
+/** The tab of a page that is not in NAV_ITEMS: the training view (#46) belongs to the Pod tab. */
+export function tabOfRoute(pathname: string): string | undefined {
+  return pathname.startsWith("/training") ? "/pod" : undefined;
+}

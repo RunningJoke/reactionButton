@@ -70,7 +70,10 @@ describe("training view", () => {
     fireEvent.click(within(card).getByRole("button", { name: "Set" }));
     await waitFor(() => expect(pod.variables.get("MAX_LOOPS")).toBe(20));
 
-    fireEvent.click(within(card).getByRole("button", { name: /Continue/ }));
+    // the buttons are disabled while the last request runs
+    const cont = within(card).getByRole("button", { name: /Continue/ }) as HTMLButtonElement;
+    await waitFor(() => expect(cont.disabled).toBe(false));
+    fireEvent.click(cont);
     await waitFor(() => expect(within(card).queryByText("Waiting for you")).toBeNull());
   });
 
