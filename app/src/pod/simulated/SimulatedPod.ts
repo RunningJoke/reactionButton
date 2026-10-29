@@ -26,7 +26,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.11"), and
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
    * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
@@ -37,6 +37,11 @@ export type SimulatedPodOptions = {
    * Default: no `pods` in `status`.
    */
   pods?: number;
+  /**
+   * BLE stays on during the game (firmware ≥ 2.12, `liveBle`, config-api.md §1). Default: on with
+   * format 5. Adds the feature `liveBle` and `ble` in the central `status`.
+   */
+  liveBle?: boolean;
 };
 
 /** Reports the central keeps until they are acknowledged (#41). */
@@ -63,6 +68,7 @@ export class SimulatedPod {
   firmware: string;
   readonly programFormat: number;
   readonly podCount: number | undefined;
+  private readonly liveBleOption: boolean | undefined;
   blockTypes: string[];
   /** `status.timers.orphanStops` while a game runs (RUN / PAUSED, programs.md §7.9); set by tests and demos */
   orphanStops = 0;
@@ -102,9 +108,10 @@ export class SimulatedPod {
     this.generation = options.generation ?? 1;
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
     this.podCount = options.pods;
+    this.liveBleOption = options.liveBle;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 5 ? "2.11" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -114,6 +121,11 @@ export class SimulatedPod {
   /** firmware ≥ 2.11 (program format 5): the reports and the remote ops, features `reports` and `remote` */
   get remote(): boolean {
     return this.programFormat >= 5;
+  }
+
+  /** firmware ≥ 2.12: BLE stays connected during the game, feature `liveBle` */
+  get liveBle(): boolean {
+    return this.liveBleOption ?? this.remote;
   }
 
   /** A new client connected: it has to authenticate again, an unfinished upload is dropped. */
@@ -248,6 +260,7 @@ export class SimulatedPod {
         ...(this.programFormat >= 3 ? ["hold"] : []),
         ...(this.programFormat >= 4 ? ["toggle"] : []),
         ...(this.remote ? ["reports", "remote", "pause"] : []),
+        ...(this.liveBle ? ["liveBle"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -261,6 +274,11 @@ export class SimulatedPod {
       uptimeMs: 1000,
       setId: this.setId,
       store: { generation: this.generation, hash: this.storeHash },
+      // firmware ≥ 2.12 (config-api.md §5); the demo has no real heap
+      heap: { free: 120_000, minFree: 90_000 },
+      ...(this.role === "central" && this.liveBle
+        ? { ble: { connected: true, intervalMs: this.state === "MENU" ? 0 : 100 } }
+        : {}),
       // central in a game, firmware ≥ 2.8 (config-api.md §5)
       ...(this.role === "central" && (this.state === "RUN" || this.state === "PAUSED") && this.programFormat >= 2
         ? { timers: { orphanStops: this.orphanStops } }
@@ -303,9 +321,22 @@ export class SimulatedPod {
 
   private remoteOp(op: string, req: Json): Json {
     switch (op) {
-      case "reports":
-        // the fields of the `report` event without `event` (config-api.md §5)
-        return { reports: this.pendingReports.map(({ event: _event, ...report }) => structuredClone(report)) };
+      case "reports": {
+        // the fields of the `report` event without `event` (config-api.md §5). Paging (firmware ≥ 2.12):
+        // `from` (index into the unacknowledged reports, default 0) and `max` (default all)
+        if ((req.from !== undefined && typeof req.from !== "number") || (req.max !== undefined && typeof req.max !== "number")) {
+          throw new ApiFailure("bad_request", "'from' and 'max' must be numbers");
+        }
+        const total = this.pendingReports.length;
+        const from = Math.min(Math.max(typeof req.from === "number" ? req.from : 0, 0), total);
+        const count = Math.min(typeof req.max === "number" ? Math.max(req.max, 0) : total - from, total - from);
+        const page = this.pendingReports.slice(from, from + count);
+        return {
+          reports: page.map(({ event: _event, ...report }) => structuredClone(report)),
+          total,
+          more: from + count < total,
+        };
+      }
       case "ack": {
         // `reportId`, not `id`: `id` is the request id that every response echoes (config-api §3)
         const reportId = req.reportId;
@@ -472,6 +503,7 @@ export class SimulatedPod {
 
   private storeSetName(req: Json): Json {
     this.requireWriteAccess();
+    this.requireEditable();
     if (req.name !== undefined && req.name !== null && typeof req.name !== "string") {
       throw new ApiFailure("bad_request", "'name' must be a string");
     }
@@ -487,8 +519,9 @@ export class SimulatedPod {
     return req.path;
   }
 
+  /** store changes (put, delete, setName) only in the menu, and after an error (firmware: storeEditable) */
   private requireEditable() {
-    if (this.state !== "MENU") {
+    if (this.state !== "MENU" && this.state !== "ERROR") {
       throw new ApiFailure("busy", "program files cannot be changed now (game or sync running)");
     }
   }

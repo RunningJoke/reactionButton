@@ -11,15 +11,26 @@ transports with the same JSON messages:
 
 ## 1. When the API is available (BLE)
 
-The API runs on the **central** while it shows the **program menu**:
+The API runs on the **central** while it shows the **program menu** and, from firmware 2.12
+(`info.features` contains `liveBle`), also **during the game**:
 
 1. Switch the pod on and hold the button during the blue boot animation → central.
 2. The pod advertises as **"ReactPod <xxxx>"** with service `12345678-1234-1234-1234-1234567890ab`
    (see §2.1). `<xxxx>` are the last 4 hex digits of the `setId`, so several sets in one hall
    can be told apart.
 3. Connect, use the API.
-4. When a program is selected on the pod (long press), BLE is switched off and the game
-   starts (ESP-NOW). The connection drops.
+4. When a program is selected on the pod (long press), the game starts (ESP-NOW) and the
+   BLE connection **stays**. The pod asks for a 100 ms connection interval with peripheral
+   latency 0 (supervision timeout 6 s); the phone may answer with another one, see `status.ble`.
+   With the phone connected, advertising is off. If the phone disconnects, advertising starts
+   again, also during the game, and the phone can reconnect.
+5. During DISCOVERY, CONFIRM, RUN and PAUSED the ops that change program files or the set name
+   (`put`, `delete`, `setName`) answer `busy`. The other ops work as in the menu (§5). Reports
+   and `command` / `setVariables` / `session` are available during the game.
+
+Firmware before 2.12: BLE is switched off when a program is selected (the connection drops),
+and the API is available in the menu only. A client must then check `features` for `liveBle`
+before it expects the connection to stay.
 
 A central without any programs stays in the menu with a red blink, so programs can
 be uploaded to an empty pod.
@@ -139,7 +150,8 @@ peripheral of a set may still be older: `status.pods[].hold`. `linkRevision` (fi
 revision; `linkProtocol` is the frame header version and stays 1. `toggle` (firmware ≥ 2.10, link protocol revision 3)
 says that the firmware knows the block type `toggle` (`programFormat` ≥ 4) and the toggle activations of
 [link-protocol.md](link-protocol.md) §2.3; the pods may still be older: `status.pods[].toggle`.
-`reports` (firmware ≥ 2.11) = the report buffer, the `report` event and the ops `reports` / `ack`; `remote`
+`liveBle` (firmware ≥ 2.12) = BLE stays connected during the game (§1): the `report` event also goes out over BLE, `status.ble`
+exists, and `put` / `delete` / `setName` answer `busy` from DISCOVERY on. `reports` (firmware ≥ 2.11) = the report buffer, the `report` event and the ops `reports` / `ack`; `remote`
 (firmware ≥ 2.11) = the ops `command`, `setVariables` and `session`. Both come with the block type `communicate`
 (`programFormat` ≥ 5, programs.md §7.16). `pause` (firmware ≥ 2.12) = the ops `pause` and `resume` and the
 state flag `phonePaused` (below).
@@ -203,9 +215,9 @@ switched off when a program is selected.
 | op | Role | Request fields | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `pods[] {id, mac, alive, lastSeenMs, effects, hold, toggle, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE only), `store`, `heap {free, minFree}` (bytes, firmware ≥ 2.12), `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `ble {connected, intervalMs}` (firmware ≥ 2.12, BLE connection; `intervalMs` 0 = not known yet, else the connection interval in ms), `pods[] {id, mac, alive, lastSeenMs, effects, hold, toggle, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN / PAUSED, firmware ≥ 2.8: `timerStop`s without a running timer, programs.md §7.9), `variables`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | menu: `programs[] {index, name, path, peripherals}`, `selected` |
-| `select` | central, menu | `program`: index, path or name | loads the program, BLE off, radio on, searching for peripherals |
+| `select` | central, menu | `program`: index, path or name | loads the program, radio on, searching for peripherals. BLE stays connected (firmware ≥ 2.12, §1) |
 | `start` | central, CONFIRM | – | starts the program (like the confirm press). `not_ready` while peripherals are missing |
 | `press` | any | – | simulates a short press of this pod's button (not for the menu) |
 | `effect` | any (firmware ≥ 2.8) | `effect` (name), optional `color`, `color2`, `brightness`, `durationMs`, `periodMs`, `segment` (spin), `from` / `to` (dim), `value` (level, %), `reverse`, `endOff`, `delayMs`. Central also `target`: `"self"` (default), a pod id, `"pods"`, `"all"` | test op: plays a ring effect ([link-protocol.md](link-protocol.md) §2.1). Pods and the central start at the same network time, now + `delayMs` (default 50 ms with pods, else 0). Response: `effect`, central also `startAtUs`, `sent[]`, `skipped[]` (pods without effect support). `busy` while a game runs (central) or the pod is armed (peripheral) |
@@ -215,8 +227,8 @@ switched off when a program is selected.
 | `reboot` | any | `role`: `central` / `peripheral` / `auto` | restarts; the role applies to the next start only (`auto` = button decides) |
 | `auth` | any | `pin`: string | unlocks `put`, `delete`, `setName` for this BLE connection (§8). `ok` without a PIN set |
 | `setPin` | any, **serial only** | `pin`: 4–6 digits as a string; `""` or missing clears it | stores the PIN in NVS. Response: `pinSet`. Serial text form: `setPin 1234` |
-| `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2` |
-| `reports` | central (firmware ≥ 2.11) | – | `reports[]`: every report in the buffer not acknowledged yet, oldest first, with the fields of the `report` event (without `event`) |
+| `setName` | any | `name`: string, max 16 bytes UTF-8, no control characters; `""` or missing clears it | stores the set name in NVS, advertised as `ReactPod <name>` (§2.1). Response: `setName`. Serial text form: `setName Halle 2`. `busy` from DISCOVERY on (central, firmware ≥ 2.12) |
+| `reports` | central (firmware ≥ 2.11) | optional `from`: number, `max`: number (paging, firmware ≥ 2.12) | `reports[]`: every report in the buffer not acknowledged yet, oldest first, with the fields of the `report` event (without `event`). `from` is an index into those unacknowledged reports (default 0), `max` the number of reports (default all). Without either field all reports are returned. The answer also has `total` (unacknowledged reports) and `more` (true if reports follow this page). A full answer (8 reports) is about 20 KB, so over BLE read it in pages: request `{"max": 2}`, `ack` the ids received, repeat while `more` is true (after an `ack` the indexes move, so `from` is only needed to skip reports that are not acknowledged) |
 | `ack` | central (firmware ≥ 2.11) | `reportId`: number | removes that report and all older ones from the buffer. Unknown or already removed ids are fine. `reportId`, not `id`: `id` is the request id (§3) |
 | `command` | central (firmware ≥ 2.11) | `name`: `continue`, `repeat` or `stop` | answers a waiting `communicate` block (programs.md §7.16). `not_ready` if no block waits |
 | `setVariables` | central (firmware ≥ 2.11) | `values`: object name → integer | only while a `communicate` block waits, only names in its `editable`, within `min` … `max`. All or nothing. Response: `variables` (the new values). Errors: `not_ready`, `not_editable`, `out_of_range` |
@@ -226,8 +238,8 @@ switched off when a program is selected.
 
 Reports (firmware ≥ 2.11, `reports` and `remote` in `info.features`): the report buffer is
 RAM only, so `stop` (which restarts the pod) and every reboot clear it, and report ids start
-again at 1. Until BLE stays on during the game (#39), reports reach a client over USB serial
-only. Central `status` then also has `athlete` (`""` = none), `reports {pending, dropped}`
+again at 1. Reports reach a client as `report` events over USB serial and, from firmware 2.12
+(`liveBle`), over BLE as indications (§1); over BLE read them with `reports` in pages. Central `status` then also has `athlete` (`""` = none), `reports {pending, dropped}`
 and, while a `communicate` block waits, `waiting {block, editable {<name>: {min, max, value}}}`.
 Central `status.phonePaused` (firmware ≥ 2.12) is true while a phone pause holds the game (state PAUSED).
 
@@ -239,8 +251,9 @@ firmware; the `charge` and `release` blocks then take their `timeout` port at on
 older firmware; the `toggle` block leaves such a pod out of the game.
 
 Error codes in addition to §3.1: `busy` (not possible in the current state, e.g. file
-changes during a game or a sync), `not_ready`, `not_editable`, `out_of_range` (`setVariables`),
-`not_running` (`pause`: the game is not in RUN), `not_paused` (`resume`: no phone pause is active).
+changes from DISCOVERY on, a validate during a game, or a sync), `not_ready`, `not_editable`,
+`out_of_range` (`setVariables`), `not_running` (`pause`: the game is not in RUN), `not_paused`
+(`resume`: no phone pause is active).
 
 **Pause and resume (firmware ≥ 2.12).** There are two kinds of PAUSED. Both show state `PAUSED`, all yellow:
 - *Peripheral lost* (automatic): a pod silent for 1.5 s. The game continues by itself when all pods are back.

@@ -15,11 +15,12 @@ class CommunicateBlock;
  *   MENU       program menu, phone config via BLE (settings, program upload/download).
  *              Long press (or "select" via serial) selects a program. Without programs:
  *              red blinking, upload possible.
- *   DISCOVERY  BLE off, ESP-NOW on. Claims peripherals until the program has enough
- *              (blue progress bar).
- *   CONFIRM    all green. A press (or "start" via serial) starts the program.
+ *   DISCOVERY  ESP-NOW on, BLE stays connected (liveBle, ADR 0005). Claims peripherals until
+ *              the program has enough (blue progress bar).
+ *   CONFIRM    all green. A press (or "start" via serial / BLE) starts the program.
  *              In DISCOVERY, CONFIRM and PAUSED the program stores of all pods are synced.
- *   RUN        block engine runs.
+ *              Program files cannot be changed from DISCOVERY on (busy).
+ *   RUN        block engine runs. Report events go out over BLE as well as USB.
  *   PAUSED     a peripheral stopped answering: all yellow. When it is back, the current
  *              block is restarted (re-arms the pods) and the game continues.
  *              phonePaused: the client paused it ("pause", RUN only). Then the game does not
@@ -59,7 +60,7 @@ class CentralRole : public IRole {
         void opSelect(JsonObjectConst request, JsonDocument& response);
         void opStart(JsonDocument& response);
         void opEffect(JsonObjectConst request, JsonDocument& response);
-        void opReports(JsonDocument& response);
+        void opReports(JsonObjectConst request, JsonDocument& response);
         void opAck(JsonObjectConst request, JsonDocument& response);
         void opCommand(JsonObjectConst request, JsonDocument& response);
         void opSetVariables(JsonObjectConst request, JsonDocument& response);

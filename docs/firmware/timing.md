@@ -165,11 +165,26 @@ With BLE (firmware 1.x) this was estimated at ~60–200 ms.
 **well under 1 ms**. If an ARM needs so many retries that it arrives after the start time,
 that pod lights late but measures correctly from its own LED onset.
 
+### 4.1 The central's own ring (firmware ≥ 2.12)
+
+The central lights its ring from an esp_timer at the start time (`LEDManager::playEffect`
+arms a one-shot timer for a future start; the timer runs in the esp_timer task). Before, the
+central drew its first frame in the next loop pass, so with BLE on (loop gaps up to 17 ms,
+[ADR 0005](../decisions/0005-live-results-over-ble.md) *Findings*) the start was up to one
+loop gap late. The loop pass still draws the frames after the first one, at most every 16 ms.
+The output is guarded by a mutex, because the loop and the timer both write the LEDs.
+Blocks that light the central at a synchronous start (`remoteMultiPress`, `toggle`, `effect`,
+`delay` countdown) arm it on enter, so the timer is set before the start time.
+
+Measured values of the BLE + ESP-NOW test (ADR 0005, 3 pods, interval 100 ms): loop gaps > 10 ms about
+4 per minute with the phone connected, longest gap 17 ms; central start lateness before this change
+was the loop gap (up to 17 ms). Check the central's start on a logic analyser after the change.
+
 ## 5. Set-up timing
 
 | Phase | Estimate |
 |---|---|
-| Program selected → radio up | BLE shutdown + WiFi start, ~0.2–0.5 s |
+| Program selected → radio up | ESP-NOW start (BLE stays on from firmware 2.12), ~0.2–0.5 s |
 | Per peripheral | waits for its next HELLO (≤ 250 ms) + CLAIM/ACK (a few ms). Claims are sequential |
 | 7 peripherals | ≈ 1–2 s until green |
 | Clock synchronised | first PING right after the claim; several samples before a game starts |

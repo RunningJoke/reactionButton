@@ -91,9 +91,11 @@ void CentralRole::run() {
         this->network.service();
     }
 
+    // BLE requests are handled in every state: the phone stays connected during the game (liveBle)
+    this->phone.service();
+
     switch(this->state) {
         case State::MENU:
-            this->phone.service();
             if(ProgramStore::get().hash() != this->menuStoreHash) {
                 this->reloadMenu();     // programs changed via BLE or serial
             }
@@ -169,9 +171,9 @@ bool CentralRole::startProgram() {
     int64_t required = vars->getVariable("REQUIRED_PERIPHERALS");
     this->requiredPeripherals = (uint8_t)constrain(required, (int64_t)0, (int64_t)MAX_PERIPHERALS);
 
-    // the phone is only needed in the menu; free the radio for the pod link
-    Diag::step("select: BLE stop");
-    this->phone.stop();
+    // BLE stays on (liveBle, ADR 0005): the phone keeps its connection and gets the game interval
+    Diag::step("select: BLE game mode");
+    this->phone.enterGame();
 
     if(this->requiredPeripherals == 0) {
         return true;    // central only, no radio needed
@@ -287,7 +289,8 @@ bool CentralRole::runModelSelector() {
 // ---------------------------------------------------------------- configuration API
 
 bool CentralRole::storeEditable() const {
-    if(this->state == State::RUN) {
+    // program files change in the menu (and after an error) only: not while a game is prepared, runs or is paused
+    if(this->state != State::MENU && this->state != State::ERROR) {
         return false;
     }
     return !this->network.isSyncing();
@@ -311,6 +314,7 @@ void CentralRole::describe(JsonObject status) {
     }
 
     status["requiredPeripherals"] = this->requiredPeripherals;
+    this->phone.describe(status["ble"].to<JsonObject>());
     status["radio"] = this->network.isStarted();
     status["syncing"] = this->network.isSyncing();
     status["athlete"] = Reports::get().athlete();
@@ -359,7 +363,7 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
     } else if(strcmp(op, "effect") == 0) {
         this->opEffect(request, response);
     } else if(strcmp(op, "reports") == 0) {
-        this->opReports(response);
+        this->opReports(request, response);
     } else if(strcmp(op, "ack") == 0) {
         this->opAck(request, response);
     } else if(strcmp(op, "command") == 0) {
@@ -492,12 +496,31 @@ void CentralRole::opEffect(JsonObjectConst request, JsonDocument& response) {
     response["startAtUs"] = startAtUs;
 }
 
-// Report buffer: every report not acknowledged yet, oldest first
-void CentralRole::opReports(JsonDocument& response) {
+// Report buffer: every report not acknowledged yet, oldest first. Paging (optional, for BLE):
+// "from" = index into the unacknowledged reports (default 0), "max" = how many (default all).
+// Without either field all reports are returned, as before. "total" = all unacknowledged reports,
+// "more" = true if reports follow this page. After an ack the indexes move: ack the page first.
+void CentralRole::opReports(JsonObjectConst request, JsonDocument& response) {
+    JsonVariantConst fromValue = request["from"];
+    JsonVariantConst maxValue = request["max"];
+    if((!fromValue.isNull() && !fromValue.is<int64_t>()) || (!maxValue.isNull() && !maxValue.is<int64_t>())) {
+        ConfigApi::setError(response, "bad_request", "'from' and 'max' must be numbers");
+        return;
+    }
+    const std::vector<Reports::Report>& all = Reports::get().reports();
+    size_t total = all.size();
+    size_t from = fromValue.isNull() ? 0 : (size_t)constrain(fromValue.as<int64_t>(), (int64_t)0, (int64_t)total);
+    size_t count = total - from;
+    if(!maxValue.isNull()) {
+        count = (size_t)constrain(maxValue.as<int64_t>(), (int64_t)0, (int64_t)count);
+    }
+
     response["ok"] = true;
+    response["total"] = (uint32_t)total;
+    response["more"] = from + count < total;
     JsonArray list = response["reports"].to<JsonArray>();
-    for(const Reports::Report& report : Reports::get().reports()) {
-        Reports::write(report, list.add<JsonObject>());
+    for(size_t i = from; i < from + count; i++) {
+        Reports::write(all[i], list.add<JsonObject>());
     }
 }
 
