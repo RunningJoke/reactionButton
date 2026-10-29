@@ -200,3 +200,25 @@ firmware ≥ 2.10; `status.pods[].toggle` must be `true`). Not yet run on hardwa
 | 7 | `countdown` (e.g. `drain`) with a flip in the middle | the animation goes on in the new colour, it does not restart |
 | 8 | peripheral with firmware ≤ 2.9 in the set | it is left out of the game; the log has "cannot toggle" |
 | 9 | block `toggle` with `start: "off"` | all rings dark until pressed; the first press makes a pod A |
+
+## 11. Live over BLE (`reactpod_config.py live`, firmware ≥ 2.12)
+
+`live` keeps the BLE connection open through a game (config-api.md §1): it prints the `state`
+and `report` events, fetches and acknowledges the reports (also after a reconnect) and reads keys
+from the terminal. It needs `pip install bleak`; no USB cable is needed.
+
+```sh
+python tools/reactpod_config.py live                          # first ReactPod found; keys: ? shows the status
+python tools/reactpod_config.py --name "ReactPod 91c2" live --auto --athlete ath_42
+```
+
+- Start the central in the menu (button held during boot), select a program, start the game.
+  The connection must stay. A `[connection] lost` line means it did not (firmware < 2.12 drops it
+  when a program is selected; `live` warns on connect in that case).
+- Keys: `c` continue, `r` repeat, `s` stop, `p` pause, `u` resume, `v NAME=VALUE ...` setVariables,
+  `a NAME` athlete (`a` alone clears it), `?` status, `q` quit.
+- `--auto` answers every waiting `communicate` block with `continue`: use it for soak tests.
+- After a dropped connection `live` scans again by `--name` / `--address` and fetches the
+  reports that are still unacknowledged on the pod.
+- Unit tests of the parser, the formatting and the fetch + ack sequence, without hardware:
+  `python tools/test_reactpod_config.py`.
