@@ -443,8 +443,12 @@ function activeStore(): StoreApi<PodSession> {
 /**
  * Opens a connection to a set in a new session, which becomes the active one. Resolves when the
  * handshake is done (or the attempt failed); the session list shows it meanwhile.
+ *
+ * One set at a time: any existing session is ended first. Several sets at once (#46) did not work on
+ * the phone and is on hold; the session list stays as the structure for it.
  */
 export async function connectPod(kind: TransportKind, options: ConnectOptions = {}): Promise<void> {
+  for (const entry of usePodSessions.getState().entries) await entry.store.getState().disconnect();
   const store = createSession(`s${nextSessionId++}`);
   const id = store.getState().id;
   usePodSessions.setState((s) => ({ entries: [...s.entries, { id, store }], activeId: id }));

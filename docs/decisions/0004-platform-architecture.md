@@ -1,5 +1,7 @@
 # 0004 Platform architecture: one core, REST for apps, MCP for AI clients
 
+> **On hold** since 2026-10-29: [0007](0007-platform-on-hold.md).
+
 Date: 2026-10-19 · Status: proposed
 
 ## Context

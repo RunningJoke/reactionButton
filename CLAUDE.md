@@ -13,10 +13,10 @@ workflow details: [CONTRIBUTING.md](CONTRIBUTING.md).
 | `app/` | React + TS PWA on Pages: https://runningjoke.github.io/reactionButton/ | [spec](docs/app/spec.md) (§4 layout, §13 phases), [acceptance tests](docs/app/acceptance-tests.md), [editor UX proposal](docs/app/editor-ux.md) |
 | `tools/` | `reactpod_config.py` (BLE), `reactpod_serial.py` (USB), `validate_programs.py` | config-api |
 | `hardware/` | KiCad PCB, FreeCAD casing | – |
-| `platform/` | Community platform (Hono + Postgres): accounts, clubs, sharing, results; REST + MCP from one use-case list | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases), [deploy](platform/deploy/README.md) |
+| `platform/` | Community platform (Hono + Postgres): accounts, clubs, sharing, results; REST + MCP from one use-case list. **On hold** ([ADR 0007](docs/decisions/0007-platform-on-hold.md)) | [spec](docs/platform/spec.md) (§5 architecture, §7 AI clients, §14 phases), [deploy](platform/deploy/README.md) |
 | `packages/program-model/` | Program types, block definitions, limits, validator – shared by app and platform | programs |
 | `spec/` | Generated contracts: `platform-api.yaml` (OpenAPI, `cd platform && npm run openapi`), `program.schema.json` (`cd packages/program-model && npm run schema`) | – |
-| `docs/decisions/` | ADRs: layout, versioning + firmware delivery (no OTA, 0006), community platform, platform architecture | – |
+| `docs/decisions/` | ADRs: layout, versioning + firmware delivery (no OTA, 0006), community platform, platform architecture, platform on hold (0007) | – |
 | `docs/archive/` | CR-0…CR-7, old roadmap / known issues / improvement plan – history only | – |
 
 ## Commands (from the repo root; pio is in `~/.platformio/penv/Scripts/`)
@@ -46,6 +46,13 @@ cd platform && npm test && npx tsc && npm run openapi:check       # before every
   when the user reported them as passed.
 
 ## Rules
+
+- **Platform development is halted until further notice** ([ADR 0007](docs/decisions/0007-platform-on-hold.md)).
+  Do not take the platform into account when designing new app or firmware content: no platform
+  fields, upload steps or account concepts "for later". The existing platform code, its API contract,
+  the app's platform client and the communication protocols stay in place and keep working (do not
+  remove them; keep the platform tests green). Issues linked to the platform are `status: on-hold`.
+- The app follows **one set at a time**. Several sets at once (#46) are on hold until investigated.
 
 ## Config App
 

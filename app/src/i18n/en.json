@@ -83,8 +83,7 @@
     "missingFile": "missing",
     "dialog": {
       "title": "Pod connection",
-      "close": "Close",
-      "addSet": "Add another set"
+      "close": "Close"
     },
     "battery": "Battery",
     "batteryUnknown": "no reading",
@@ -1424,13 +1423,10 @@
     "view": {
       "link": "Training view",
       "title": "Training view",
-      "intro": "One card per connected set. Keep the app open: the screen stays on while this view is open, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
-      "addSet": "Add a set",
+      "intro": "Follow the connected set's training here. Keep the app open: the screen stays on while this view is open, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
       "connect": "Connect a set",
       "empty": "No set is connected. Connect a set to follow its training here.",
       "connecting": "Connecting…",
-      "active": "Active",
-      "usePod": "Show in Pod tab",
       "waiting": "Waiting for you",
       "waitingFor": "The program waits at “{{block}}”: continue, repeat or stop, or change the values for the next round.",
       "oldFirmware": "This pod's firmware cannot send results yet (it needs reports, firmware 2.11 or newer). You can still choose who trains.",

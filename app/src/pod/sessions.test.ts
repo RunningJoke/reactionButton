@@ -4,7 +4,7 @@ import { MemoryResultStorage } from "../results/resultStore";
 import { useResults } from "../results/results";
 import { SimulatedPod } from "./simulated/SimulatedPod";
 import { SimulatedTransport } from "./simulated/SimulatedTransport";
-import { connectPod, disconnectPod, DEMO_SETS, setActivePod, setLabel, usePodSession, usePodSessions } from "./session";
+import { connectPod, disconnectPod, DEMO_SETS, setLabel, usePodSession, usePodSessions } from "./session";
 import type { Transport, Unsubscribe } from "./transport/Transport";
 
 /**
@@ -82,40 +82,26 @@ describe("pod sessions", () => {
   });
   afterEach(endAll);
 
-  it("keeps one session per set and an active one", async () => {
+  it("keeps one set at a time: a new connection ends the previous one", async () => {
     await connectPod("simulated");
+    const first = usePodSessions.getState().entries[0]!;
+    expect(first.store.getState().state).toBe("connected");
+    expect(first.store.getState().info!.setId).toBe(DEMO_SETS[0]!.setId);
+    expect(usePodSession.getState().id).toBe(first.id);
+    expect((await first.store.getState().client!.list()).menu.length).toBeGreaterThan(0);
+
     await connectPod("simulated");
-    const [first, second] = usePodSessions.getState().entries;
-    expect(usePodSessions.getState().entries).toHaveLength(2);
-    expect(first!.store.getState().state).toBe("connected");
-    expect(second!.store.getState().state).toBe("connected");
-    // two demo sets: distinct set ids and names, so both can be used at once
-    expect(first!.store.getState().info!.setId).toBe(DEMO_SETS[0]!.setId);
-    expect(second!.store.getState().info!.setId).toBe(DEMO_SETS[1]!.setId);
-    expect(setLabel(second!.store.getState())).toBe("Halle 2");
-    // the last connection is active
-    expect(usePodSessions.getState().activeId).toBe(second!.id);
-    expect(usePodSession.getState().info?.setId).toBe(DEMO_SETS[1]!.setId);
-    // each session answers on its own client
-    expect((await first!.store.getState().client!.list()).menu.length).toBeGreaterThan(0);
+    const entries = usePodSessions.getState().entries;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.id).not.toBe(first.id);
+    expect(first.store.getState().state).toBe("disconnected");
+    expect(entries[0]!.store.getState().state).toBe("connected");
+    expect(usePodSessions.getState().activeId).toBe(entries[0]!.id);
+    expect(setLabel(entries[0]!.store.getState())).toBeTruthy();
 
-    setActivePod(first!.id);
-    expect(usePodSession.getState().id).toBe(first!.id);
-    expect(usePodSession.getState().info?.setId).toBe(DEMO_SETS[0]!.setId);
-
-    await disconnectPod(first!.id);
-    expect(usePodSessions.getState().entries.map((e) => e.id)).toEqual([second!.id]);
-    expect(usePodSessions.getState().activeId).toBe(second!.id);
-    expect(first!.store.getState().state).toBe("disconnected");
-  });
-
-  it("does not add a second session for a set that is connected already", async () => {
-    const pod = new SimulatedPod({ files: DEFAULT_FILES });
-    await connectPod("ble", { transport: new FlakyLink(pod) });
-    const existing = usePodSessions.getState().entries[0]!;
-    await connectPod("ble", { transport: new FlakyLink(pod) });
-    expect(usePodSessions.getState().entries.map((e) => e.id)).toEqual([existing.id]);
-    expect(usePodSessions.getState().activeId).toBe(existing.id);
+    await disconnectPod(entries[0]!.id);
+    expect(usePodSessions.getState().entries).toHaveLength(0);
+    expect(usePodSessions.getState().activeId).toBeNull();
   });
 
   it("reconnects a lost link and fetches and acks the reports the pod kept meanwhile", async () => {

@@ -41,16 +41,14 @@ describe("training view", () => {
     await endAll();
   });
 
-  it("shows one card per connected set, with the demo sets side by side", async () => {
-    await connectPod("simulated");
+  it("shows a card for the connected set; a new connection replaces it", async () => {
     await connectPod("simulated");
     renderPage();
-    const cards = screen.getAllByRole("article");
-    expect(cards).toHaveLength(2);
-    expect(within(cards[1]!).getByRole("heading", { name: "Halle 2" })).toBeTruthy();
-    // the last connected set is the active one (the Pod tab shows it)
-    expect(within(cards[1]!).getByText("Active")).toBeTruthy();
-    expect(within(cards[0]!).queryByText("Active")).toBeNull();
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    await connectPod("simulated");
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(1));
+    // no way to add a second set from the view (several sets at once are on hold)
+    expect(screen.queryByRole("button", { name: /add a set/i })).toBeNull();
   });
 
   it("offers Continue, Repeat, Stop and the editable values while a communicate block waits", async () => {
@@ -102,14 +100,13 @@ describe("training view", () => {
     await waitFor(() => expect(pod.state).toBe("RUN"));
   });
 
-  it("removes a set from the view when it is disconnected", async () => {
+  it("removes the set from the view when it is disconnected", async () => {
     await connectPod("simulated");
-    await connectPod("simulated");
-    const first = usePodSessions.getState().entries[0]!.id;
+    const id = usePodSessions.getState().entries[0]!.id;
     renderPage();
-    expect(screen.getAllByRole("article")).toHaveLength(2);
-    await disconnectPod(first);
-    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(1));
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    await disconnectPod(id);
+    await waitFor(() => expect(screen.queryAllByRole("article")).toHaveLength(0));
   });
 
   it("explains an old firmware without the reports feature", async () => {

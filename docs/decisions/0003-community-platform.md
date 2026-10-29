@@ -1,5 +1,7 @@
 # 0003 Community platform
 
+> **On hold** since 2026-10-29: [0007](0007-platform-on-hold.md).
+
 Date: 2026-10-19 · Status: proposed
 
 ## Context
