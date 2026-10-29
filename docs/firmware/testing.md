@@ -222,3 +222,32 @@ python tools/reactpod_config.py --name "ReactPod 91c2" live --auto --athlete ath
   reports that are still unacknowledged on the pod.
 - Unit tests of the parser, the formatting and the fetch + ack sequence, without hardware:
   `python tools/test_reactpod_config.py`.
+
+## 12. Release checklist (before every `fw-v*` tag)
+
+Run on the release build, flashed to every pod of a set (`-t upload` and `-t uploadfs`). The
+`/release` skill links here. Note the date, firmware, pods and result of each line in the release
+PR. Automated lines: `python tools/reactpod_hwtest.py --central COM3 --peripheral COM4 --peripheral COM5`
+(§12.1).
+
+| # | Check | Pass | Automated |
+|---|---|---|---|
+| 1 | USB serial: 150 `status` requests at 0.3 s on each pod | 0 timeouts (#74) | yes |
+| 2 | Every shipped program: select, discovery, start | DISCOVERY → CONFIRM → RUN within 30 s, no ERROR | yes |
+| 3 | A full set (as many pods as available, up to 7) joins | all pods claimed, central green | partly (pods on USB) |
+| 4 | Pause / resume from the phone, also with a pod lost during the pause | config-api.md "Pause and resume" | yes |
+| 5 | Power-cycle a peripheral mid-game | PAUSED, then RUN within 10 s after it is back | yes (USB reboot) |
+| 6 | Cycle report of a shipped program, over USB and BLE | report with the cycle metric; `--auto` continues | yes (USB), BLE with `live --auto` |
+| 7 | 30 min soak per mode (`run`, `dreieck`, one hold program) with `reactpod_config.py live --auto` | no BLE disconnect, `status.pods[].link.txLost` 0, minimum free heap > 40 KB, no restart | no |
+| 8 | Two sets in one room, both running | no pod joins the other set, no PAUSED caused by the other set | no |
+| 9 | Battery run-down from full on one pod (firmware with battery monitoring) | runtime ≥ 1 h, low-battery warning before the pod switches off | no |
+| 10 | Start spread on a logic analyser (§8) after changes to the link, clock sync or LED timing | < 5 ms with and without a phone | no |
+| 11 | App against the release: connect over BLE and USB, push, restore defaults, training view | as in the app acceptance tests | no |
+
+### 12.1 `reactpod_hwtest.py`
+
+Needs the central and at least one peripheral of the same set on USB (`pip install pyserial`).
+It reboots the central into the menu and runs lines 1, 2, 4, 5 and 6 (USB part), prints PASS /
+FAIL per check and exits with 1 on any failure. Peripherals are taken out by rebooting them as
+central and brought back as peripheral; it puts every pod back into its original role at the end.
+`--quick` skips line 6 (a cycle takes about 2 min).

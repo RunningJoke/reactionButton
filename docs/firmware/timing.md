@@ -4,8 +4,10 @@ This document lists every place where the firmware deals with time: the main loo
 constants, the latency between pods, and how reaction times are measured.
 
 Since firmware 2.0 the pods talk over **ESP-NOW** (see [link-protocol.md](link-protocol.md)).
-The latency numbers below are **estimates** from the design and typical ESP-NOW figures.
-They have not been measured on ReactPod hardware yet (see §6).
+Values marked *measured* come from the BLE + ESP-NOW hardware test of
+[ADR 0005](../decisions/0005-live-results-over-ble.md) (3–4 pods on USB, 30 min runs, 2026-10-29) and the
+firmware 2.12 soak (central + 1 peripheral, phone connected, 30 min). Everything else is an
+**estimate** from the design; §6 lists what is still to measure.
 
 Time bases:
 - `esp_timer_get_time()`: µs since boot, per pod. Used for the link, clock sync, button edges and reaction times.
@@ -42,7 +44,11 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
 - **Busy loop**: `loop()` still never sleeps. WiFi power save is off, so the radio is
   always receiving. This trades battery for latency. A ~1 h runtime target is acceptable.
 
-### 1.1 Typical loop pass duration (estimates)
+### 1.1 Typical loop pass duration
+
+Measured on the central in RUN (ADR 0005): longest loop gap 7.6 ms without BLE; with the phone
+connected 15–17 ms, gaps > 10 ms about 4 per minute (the BLE controller and host share the one core).
+The table below is estimated.
 
 | Situation | Dominant cost | Approx. pass time |
 |---|---|---|
@@ -145,6 +151,11 @@ timestamps (the same `Button` code as above), not from when a frame arrives:
 
 ESP-NOW frames are sent immediately; there is no connection interval to wait for.
 
+Measured (ADR 0005): **0 of 60 000 frames lost or retried** in three 30 min runs, with and without a
+phone. Ack round trip (send → ack received on the central, `ackUsAvg` / `ackUsMax`, worst pod)
+**1.6–1.8 ms average, 10.7 ms maximum**. This round trip covers T2 + the peripheral's receive + the ack
+back, so the estimates for T2 / R2 hold.
+
 | Step | What happens | Estimate |
 |---|---|---|
 | T1 | Central loop decides (block chain in the same pass) | < 0.1 ms + LED shows of instant blocks |
@@ -161,9 +172,12 @@ With BLE (firmware 1.x) this was estimated at ~60–200 ms.
 **Remote press → central lit** (star mode): `R1 + R2 + R3` ≈ **1–3 ms**.
 
 **Start skew in RUN modes**: all pods light at the same network time, `syncStartMs`
-(20 ms) after the block started. The remaining skew is the clock sync error, estimated at
-**well under 1 ms**. If an ARM needs so many retries that it arrives after the start time,
-that pod lights late but measures correctly from its own LED onset.
+(20 ms) after the block started. Measured (ADR 0005): clock sync offset jitter about **0.9 ms**
+(worst pod 1.1 ms), with and without the phone; no late ARM in 1 564 starts, every ARM arrived at least
+9.7 ms before its start time; the latest peripheral LED start was **2.7 ms** (no phone) and **3.7 ms**
+(phone) after the scheduled time. If an ARM needs so many retries that it arrives after the start time,
+that pod lights late but measures correctly from its own LED onset. The total spread including the
+central is not measured yet (§4.1, §6).
 
 ### 4.1 The central's own ring (firmware ≥ 2.12)
 
@@ -178,7 +192,8 @@ Blocks that light the central at a synchronous start (`remoteMultiPress`, `toggl
 
 Measured values of the BLE + ESP-NOW test (ADR 0005, 3 pods, interval 100 ms): loop gaps > 10 ms about
 4 per minute with the phone connected, longest gap 17 ms; central start lateness before this change
-was the loop gap (up to 17 ms). Check the central's start on a logic analyser after the change.
+was the loop gap (up to 17 ms), so the estimated spread was 9.3 ms (no phone) and 18.8 ms (phone).
+With the timer start the central's term should be gone; this is still to confirm on a logic analyser (§6).
 
 ## 5. Set-up timing
 
@@ -193,13 +208,19 @@ Before, BLE needed 2 s scan windows plus about 0.5–2 s per connection.
 
 ## 6. How to verify on hardware
 
+Done: frame loss, ack round trip, clock sync jitter, ARM margins and loop gaps (ADR 0005); BLE
+through a 30 min game with heap and interval (firmware 2.12 soak: minimum free heap 80 KB, interval
+100 ms, no disconnect). Still open: the total start spread on a logic analyser (step 2, #24) and the
+reaction accuracy (step 3). Procedures: [testing.md](testing.md) §8.
+
 1. **Link latency**: log `rxTimeUs` of PRESSED events against the central's ARM send
    time over a few hundred activations (CSV on serial). Or toggle a spare GPIO on ARM
    send (central) and on LED update (peripheral) and measure with a logic analyser.
 2. **Start skew**: RUN5, connect the WS2812 data lines of two pods to a logic analyser,
    compare the start of the LED frames.
 3. **Reaction accuracy**: LED data line vs. button line on one pod, compare with the `RESULT` value.
-4. **Loss**: count `frame type … lost` warnings over a 30 min session.
+4. **Loss**: count `frame type … lost` warnings over a 30 min session, or read
+   `status.pods[].link` (`txLost`, `txRetries`, `ackUsAvg`, `ackUsMax`).
 
 The measured values replace the estimates in this document.
 
