@@ -6,6 +6,7 @@ import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
 import { PlatformError, type PlatformAthlete } from "../platform/api";
 import { canUpload, platformClient, usePlatformSettings } from "../platform/settings";
+import { deleteAthleteEverywhere } from "../results/athleteDeletion";
 import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/csv";
 import type { Athlete } from "../results/report";
 import { sessionUploadStatus, useResults } from "../results/results";
@@ -25,6 +26,7 @@ export function AthletePage() {
   const programName = useProgramName();
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const claimedIds = usePlatformSettings((s) => s.claimedAthleteIds) ?? [];
   useEffect(() => void load(), [load]);
 
   const none = id === "none";
@@ -123,21 +125,15 @@ export function AthletePage() {
                 <button className={modalStyles.button} onClick={() => setDeleting(false)}>
                   {t("common.cancel")}
                 </button>
-                <HoldButton
-                  onConfirm={() =>
-                    void useResults
-                      .getState()
-                      .deleteAthlete(athlete.id)
-                      .then(() => navigate("/results"))
-                  }
-                >
-                  {t("settings.holdToDelete")}
-                </HoldButton>
+                <HoldButton onConfirm={() => void deleteAthleteEverywhere(athlete.id).then(() => navigate("/results"))}>{t("settings.holdToDelete")}</HoldButton>
               </>
             }
           >
             <p>{t("results.deleteAthleteText", { name: athlete.name, count: own.length })}</p>
-            {athlete.platformId && <p className={styles.muted}>{t("results.deleteAthleteRemote")}</p>}
+            {athlete.platformId && (
+              <p className={styles.muted}>{t(claimedIds.includes(athlete.platformId) ? "results.deleteAthleteRemoteOwn" : "results.deleteAthleteRemote")}</p>
+            )}
+            <p className={styles.muted}>{t("results.deleteAthleteReports")}</p>
           </Modal>
         </>
       )}

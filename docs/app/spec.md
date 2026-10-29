@@ -512,6 +512,27 @@ Implementation notes (`src/pod/sync.ts`):
   "Halle 2", `c71f0a8e` "Halle 3", `3e6d9b15` "Halle 4". While a demo report waits the demo game is in
   RUN; `stop` ends it (MENU).
 
+### 9.6 Upload and deletion on the platform (#48)
+
+- **Upload** (`platform/upload.ts`) sends every report the platform does not have yet, grouped per
+  session, as `POST /training/upload`. It follows the auto-upload setting (or *Upload now*).
+- **Queued deletions** (`PlatformDelete[]`, kept in IndexedDB) are repeated when the phone is
+  online and signed in: right after a sign-in, at app start, when a deletion is queued, and when
+  the connection returns. This does not depend on the auto-upload setting. A deletion is kept while
+  the platform cannot be reached; 404 means it is gone already.
+- **Deleting a linked athlete on the phone** (`results/athleteDeletion.ts`): the athlete with all
+  sessions and reports is removed here. The platform gets:
+  - the **self-delete** (`DELETE /v1/orgs/{orgId}/me/athletes/{id}`) when the signed-in user claimed
+    the profile (the ids come from `/v1/me` at sign-in, `claimedAthleteIds`), or
+  - the **coach delete** (`DELETE /v1/orgs/{orgId}/athletes/{id}`) otherwise. A 403 there falls back
+    to the self-delete, in case the claim is newer than the last sign-in.
+  Queued uploads of the athlete go with its sessions, so they are never sent.
+- **Tombstones.** The local ids of deleted athletes are kept (`deletedAthletes`). A report that a
+  pod sends later for such an athlete (its `athlete` field) is acknowledged on the pod (`ack`) but
+  neither stored nor uploaded. Reports without an athlete tag are unaffected.
+- **Pods.** If the deleted athlete is the one set on a connected pod with `remote`, the app sends
+  `session {athlete: ""}`, so the pod stops tagging reports with them.
+
 ---
 
 ## 10. i18n and design

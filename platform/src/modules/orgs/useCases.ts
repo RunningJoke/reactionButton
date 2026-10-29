@@ -10,6 +10,7 @@ import { defineUseCase } from "../../core/useCase";
 import { recordAudit } from "../audit/record";
 import { users } from "../identity/schema";
 import { appLink, inviteMail } from "../identity/mails";
+import { trainingSessions } from "../training/schema";
 import { atLeast, coversTeams, requireClub, requireMember, requireTeamsOfOrg, seesTeams, type Member } from "./policies";
 import { athletes, invites, memberships, organizations, ROLES, teams, type Role } from "./schema";
 
@@ -728,10 +729,20 @@ export const updateAthlete = defineUseCase({
     }),
 });
 
+/**
+ * Removes an athlete profile and everything that names it: its training sessions (with their reports
+ * and values, by cascade) and its invitations, so no link survives (P24). Team ids sit on the profile.
+ */
+async function removeAthlete(tx: Tx, athleteId: string): Promise<void> {
+  await tx.delete(trainingSessions).where(eq(trainingSessions.athleteId, athleteId));
+  await tx.delete(invites).where(eq(invites.athleteId, athleteId));
+  await tx.delete(athletes).where(eq(athletes.id, athleteId));
+}
+
 export const deleteAthlete = defineUseCase({
   name: "delete_athlete",
   title: "Delete an athlete",
-  description: "Deletes an athlete profile with all its training sessions and results. Coaches for their teams.",
+  description: "Deletes an athlete profile with all its training sessions, results and invitations. Coaches for their teams.",
   http: { method: "delete", path: "/v1/orgs/{orgId}/athletes/{athleteId}" },
   tag: "athletes",
   scope: "athletes:write",
@@ -742,8 +753,34 @@ export const deleteAthlete = defineUseCase({
     ctx.ports.db.transaction(async (tx) => {
       const me = await requireMember(tx, ctx, orgId, "coach");
       await loadAthlete(tx, orgId, athleteId, me);
-      await tx.delete(athletes).where(eq(athletes.id, athleteId));
+      await removeAthlete(tx, athleteId);
       await recordAudit(tx, ctx, { orgId, action: "athlete.deleted", resourceType: "athlete", resourceId: athleteId });
+      return ok;
+    }),
+});
+
+export const deleteMyAthleteProfile = defineUseCase({
+  name: "delete_my_athlete_profile",
+  title: "Delete my athlete profile",
+  description:
+    "Deletes the athlete profile the caller claimed in this club, with all its results, invitations and links. " +
+    "Only the user who claimed the profile may do this; for anyone else it is 404.",
+  http: { method: "delete", path: "/v1/orgs/{orgId}/me/athletes/{athleteId}" },
+  tag: "athletes",
+  scope: "athletes:write",
+  agent: "deny",
+  input: AthletePath,
+  output: Ok,
+  run: async (ctx, { orgId, athleteId }) =>
+    ctx.ports.db.transaction(async (tx) => {
+      const uid = userId(ctx);
+      const [a] = await tx
+        .select({ id: athletes.id })
+        .from(athletes)
+        .where(and(eq(athletes.id, athleteId), eq(athletes.orgId, orgId), eq(athletes.userId, uid)));
+      if (!a) throw notFound("Athlete not found.");
+      await removeAthlete(tx, athleteId);
+      await recordAudit(tx, ctx, { orgId, action: "athlete.self_deleted", resourceType: "athlete", resourceId: athleteId });
       return ok;
     }),
 });
@@ -771,4 +808,5 @@ export const orgUseCases = [
   createAthlete,
   updateAthlete,
   deleteAthlete,
+  deleteMyAthleteProfile,
 ];

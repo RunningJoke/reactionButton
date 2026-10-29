@@ -3,7 +3,7 @@ import type { PodReport } from "../results/report";
 import { MemoryResultStorage } from "../results/resultStore";
 import { useResults } from "../results/results";
 import { PlatformClient, PlatformError, UPLOAD_LIMITS, type SessionIn } from "./api";
-import { planUpload, runUpload } from "./upload";
+import { planUpload, runPlatformDeletes, runUpload } from "./upload";
 
 type Call = { url: string; method: string; headers: Record<string, string>; body: unknown };
 
@@ -185,5 +185,44 @@ describe("platform deletions", () => {
     expect(summary).toMatchObject({ unauthorized: true, deleted: 0 });
     expect(calls).toHaveLength(1);
     expect(useResults.getState().platformDeletes).toHaveLength(3);
+  });
+});
+
+describe("deletions on sign-in (#48)", () => {
+  const client = (fetch: ReturnType<typeof fakeFetch>["fetch"]) => new PlatformClient({ baseUrl: "https://api.example.org", token: "tok", fetch });
+
+  it("a claimed profile is deleted with the self-delete; a coach's refusal falls back to the self-delete", async () => {
+    useResults.setState({
+      platformDeletes: [
+        { id: "m1", kind: "myAthlete", orgId: ORG, platformId: ATHLETE },
+        { id: "c1", kind: "athlete", orgId: ORG, platformId: "a-2" },
+        { id: "c2", kind: "athlete", orgId: ORG, platformId: "a-3" },
+      ],
+    });
+    const { fetch, calls } = fakeFetch([
+      (c) => {
+        if (c.url.endsWith(`/me/athletes/${ATHLETE}`) || c.url.endsWith("/me/athletes/a-2")) return json({ ok: true });
+        return problem(403, "forbidden"); // a coach's delete of a profile the user does not own
+      },
+    ]);
+    const summary = await runUpload({ client: client(fetch), orgId: ORG, sleep: noSleep });
+    expect(summary).toMatchObject({ deleted: 2, deleteFailed: 1, error: "forbidden", unauthorized: false });
+    expect(calls.map((c) => c.url.replace(`https://api.example.org/v1/orgs/${ORG}`, ""))).toEqual([
+      `/me/athletes/${ATHLETE}`,
+      "/athletes/a-2",
+      "/me/athletes/a-2",
+      "/athletes/a-3",
+      "/me/athletes/a-3",
+    ]);
+    expect(useResults.getState().platformDeletes).toEqual([]);
+  });
+
+  it("runs the queue once when two callers ask at the same time", async () => {
+    useResults.setState({ platformDeletes: [{ id: "m1", kind: "myAthlete", orgId: ORG, platformId: ATHLETE }] });
+    const { fetch, calls } = fakeFetch([json({ ok: true })]);
+    const first = runPlatformDeletes(client(fetch));
+    const second = runPlatformDeletes(client(fetch));
+    expect(await first).toEqual(await second);
+    expect(calls).toHaveLength(1);
   });
 });

@@ -15,18 +15,22 @@ export type SetState = { athleteId: string | null; sessionId?: string };
  */
 export type PlatformDelete = {
   id: string;
-  kind: "athlete" | "session";
+  /** "athlete": a coach deletes the profile; "myAthlete": the signed-in user deletes their own claimed profile */
+  kind: "athlete" | "myAthlete" | "session";
   orgId: string;
   /** platform athlete id, or the session's platform id (`upload.remoteId`) */
   platformId: string;
 };
 
 export type ReceiveResult = {
-  report: StoredReport;
+  /** undefined when `dismissed` */
+  report?: StoredReport;
   /** already stored before (event and `reports` after a reconnect, or a lost `ack`) */
   duplicate: boolean;
   /** written to IndexedDB: only then may the pod get its `ack` */
   durable: boolean;
+  /** the report belongs to an athlete deleted on this phone: neither stored nor uploaded (ack it anyway) */
+  dismissed?: boolean;
 };
 
 type Results = {
@@ -40,12 +44,17 @@ type Results = {
   sets: Record<string, SetState>;
   /** deletions to repeat on the platform (see PlatformDelete) */
   platformDeletes: PlatformDelete[];
+  /** local ids of deleted athletes (tombstones): their reports from pods are dismissed, not stored */
+  deletedAthletes: string[];
 
   load: () => Promise<void>;
   addAthlete: (name: string) => Promise<Athlete>;
   updateAthlete: (id: string, patch: Partial<Pick<Athlete, "name" | "platformId" | "platformOrgId">>) => Promise<void>;
-  /** deletes the athlete with their sessions and reports */
-  deleteAthlete: (id: string) => Promise<void>;
+  /**
+   * Deletes the athlete with their sessions and reports, and leaves a tombstone. A linked profile is
+   * queued for the platform: `claimed` = the signed-in user's own profile (self-delete, #48).
+   */
+  deleteAthlete: (id: string, options?: { claimed?: boolean }) => Promise<void>;
   /** the athlete who trains on a set now (null = nobody); the next report starts a new session */
   assign: (setId: string, athleteId: string | null) => Promise<void>;
   /** stores a report from a pod; resolves after it is written */
@@ -65,6 +74,7 @@ type Results = {
 
 const SETS_KEY = "sets";
 const PLATFORM_DELETES_KEY = "platformDeletes";
+const DELETED_ATHLETES_KEY = "deletedAthletes";
 
 /** Serialises writes, so two reports of one set cannot open two sessions. */
 let chain: Promise<unknown> = Promise.resolve();
@@ -128,17 +138,19 @@ export const useResults = create<Results>((set, get) => {
     reports: [],
     sets: {},
     platformDeletes: [],
+    deletedAthletes: [],
 
     async load() {
       if (get().loaded) return;
       const { storage } = get();
       try {
-        const [athletes, sessions, reports, sets, platformDeletes] = await Promise.all([
+        const [athletes, sessions, reports, sets, platformDeletes, deletedAthletes] = await Promise.all([
           storage.listAthletes(),
           storage.listSessions(),
           storage.listReports(),
           storage.getMeta<Record<string, SetState>>(SETS_KEY),
           storage.getMeta<PlatformDelete[]>(PLATFORM_DELETES_KEY),
+          storage.getMeta<string[]>(DELETED_ATHLETES_KEY),
         ]);
         set({
           athletes: athletes.sort((a, b) => a.name.localeCompare(b.name)),
@@ -146,6 +158,7 @@ export const useResults = create<Results>((set, get) => {
           reports: reports.sort(byTime),
           sets: sets ?? {},
           platformDeletes: platformDeletes ?? [],
+          deletedAthletes: deletedAthletes ?? [],
           durable: storage.durable,
           loaded: true,
         });
@@ -173,11 +186,19 @@ export const useResults = create<Results>((set, get) => {
         await write((s) => s.saveAthlete(athlete));
       }),
 
-    deleteAthlete: (id) =>
+    deleteAthlete: (id, options = {}) =>
       serial(async () => {
         const athlete = get().athletes.find((a) => a.id === id);
-        // the platform deletes the profile with its sessions (P24)
-        if (athlete?.platformId && athlete.platformOrgId) await queueDeletes([{ kind: "athlete", orgId: athlete.platformOrgId, platformId: athlete.platformId }]);
+        // the platform deletes the profile with its sessions, invitations and links (P24)
+        if (athlete?.platformId && athlete.platformOrgId) {
+          await queueDeletes([{ kind: options.claimed ? "myAthlete" : "athlete", orgId: athlete.platformOrgId, platformId: athlete.platformId }]);
+        }
+        // a tombstone first: reports that arrive from now on for this id are dismissed
+        if (!get().deletedAthletes.includes(id)) {
+          const deleted = [...get().deletedAthletes, id];
+          set({ deletedAthletes: deleted });
+          await write((s) => s.setMeta(DELETED_ATHLETES_KEY, deleted));
+        }
         await removeSessions(new Set(get().sessions.filter((s) => s.athleteId === id).map((s) => s.id)));
         set((s) => ({ athletes: s.athletes.filter((a) => a.id !== id) }));
         await write((s) => s.deleteAthlete(id));
@@ -195,7 +216,9 @@ export const useResults = create<Results>((set, get) => {
     receiveReport: (report, options = {}) =>
       serial(async () => {
         const now = options.now ?? Date.now();
-        const { sets, sessions, reports, athletes } = get();
+        const { sets, sessions, reports, athletes, deletedAthletes } = get();
+        // a deleted athlete's report is neither stored nor uploaded; the pod still gets its ack
+        if (report.athlete && deletedAthletes.includes(report.athlete)) return { duplicate: false, durable: true, dismissed: true };
         const setId = report.setId;
         const state = sets[setId] ?? { athleteId: null };
         // a pod that knows `session` (#42) names the athlete of the report itself (none = nobody, also

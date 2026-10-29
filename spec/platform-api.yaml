@@ -2716,7 +2716,7 @@ paths:
     delete:
       operationId: delete_athlete
       summary: Delete an athlete
-      description: Deletes an athlete profile with all its training sessions and results. Coaches for their teams.
+      description: Deletes an athlete profile with all its training sessions, results and invitations. Coaches for their teams.
       tags:
         - athletes
       security:
@@ -2764,6 +2764,58 @@ paths:
         "403":
           description: Not allowed
           content: *a28
+  /v1/orgs/{orgId}/me/athletes/{athleteId}:
+    delete:
+      operationId: delete_my_athlete_profile
+      summary: Delete my athlete profile
+      description: Deletes the athlete profile the caller claimed in this club, with all its results, invitations and links. Only the user who claimed the profile may do this; for anyone else it is 404.
+      tags:
+        - athletes
+      security:
+        - bearer:
+            - athletes:write
+      x-agent: deny
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        - name: athleteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                required:
+                  - ok
+                additionalProperties: false
+        "400":
+          description: Invalid input
+          content: &a29
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Not signed in
+          content: *a29
+        "403":
+          description: Not allowed
+          content: *a29
   /v1/orgs/{orgId}/audit:
     get:
       operationId: list_audit_log
@@ -2868,16 +2920,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a29
+          content: &a30
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a29
+          content: *a30
         "403":
           description: Not allowed
-          content: *a29
+          content: *a30
   /v1/programs:
     get:
       operationId: search_programs
@@ -3384,16 +3436,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a30
+          content: &a31
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a30
+          content: *a31
         "403":
           description: Not allowed
-          content: *a30
+          content: *a31
   /v1/programs/{programId}:
     get:
       operationId: get_program
@@ -3811,16 +3863,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a31
+          content: &a32
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a31
+          content: *a32
         "403":
           description: Not allowed
-          content: *a31
+          content: *a32
     delete:
       operationId: delete_program
       summary: Delete a program
@@ -3855,16 +3907,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a32
+          content: &a33
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a32
+          content: *a33
         "403":
           description: Not allowed
-          content: *a32
+          content: *a33
   /v1/programs/{programId}/revisions:
     get:
       operationId: list_revisions
@@ -4207,16 +4259,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a33
+          content: &a34
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a33
+          content: *a34
         "403":
           description: Not allowed
-          content: *a33
+          content: *a34
   /v1/programs/{programId}/revisions/{n}/publish:
     post:
       operationId: publish_revision
@@ -4384,16 +4436,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a34
+          content: &a35
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a34
+          content: *a35
         "403":
           description: Not allowed
-          content: *a34
+          content: *a35
   /v1/programs/{programId}/fork:
     post:
       operationId: fork_program
@@ -4649,16 +4701,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a35
+          content: &a36
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a35
+          content: *a36
         "403":
           description: Not allowed
-          content: *a35
+          content: *a36
   /v1/programs/{programId}/rating:
     put:
       operationId: rate_program
@@ -4713,16 +4765,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a36
+          content: &a37
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a36
+          content: *a37
         "403":
           description: Not allowed
-          content: *a36
+          content: *a37
   /v1/presets:
     get:
       operationId: list_presets
@@ -5066,16 +5118,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a37
+          content: &a38
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a37
+          content: *a38
         "403":
           description: Not allowed
-          content: *a37
+          content: *a38
   /v1/presets/{presetId}:
     get:
       operationId: get_preset
@@ -5374,16 +5426,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a38
+          content: &a39
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a38
+          content: *a39
         "403":
           description: Not allowed
-          content: *a38
+          content: *a39
     delete:
       operationId: delete_preset
       summary: Delete a preset
@@ -5418,16 +5470,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a39
+          content: &a40
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a39
+          content: *a40
         "403":
           description: Not allowed
-          content: *a39
+          content: *a40
   /v1/presets/{presetId}/program:
     get:
       operationId: render_preset
@@ -5784,16 +5836,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a40
+          content: &a41
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a40
+          content: *a41
         "403":
           description: Not allowed
-          content: *a40
+          content: *a41
   /v1/sets/{setId}:
     get:
       operationId: get_set
@@ -6085,16 +6137,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a41
+          content: &a42
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a41
+          content: *a42
         "403":
           description: Not allowed
-          content: *a41
+          content: *a42
     delete:
       operationId: delete_set
       summary: Delete a set
@@ -6129,16 +6181,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a42
+          content: &a43
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a42
+          content: *a43
         "403":
           description: Not allowed
-          content: *a42
+          content: *a43
   /v1/sets/{setId}/files:
     get:
       operationId: export_set
@@ -6247,16 +6299,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a43
+          content: &a44
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a43
+          content: *a44
         "403":
           description: Not allowed
-          content: *a43
+          content: *a44
   /v1/orgs/{orgId}/training/upload:
     post:
       operationId: upload_training
@@ -6502,16 +6554,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a44
+          content: &a45
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a44
+          content: *a45
         "403":
           description: Not allowed
-          content: *a44
+          content: *a45
   /v1/orgs/{orgId}/training/sessions:
     get:
       operationId: list_training_sessions
@@ -6677,16 +6729,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a45
+          content: &a46
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a45
+          content: *a46
         "403":
           description: Not allowed
-          content: *a45
+          content: *a46
   /v1/orgs/{orgId}/training/sessions/{sessionId}:
     get:
       operationId: get_training_session
@@ -6921,16 +6973,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a46
+          content: &a47
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a46
+          content: *a47
         "403":
           description: Not allowed
-          content: *a46
+          content: *a47
     delete:
       operationId: delete_training_session
       summary: Delete a training session
@@ -6972,16 +7024,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a47
+          content: &a48
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a47
+          content: *a48
         "403":
           description: Not allowed
-          content: *a47
+          content: *a48
   /v1/orgs/{orgId}/training/reports/{reportId}:
     patch:
       operationId: update_training_report
@@ -7035,16 +7087,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a48
+          content: &a49
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a48
+          content: *a49
         "403":
           description: Not allowed
-          content: *a48
+          content: *a49
     delete:
       operationId: delete_training_report
       summary: Delete a report
@@ -7086,16 +7138,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a49
+          content: &a50
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a49
+          content: *a50
         "403":
           description: Not allowed
-          content: *a49
+          content: *a50
   /v1/orgs/{orgId}/athletes/{athleteId}/stats:
     get:
       operationId: get_athlete_stats
@@ -7257,16 +7309,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a50
+          content: &a51
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a50
+          content: *a51
         "403":
           description: Not allowed
-          content: *a50
+          content: *a51
   /v1/orgs/{orgId}/teams/{teamId}/leaderboard:
     get:
       operationId: get_team_leaderboard
@@ -7406,16 +7458,16 @@ paths:
                 additionalProperties: false
         "400":
           description: Invalid input
-          content: &a51
+          content: &a52
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: Not signed in
-          content: *a51
+          content: *a52
         "403":
           description: Not allowed
-          content: *a51
+          content: *a52
 components:
   schemas:
     Problem:

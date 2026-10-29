@@ -31,7 +31,11 @@ export function linkResults(client: PodClient, info: InfoResponse, options: Resu
     async (report) => {
       const text = options.programText(report.program);
       const contentSha256 = text === undefined ? undefined : await sha256Hex(text);
-      const { durable, duplicate } = await useResults.getState().receiveReport(report, { contentSha256, podTagsAthlete: supportsRemote(info) });
+      const { durable, duplicate, dismissed } = await useResults.getState().receiveReport(report, { contentSha256, podTagsAthlete: supportsRemote(info) });
+      if (dismissed) {
+        options.log(`report ${report.id} of a deleted athlete: dismissed`);
+        return { durable: true };
+      }
       options.log(`report ${report.id} ${duplicate ? "(again) " : ""}${durable ? "stored" : "kept in memory only, not acknowledged"}`);
       return { durable };
     },
