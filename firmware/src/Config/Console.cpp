@@ -31,10 +31,10 @@ void consoleKick() {
         return;
     }
     lastKick = now;
-    if(Console.availableForWrite() >= emptyFree) {
-        return;     // nothing queued
-    }
-    // as HWCDC::write does: push the FIFO out and let the ISR move the queued bytes
+    // as HWCDC::write does: push the FIFO out (also when the ring buffer is already empty and the last
+    // bytes wait in the hardware FIFO), and let the ISR move any queued bytes
     usb_serial_jtag_ll_txfifo_flush();
-    usb_serial_jtag_ll_ena_intr_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY);
+    if(Console.availableForWrite() < emptyFree) {
+        usb_serial_jtag_ll_ena_intr_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY);
+    }
 }

@@ -16,6 +16,7 @@ namespace {
                                           255, GOODBYE_MS, 0, 0, 0};
 
     uint32_t lastActivityMs = 0;
+    uint32_t lastActivityNoUsbMs = 0;   // the same without the USB rule, for status (tests over USB)
     uint32_t lastPressCount = 0;
 
     // Shows the goodbye and enters deep sleep. Does not return. The effect is driven here, because the
@@ -50,13 +51,26 @@ void AutoPowerOff::service(bool allowed) {
     Button& button = Button::get();
     uint32_t now = millis();
 
-    // a press (or a press in progress) and any state that must stay awake restart the idle time
-    if(!allowed || button.isDown() || button.pressCount() != lastPressCount) {
-        lastPressCount = button.pressCount();
+    // a press (or a press in progress), any state that must stay awake and a USB host (a computer:
+    // configuration, tests; a plain charger is no host) restart the idle time
+    bool active = !allowed || button.isDown() || button.pressCount() != lastPressCount;
+    lastPressCount = button.pressCount();
+    if(active) {
+        lastActivityNoUsbMs = now;
+    }
+    if(active || HWCDC::isPlugged()) {
         lastActivityMs = now;
         return;
     }
     if(now - lastActivityMs >= IDLE_LIMIT_MS) {
         sleepNow();
     }
+}
+
+void AutoPowerOff::describe(JsonObject status) {
+    JsonObject p = status["powerOff"].to<JsonObject>();
+    uint32_t now = millis();
+    p["idleMs"] = now - lastActivityNoUsbMs;       // as if no USB host were connected
+    p["limitMs"] = IDLE_LIMIT_MS;
+    p["usbHost"] = HWCDC::isPlugged();
 }

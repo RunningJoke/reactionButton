@@ -331,7 +331,10 @@ and games never wait. The ESP-NOW receive queue wakes the loop at once when a fr
 | central MENU, no phone connected (`PhoneConfig::connected()`) | yes | |
 | central MENU with a phone, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR | no | |
 
-While allowed, a button press (or the button held) restarts the idle time. After `AUTO_POWER_OFF_MINUTES`
+While allowed, a button press (or the button held) restarts the idle time. A connected USB host
+(`HWCDC::isPlugged()`, a computer: configuration, flashing, the hardware tests) also keeps the pod awake;
+a plain charger is no host. `status.powerOff {idleMs, limitMs, usbHost}` shows the timer, with `idleMs`
+counted as if no USB host were connected, so the logic can be checked over USB without the pod sleeping. After `AUTO_POWER_OFF_MINUTES`
 (10) the pod drains the ring in white over 1.2 s (`DRAIN`, then dark), emits a `sleep` event
 ([config-api.md](config-api.md)) and enters deep sleep with `esp_deep_sleep_enable_gpio_wakeup(BIT(3),
 ESP_GPIO_WAKEUP_GPIO_LOW)`. GPIO 3 is an RTC pin on the ESP32-C3 and the button pulls it LOW. The wake-up

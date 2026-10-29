@@ -68,7 +68,8 @@ auf der Startanzeige (siehe unten). Am USB-Kabel misst der Pod die Ladespannung,
 - Vorher leert sich der Ring etwa eine Sekunde lang in Weiß.
 - **Aufwecken:** die Oberseite drücken. Der Pod startet wie üblich (zuerst die Akkuanzeige, dann seine Rolle).
   Oberseite während der Akkuanzeige halten, damit er zum Central wird.
-- Ein Pod in einem Set und jedes Central während der Einrichtung oder eines Spiels schläft nie ein.
+- Ein Pod in einem Set, jeder Central während der Einrichtung oder eines Spiels und ein Pod, der per USB an einem
+  Computer hängt, schlafen nie ein (an einem einfachen USB-Ladegerät schon).
 - Ein schlafender Pod verbraucht noch etwas Strom aus dem Akku, die Lichter ein wenig mehr. Für die Lagerung
   oder eine lange Pause mit dem Schalter ausschalten.
   Zuerst den Pod (oder das Central) laden.

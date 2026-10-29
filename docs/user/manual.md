@@ -67,7 +67,8 @@ boot gauge below. On USB the pod measures the charger's voltage, so it shows nea
 - Before it sleeps, the ring empties in white for about a second.
 - **Wake it:** press the top. The pod starts as usual (battery gauge first, then its role). Hold the top
   during the gauge to make it the central.
-- A pod in a set, and every central during a set-up or a game, never goes to sleep.
+- A pod in a set, every central during a set-up or a game, and a pod connected to a computer by USB never go
+  to sleep (on a plain USB charger it can).
 - The sleeping pod still draws a little current from its battery, and the lights draw a little more. Switch it
   off with the switch for storage or for a long break.
 
