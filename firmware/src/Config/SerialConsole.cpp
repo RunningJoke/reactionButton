@@ -25,6 +25,7 @@ void SerialConsole::emit(JsonDocument& event) {
 }
 
 void SerialConsole::service() {
+    consoleKick();
     while(Console.available() > 0) {
         int c = Console.read();
         if(c < 0) {
