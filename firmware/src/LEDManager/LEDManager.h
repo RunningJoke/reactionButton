@@ -7,6 +7,7 @@
 #include <freertos/semphr.h>
 #include "ColorSet/ColorSet.h"
 #include "Link/Protocol.h"
+#include "_Definitions.h"
 
 #define LED_PIN 7
 #define NEOPIXEL_SIZE 18
@@ -57,7 +58,9 @@ struct LEDPattern {
  * time and not at the next loop pass (up to one loop gap late, see docs/firmware/timing.md).
  * The timer runs in the esp_timer task; the output is guarded by a mutex (outputMutex).
  *
- * All output is scaled by the brightness cap (default 255 = unchanged).
+ * All output is scaled by the brightness cap (LED_BRIGHTNESS_CAP in _Definitions.h, #21). Every
+ * write to the driver goes through present(), which calls show() only when the buffer differs from
+ * the last frame sent. Static calls therefore cost no LED time when nothing changes.
  */
 class LEDManager {
     protected:
@@ -113,7 +116,8 @@ class LEDManager {
         // Local start time of the current effect (µs)
         int64_t effectStartUs() const { return this->effectStart; }
 
-        // Upper limit for all output (battery / power, #21). Applies from the next frame / call.
+        // Upper limit for all output (battery / power, #21), LED_BRIGHTNESS_CAP by default.
+        // Applies from the next frame / call.
         void setBrightnessCap(uint8_t cap) { this->cap = cap; }
         uint8_t brightnessCap() const { return this->cap; }
 
@@ -131,6 +135,8 @@ class LEDManager {
         enum class EffectState : uint8_t { IDLE, RUNNING, HOLD };    // HOLD: finished or static, last frame stays
 
         uint32_t scaled(const ColorSet& color, uint8_t level) const;
+        // show() if the buffer changed since the last show()
+        void present();
         void serviceEffect();
         void renderEffect(int64_t nowUs);
         static void onStartTimer(void* arg);
@@ -144,5 +150,6 @@ class LEDManager {
         int64_t lastFrameUs = 0;
         uint32_t ledMask = ALL_LEDS;
         uint32_t frame[NEOPIXEL_SIZE];
-        uint8_t cap = 255;
+        uint32_t shown[NEOPIXEL_SIZE];              // what the driver was given last (present())
+        uint8_t cap = LED_BRIGHTNESS_CAP;
 };

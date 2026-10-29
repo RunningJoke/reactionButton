@@ -187,6 +187,10 @@ bool PhoneConfig::getMaxLoops(int64_t& maxLoops) const {
     return true;
 }
 
+bool PhoneConfig::connected() const {
+    return linkUp && this->running;
+}
+
 void PhoneConfig::describe(JsonObject out) const {
     bool connected = linkUp && this->running;
     out["connected"] = connected;

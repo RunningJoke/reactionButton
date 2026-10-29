@@ -243,6 +243,7 @@ PR. Automated lines: `python tools/reactpod_hwtest.py --central COM3 --periphera
 | 9 | Battery run-down from full on one pod (firmware with battery monitoring) | runtime ≥ 1 h, low-battery warning before the pod switches off | no |
 | 10 | Start spread on a logic analyser (§8) after changes to the link, clock sync or LED timing | < 5 ms with and without a phone | no |
 | 11 | App against the release: connect over BLE and USB, push, restore defaults, training view | as in the app acceptance tests | no |
+| 12 | Auto power-off (#21): an unclaimed pod and a central in the menu without a phone sleep after `AUTO_POWER_OFF_MINUTES` (10; use a build with 1 for a quick check). A connected computer keeps a pod awake, so run it on battery or a plain charger; over USB check that `status.powerOff.idleMs` counts up and resets on a press or a claim. Goodbye drain, a press wakes it into a normal boot (gauge, role). A claimed pod and a central with a phone never sleep | sleep and wake as described; a central in DISCOVERY is not put to sleep | no (manual) |
 
 ### 12.1 `reactpod_hwtest.py`
 

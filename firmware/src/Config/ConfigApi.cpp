@@ -4,6 +4,7 @@
 #include <esp_system.h>
 #include "_Definitions.h"
 #include "Config/SerialConsole.h"
+#include "Power/AutoPowerOff.h"
 #include "Link/Protocol.h"
 #include "Store/ProgramStore.h"
 #include "Settings/Settings.h"
@@ -174,6 +175,7 @@ void ConfigApi::opStatus(JsonDocument& response) {
     heap["minFree"] = (uint32_t)esp_get_minimum_free_heap_size();
     Diag::describe(response["lastReset"].to<JsonObject>());
     Battery::describe(response.as<JsonObject>());      // missing while the level is unknown
+    AutoPowerOff::describe(response.as<JsonObject>());
     if(role != nullptr) {
         role->describe(response.as<JsonObject>());
     }

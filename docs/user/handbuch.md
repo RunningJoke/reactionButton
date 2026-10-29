@@ -60,6 +60,18 @@ auf der Startanzeige (siehe unten). Am USB-Kabel misst der Pod die Ladespannung,
 - **Unter 15 %:** ein Pod, der in seinem Set wartet (nicht im Spiel), blinkt einmal pro Sekunde **gelb-orange**.
   Bald laden.
 - **Unter 5 %:** das Spiel startet nicht. Wenn du am Central bestätigst, blitzt sein Ring eine Sekunde **rot**.
+
+### Automatisch ausschalten
+
+- Ein Pod, der **nicht in einem Set** ist (wartet, kein Central), und ein **Central im Programmmenü ohne
+  verbundene App** gehen nach **10 Minuten** ohne Tastendruck in den Schlafmodus.
+- Vorher leert sich der Ring etwa eine Sekunde lang in Weiß.
+- **Aufwecken:** die Oberseite drücken. Der Pod startet wie üblich (zuerst die Akkuanzeige, dann seine Rolle).
+  Oberseite während der Akkuanzeige halten, damit er zum Central wird.
+- Ein Pod in einem Set, jeder Central während der Einrichtung oder eines Spiels und ein Pod, der per USB an einem
+  Computer hängt, schlafen nie ein (an einem einfachen USB-Ladegerät schon).
+- Ein schlafender Pod verbraucht noch etwas Strom aus dem Akku, die Lichter ein wenig mehr. Für die Lagerung
+  oder eine lange Pause mit dem Schalter ausschalten.
   Zuerst den Pod (oder das Central) laden.
 
 ---
@@ -309,6 +321,7 @@ unter Einstellungen.
 | Ziel | so viele Lichter wie seine Nummer, in seiner Farbe, läuft langsam um | eingestiegen: seine Nummer (während der Central auf die Ziele wartet) |
 | Ziel | blinkt 2 s | per *Blinken* in der App gefunden |
 | Ziel | langsames gelb-oranges Blinken, einmal pro Sekunde | Akku unter 15 %, wartet im Set (nicht im Spiel) |
+| jeder | Ring leert sich etwa 1 s lang in Weiß, dann dunkel | geht nach 10 Minuten ohne Tastendruck schlafen (Oberseite drücken zum Aufwecken) |
 | Ziel | weißer Blitz | Set vergessen (gelb, 3 s gehalten) |
 | Central | blinkt 2 s weiß | der Central selbst, per *Blinken* in der App gefunden |
 | Ziel | dunkel | bereit |

@@ -9,7 +9,7 @@ Technical reference. For a non-technical guide, see the [user manual](manual.md)
 | Role selection at boot (button held → CENTRAL) | ✅ |
 | Program menu on the central, read from `/programs.json` | ✅ |
 | Programs as JSON files (no recompile for new games), validator tool | ✅ |
-| Pod link over ESP-NOW (~1–3 ms per hop, estimate) | ✅ |
+| Pod link over ESP-NOW (ack round trip 1.6–1.8 ms average, measured; timing.md §4) | ✅ |
 | Automatic discovery of 1 … 7 peripherals, non-blocking | ✅ (shipped programs use ≤ 4) |
 | Set pairing (pods only join their own set) | ✅ |
 | Pause on pod loss, automatic reconnect and resume | ✅ |
@@ -25,10 +25,11 @@ Technical reference. For a non-technical guide, see the [user manual](manual.md)
 | Results as CSV on the serial console, summary per cycle | ✅ |
 | Results in the app | ✅ live over BLE from firmware 2.12 |
 | Pause / resume from the phone | ✅ firmware 2.12 |
-| Results on the LED ring | ❌ (#25) |
+| Results on the LED ring (cycle average as a bar, `summary` `show`) | ✅ firmware 2.13 |
 | Countdown on timed blocks | ✅ (`countdown` option, firmware 2.9) |
-| Battery measurement / low-battery warning | ✅ firmware 2.13 |
-| Power saving / auto power-off | ❌ (#21) |
+| Battery measurement / low-battery warning, battery gauge at power-on | ✅ firmware 2.13 |
+| Pod numbers and colours, blink a pod from the app | ✅ firmware 2.13 |
+| Power saving / auto power-off (deep sleep after 10 min idle, idle loop waits) | ✅ firmware 2.14 |
 | OTA firmware update | ❌ (not planned, flash over USB) |
 
 ## 2. Program menu

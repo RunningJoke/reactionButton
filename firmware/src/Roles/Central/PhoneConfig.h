@@ -45,6 +45,9 @@ class PhoneConfig {
         // "ble" part of the central status: connected, intervalMs (0 = not known yet)
         void describe(JsonObject out) const;
 
+        // A phone is connected (and the configuration service is running)
+        bool connected() const;
+
         // Queues a report event for the connected phone (dropped if none is connected).
         // Never waits: the sender task indicates it.
         static void publishEvent(JsonDocument& event);
