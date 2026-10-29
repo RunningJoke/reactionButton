@@ -9,6 +9,18 @@ import { createResultStorage, type ResultStorage } from "./resultStore";
 /** Per pod set: the assigned athlete and the session reports go into. */
 export type SetState = { athleteId: string | null; sessionId?: string };
 
+/**
+ * A deletion on the platform that waits for the phone to be online and signed in (issue #48). Kept
+ * until the platform answered (deleted, or gone already); queued while offline, like the uploads.
+ */
+export type PlatformDelete = {
+  id: string;
+  kind: "athlete" | "session";
+  orgId: string;
+  /** platform athlete id, or the session's platform id (`upload.remoteId`) */
+  platformId: string;
+};
+
 export type ReceiveResult = {
   report: StoredReport;
   /** already stored before (event and `reports` after a reconnect, or a lost `ack`) */
@@ -26,6 +38,8 @@ type Results = {
   sessions: TrainingSession[];
   reports: StoredReport[];
   sets: Record<string, SetState>;
+  /** deletions to repeat on the platform (see PlatformDelete) */
+  platformDeletes: PlatformDelete[];
 
   load: () => Promise<void>;
   addAthlete: (name: string) => Promise<Athlete>;
@@ -45,9 +59,12 @@ type Results = {
   /** remembers a successful upload: the session's platform id and the uploaded reports' flags */
   recordUpload: (sessionId: string, remoteId: string, reports: { id: string; discarded: boolean }[], at?: number) => Promise<void>;
   recordUploadError: (sessionId: string, error: string, at?: number) => Promise<void>;
+  /** the platform answered a queued deletion: it is no longer repeated */
+  finishPlatformDelete: (id: string) => Promise<void>;
 };
 
 const SETS_KEY = "sets";
+const PLATFORM_DELETES_KEY = "platformDeletes";
 
 /** Serialises writes, so two reports of one set cannot open two sessions. */
 let chain: Promise<unknown> = Promise.resolve();
@@ -94,6 +111,13 @@ export const useResults = create<Results>((set, get) => {
       for (const id of ids) await s.deleteSession(id);
     });
   };
+  /** Queues platform deletions (kept in the storage, so they survive a restart). */
+  const queueDeletes = async (items: Omit<PlatformDelete, "id">[]) => {
+    if (items.length === 0) return;
+    const next = [...get().platformDeletes, ...items.map((item) => ({ ...item, id: crypto.randomUUID() }))];
+    set({ platformDeletes: next });
+    await write((s) => s.setMeta(PLATFORM_DELETES_KEY, next));
+  };
 
   return {
     loaded: false,
@@ -103,22 +127,25 @@ export const useResults = create<Results>((set, get) => {
     sessions: [],
     reports: [],
     sets: {},
+    platformDeletes: [],
 
     async load() {
       if (get().loaded) return;
       const { storage } = get();
       try {
-        const [athletes, sessions, reports, sets] = await Promise.all([
+        const [athletes, sessions, reports, sets, platformDeletes] = await Promise.all([
           storage.listAthletes(),
           storage.listSessions(),
           storage.listReports(),
           storage.getMeta<Record<string, SetState>>(SETS_KEY),
+          storage.getMeta<PlatformDelete[]>(PLATFORM_DELETES_KEY),
         ]);
         set({
           athletes: athletes.sort((a, b) => a.name.localeCompare(b.name)),
           sessions: sessions.sort(byTime),
           reports: reports.sort(byTime),
           sets: sets ?? {},
+          platformDeletes: platformDeletes ?? [],
           durable: storage.durable,
           loaded: true,
         });
@@ -148,6 +175,9 @@ export const useResults = create<Results>((set, get) => {
 
     deleteAthlete: (id) =>
       serial(async () => {
+        const athlete = get().athletes.find((a) => a.id === id);
+        // the platform deletes the profile with its sessions (P24)
+        if (athlete?.platformId && athlete.platformOrgId) await queueDeletes([{ kind: "athlete", orgId: athlete.platformOrgId, platformId: athlete.platformId }]);
         await removeSessions(new Set(get().sessions.filter((s) => s.athleteId === id).map((s) => s.id)));
         set((s) => ({ athletes: s.athletes.filter((a) => a.id !== id) }));
         await write((s) => s.deleteAthlete(id));
@@ -237,6 +267,9 @@ export const useResults = create<Results>((set, get) => {
 
     deleteSession: (id) =>
       serial(async () => {
+        const session = get().sessions.find((s) => s.id === id);
+        const orgId = get().athletes.find((a) => a.id === session?.athleteId)?.platformOrgId;
+        if (session?.upload.remoteId && orgId) await queueDeletes([{ kind: "session", orgId, platformId: session.upload.remoteId }]);
         await removeSessions(new Set([id]));
         const sets = Object.fromEntries(Object.entries(get().sets).map(([k, v]) => [k, v.sessionId === id ? { athleteId: v.athleteId } : v]));
         await saveSets(sets);
@@ -259,6 +292,13 @@ export const useResults = create<Results>((set, get) => {
         const session = get().sessions.find((s) => s.id === sessionId);
         if (!session) return;
         await saveSession({ ...session, upload: { ...session.upload, error, errorAt: at } });
+      }),
+
+    finishPlatformDelete: (id) =>
+      serial(async () => {
+        const next = get().platformDeletes.filter((d) => d.id !== id);
+        set({ platformDeletes: next });
+        await write((s) => s.setMeta(PLATFORM_DELETES_KEY, next));
       }),
   };
 });
