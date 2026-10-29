@@ -19,6 +19,7 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py session ath_42        # athlete id for the following reports ("" = clear)
     python tools/reactpod_serial.py pause                 # pause a running game from the phone (firmware >= 2.12)
     python tools/reactpod_serial.py resume                # end the phone pause
+    python tools/reactpod_serial.py blink 2               # find pod 3 (its number minus 1); no id = the central (firmware >= 2.13)
     python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
 
@@ -382,17 +383,25 @@ def push(pod: PodSerial, directory: str):
         say(f"  {r['path']}: {r['size']} bytes, crc {r['crc']}")
 
 
+def battery_text(battery) -> str:
+    """'82 % (3.95 V)' from a battery entry (firmware >= 2.13); '-' while unknown or on older firmware."""
+    if not battery:
+        return "-"
+    return f"{battery['percent']} % ({battery['mv'] / 1000:.2f} V)"
+
+
 def print_pods(status: dict):
     pods = status.get("pods", [])
     if not pods:
         say("  (no peripherals connected)")
         return
-    say("  id  mac                alive  hold   toggle last seen   tx ok  retries  lost   rx   ack avg/max (us)")
+    say("  id  mac                alive  hold   toggle battery       last seen   tx ok  retries  lost   rx   ack avg/max (us)")
     for p in pods:
         link = p.get("link", {})
         hold = "-" if "hold" not in p else str(p["hold"])    # hold: firmware >= 2.9 (link revision 2)
         toggle = "-" if "toggle" not in p else str(p["toggle"])    # toggle: firmware >= 2.10 (link revision 3)
-        say(f"  {p['id']:<3} {p['mac']:<18} {str(p['alive']):<6} {hold:<5} {toggle:<6} {p['lastSeenMs']:>6} ms  "
+        battery = battery_text(p.get("battery"))    # battery: firmware >= 2.13 (link revision 4)
+        say(f"  {p['id']:<3} {p['mac']:<18} {str(p['alive']):<6} {hold:<5} {toggle:<6} {battery:<13} {p['lastSeenMs']:>6} ms  "
             f"{link.get('txFrames', 0):>6} {link.get('txRetries', 0):>8} {link.get('txLost', 0):>5} "
             f"{link.get('rxFrames', 0):>5}   {link.get('ackUsAvg', 0)}/{link.get('ackUsMax', 0)}")
 
@@ -403,6 +412,7 @@ def print_status(status: dict):
         f"set {status.get('setId')}, uptime {status.get('uptimeMs', 0) / 1000:.0f} s")
     say(f"  store generation {status.get('store', {}).get('generation')}, hash {status.get('store', {}).get('hash')}; "
         f"last reset: {reset.get('reason')} (step '{reset.get('lastStep')}')")
+    say(f"  battery {battery_text(status.get('battery'))}")
     if status.get("program"):
         p = status["program"]
         say(f"  program [{p.get('index')}] {p.get('name')} {p.get('path')} "
@@ -662,6 +672,8 @@ def main():
     p = sub.add_parser("session", help="athlete id copied into the following reports (\"\" = clear it)"); p.add_argument("athlete")
     sub.add_parser("pause", help="pause a running game (firmware >= 2.12); only resume ends it")
     sub.add_parser("resume", help="end a pause made by pause (firmware >= 2.12)")
+    p = sub.add_parser("blink", help="blink a pod for 2 s to find it (firmware >= 2.13), only before a game")
+    p.add_argument("pod", nargs="?", type=int, default=-1, help="pod id (number minus 1); omitted or -1 = the central")
     p = sub.add_parser("cmd", help="send one raw command (JSON or text form)"); p.add_argument("text")
     p = sub.add_parser("push", help="upload program files"); p.add_argument("directory")
     p = sub.add_parser("pull", help="download program files"); p.add_argument("directory")
@@ -740,6 +752,8 @@ def main():
             say(json.dumps(pod.request("session", check=False, athlete=args.athlete), indent=2, ensure_ascii=False))
         elif args.command in ("pause", "resume"):
             say(json.dumps(pod.request(args.command, check=False), indent=2))
+        elif args.command == "blink":
+            say(json.dumps(pod.request("blink", check=False, pod=args.pod), indent=2))
         elif args.command == "reboot":
             status = pod.reboot(args.role)
             if status:

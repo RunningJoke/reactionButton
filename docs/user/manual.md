@@ -48,7 +48,17 @@ try them on screen and keep results.
 - It gets warm and lights up while charging. You can keep using it.
 - Never charge unattended.
 
-A charge lasts about an hour of play. A battery display is planned.
+A charge lasts about an hour of play. The level is shown in the app (pod page, from firmware 2.13) and by the
+boot gauge below. On USB the pod measures the charger's voltage, so it shows nearly full while it charges.
+
+### Battery gauge and low battery
+
+- **Switch on:** for 2 seconds the light ring fills up like a gauge: up to the charge of the battery, in
+  **green** above 50 %, **amber** from 20 to 50 %, **red** below 20 %. The level is measured before the lights
+  come on. Hold the top during these 2 seconds to make the pod the central, as before.
+- **Below 15 %:** a pod waiting in its set (not in a game) blinks **amber** once a second. Charge it soon.
+- **Below 5 %:** the game does not start. When you confirm on the central, its ring flashes **red** for a
+  second. Charge the pod (or the central) first.
 
 ---
 
@@ -56,10 +66,11 @@ A charge lasts about an hour of play. A battery display is planned.
 
 You need: the pods the game asks for (see §6), switched off.
 
-1. **Switch on the target pods.** Each one shows a blue light running around for about 2 seconds,
-   then turns **yellow**: it is waiting for a central.
-2. **Switch on the central:** switch on one more pod and **press and hold its top while the blue
-   light runs around**. Let go when the light goes out. A small pattern of lights now shows the
+1. **Switch on the target pods.** For about 2 seconds the ring fills up and shows the battery
+   (green, amber or red), then it turns **yellow**: it is waiting for a central. The yellow ring has one short coloured mark,
+   different on every target, so you can tell them apart.
+2. **Switch on the central:** switch on one more pod and **press and hold its top while the battery
+   ring is shown**. Let go when the light goes out. A small pattern of lights now shows the
    first game of the **program menu**.
 3. **Choose a game:** a short press shows the next game. Each game has its own light pattern
    (see §6).
@@ -67,11 +78,13 @@ You need: the pods the game asks for (see §6), switched off.
    2 seconds), let go.
 5. **Wait for the targets:** the central shows blue lights in pairs, one pair per target it
    still needs. The yellow targets go dark one after the other as they join.
-   When all have joined, the central turns **green**.
+   When all have joined, the central turns **green**. While it waits, every target that has joined
+   shows its number: as many lights as its number, in its own colour (pod 1 one light, pod 2 two
+   lights, and so on). The colours are the same as in the app.
 6. **Start:** press the central once. Play!
 
-To play another game: switch the central off and on again (holding the top during the blue
-light, as in step 2). The targets can stay on; they wait in yellow and join again.
+To play another game: switch the central off and on again (holding the top during the battery
+ring, as in step 2). The targets can stay on; they wait in yellow and join again.
 
 ---
 
@@ -89,9 +102,15 @@ The games tell you everything through light. The most common signals:
 | **All blue** for a few seconds | One round series (a *cycle*) is over; the next one starts by itself. |
 | **All yellow** on the central | A target was lost (switched off, out of range, flat battery). The game waits and goes on by itself when it is back. |
 
-How many rounds a cycle has depends on the game (often 12). After each cycle the pods
-calculate your best, average and worst reaction time. The pods do not show these numbers
-themselves; the app shows them (see §8.6).
+How many rounds a cycle has depends on the game (often 12). After each cycle the central
+calculates your best, average and worst reaction time. The ring shows the **average** as a bar for
+3 seconds (firmware 2.13 or newer), before it turns blue again and waits for the next start:
+
+- The **longer** the bar, the **faster** the average.
+- **Green**: faster than the target time. **Yellow**: up to 1.5 times the target. **Red**: slower.
+- The target time is set by the game (the shipped games use 450 ms).
+
+The best and worst times are only in the app (see §8.6).
 
 ---
 
@@ -105,6 +124,8 @@ themselves; the app shows them (see §8.6).
   central it meets.
 - With the app you can give a set a **name** (for example "Hall A"). The name is what you see
   when you connect by Bluetooth.
+- **Finding a pod:** in the app, Pod tab, *Pods of this set*, press *Blink* next to it: the pod
+  flashes for two seconds. This works before the game starts.
 
 If a target stays yellow and never joins, it most likely belongs to another set. Clear it as
 described above.
@@ -259,11 +280,13 @@ Settings.
 | The central shows a game pattern but no target joins | Targets must be on and yellow. A target of another set stays yellow: clear it (hold 3 s while yellow, white flash). |
 | The central stays on blue pairs | Not enough targets for this game: switch on more pods, or choose a game for fewer pods. |
 | All yellow on the central during a game | A target is lost (battery, out of range, switched off). Bring it back; the game continues by itself. |
+| The central flashes red when you confirm | A battery is below 5 %. Charge the pods (and the central) and start again. |
 | The central blinks red | It has no games or a game is broken. Connect with the app and use *Restore defaults*. |
 | The app can't find the pod over Bluetooth | The central must be in the program menu (switch on while holding the top). Use Chrome or Edge. On a computer, switching Bluetooth off and on often helps. |
 | "The pod is busy" in the app | A game is running. Switch the central off and on into the menu. |
 | The app asks for a PIN | The owner protected the set. Ask them, or clear the PIN over USB. |
-| I want to play a different game | Switch the central off and on (holding the top during the blue light) and choose again. |
+| Which pod is which? | In the app (Pod tab, *Pods of this set*) press *Blink* next to a pod: it flashes for two seconds. |
+| I want to play a different game | Switch the central off and on (holding the top during the battery ring) and choose again. |
 
 ---
 
@@ -271,9 +294,13 @@ Settings.
 
 | Pod | Light | Meaning |
 |---|---|---|
-| any | blue light running around (2 s) | starting. Hold the top now to make it the central |
-| target | yellow | waiting for the central of its set |
+| any | ring fills up for 2 s: green, amber or red | battery level (switch on). Hold the top to make it the central |
+| target | yellow with one short coloured mark | waiting for the central of its set. The mark is different on every target |
+| target | as many lights as its number, in its colour, turning slowly | joined: its number (while the central waits for the targets) |
+| target | flashing for 2 s | found with *Blink* in the app |
+| target | slow amber blink, once a second | battery below 15 %, waiting in the set (not during a game) |
 | target | white flash | set forgotten (held 3 s while yellow) |
+| central | flashing white for 2 s | the central itself, found with *Blink* in the app |
 | target | dark | ready |
 | target | green / red | press / don't press |
 | central | small pattern | program menu: short press = next game, hold = select |
@@ -281,7 +308,9 @@ Settings.
 | central | blue pairs | waiting for targets to join |
 | central | all green | ready: press to start |
 | central | all yellow | paused, a target is missing |
+| central | bar on the ring for 3 s after a cycle, green / yellow / red | average reaction time: longer bar = faster. Green: better than the target, yellow: up to 1.5 times the target, red: slower |
 | central | red, blinking slowly | error: no games or a broken game |
+| central | red flash for 1 s when you confirm | the game does not start: a battery is below 5 % |
 
 ---
 

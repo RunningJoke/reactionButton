@@ -22,6 +22,63 @@
   }
 }
 
+/* the pods of the set (PodList): the identity colour is data, the rest uses theme tokens */
+.podList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.podRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--touch);
+}
+
+.colorDot {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--border);
+}
+
+.podLabel {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.offline {
+  font-weight: 400;
+  color: var(--warn);
+}
+
+.blinkButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.blinkButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .podHeader {
   display: flex;
   align-items: center;
@@ -142,6 +199,24 @@
 
 .mono {
   font-family: var(--font-mono);
+}
+
+.battery {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ok);
+}
+
+.battery[data-level="mid"] {
+  color: var(--warn);
+}
+
+.battery[data-level="low"] {
+  color: var(--error);
 }
 
 .warn,

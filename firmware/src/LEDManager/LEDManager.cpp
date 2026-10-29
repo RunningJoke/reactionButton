@@ -58,6 +58,9 @@ bool LEDManager::colorOf(uint8_t colorId, ColorSet& out)
         case 4: out = ColorSet{255, 0, 255}; return true;
         case 5: out = ColorSet{0, 255, 255}; return true;
         case 6: out = ColorSet{255, 255, 255}; return true;
+        case 7: out = ColorSet{255, 128, 0}; return true;
+        case 8: out = ColorSet{128, 0, 255}; return true;
+        case 9: out = ColorSet{255, 160, 0}; return true;     // amber (Protocol::Color::AMBER)
         case 255: out = ColorSet{0, 0, 0}; return true;
     }
     return false;
@@ -74,6 +77,9 @@ void LEDManager::setLEDColors(uint8_t colorId)
         case 4: this->setLEDColors(MAGENTA); break;
         case 5: this->setLEDColors(CYAN); break;
         case 6: this->setLEDColors(WHITE); break;
+        case 7: this->setLEDColors(ORANGE); break;
+        case 8: this->setLEDColors(VIOLET); break;
+        case 9: this->setLEDColors(AMBER); break;
         case 255: this->setLEDColors(BLACK); break;
     }
 }
@@ -112,6 +118,21 @@ void LEDManager::setLEDColors(LEDPattern* pattern)
     for(int i=0; i<NEOPIXEL_SIZE; i++) {
         uint8_t paletteId = pattern->ids->getPaletteID(i);
         this->pixelManager->setPixelColor(i, this->scaled(*pattern->palette[paletteId], 255));
+    }
+    this->pixelManager->show();
+}
+
+void LEDManager::setSegment(uint8_t first, uint8_t count, uint8_t colorId, uint8_t restId)
+{
+    OutputGuard guard(this->outputMutex);
+    this->stopEffect();
+    ColorSet on = {0, 0, 0};
+    ColorSet rest = {0, 0, 0};
+    LEDManager::colorOf(colorId, on);
+    LEDManager::colorOf(restId, rest);
+    for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
+        uint8_t step = (i + NEOPIXEL_SIZE - first) % NEOPIXEL_SIZE;     // LEDs from the segment start
+        this->pixelManager->setPixelColor(i, this->scaled(step < count ? on : rest, 255));
     }
     this->pixelManager->show();
 }

@@ -14,7 +14,7 @@ import { isObject } from "@reactpod/program-model";
 import type { ResolvedProgram } from "@reactpod/program-model";
 import { createRandom, type Random } from "./random";
 import { EFFECTS } from "@reactpod/program-model";
-import { chargeRing, countdownEffect, fullColor, fullFlashRing, releaseRing, renderRing, type EffectKind, type RingEffect, type Rgb } from "./ringEffects";
+import { chargeRing, countdownEffect, fullColor, fullFlashRing, releaseRing, renderRing, summaryBar, type EffectKind, type RingEffect, type Rgb } from "./ringEffects";
 
 export const MAX_STEPS_PER_PASS = 32;
 const DEBOUNCE_MS = 20;
@@ -1092,25 +1092,50 @@ function createBlock(raw: Record<string, unknown>): SimBlock | null {
     }
 
     case "summary": {
+      // programs.md §7.7 (programFormat 6): `show` puts the average on the central's ring as a bar and waits showMs;
+      // without values there is no bar and no wait. A pause during the bar keeps it (Block::resume).
       const metric = String(raw.metric);
       const reset = raw.reset !== false;
+      const show = raw.show === true;
+      let started = false;
+      let until: number | undefined;      // end of the bar while it shows
       return {
         ...base,
-        enter: () => undefined,
+        enter: (ctx) => {
+          if (ctx.resuming && started && until !== undefined) return;
+          started = false;
+          until = undefined;
+        },
         execute: (ctx) => {
-          const s = ctx.results.stats(metric);
-          ctx.log("summary", `SUMMARY,${metric},${s.count},${s.average},${s.best},${s.worst}`);
-          const store = (field: string, value: number) => {
-            const name = str(raw[field]);
-            if (name) ctx.vars.set(name, value);
-          };
-          store("storeAverage", s.average);
-          store("storeBest", s.best);
-          store("storeWorst", s.worst);
-          store("storeCount", s.count);
-          if (reset) ctx.results.reset(metric);
+          if (!started) {
+            started = true;
+            const s = ctx.results.stats(metric);
+            ctx.log("summary", `SUMMARY,${metric},${s.count},${s.average},${s.best},${s.worst}`);
+            const store = (field: string, value: number) => {
+              const name = str(raw[field]);
+              if (name) ctx.vars.set(name, value);
+            };
+            store("storeAverage", s.average);
+            store("storeBest", s.best);
+            store("storeWorst", s.worst);
+            store("storeCount", s.count);
+            if (show && s.count > 0) {
+              const { percent, band } = summaryBar(s.average, ctx.vars.read(v("targetMs")));
+              ctx.effect = { kind: "level", color: colorToRgb(band), color2: OFF, startAt: ctx.now(), periodMs: 500, brightness: 255, percent };
+              const showMs = Math.min(60000, Math.max(0, raw.showMs === undefined ? 3000 : ctx.vars.read(v("showMs"))));
+              // showMs 0: the bar stays on the ring until the next LED change, the block does not wait
+              if (showMs > 0) until = ctx.now() + showMs;
+            }
+            if (reset) ctx.results.reset(metric);
+          }
+          if (until === undefined) return "next";
+          if (ctx.now() < until) return "running";
+          until = undefined;
+          ctx.leds.fill(OFF);     // the firmware switches the ring off (turnOff) when the bar ends
+          ctx.effect = null;
           return "next";
         },
+        deadline: () => until,
       };
     }
 

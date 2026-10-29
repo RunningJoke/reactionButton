@@ -53,6 +53,9 @@ class CentralRole : public IRole {
         void reloadMenu();
         bool startProgram();
         bool startGame();
+        // a game does not start while the central or a pod is below Battery::CRITICAL_PERCENT (#19)
+        bool batteryTooLow() const;
+        void refuseStart();
         void drawProgress();
         void fail(const char* message);
 
@@ -60,6 +63,8 @@ class CentralRole : public IRole {
         void opSelect(JsonObjectConst request, JsonDocument& response);
         void opStart(JsonDocument& response);
         void opEffect(JsonObjectConst request, JsonDocument& response);
+        void opBlink(JsonObjectConst request, JsonDocument& response);
+        void endBlink();
         void opReports(JsonObjectConst request, JsonDocument& response);
         void opAck(JsonObjectConst request, JsonDocument& response);
         void opCommand(JsonObjectConst request, JsonDocument& response);
@@ -88,6 +93,8 @@ class CentralRole : public IRole {
         uint8_t requiredPeripherals = 0;
         int16_t drawnPodCount = -1;
         uint32_t pressCountAtConfirm = 0;
+        int64_t refusedUntilUs = 0;        // CONFIRM: red after a refused start until this time, then green again
 
+        int64_t blinkEndUs = 0;            // "blink" of the central itself ends here (0 = not blinking)
         int64_t rebootAtUs = 0;            // "stop": reboot into the menu shortly after answering
 };

@@ -19,6 +19,18 @@
     "reconnecting": "Verbinde neu…"
   },
   "pod": {
+    "podList": {
+      "title": "Pods dieses Sets",
+      "central": "Dieser Pod (Zentrale)",
+      "number": "Pod {{number}}",
+      "offline": "antwortet nicht",
+      "blink": "Blinken",
+      "blinkAria": "Pod {{number}} blinken",
+      "blinkCentralAria": "Diesen Pod blinken",
+      "blinkHint": "Blinken lässt einen Pod zwei Sekunden lang aufleuchten, damit du ihn findest. Nur vor dem Spielstart möglich.",
+      "blinkBusy": "Ein Pod kann nur vor dem Spielstart blinken.",
+      "blinkFailed": "Der Pod konnte nicht blinken."
+    },
     "intro": "Mit einer Zentrale im Programmmenü verbinden.",
     "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
     "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",
@@ -41,7 +53,8 @@
       "overflow": "Der Pod kam nicht hinterher. Bitte noch einmal versuchen.",
       "unknown": "Etwas ist schiefgegangen.",
       "auth_required": "Dieser Pod ist mit einer PIN geschützt. Gib sie ein, um etwas zu ändern.",
-      "auth_failed": "Falsche PIN. Warte 3 Sekunden, bevor du es noch einmal versuchst."
+      "auth_failed": "Falsche PIN. Warte 3 Sekunden, bevor du es noch einmal versuchst.",
+      "low_battery": "Ein Akku ist unter 5 %. Vor dem Start die Pods laden."
     },
     "kind": {
       "ble": "Bluetooth-Pod",
@@ -72,6 +85,13 @@
       "title": "Pod-Verbindung",
       "close": "Schließen",
       "addSet": "Weiteres Set verbinden"
+    },
+    "battery": "Akku",
+    "batteryUnknown": "keine Messung",
+    "pods": {
+      "title": "Pods ({{count}})",
+      "pod": "Pod {{id}}",
+      "offline": "offline"
     },
     "notConnected": "Kein Pod verbunden",
     "connectButton": "Verbinden",
@@ -801,7 +821,10 @@
     "namesTooMany": "Höchstens {{max}} Metriken, Variablen oder einstellbare Variablen",
     "variableNotDeclared": "{{name}} ist keine Variable dieses Programms: lege sie unter \"variables\" fest",
     "editableInvalid": "Jede einstellbare Variable braucht ganze Zahlen als Minimum und Maximum, das Minimum nicht über dem Maximum",
-    "timeoutNegative": "Die Zeitgrenze darf nicht negativ sein"
+    "timeoutNegative": "Die Zeitgrenze darf nicht negativ sein",
+    "summaryNeedsTarget": "Der Balken braucht eine Zielzeit (targetMs)",
+    "summaryTargetRange": "Die Zielzeit muss eine ganze Zahl von 1 bis 60000 ms sein",
+    "summaryShowRange": "Die Zeit, die der Balken steht, muss eine ganze Zahl von 0 bis 60000 ms sein"
   },
   "portRoles": {
     "then": "Dann",
@@ -918,7 +941,7 @@
     },
     "summary": {
       "name": "Auswertung",
-      "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole."
+      "help": "Durchschnitt, Bestwert und schlechtester Wert einer Messung, auf der seriellen Konsole. Kann den Durchschnitt einige Sekunden als Balken auf dem Ring zeigen."
     },
     "repeat": {
       "name": "Wiederholen",
@@ -1073,6 +1096,18 @@
     },
     "reset": {
       "label": "Messungen danach zurücksetzen"
+    },
+    "show": {
+      "label": "Balken auf dem Ring zeigen",
+      "help": "Der Mittelwert als Balken auf dem Ring der Zentrale, einige Sekunden lang: grün = besser als das Ziel, gelb = bis 1,5-faches Ziel, rot = langsamer. Braucht Pod-Firmware 2.13."
+    },
+    "targetMs": {
+      "label": "Ziel (ms)",
+      "help": "Der Balken ist bei dieser Zeit halb voll, bei der doppelten Zeit leer, bei 0 ms voll."
+    },
+    "showMs": {
+      "label": "Zeigen für (ms)",
+      "help": "Wie lange der Balken steht. 0 = bis zur nächsten Lichtänderung, das Programm wartet dann nicht."
     },
     "count": {
       "label": "Runden",

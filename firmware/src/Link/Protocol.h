@@ -38,6 +38,11 @@
  * Link protocol revision 3 (firmware 2.10) adds toggle (LINK_FEATURE_TOGGLE): PodMode TOGGLE, the toggle
  * parameters appended to ARM and owner / flipCount appended to PRESSED.
  *
+ * Link protocol revision 4 (firmware 2.13) adds the identity flag (PONG_FLAG_IDENTIFY): the central tells the
+ * pods that it is in the menu, discovery or confirm, so they show their number. No new frame, no feature bit.
+ * It also adds the battery level (LINK_FEATURE_BATTERY): the peripheral appends its cell voltage (batteryMv)
+ * to PING. 0 = unknown; a shorter PING (older firmware) means unknown as well.
+ *
  *   SYNC_READ_REQ (path, offset) ───►
  *                                ◄─── SYNC_READ_RESP (offset, total, data)
  */
@@ -45,7 +50,7 @@ namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
     const uint8_t VERSION = 1;          // frame header version, see "Extensions" above
-    const uint8_t REVISION = 3;         // link protocol revision (reported as info.linkRevision)
+    const uint8_t REVISION = 4;         // link protocol revision (reported as info.linkRevision)
     const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
@@ -67,6 +72,7 @@ namespace Protocol {
     const uint8_t LINK_FEATURE_EFFECTS = 0x01;     // EFFECT frames and the ARM waiting effect
     const uint8_t LINK_FEATURE_HOLD = 0x02;        // PodMode CHARGE / RELEASE, ARM hold parameters, RELEASED (firmware >= 2.9)
     const uint8_t LINK_FEATURE_TOGGLE = 0x04;      // PodMode TOGGLE, ARM toggle parameters, PRESSED owner / flipCount (firmware >= 2.10)
+    const uint8_t LINK_FEATURE_BATTERY = 0x08;     // PING batteryMv (firmware >= 2.13)
 
     enum class PodMode : uint8_t {
         HIT = 1,    // pod should be pressed
@@ -90,6 +96,10 @@ namespace Protocol {
         const uint8_t MAGENTA = 4;
         const uint8_t CYAN = 5;
         const uint8_t WHITE = 6;
+        // identity colours of the pods (firmware >= 2.13, see LEDManager/Identity.h), never sent by a central
+        const uint8_t ORANGE = 7;
+        const uint8_t VIOLET = 8;
+        const uint8_t AMBER = 9;        // local only (battery warning on the pod itself, firmware >= 2.13), not sent by programs
         const uint8_t OFF = 255;
     }
 
@@ -198,9 +208,11 @@ namespace Protocol {
         Header header;
         int64_t t1;
         StoreState store;
+        uint16_t batteryMv;     // appended, firmware >= 2.13 (LINK_FEATURE_BATTERY): cell voltage, 0 = unknown
     };
 
     const uint8_t PONG_FLAG_SYNC_ALLOWED = 0x01;   // central is not running a game: sync may run
+    const uint8_t PONG_FLAG_IDENTIFY = 0x02;       // central in menu / discovery / confirm: pods show their identity (rev. 4)
 
     // central -> peripheral. t2 = central clock at PING reception, t3 = central clock at transmission
     struct __attribute__((packed)) Pong {
@@ -322,7 +334,7 @@ namespace Protocol {
             case MsgType::HELLO: return sizeof(Hello);
             case MsgType::CLAIM: return sizeof(Claim);
             case MsgType::CLAIM_ACK: return offsetof(ClaimAck, linkFeatures);
-            case MsgType::PING: return sizeof(Ping);
+            case MsgType::PING: return offsetof(Ping, batteryMv);   // batteryMv is appended
             case MsgType::PONG: return sizeof(Pong);
             case MsgType::ARM: return offsetof(Arm, waiting);       // waiting, hold and toggle are appended
             case MsgType::RESET: return sizeof(Reset);

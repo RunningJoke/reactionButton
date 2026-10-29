@@ -18,8 +18,9 @@ export const PROGRAM_FORMAT_VERSION = 1;
  * 3: block type `effect`, `countdown` fields on timed blocks, block types `charge` and `release`.
  * 4: block type `toggle`.
  * 5: block type `communicate` (reports, remote ops).
+ * 6: `summary` shows the average as a bar on the central's ring (`show`, `targetMs`, `showMs`).
  */
-export const PROGRAM_FORMAT = 5;
+export const PROGRAM_FORMAT = 6;
 /** Longest set name in bytes (`setName`). */
 export const MAX_SET_NAME = 16;
 

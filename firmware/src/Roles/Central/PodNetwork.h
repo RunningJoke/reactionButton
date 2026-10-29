@@ -19,6 +19,7 @@
  * - Remembers which pods play effects / measure holds (CLAIM_ACK linkFeatures); older pods get no
  *   EFFECT frames, no hold activations and a plain ARM.
  * - Runs the program store sync with the peripherals (StoreSync), only while allowed.
+ * - Tells the pods whether they show their identity (PONG_FLAG_IDENTIFY, see setIdentify).
  */
 class PodNetwork : public IPodNetwork {
     public:
@@ -33,13 +34,19 @@ class PodNetwork : public IPodNetwork {
         // Program store sync in both directions; switch off while a game runs
         void setSyncAllowed(bool allowed);
 
+        // The pods show their identity (number and colour, spinning) while this is on: menu, discovery, confirm
+        void setIdentify(bool on) { this->identify = on; }
+
         bool allAlive() const;
 
         bool isStarted() const { return this->link.isStarted(); }
         bool isSyncing() const { return this->sync.isPulling(); }
 
-        // Connection data of every pod: id, mac, alive, lastSeenMs, effects, link statistics
+        // Connection data of every pod: id, mac, alive, lastSeenMs, effects, link statistics, battery
         void describe(JsonArray out) const;
+
+        // Cell voltage of a pod from its PING (mV); 0 = unknown (older firmware or no reading)
+        uint16_t batteryMv(uint8_t podId) const { return podId < this->pods.size() ? this->pods[podId].batteryMv : 0; }
 
         uint8_t podCount() const override { return (uint8_t)this->pods.size(); }
         bool isAlive(uint8_t podId) const override;
@@ -61,6 +68,7 @@ class PodNetwork : public IPodNetwork {
             int64_t lastSeenUs = 0;
             uint8_t cmdSeq = 0;
             uint8_t linkFeatures = 0;   // Protocol::LINK_FEATURE_*
+            uint16_t batteryMv = 0;     // from PING (firmware >= 2.13), 0 = unknown
         };
 
         int16_t findPod(const uint8_t* mac) const;
@@ -78,6 +86,7 @@ class PodNetwork : public IPodNetwork {
         std::deque<PodEvent> events;
         StoreSync sync{0};
         bool syncAllowed = true;
+        bool identify = false;
 
         bool acceptNew = false;
         uint8_t maxPods = 0;

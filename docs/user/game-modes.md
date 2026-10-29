@@ -27,7 +27,7 @@ Technical reference. For a non-technical guide, see the [user manual](manual.md)
 | Pause / resume from the phone | ✅ firmware 2.12 |
 | Results on the LED ring | ❌ (#25) |
 | Countdown on timed blocks | ✅ (`countdown` option, firmware 2.9) |
-| Battery measurement / low-battery warning | ❌ (#19) |
+| Battery measurement / low-battery warning | ✅ firmware 2.13 |
 | Power saving / auto power-off | ❌ (#21) |
 | OTA firmware update | ❌ (not planned, flash over USB) |
 
@@ -77,7 +77,7 @@ flowchart LR
     SC["StartCycle<br/>timer 'cycle' starts"] --> SL["StartLoop<br/>RUNS += 1"] --> EP([EnterProgram])
     EP -.-> EL{"EndLoop<br/>RUNS >= MAX_LOOPS?"}
     EL -- no --> SL
-    EL -- yes --> SR["StartReset<br/>LEDs blue, timer 'cycle' stops"] --> SU["Summary<br/>metric 'reaction'"] --> RP{"Report<br/>communicate, ≤ 3 s"}
+    EL -- yes --> SR["StartReset<br/>LEDs blue, timer 'cycle' stops"] --> SU["Summary<br/>metric 'reaction', bar 3 s"] --> RP{"Report<br/>communicate, ≤ 3 s"}
     RP -- "press / timeout / continue / repeat" --> CL["ClearLED"] --> RV["ResetRuns<br/>RUNS = 0"] --> SC
     RP -- stop --> EN["End<br/>LEDs off"]
 ```
@@ -86,6 +86,14 @@ After `MAX_LOOPS` rounds the summary (count, average, best, worst reaction time)
 printed on the serial console and a report is sent to the app (firmware 2.11). The ring stays
 blue until a press, the app's answer or 3 s, then the next cycle starts. `repeat` from the app
 discards the report and plays the cycle again; `stop` ends the program.
+
+**The bar (firmware 2.13).** Before the blue wait, the central shows the cycle's average reaction
+time on its ring for 3 s: a bar whose length shows the average. The longer the bar, the faster
+you were: a full ring is 0 ms, half a ring the target time (`TARGET_MS`, 450 ms in the shipped
+games), and an empty ring twice the target. The colour shows the band: **green** faster than the
+target, **yellow** up to 1.5 times the target, **red** slower. Only the average is shown; the best
+and worst times are in the app. The shipped games measure `reaction`; a game without reaction
+times shows no bar. A program that does not show the bar runs as before.
 
 ### 3.2 SOLO (`solo.json`)
 

@@ -9,7 +9,7 @@
   USB-C ───►│ charger / step-up ──► ESP32-C3 module    │
             │                                          │
             │   GPIO 3  ◄── push button (active LOW)   │
-            │   GPIO 5  ◄── battery voltage (unused)   │
+            │   GPIO 5  ◄── battery voltage (÷2)       │
             │   GPIO 7  ──► 18 × WS2812 LED ring       │
             │   GPIO 0  ◄── ADC read once for seeding  │
             └──────────────────────────────────────────┘
@@ -32,7 +32,7 @@ PCB and casing sources are in `hardware/pcb` (KiCad) and `hardware/casing` (Free
 
 ```
 src/
-├── main.cpp                  setup(): boot animation, role selection; loop(): run role
+├── main.cpp                  setup(): battery gauge, role selection; loop(): battery, run role
 ├── _Definitions.h            firmware version, pins, ESP-NOW channel, phone BLE UUIDs
 ├── Roles/
 │   ├── RoleManager.*         creates CentralRole or PeripheralRole at boot
@@ -54,6 +54,7 @@ src/
 │   └── Console.*             USB serial port object (HWCDC) + ESP-IDF log redirection
 ├── Diagnostics/Diag.*        reset reason + last step across reboots (crash breadcrumbs)
 ├── Settings/Settings.*       values in flash (NVS): set id, store generation, boot role
+├── Battery/Battery.*         cell voltage on GPIO 5 (ADC2: needs `CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3` in sdkconfig; 32-sample average, smoothed over the updates), percent, low-battery thresholds
 ├── Store/
 │   ├── ProgramStore.*        program files: list, CRC, manifest, atomic commit, generation
 │   └── StoreSync.*           pod-to-pod sync of the program store over ESP-NOW
@@ -111,7 +112,7 @@ classDiagram
 ```mermaid
 flowchart TD
     A[Power on] --> B[setup: Serial, SPIFFS, pins]
-    B --> C[Boot animation 2 s<br/>blue dot runs around ring]
+    B --> C[Battery gauge 2 s<br/>ring filled to the charge, measured first]
     C --> D{Button held<br/>at end of animation?}
     D -- yes --> E[CentralRole<br/>BLE 'ReactPod xxxx' for the phone]
     D -- no --> F[PeripheralRole<br/>ESP-NOW, HELLO broadcasts]
@@ -144,6 +145,9 @@ stateDiagram-v2
   that count. Reaction time = press edge − `t0`, in µs.
 - Frames are processed when they arrive (no polling of values), in the order sent.
 - Holding the button 3 s while UNCLAIMED clears the stored set id (white flash).
+- Identity (firmware ≥ 2.13): UNCLAIMED shows yellow with a MAC-derived segment; READY shows the number for
+  1.5 s after a claim (`FLASH`), then spins it while the central sends `PONG_FLAG_IDENTIFY` (`SPIN`). An EFFECT
+  from the central (blink) takes the ring until it ends. Any ARM or RESET hands the ring back to the activation.
 
 ### 5.2 Central (`CentralRole`)
 
@@ -294,3 +298,9 @@ load time. Unknown variables read as 0. Variables set by the system:
   (`Block/EffectTarget`, `Block/Countdown`, programs.md §7.11, §7.12); `ledMask` is the block's `leds`.
 - Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included
   (default 255 = full brightness).
+- `setSegment(first, count, colorId, restId)` – static: `count` LEDs from `first` in one colour, the rest in another
+  (firmware ≥ 2.13, used for the identity and the MAC pattern of an unclaimed pod).
+- Pod identity (firmware ≥ 2.13): `LEDManager/Identity.h` holds the palette (colour indices 0…8, the identity
+  colours orange 7 and violet 8 are only used by pods), the numbers and the timings. The pattern itself is drawn by
+  `PeripheralRole::updateIdentity` (link-protocol.md §2.4). The central's own pattern is its `blink` op
+  (`CentralRole::opBlink`, white) and it sends the menu flag `PONG_FLAG_IDENTIFY` through `PodNetwork::setIdentify`.

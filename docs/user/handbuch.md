@@ -49,7 +49,18 @@ eigene, probierst sie am Bildschirm aus und speicherst Ergebnisse.
 - Er wird beim Laden warm und leuchtet. Du kannst ihn weiter benutzen.
 - Nie unbeaufsichtigt laden.
 
-Eine Ladung reicht für etwa eine Stunde Spielzeit. Eine Akkuanzeige ist geplant.
+Eine Ladung reicht für etwa eine Stunde Spielzeit. Der Akkustand steht in der App (Seite Pod, ab Firmware 2.13) und
+auf der Startanzeige (siehe unten). Am USB-Kabel misst der Pod die Ladespannung, deshalb zeigt er beim Laden fast voll.
+
+### Akkustand und Akku leer
+
+- **Einschalten:** 2 Sekunden lang füllt sich der Lichtring wie eine Anzeige: bis zum Ladestand des Akkus, in
+  **Grün** über 50 %, **Gelb-Orange** von 20 bis 50 %, **Rot** unter 20 %. Der Stand wird gemessen, bevor die
+  Lichter angehen. Die Oberseite in diesen 2 Sekunden gedrückt halten, um den Pod zum Central zu machen, wie bisher.
+- **Unter 15 %:** ein Pod, der in seinem Set wartet (nicht im Spiel), blinkt einmal pro Sekunde **gelb-orange**.
+  Bald laden.
+- **Unter 5 %:** das Spiel startet nicht. Wenn du am Central bestätigst, blitzt sein Ring eine Sekunde **rot**.
+  Zuerst den Pod (oder das Central) laden.
 
 ---
 
@@ -57,10 +68,11 @@ Eine Ladung reicht für etwa eine Stunde Spielzeit. Eine Akkuanzeige ist geplant
 
 Du brauchst: so viele Pods, wie das Spiel verlangt (siehe §6), ausgeschaltet.
 
-1. **Ziel-Pods einschalten.** Jeder zeigt etwa 2 Sekunden ein blaues Lauflicht und leuchtet dann
-   **gelb**: Er wartet auf einen Central.
+1. **Ziel-Pods einschalten.** Etwa 2 Sekunden füllt sich der Ring und zeigt den Akkustand
+   (grün, gelb-orange oder rot), dann leuchtet er **gelb**: Er wartet auf einen Central. Der gelbe Ring hat eine kurze farbige Markierung, bei jedem
+   Ziel anders, damit du sie unterscheiden kannst.
 2. **Central einschalten:** Einen weiteren Pod einschalten und **die Oberseite gedrückt halten,
-   solange das blaue Lauflicht läuft**. Loslassen, wenn es erlischt. Ein kleines Lichtmuster zeigt
+   solange der Akku-Ring angezeigt wird**. Loslassen, wenn es erlischt. Ein kleines Lichtmuster zeigt
    jetzt das erste Spiel des **Programm-Menüs**.
 3. **Spiel wählen:** Kurz drücken zeigt das nächste Spiel. Jedes Spiel hat sein eigenes
    Lichtmuster (siehe §6).
@@ -68,11 +80,13 @@ Du brauchst: so viele Pods, wie das Spiel verlangt (siehe §6), ausgeschaltet.
    2 Sekunden), loslassen.
 5. **Auf die Ziele warten:** Der Central zeigt blaue Lichtpaare, ein Paar pro benötigtem Ziel.
    Die gelben Ziele gehen nacheinander aus, sobald sie dabei sind. Sind alle da, leuchtet der
-   Central **grün**.
+   Central **grün**. Solange er wartet, zeigt jedes Ziel, das dabei ist, seine Nummer: so viele
+   Lichter wie seine Nummer, in seiner eigenen Farbe (Pod 1 ein Licht, Pod 2 zwei Lichter usw.).
+   Die Farben sind dieselben wie in der App.
 6. **Start:** Den Central einmal drücken. Los geht's!
 
 Ein anderes Spiel: den Central aus- und wieder einschalten (dabei wie in Schritt 2 die Oberseite
-während des blauen Lauflichts halten). Die Ziele können anbleiben; sie warten gelb und sind
+während des Akku-Rings halten). Die Ziele können anbleiben; sie warten gelb und sind
 gleich wieder dabei.
 
 ---
@@ -91,9 +105,16 @@ Die Spiele sagen dir alles mit Licht. Die wichtigsten Zeichen:
 | **Alles blau** für ein paar Sekunden | Eine Serie von Runden (ein *Durchgang*) ist vorbei; der nächste startet von selbst. |
 | **Alles gelb** am Central | Ein Ziel ist weg (ausgeschaltet, außer Reichweite, Akku leer). Das Spiel wartet und läuft von selbst weiter, sobald es zurück ist. |
 
-Wie viele Runden ein Durchgang hat, hängt vom Spiel ab (oft 12). Nach jedem Durchgang berechnen
-die Pods deine beste, mittlere und schlechteste Reaktionszeit. Die Pods zeigen diese Zahlen nicht
-selbst an; das macht die App (siehe §8.6).
+Wie viele Runden ein Durchgang hat, hängt vom Spiel ab (oft 12). Nach jedem Durchgang berechnet
+der Central deine beste, mittlere und schlechteste Reaktionszeit. Der Ring zeigt die **mittlere**
+Zeit 3 Sekunden lang als Balken, bevor er wieder blau wird und auf den nächsten Start wartet
+(Firmware 2.13 oder neuer):
+
+- Je **länger** der Balken, desto **schneller** war der Durchschnitt.
+- **Grün**: schneller als die Zielzeit. **Gelb**: bis zum 1,5-fachen der Zielzeit. **Rot**: langsamer.
+- Die Zielzeit legt das Spiel fest (die mitgelieferten Spiele nehmen 450 ms).
+
+Die beste und die schlechteste Zeit stehen nur in der App (siehe §8.6).
 
 ---
 
@@ -108,6 +129,8 @@ selbst an; das macht die App (siehe §8.6).
   nächsten Central an.
 - In der App kannst du einem Set einen **Namen** geben (z. B. „Halle A“). Diesen Namen siehst du beim
   Verbinden per Bluetooth.
+- **Einen Pod finden:** In der App, im Reiter Pod unter *Pods dieses Sets*, neben dem Pod *Blinken*
+  drücken: Er blinkt zwei Sekunden lang. Das geht vor dem Spielstart.
 
 Bleibt ein Ziel gelb und macht nie mit, gehört es wahrscheinlich zu einem anderen Set. Dann wie
 oben beschrieben zurücksetzen.
@@ -267,11 +290,13 @@ unter Einstellungen.
 | Der Central zeigt ein Spielmuster, aber kein Ziel macht mit | Ziele müssen an und gelb sein. Ein Ziel aus einem anderen Set bleibt gelb: zurücksetzen (gelb, 3 s halten, weißer Blitz). |
 | Der Central bleibt bei blauen Paaren | Zu wenig Ziele für dieses Spiel: mehr Pods einschalten oder ein Spiel für weniger Pods wählen. |
 | Alles gelb am Central während des Spiels | Ein Ziel ist weg (Akku, Reichweite, ausgeschaltet). Zurückholen; das Spiel läuft von selbst weiter. |
+| Der Central blitzt rot beim Bestätigen | Ein Akku ist unter 5 %. Pods (und Central) laden und dann neu starten. |
 | Der Central blinkt rot | Er hat keine Spiele oder ein Spiel ist kaputt. Mit der App verbinden und *Standard wiederherstellen*. |
 | Die App findet den Pod per Bluetooth nicht | Der Central muss im Programm-Menü sein (mit gehaltener Oberseite einschalten). Chrome oder Edge verwenden. Am Computer hilft oft Bluetooth aus- und wieder einschalten. |
 | „Der Pod ist beschäftigt“ in der App | Ein Spiel läuft. Central aus- und ins Menü wieder einschalten. |
 | Die App fragt nach einer PIN | Das Set ist geschützt. Den Besitzer fragen oder die PIN über USB löschen. |
-| Ich will ein anderes Spiel | Central aus- und wieder einschalten (Oberseite während des blauen Lauflichts halten) und neu wählen. |
+| Ich will ein anderes Spiel | Central aus- und wieder einschalten (Oberseite während des Akku-Rings halten) und neu wählen. |
+| Welcher Pod ist welcher? | In der App (Reiter Pod, *Pods dieses Sets*) neben einem Pod *Blinken* drücken: er blinkt zwei Sekunden lang. |
 
 ---
 
@@ -279,9 +304,13 @@ unter Einstellungen.
 
 | Pod | Licht | Bedeutung |
 |---|---|---|
-| jeder | blaues Lauflicht (2 s) | startet. Jetzt die Oberseite halten, um ihn zum Central zu machen |
-| Ziel | gelb | wartet auf den Central seines Sets |
+| jeder | Ring füllt sich 2 s: grün, gelb-orange oder rot | Akkustand (beim Einschalten). Oberseite halten, um ihn zum Central zu machen |
+| Ziel | gelb mit einer kurzen farbigen Markierung | wartet auf den Central seines Sets. Die Markierung ist bei jedem Ziel anders |
+| Ziel | so viele Lichter wie seine Nummer, in seiner Farbe, läuft langsam um | eingestiegen: seine Nummer (während der Central auf die Ziele wartet) |
+| Ziel | blinkt 2 s | per *Blinken* in der App gefunden |
+| Ziel | langsames gelb-oranges Blinken, einmal pro Sekunde | Akku unter 15 %, wartet im Set (nicht im Spiel) |
 | Ziel | weißer Blitz | Set vergessen (gelb, 3 s gehalten) |
+| Central | blinkt 2 s weiß | der Central selbst, per *Blinken* in der App gefunden |
 | Ziel | dunkel | bereit |
 | Ziel | grün / rot | drücken / nicht drücken |
 | Central | kleines Muster | Programm-Menü: kurz = nächstes Spiel, halten = auswählen |
@@ -289,7 +318,9 @@ unter Einstellungen.
 | Central | blaue Paare | wartet auf die Ziele |
 | Central | alles grün | bereit: drücken zum Start |
 | Central | alles gelb | Pause, ein Ziel fehlt |
+| Central | Balken auf dem Ring, 3 s nach einem Durchgang, grün / gelb / rot | mittlere Reaktionszeit: langer Balken = schneller. Grün: besser als das Ziel, gelb: bis 1,5-fach, rot: langsamer |
 | Central | rot, langsam blinkend | Fehler: keine Spiele oder ein kaputtes Spiel |
+| Central | rot, 1 s aufblitzen beim Bestätigen | das Spiel startet nicht: ein Akku ist unter 5 % |
 
 ---
 
