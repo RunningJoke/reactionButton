@@ -14,17 +14,11 @@
 #include "Diagnostics/Diag.h"
 #include "Results/Reports.h"
 #include "Block/CommunicateBlock/CommunicateBlock.h"
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-#include "TestHw/BleEspNowTest.h"
-#endif
 
 CentralRole::CentralRole() {
     // the button was held to select CENTRAL at boot; that hold must not count as a menu press
     this->waitForBootRelease = Button::get().isDown();
 
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    BleEspNowTest::get().begin(&this->phone);
-#endif
     this->phone.start();
 
     this->reloadMenu();
@@ -84,13 +78,6 @@ void CentralRole::run() {
     if(this->state != State::MENU && this->state != State::ERROR) {
         this->network.service();
     }
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    // test build: the phone stays connected during the game (no-op once PhoneConfig::stop ran)
-    BleEspNowTest::get().service();
-    if(this->state != State::MENU) {
-        this->phone.service();
-    }
-#endif
 
     switch(this->state) {
         case State::MENU:
@@ -175,13 +162,7 @@ bool CentralRole::startProgram() {
 
     // the phone is only needed in the menu; free the radio for the pod link
     Diag::step("select: BLE stop");
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    if(!BleEspNowTest::get().enterGame()) {   // test build: BLE stays on unless keepBle is off
-        this->phone.stop();
-    }
-#else
     this->phone.stop();
-#endif
 
     if(this->requiredPeripherals == 0) {
         return true;    // central only, no radio needed
@@ -345,9 +326,6 @@ void CentralRole::describe(JsonObject status) {
         JsonObject timers = status["timers"].to<JsonObject>();
         timers["orphanStops"] = BlockManager::getManager()->timerOrphanStops();
     }
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    BleEspNowTest::get().describe(status, true);
-#endif
     if(this->state != State::MENU) {
         VariableManager* vars = VariableManager::getManager();
         JsonObject v = status["variables"].to<JsonObject>();
@@ -385,10 +363,6 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         Settings::setBootRole(1);
         this->rebootAtUs = esp_timer_get_time() + 300000;
         response["ok"] = true;
-#ifdef REACTPOD_BLE_ESPNOW_TEST
-    } else if(strcmp(op, "bleTest") == 0) {
-        BleEspNowTest::get().control(request, response, true);
-#endif
     } else {
         return false;
     }

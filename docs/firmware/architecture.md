@@ -21,7 +21,7 @@ PCB and casing sources are in `hardware/pcb` (KiCad) and `hardware/casing` (Free
 
 | File | Purpose |
 |---|---|
-| `platformio.ini` | Env `NewBoard`: ESP32-C3, Arduino + ESP-IDF, USB-CDC console. Env `BleEspNowTest`: hardware test #38 only (`src/TestHw/`, [testing.md](testing.md) §8), never released |
+| `platformio.ini` | Single env `NewBoard`: ESP32-C3, Arduino + ESP-IDF, USB-CDC console |
 | `sdkconfig.NewBoard` | ESP-IDF config. Relevant: WiFi + SW coexistence on, Bluedroid (phone config only), `FREERTOS_HZ=1000`, task WDT **off**, C++ exceptions **off**, flash size 4 MB, compiler optimisation `-Os`, Arduino log level INFO, assertions kept |
 | `partitions.csv` | nvs 20 KB, otadata, **one** app slot (`ota_0`, 2 MB), SPIFFS 1.9 MB, coredump 64 KB |
 | `CMakeLists.txt`, `src/CMakeLists.txt` | ESP-IDF build glue (globs all of `src/`) |

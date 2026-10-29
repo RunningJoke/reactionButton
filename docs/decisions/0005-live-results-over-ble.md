@@ -35,7 +35,7 @@ Known before the test:
 
 **A**, with a 100 ms connection interval and peripheral latency 0, on the condition that #39
 also schedules the central's own ring at the start time (see *Findings*). The criteria of
-the hardware test #38 (testing.md §8.8):
+the hardware test #38:
 
 | Criterion | Pass |
 |---|---|
@@ -51,8 +51,8 @@ timeout. It does not wait for the app.
 
 ## Measurements
 
-From `tools/ble_espnow_test.py` (summary JSON and CSV of each run; the `results/` folder is
-attached to #38). 3 pods (central + 2 peripherals on USB), test firmware `BleEspNowTest` at
+From `tools/ble_espnow_test.py` (summary JSON and CSV of each run, kept locally; the script
+and the test build were removed after the decision, see git history c33a87f / 461f7e4). 3 pods (central + 2 peripherals on USB), test firmware `BleEspNowTest` at
 1655761 (68.9 % flash), PC with a Realtek Bluetooth 5.0 adapter as the phone, interval 100 ms,
 2026-10-29. Distances and WiFi networks were not recorded. No logic analyser: the start spread
 is the script's estimate.
@@ -120,5 +120,6 @@ results, 100 ms gives the radio to ESP-NOW more often, and the round trip stays 
 - **Fallback (B + C):** #37 is changed from "live" to "per cycle". The app shows reports after
   each cycle / session. The reboot on `stop` must go (the app has to reconnect anyway). The
   training view and athlete assignment stay; remote control during a running cycle is dropped.
-- Either way, the test build (`BleEspNowTest`, `src/TestHw/`) is removed or folded into #39 once
-  the decision is accepted. It is never released.
+- The test build (`BleEspNowTest`, `src/TestHw/`) and `tools/ble_espnow_test.py` were removed
+  after the decision was accepted (never released). #39 takes the code it needs from the git
+  history (c33a87f, 461f7e4); only the modem-sleep fix in `EspNowLink` stays in the firmware.
