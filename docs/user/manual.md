@@ -282,6 +282,13 @@ while it is open. Reports that came in meanwhile are fetched and stored, so they
 Uploading results to an online athlete profile (club platform) is a preview feature under
 Settings.
 
+**Deleting an athlete** removes the athlete and all their training sessions and results on this
+phone. A linked profile is deleted on the club platform too, with all its results and invitations,
+as soon as the phone is online and signed in, even if automatic upload is off. Reports that are
+still on a pod for this athlete are discarded when the pod sends them, so they never reach the
+platform. If you delete your own profile on the platform, your results there are deleted too, and
+you can no longer see them.
+
 ---
 
 ## 9. Troubleshooting

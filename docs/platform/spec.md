@@ -218,6 +218,14 @@ uploads them ([#48](https://github.com/RunningJoke/reactionButton/issues/48)).
   deletes their results (P24). The app passes its deletions on: a linked athlete or an uploaded
   session deleted on the phone is deleted on the platform too, queued like the uploads when the
   phone is offline or signed out (`DELETE .../athletes/{id}`, `DELETE .../training/sessions/{id}`).
+  The queue runs on sign-in and at app start, whether or not auto upload is on (P26).
+- **Self-delete** (P24): the user who claimed an athlete profile deletes it (`DELETE
+  /v1/orgs/{orgId}/me/athletes/{athleteId}`; anyone else gets 404). Everything that names the
+  athlete goes with it: training sessions with their reports and values, invitations and links to
+  the profile. Coaches' `DELETE .../athletes/{athleteId}` removes the same set. The team ids sit on
+  the profile itself, so nothing else is left. The user's club membership stays.
+- Reports that a pod still holds for a deleted athlete are dismissed on the phone (they are not
+  uploaded, and the platform never sees them).
 - Idempotency: the body ids (P22) are the only dedupe key; there is no `Idempotency-Key` header.
 - **Firmware dependency**: without the `reports` feature (#41) there are no live results; the
   API needs no change for it, it only receives fewer reports.
@@ -495,7 +503,7 @@ connector), so there is only one AI integration to build and secure.
 | Data minimisation | email, display name; athletes: name or nickname, optional birth year. No addresses, no health data beyond reaction times |
 | Minors | managed by the club; the coach who adds a profile confirms the consent (of the parents for minors), recorded with date and user (P23). Not visible outside the club, pseudonymised for agents |
 | Athlete data | the club owns managed profiles and their results; a claimed profile is still the club's, the athlete can see and export it. Deleting a profile deletes its results (P24) |
-| Export / delete | self-service (§3.1), the export includes the results of claimed profiles; coaches can delete their athletes with all results |
+| Export / delete | self-service (§3.1), the export includes the results of claimed profiles; coaches can delete their athletes with all results; an athlete can delete their own claimed profile with all its results and links (P24) |
 | Retention | results kept until deleted; inactive accounts reminded after 24 months, then deleted |
 | Tokens | opaque, stored as SHA-256, revocable, 30-day sessions; sign-in links and codes single use, 15 min |
 | Transport | HTTPS only, HSTS, CORS restricted (§6) |
@@ -598,8 +606,9 @@ spec/
 | P21 | Results | the upload unit is the firmware's report (#41), grouped into training sessions; statistics come from the single values |
 | P22 | Idempotency | sessions and reports carry a UUID made by the app, unique per club; a repeated upload stores nothing twice (the pod's report id restarts after a reboot). Re-uploading may only change `discarded` |
 | P23 | Consent | adding an athlete requires `consent: true`; the platform records when and by whom |
-| P24 | Deletion | deleting an athlete or a club deletes its sessions, reports and values |
+| P24 | Deletion | deleting an athlete or a club deletes its sessions, reports, values, invitations and links; the claiming user may delete their own profile (`/me/athletes/{id}`, 404 for everyone else) |
 | P25 | Scopes | `results:read` / `results:write` for training sessions, reports and statistics; AI clients may read (pseudonymised) but not upload or delete |
+| P26 | Deletion queue | queued platform deletions run on sign-in and at app start, independent of the auto-upload setting; uploads still follow it |
 
 ---
 

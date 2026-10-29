@@ -292,6 +292,14 @@ nachgeholt und gespeichert.
 Ergebnisse in ein Online-Sportlerprofil (Vereinsplattform) hochzuladen ist eine Vorschau-Funktion
 unter Einstellungen.
 
+**Eine Person löschen** entfernt die Person und alle ihre Trainingseinheiten und Ergebnisse auf
+diesem Handy. Ein verknüpftes Profil wird auch auf der Vereinsplattform gelöscht, mit allen
+Ergebnissen und Einladungen, sobald das Handy online und angemeldet ist, auch wenn das automatische
+Hochladen aus ist. Berichte, die noch auf einem Pod für diese Person liegen, werden verworfen, wenn
+der Pod sie schickt; sie erreichen die Plattform also nie. Wenn du dein eigenes Profil auf der
+Plattform löschst, werden auch deine dortigen Ergebnisse gelöscht, und du siehst sie danach nicht
+mehr.
+
 ---
 
 ## 9. Hilfe bei Problemen
