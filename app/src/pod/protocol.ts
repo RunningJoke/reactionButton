@@ -138,6 +138,10 @@ export type StatusResponse = ResponseBase & {
   heap?: { free: number; minFree: number };
   /** central, firmware ≥ 2.12: BLE connection; intervalMs 0 = not known yet */
   ble?: { connected: boolean; intervalMs: number };
+  /** central, firmware ≥ 2.11: who trains now ("" = none) */
+  athlete?: string;
+  /** central, firmware ≥ 2.11: while a `communicate` block waits (config-api.md §5) */
+  waiting?: { block: string; editable: Record<string, { min: number; max: number; value: number }> };
 };
 
 /**

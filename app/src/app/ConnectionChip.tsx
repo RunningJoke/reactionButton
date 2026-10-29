@@ -11,10 +11,11 @@ export function ConnectionChip() {
   const state = usePodSession((s) => s.state);
   const transport = usePodSession((s) => s.kind);
   const show = useConnectDialog((s) => s.show);
-  const Icon = state === "connecting" ? Loader : state === "disconnected" || !transport ? Unplug : TRANSPORT_ICONS[transport];
+  const busy = state === "connecting" || state === "reconnecting";
+  const Icon = busy ? Loader : state === "disconnected" || !transport ? Unplug : TRANSPORT_ICONS[transport];
   return (
     <button className={styles.chip} data-state={state} onClick={show} aria-haspopup="dialog">
-      <Icon size={16} aria-hidden className={state === "connecting" ? styles.spin : undefined} />
+      <Icon size={16} aria-hidden className={busy ? styles.spin : undefined} />
       <span aria-live="polite">{t(`connection.${state}`)}</span>
     </button>
   );

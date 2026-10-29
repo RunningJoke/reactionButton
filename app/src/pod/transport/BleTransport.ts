@@ -29,6 +29,8 @@ export function isWebBluetoothAvailable(): boolean {
 export class BleTransport implements Transport {
   readonly kind = "ble" as const;
   private deviceId: string | null = null;
+  /** the device of the last `connect`, kept over a link loss for `reconnect` */
+  private knownId: string | null = null;
   private deviceName: string | undefined;
   private writeBytes = DEFAULT_WRITE_BYTES;
   private readonly decoder = new LineDecoder();
@@ -57,29 +59,50 @@ export class BleTransport implements Transport {
   async connect() {
     await BleClient.initialize({ androidNeverForLocation: true });
     const device = await BleClient.requestDevice({ services: [SERVICE_UUID] });
+    this.knownId = device.deviceId;
+    this.deviceName = device.name;
+    await this.open(device.deviceId);
+  }
+
+  /**
+   * Connects again to the device of the last `connect`, without the chooser (#46): the session
+   * calls it after a link loss while the page lives. Throws if the link is not up again.
+   */
+  async reconnect() {
+    if (this.connected) return;
+    if (!this.knownId) throw new PodError("disconnected", "no device to reconnect to");
+    await this.open(this.knownId);
+  }
+
+  private async open(id: string) {
     this.decoder.reset();
     this.writeBytes = DEFAULT_WRITE_BYTES;
-    await BleClient.connect(device.deviceId, () => this.lost());
-    this.deviceId = device.deviceId;
-    this.deviceName = device.name;
+    await BleClient.connect(id, () => this.lost());
+    this.deviceId = id;
     try {
       // native only; the web keeps the default until the pod reports its MTU
-      this.setMtu(await BleClient.getMtu(device.deviceId));
+      this.setMtu(await BleClient.getMtu(id));
     } catch {
       // not available on the web
     }
     try {
-      await BleClient.startNotifications(device.deviceId, SERVICE_UUID, RESPONSE_UUID, (value) => {
+      await BleClient.startNotifications(id, SERVICE_UUID, RESPONSE_UUID, (value) => {
         const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
         for (const line of this.decoder.push(bytes)) this.lines.emit(line);
       });
     } catch (e) {
-      await this.disconnect();
+      await this.close();
       throw e;
     }
   }
 
+  /** Ends the connection on purpose: the device is forgotten, so there is no reconnect. */
   async disconnect() {
+    this.knownId = null;
+    await this.close();
+  }
+
+  private async close() {
     const id = this.deviceId;
     if (!id) return;
     try {

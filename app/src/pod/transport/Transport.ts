@@ -12,6 +12,11 @@ export interface Transport {
   /** Opens the connection; BLE / serial show the platform device chooser. */
   connect(): Promise<void>;
   disconnect(): Promise<void>;
+  /**
+   * Connects again after a link loss, without the device chooser (#46). Only transports that can
+   * do it have this method; the session retries while the page lives.
+   */
+  reconnect?(): Promise<void>;
   /** Sends one message. `line` has no "\n"; the transport adds it and chunks as needed. */
   send(line: string): Promise<void>;
   /** Complete received lines (responses, events and, on serial, firmware log lines). */

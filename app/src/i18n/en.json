@@ -15,7 +15,8 @@
   "connection": {
     "disconnected": "Not connected",
     "connecting": "Connecting…",
-    "connected": "Connected"
+    "connected": "Connected",
+    "reconnecting": "Reconnecting…"
   },
   "pod": {
     "intro": "Connect to a central in the program menu.",
@@ -69,7 +70,8 @@
     "missingFile": "missing",
     "dialog": {
       "title": "Pod connection",
-      "close": "Close"
+      "close": "Close",
+      "addSet": "Add another set"
     },
     "notConnected": "No pod connected",
     "connectButton": "Connect",
@@ -1377,7 +1379,45 @@
       "busy": "The athlete can only change in the program menu or while the pod waits for the app.",
       "not_ready": "The pod is not waiting for the app right now.",
       "timeout": "The pod did not answer.",
-      "disconnected": "The connection was lost."
+      "disconnected": "The connection was lost.",
+      "not_running": "The game is not running, so it cannot be paused.",
+      "not_paused": "The game is not paused by the app.",
+      "out_of_range": "That value is outside the allowed range."
+    },
+    "view": {
+      "link": "Training view",
+      "title": "Training view",
+      "intro": "One card per connected set. Keep the app open: the screen stays on while this view is open, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
+      "addSet": "Add a set",
+      "connect": "Connect a set",
+      "empty": "No set is connected. Connect a set to follow its training here.",
+      "connecting": "Connecting…",
+      "active": "Active",
+      "usePod": "Show in Pod tab",
+      "waiting": "Waiting for you",
+      "waitingFor": "The program waits at “{{block}}”: continue, repeat or stop, or change the values for the next round.",
+      "oldFirmware": "This pod's firmware cannot send results yet (it needs reports, firmware 2.11 or newer). You can still choose who trains.",
+      "noLiveBle": "Before firmware 2.12 the Bluetooth link goes off during a game. The app reconnects when the set is back.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "pausedSent": "The game is paused.",
+      "resumedSent": "The game goes on.",
+      "variablesSent": "Values sent.",
+      "setVariable": "Set",
+      "range": "{{min}} to {{max}}",
+      "invalid": "Enter a whole number from {{min}} to {{max}}.",
+      "state": {
+        "MENU": "Menu",
+        "DISCOVERY": "Discovery",
+        "CONFIRM": "Confirm",
+        "RUN": "Running",
+        "PAUSED": "Paused",
+        "ERROR": "Error",
+        "unknown": "Unknown",
+        "connecting": "Connecting…",
+        "reconnecting": "Reconnecting…",
+        "disconnected": "Not connected"
+      }
     }
   },
   "platform": {
