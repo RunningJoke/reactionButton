@@ -10,6 +10,7 @@ import { recordAudit } from "../audit/record";
 import { auditLog } from "../audit/schema";
 import { athletes, memberships, organizations } from "../orgs/schema";
 import { createPersonalOrg } from "../orgs/service";
+import { pseudonym } from "../orgs/useCases";
 import { resultsOfAthletes } from "../training/useCases";
 import { appLink, loginMail } from "./mails";
 import { accessTokens, loginRequests, users } from "./schema";
@@ -154,21 +155,55 @@ export const logout = defineUseCase({
   },
 });
 
+const LinkedAthlete = z.object({
+  athleteId: Id,
+  orgId: Id,
+  orgName: z.string(),
+  name: z.string().describe("pseudonym for AI clients unless the club allows real names"),
+  birthYear: z.number().int().nullable(),
+});
+
+const Me = User.extend({
+  athleteProfiles: z
+    .array(LinkedAthlete)
+    .describe("athlete profiles you claimed, in the clubs you are still a member of (their athleteId names your results)"),
+});
+
 export const getMe = defineUseCase({
   name: "get_me",
   title: "Current user",
-  description: "The signed-in user's profile.",
+  description: "The signed-in user's profile, with the athlete profiles this user claimed.",
   http: { method: "get", path: "/v1/me" },
   tag: "me",
   scope: "profile",
   agent: "allow",
   readOnly: true,
   input: z.object({}),
-  output: User,
+  output: Me,
   run: async (ctx) => {
-    const [user] = await ctx.ports.db.select().from(users).where(eq(users.id, userId(ctx)));
+    const uid = userId(ctx);
+    const db = ctx.ports.db;
+    const [user] = await db.select().from(users).where(eq(users.id, uid));
     if (!user) throw notFound();
-    return toUser(user);
+    const rows = await db
+      .select({
+        athleteId: athletes.id,
+        orgId: athletes.orgId,
+        orgName: organizations.name,
+        name: athletes.name,
+        birthYear: athletes.birthYear,
+        realNames: organizations.agentRealNames,
+      })
+      .from(athletes)
+      .innerJoin(organizations, eq(organizations.id, athletes.orgId))
+      .innerJoin(memberships, and(eq(memberships.orgId, athletes.orgId), eq(memberships.userId, uid)))
+      .where(eq(athletes.userId, uid))
+      .orderBy(athletes.name);
+    const athleteProfiles = rows.map(({ realNames, ...r }) => {
+      const hide = ctx.via === "mcp" && !realNames;
+      return { ...r, name: hide ? pseudonym(r.athleteId) : r.name, birthYear: hide ? null : r.birthYear };
+    });
+    return { ...toUser(user), athleteProfiles };
   },
 });
 
