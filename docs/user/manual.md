@@ -159,8 +159,8 @@ Tap the connection chip at the top, then choose:
 | **USB cable** | Computer with Chrome or Edge, any pod. |
 | **Demo pod** | No pods at hand: a pod simulated in the app. |
 
-Only the **central in the program menu** can be changed. With current firmware, Bluetooth switches off as soon as a game is
-selected, so connect before you select a game. A firmware in development keeps the connection
+Only the **central in the program menu** can be changed. Up to firmware 2.11, Bluetooth switches off as soon as a game is
+selected, so connect before you select a game. Firmware 2.12 and newer keep the connection
 during the game (see §8.6).
 
 If the pod is protected with a **PIN**, the app asks for it before you change anything.
@@ -225,10 +225,10 @@ In **Results** you create athletes (with consent; for children, the parents' con
 their training sessions, best and average times and every single value. A session can be
 exported as a spreadsheet (CSV).
 
-Live results need two things that are being finished right now:
+Live results need firmware 2.12 or newer on the central:
 
-- a pod firmware that keeps Bluetooth on during the game, and
-- games that send a report after each cycle.
+- it keeps Bluetooth on during the game, and
+- the shipped games send a report after each cycle.
 
 With them, the **Pod** page gets a *Training* section during a game: who trains now, the last
 report, and the buttons **Continue**, **Repeat** (do the cycle again, the result is not counted)

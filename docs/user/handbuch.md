@@ -163,9 +163,9 @@ Oben auf den Verbindungs-Chip tippen, dann wählen:
 | **USB-Kabel** | Computer mit Chrome oder Edge, jeder Pod. |
 | **Demo-Pod** | Keine Pods zur Hand: ein in der App simulierter Pod. |
 
-Ändern lässt sich nur der **Central im Programm-Menü**. Mit der aktuellen Firmware schaltet sich
-Bluetooth aus, sobald ein Spiel gewählt ist; verbinde dich also vorher. Eine Firmware in Arbeit
-hält die Verbindung auch während des Spiels (siehe §8.6).
+Ändern lässt sich nur der **Central im Programm-Menü**. Bis Firmware 2.11 schaltet sich
+Bluetooth aus, sobald ein Spiel gewählt ist; verbinde dich also vorher. Ab Firmware 2.12 bleibt
+die Verbindung auch während des Spiels bestehen (siehe §8.6).
 
 Ist der Pod mit einer **PIN** geschützt, fragt die App danach, bevor du etwas änderst.
 
@@ -231,10 +231,10 @@ Unter **Ergebnisse** legst du Sportler an (mit Einverständnis; bei Kindern dem 
 siehst ihre Trainingseinheiten, Bestzeit, Mittelwert und jeden einzelnen Wert. Eine Einheit lässt
 sich als Tabelle (CSV) exportieren.
 
-Live-Ergebnisse brauchen zwei Dinge, die gerade fertig werden:
+Live-Ergebnisse brauchen Firmware 2.12 oder neuer auf dem Central:
 
-- eine Pod-Firmware, die Bluetooth während des Spiels anlässt, und
-- Spiele, die nach jedem Durchgang einen Bericht senden.
+- sie lässt Bluetooth während des Spiels an, und
+- die mitgelieferten Spiele senden nach jedem Durchgang einen Bericht.
 
 Damit bekommt die Seite **Pod** während des Spiels einen Bereich *Training*: wer gerade trainiert,
 der letzte Bericht und die Knöpfe **Weiter**, **Wiederholen** (Durchgang noch einmal, das Ergebnis
