@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pseudonym } from "../src/modules/orgs/useCases";
+import { invites } from "../src/modules/orgs/schema";
 import { trainingReports, trainingSessions, trainingValues } from "../src/modules/training/schema";
 import { testEnv, type TestEnv } from "./helpers";
 
@@ -245,5 +246,56 @@ describe("corrections and deletion", () => {
   it("adding an athlete requires and records consent", async () => {
     expect((await env.call("POST", `/v1/orgs/${club.id}/athletes`, { name: "Noa" }, owner)).status).toBe(400);
     expect(mia).toMatchObject({ consentAt: "2026-10-19T12:00:00.000Z" });
+  });
+});
+
+describe("athlete profile deletion", () => {
+  const count = async (table: typeof trainingSessions | typeof trainingReports | typeof trainingValues | typeof invites) =>
+    (await env.db.db.select({ n: sql<number>`count(*)::int` }).from(table))[0]!.n;
+
+  it("an athlete deletes their own claimed profile: results, invitations and listings go with it", async () => {
+    const pending = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Noa" }, owner)).body;
+    await env.call("POST", `/v1/orgs/${club.id}/invites`, { role: "athlete", athleteId: pending.id }, owner);
+    const athlete = await joinClub("mia@example.org", { role: "athlete", athleteId: mia.id });
+    await upload([session(mia.id, [report([300, 310])]), session(cem.id, [report([400])])]);
+    expect(await count(invites)).toBe(2);
+
+    expect((await env.call("DELETE", `/v1/orgs/${club.id}/me/athletes/${mia.id}`, undefined, athlete)).status).toBe(200);
+
+    expect([await count(trainingSessions), await count(trainingReports), await count(trainingValues)]).toEqual([1, 1, 1]);
+    expect(await count(invites)).toBe(1);
+    expect((await env.call("GET", "/v1/me", undefined, athlete)).body.athleteProfiles).toEqual([]);
+    expect((await env.call("GET", "/v1/me/export", undefined, athlete)).body.results).toEqual([]);
+    const names = (await env.call("GET", `/v1/orgs/${club.id}/athletes`, undefined, owner)).body.athletes.map((a: { name: string }) => a.name);
+    expect(names).toEqual(["Cem", "Noa"]);
+    const sessions = (await env.call("GET", `/v1/orgs/${club.id}/training/sessions`, undefined, owner)).body.sessions;
+    expect(sessions.map((s: { athlete: { id: string } }) => s.athlete.id)).toEqual([cem.id]);
+    const actions = (await env.call("GET", `/v1/orgs/${club.id}/audit`, undefined, owner)).body.entries.map((e: { action: string }) => e.action);
+    expect(actions).toContain("athlete.self_deleted");
+  });
+
+  it("only the claiming user may delete a claimed profile: others get 404, also a coach of the club", async () => {
+    const athlete = await joinClub("mia@example.org", { role: "athlete", athleteId: mia.id });
+    const coach = await joinClub("coach@example.org", { role: "coach", teamIds: [u12.id] });
+    await upload([session(mia.id, [report([300])])]);
+    const path = `/v1/orgs/${club.id}/me/athletes/${mia.id}`;
+
+    expect((await env.call("DELETE", path, undefined, owner)).status).toBe(404);
+    expect((await env.call("DELETE", path, undefined, coach)).status).toBe(404);
+    const stranger = await env.signIn("stranger@example.org");
+    expect((await env.call("DELETE", path, undefined, stranger)).status).toBe(404);
+    const otherClub = (await env.call("POST", "/v1/orgs", { name: "Anderer Verein" }, stranger)).body;
+    expect((await env.call("DELETE", `/v1/orgs/${otherClub.id}/me/athletes/${mia.id}`, undefined, stranger)).status).toBe(404);
+    expect(await count(trainingSessions)).toBe(1);
+    expect((await env.call("GET", "/v1/me", undefined, athlete)).body.athleteProfiles).toHaveLength(1);
+    expect((await env.call("DELETE", `/v1/orgs/${club.id}/athletes/${mia.id}`, undefined, coach)).status).toBe(200);
+  });
+
+  it("a coach's deletion also removes the invitations of the athlete", async () => {
+    const pending = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Noa" }, owner)).body;
+    await env.call("POST", `/v1/orgs/${club.id}/invites`, { role: "athlete", athleteId: pending.id }, owner);
+    expect(await count(invites)).toBe(1);
+    expect((await env.call("DELETE", `/v1/orgs/${club.id}/athletes/${pending.id}`, undefined, owner)).status).toBe(200);
+    expect(await count(invites)).toBe(0);
   });
 });
