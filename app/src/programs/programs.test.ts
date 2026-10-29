@@ -26,8 +26,8 @@ describe("graph", () => {
 
   it("marks the start block and blocks from includes", () => {
     const graph = graphOf("/prog/duo.json");
-    expect(graph.start).toBe("StartLoop");
-    expect(graph.nodes.find((n) => n.id === "StartLoop")).toMatchObject({ start: true, own: false, file: "/prog/lib/loop.json" });
+    expect(graph.start).toBe("StartCycle");
+    expect(graph.nodes.find((n) => n.id === "StartCycle")).toMatchObject({ start: true, own: false, file: "/prog/lib/loop.json" });
     expect(graph.nodes.find((n) => n.id === "CentralPress")).toMatchObject({ own: true, ports: ["pressed", "timeout"] });
     expect(graph.includedFiles).toEqual(["/prog/lib/loop.json"]);
   });
@@ -110,7 +110,7 @@ describe("catalog", () => {
     const catalog = buildCatalog(Object.keys(DEFAULT_FILES), read);
     expect(catalog.programs.map((p) => p.name)).toEqual(["Solo", "Weiche", "Dreieck", "Quadrat", "Stern", "Dreizack", "Run", "Run5", "Duo", "Effects", "Charge", "Release", "Domination"]);
     expect(catalog.library.map((p) => p.name)).toEqual(["loop", "multi", "random", "star"]);
-    expect(catalog.programs.find((p) => p.name === "Duo")).toMatchObject({ peripherals: 1, blocks: 15, inMenu: true, kind: "program" });
+    expect(catalog.programs.find((p) => p.name === "Duo")).toMatchObject({ peripherals: 1, blocks: 17, inMenu: true, kind: "program" });
     expect(catalog.programs.every((p) => p.issues.every((i) => i.severity !== "error"))).toBe(true);
   });
 

@@ -1,17 +1,20 @@
 {
-  "description": "Round counter shared by most programs. Programs start at StartLoop, put their round logic at EnterProgram and finish each round at EndLoop. After MAX_LOOPS rounds a summary of the 'reaction' metric is printed, the ring shows blue for 3 s and the next cycle starts.",
+  "description": "Cycle shared by most programs (programFormat 5, firmware 2.11). Programs start at StartCycle, put their round logic at EnterProgram and finish each round at EndLoop. The 'cycle' timer runs from StartCycle to StartReset (the end of the last round). After MAX_LOOPS rounds the ring shows blue and a summary of the 'reaction' metric is printed. Then the central reports the cycle (communicate, all metrics, RUNS and MAX_LOOPS) and waits up to 3 s: a press or the app's continue starts the next cycle, the app's repeat starts it again, the app's stop ends the program. Without a phone the game goes on by itself.",
   "variables": {
     "RUNS": 0,
     "MAX_LOOPS": 12
   },
   "blocks": [
+    { "name": "StartCycle", "type": "delay", "ms": 0, "timerStart": "cycle", "next": "StartLoop" },
     { "name": "StartLoop",  "type": "setVariable", "var": "RUNS", "op": "+", "value": 1, "next": "EnterProgram" },
     { "name": "EndLoop",    "type": "if", "left": "RUNS", "op": ">=", "right": "MAX_LOOPS", "true": "StartReset", "false": "StartLoop" },
 
-    { "name": "StartReset", "type": "led", "color": "blue", "next": "Summary" },
-    { "name": "Summary",    "type": "summary", "metric": "reaction", "storeAverage": "AVG_REACTION", "storeBest": "BEST_REACTION", "next": "ResetDelay" },
-    { "name": "ResetDelay", "type": "delay", "ms": 3000, "next": "ClearLED" },
+    { "name": "StartReset", "type": "led", "color": "blue", "timerStop": "cycle", "next": "Summary" },
+    { "name": "Summary",    "type": "summary", "metric": "reaction", "storeAverage": "AVG_REACTION", "storeBest": "BEST_REACTION", "next": "Report" },
+    { "name": "Report",     "type": "communicate", "timeoutMs": 3000, "vars": ["RUNS", "MAX_LOOPS"],
+      "editable": { "MAX_LOOPS": { "min": 1, "max": 50 } }, "color": "blue", "next": "ClearLED", "repeat": "ClearLED", "stop": "End" },
     { "name": "ClearLED",   "type": "led", "color": "off", "next": "ResetRuns" },
-    { "name": "ResetRuns",  "type": "setVariable", "var": "RUNS", "op": "=", "value": 0, "next": "StartLoop" }
+    { "name": "ResetRuns",  "type": "setVariable", "var": "RUNS", "op": "=", "value": 0, "next": "StartCycle" },
+    { "name": "End",        "type": "led", "color": "off" }
   ]
 }

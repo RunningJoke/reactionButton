@@ -78,7 +78,7 @@ describe("SimulatedPod (config API)", () => {
 
   it("validates programs with their includes", () => {
     const pod = new SimulatedPod({ files: { ...DEFAULT_FILES, "/prog/bad.json": JSON.stringify({ name: "Bad", blocks: [{ name: "Hit", type: "buton" }] }) } });
-    expect(call(pod, { op: "validate", path: "/prog/duo.json" })).toMatchObject({ ok: true, blocks: 15 });
+    expect(call(pod, { op: "validate", path: "/prog/duo.json" })).toMatchObject({ ok: true, blocks: 17 });
     const bad = call(pod, { op: "validate", path: "/prog/bad.json" });
     expect(bad).toMatchObject({ ok: false, error: "invalid_program" });
     expect(bad.message).toContain("'Hit'");
@@ -209,7 +209,7 @@ describe("SimulatedPod (config API)", () => {
     const pod = new SimulatedPod({ files: DEFAULT_FILES });
     const generation = pod.generation;
     const good = DEFAULT_FILES["/prog/duo.json"]!;
-    expect(call(pod, { op: "validate", path: "/prog/new.json", data: good })).toMatchObject({ ok: true, path: "/prog/new.json", blocks: 15 });
+    expect(call(pod, { op: "validate", path: "/prog/new.json", data: good })).toMatchObject({ ok: true, path: "/prog/new.json", blocks: 17 });
     const bad = call(pod, { op: "validate", path: "/prog/new.json", data: JSON.stringify({ name: "X", blocks: [{ name: "Hit", type: "buton" }] }) });
     expect(bad).toMatchObject({ ok: false, error: "invalid_program" });
     expect(bad.message).toContain("'Hit'");

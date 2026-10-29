@@ -30,15 +30,15 @@ describe("shipped programs", () => {
   it("finds the same block counts as tools/validate_programs.py", () => {
     const expected: Record<string, number> = {
       "/prog/solo.json": 7,
-      "/prog/weiche.json": 13,
-      "/prog/dreieck.json": 14,
-      "/prog/quadrat.json": 14,
-      "/prog/stern.json": 13,
-      "/prog/dreizack.json": 13,
-      "/prog/run.json": 12,
-      "/prog/run5.json": 12,
-      "/prog/duo.json": 15,
-      "/prog/domination.json": 11,
+      "/prog/weiche.json": 15,
+      "/prog/dreieck.json": 16,
+      "/prog/quadrat.json": 16,
+      "/prog/stern.json": 15,
+      "/prog/dreizack.json": 15,
+      "/prog/run.json": 14,
+      "/prog/run5.json": 14,
+      "/prog/duo.json": 17,
+      "/prog/domination.json": 13,
     };
     for (const [path, count] of Object.entries(expected)) {
       expect(resolveProgram(path, (p) => DEFAULT_FILES[p]).blocks.length, path).toBe(count);
