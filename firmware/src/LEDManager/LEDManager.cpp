@@ -30,6 +30,10 @@ LEDManager::LEDManager(uint8_t neoPixelPin)
     this->pixelManager = new Adafruit_NeoPixel(NEOPIXEL_SIZE, neoPixelPin, NEO_GRB + NEO_KHZ800);
     this->pixelManager->begin();
 
+    for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
+        this->shown[i] = 0xFFFFFFFF;        // differs from every colour: the first present() shows
+    }
+
     this->outputMutex = xSemaphoreCreateRecursiveMutex();
     esp_timer_create_args_t timerArgs = {};
     timerArgs.callback = &LEDManager::onStartTimer;
@@ -46,6 +50,21 @@ uint32_t LEDManager::scaled(const ColorSet& color, uint8_t level) const
         (uint8_t)((color.red * s + 32512) / 65025),
         (uint8_t)((color.green * s + 32512) / 65025),
         (uint8_t)((color.blue * s + 32512) / 65025));
+}
+
+// Sends the buffer to the LEDs, but only when it differs from what was sent last (#21). The driver
+// needs ~0.6 ms per show() for 18 LEDs, and most loop passes change nothing.
+void LEDManager::present()
+{
+    for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
+        if(this->pixelManager->getPixelColor(i) != this->shown[i]) {
+            this->pixelManager->show();
+            for(uint8_t k = 0; k < NEOPIXEL_SIZE; k++) {
+                this->shown[k] = this->pixelManager->getPixelColor(k);
+            }
+            return;
+        }
+    }
 }
 
 bool LEDManager::colorOf(uint8_t colorId, ColorSet& out)
@@ -94,7 +113,7 @@ void LEDManager::setLEDColors(ColorSet* pNewColorSet)
     for(int i=0; i<NEOPIXEL_SIZE; i++) {
          this->pixelManager->setPixelColor(i, color);
     }
-    this->pixelManager->show();
+    this->present();
 }
 
 void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
@@ -103,7 +122,7 @@ void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
     this->stopEffect();
     if(index < NEOPIXEL_SIZE) {
         this->pixelManager->setPixelColor(index, this->scaled(*pNewColorSet, 255));
-        this->pixelManager->show();
+        this->present();
     }
 }
 
@@ -119,7 +138,7 @@ void LEDManager::setLEDColors(LEDPattern* pattern)
         uint8_t paletteId = pattern->ids->getPaletteID(i);
         this->pixelManager->setPixelColor(i, this->scaled(*pattern->palette[paletteId], 255));
     }
-    this->pixelManager->show();
+    this->present();
 }
 
 void LEDManager::setSegment(uint8_t first, uint8_t count, uint8_t colorId, uint8_t restId)
@@ -134,7 +153,7 @@ void LEDManager::setSegment(uint8_t first, uint8_t count, uint8_t colorId, uint8
         uint8_t step = (i + NEOPIXEL_SIZE - first) % NEOPIXEL_SIZE;     // LEDs from the segment start
         this->pixelManager->setPixelColor(i, this->scaled(step < count ? on : rest, 255));
     }
-    this->pixelManager->show();
+    this->present();
 }
 
 void LEDManager::turnOff()
@@ -381,7 +400,7 @@ void LEDManager::renderEffect(int64_t nowUs)
         for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
             this->pixelManager->setPixelColor(i, next[i]);
         }
-        this->pixelManager->show();
+        this->present();
         this->lastFrameUs = nowUs;
     }
 
