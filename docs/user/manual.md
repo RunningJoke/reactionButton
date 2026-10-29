@@ -102,9 +102,15 @@ The games tell you everything through light. The most common signals:
 | **All blue** for a few seconds | One round series (a *cycle*) is over; the next one starts by itself. |
 | **All yellow** on the central | A target was lost (switched off, out of range, flat battery). The game waits and goes on by itself when it is back. |
 
-How many rounds a cycle has depends on the game (often 12). After each cycle the pods
-calculate your best, average and worst reaction time. The pods do not show these numbers
-themselves; the app shows them (see §8.6).
+How many rounds a cycle has depends on the game (often 12). After each cycle the central
+calculates your best, average and worst reaction time. The ring shows the **average** as a bar for
+3 seconds (firmware 2.13 or newer), before it turns blue again and waits for the next start:
+
+- The **longer** the bar, the **faster** the average.
+- **Green**: faster than the target time. **Yellow**: up to 1.5 times the target. **Red**: slower.
+- The target time is set by the game (the shipped games use 450 ms).
+
+The best and worst times are only in the app (see §8.6).
 
 ---
 
@@ -302,6 +308,7 @@ Settings.
 | central | blue pairs | waiting for targets to join |
 | central | all green | ready: press to start |
 | central | all yellow | paused, a target is missing |
+| central | bar on the ring for 3 s after a cycle, green / yellow / red | average reaction time: longer bar = faster. Green: better than the target, yellow: up to 1.5 times the target, red: slower |
 | central | red, blinking slowly | error: no games or a broken game |
 | central | red flash for 1 s when you confirm | the game does not start: a battery is below 5 % |
 

@@ -821,7 +821,10 @@
     "namesTooMany": "At most {{max}} metrics, variables or editable variables",
     "variableNotDeclared": "{{name}} is not a variable of this program: declare it under \"variables\"",
     "editableInvalid": "Each editable variable needs whole numbers as minimum and maximum, the minimum not above the maximum",
-    "timeoutNegative": "The time limit cannot be negative"
+    "timeoutNegative": "The time limit cannot be negative",
+    "summaryNeedsTarget": "The bar needs a target time (targetMs)",
+    "summaryTargetRange": "The target time must be a whole number of 1 to 60000 ms",
+    "summaryShowRange": "The time the bar stays must be a whole number of 0 to 60000 ms"
   },
   "portRoles": {
     "then": "Then",
@@ -938,7 +941,7 @@
     },
     "summary": {
       "name": "Summary",
-      "help": "Average, best and worst of a measurement, printed on the serial console."
+      "help": "Average, best and worst of a measurement, printed on the serial console. Can show the average as a bar on the ring for a few seconds."
     },
     "repeat": {
       "name": "Repeat",
@@ -1093,6 +1096,18 @@
     },
     "reset": {
       "label": "Reset measurements afterwards"
+    },
+    "show": {
+      "label": "Show a bar on the ring",
+      "help": "The average as a bar on the central's ring for a few seconds: green = better than the target, amber = up to 1.5 times, red = slower. Needs pod firmware 2.13."
+    },
+    "targetMs": {
+      "label": "Target (ms)",
+      "help": "The bar is half full at this time, empty at twice this time, full at 0 ms."
+    },
+    "showMs": {
+      "label": "Show for (ms)",
+      "help": "How long the bar stays. 0 = until the next light changes, and the program does not wait."
     },
     "count": {
       "label": "Rounds",

@@ -10,7 +10,8 @@ import { LED_COUNT } from "@reactpod/program-model";
 
 export type Rgb = [number, number, number];
 
-export type EffectKind = "solid" | "fill" | "drain" | "dim" | "colorShift" | "trafficLight" | "blink" | "pulse" | "spin" | "off";
+/** `level` is the gauge of the summary block's bar (programs.md §7.7, link-protocol.md §2.1), not an effect block option. */
+export type EffectKind = "solid" | "fill" | "drain" | "dim" | "colorShift" | "trafficLight" | "blink" | "pulse" | "spin" | "off" | "level";
 
 /** Effects that repeat every `periodMs`; with a duration they end in a steady `color`. */
 const PERIODIC: readonly EffectKind[] = ["blink", "pulse", "spin"];
@@ -30,6 +31,8 @@ export type RingEffect = {
   periodMs: number;
   /** 0 … 255; `dim` fades from it to dark */
   brightness: number;
+  /** `level`: the first `percent` % of the ring in `color`, the rest in `color2` */
+  percent?: number;
   /** only these LEDs (central `leds`); the others keep the static colours */
   leds?: readonly number[];
   /** a block that draws the ring itself (charge, release): the 18 colours at time t, instead of `kind` */
@@ -92,6 +95,11 @@ function frame(effect: RingEffect, t: number): Rgb[] {
       for (let k = 0; k < SPIN_LENGTH; k++) out[(head - k + LED_COUNT) % LED_COUNT] = color;
       return out;
     }
+    case "level": {
+      // the same rounding as the firmware: (percent * 18 + 50) / 100 LEDs, lit from LED 0
+      const lit = Math.floor((Math.min(100, effect.percent ?? 0) * LED_COUNT + 50) / 100);
+      return Array.from({ length: LED_COUNT }, (_, i) => (i < lit ? color : color2));
+    }
   }
 }
 
@@ -104,6 +112,24 @@ export function renderRing(base: readonly Rgb[], effect: RingEffect | null | und
     if (effect.leds && !effect.leds.includes(i)) return b;
     return level === 1 ? f[i]! : scale(f[i]!, level);
   });
+}
+
+/* ------------------------------------------------------------------ summary bar (programFormat 6) */
+
+/** The bar is empty at twice the target; a measured value always lights one LED (6 % of 18). */
+export const BAR_MIN_PERCENT = 6;
+
+/**
+ * The summary block's bar (programs.md §7.7, firmware SummaryBlock.cpp): `percent` is 100 at 0 ms, 0 at twice
+ * the target and at least BAR_MIN_PERCENT; `band` is green below the target, yellow up to 1.5 times, red slower.
+ * The target is read as 1 … 60000 ms.
+ */
+export function summaryBar(average: number, target: number): { percent: number; band: "green" | "yellow" | "red" } {
+  const t = Math.min(60000, Math.max(1, Math.trunc(target)));
+  const twice = 2 * t;
+  const percent = Math.max(BAR_MIN_PERCENT, average >= twice ? 0 : Math.floor(((twice - average) * 100) / twice));
+  const band = average < t ? "green" : average * 2 <= t * 3 ? "yellow" : "red";
+  return { percent, band };
 }
 
 /* ------------------------------------------------------------------ countdown */

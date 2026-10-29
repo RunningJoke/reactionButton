@@ -84,13 +84,19 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.11 fields in info: program format 5 with the communicate block", () => {
+  it("reports the firmware 2.13 info: program format 6 with the summary bar", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.13", setName: "Halle 2", pinRequired: false, programFormat: 5 });
+    expect(info).toMatchObject({ firmware: "2.13", setName: "Halle 2", pinRequired: false, programFormat: 6 });
     expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery"]);
     expect(info.linkRevision).toBe(4);
     expect(info.blockTypes).toContain("repeat");
-    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate"]));
+    expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate", "summary"]));
+  });
+
+  it("simulates a central with programFormat 5 (firmware 2.12): the communicate block", () => {
+    const info = call(new SimulatedPod({ programFormat: 5 }), { op: "info" });
+    expect(info).toMatchObject({ firmware: "2.12", programFormat: 5 });
+    expect(info.blockTypes).toContain("communicate");
   });
 
   it("identifies the pods (firmware 2.13): number and colour in status, blink in the menu", () => {

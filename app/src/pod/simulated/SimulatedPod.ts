@@ -27,7 +27,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.13", the newest firmware with pause, liveBle and identify), and
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.13", the summary bar, identify and battery), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
    * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
@@ -120,10 +120,10 @@ export class SimulatedPod {
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
     this.podCount = options.pods;
     this.liveBleOption = options.liveBle;
-    this.batteryOption = options.battery ?? this.programFormat >= 5;
+    this.batteryOption = options.battery ?? this.programFormat >= 6;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 5 ? (this.batteryOption ? "2.13" : "2.12") : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 6 ? "2.13" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";

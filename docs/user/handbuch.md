@@ -105,9 +105,16 @@ Die Spiele sagen dir alles mit Licht. Die wichtigsten Zeichen:
 | **Alles blau** für ein paar Sekunden | Eine Serie von Runden (ein *Durchgang*) ist vorbei; der nächste startet von selbst. |
 | **Alles gelb** am Central | Ein Ziel ist weg (ausgeschaltet, außer Reichweite, Akku leer). Das Spiel wartet und läuft von selbst weiter, sobald es zurück ist. |
 
-Wie viele Runden ein Durchgang hat, hängt vom Spiel ab (oft 12). Nach jedem Durchgang berechnen
-die Pods deine beste, mittlere und schlechteste Reaktionszeit. Die Pods zeigen diese Zahlen nicht
-selbst an; das macht die App (siehe §8.6).
+Wie viele Runden ein Durchgang hat, hängt vom Spiel ab (oft 12). Nach jedem Durchgang berechnet
+der Central deine beste, mittlere und schlechteste Reaktionszeit. Der Ring zeigt die **mittlere**
+Zeit 3 Sekunden lang als Balken, bevor er wieder blau wird und auf den nächsten Start wartet
+(Firmware 2.13 oder neuer):
+
+- Je **länger** der Balken, desto **schneller** war der Durchschnitt.
+- **Grün**: schneller als die Zielzeit. **Gelb**: bis zum 1,5-fachen der Zielzeit. **Rot**: langsamer.
+- Die Zielzeit legt das Spiel fest (die mitgelieferten Spiele nehmen 450 ms).
+
+Die beste und die schlechteste Zeit stehen nur in der App (siehe §8.6).
 
 ---
 
@@ -311,6 +318,7 @@ unter Einstellungen.
 | Central | blaue Paare | wartet auf die Ziele |
 | Central | alles grün | bereit: drücken zum Start |
 | Central | alles gelb | Pause, ein Ziel fehlt |
+| Central | Balken auf dem Ring, 3 s nach einem Durchgang, grün / gelb / rot | mittlere Reaktionszeit: langer Balken = schneller. Grün: besser als das Ziel, gelb: bis 1,5-fach, rot: langsamer |
 | Central | rot, langsam blinkend | Fehler: keine Spiele oder ein kaputtes Spiel |
 | Central | rot, 1 s aufblitzen beim Bestätigen | das Spiel startet nicht: ein Akku ist unter 5 % |
 

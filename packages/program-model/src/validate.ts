@@ -86,6 +86,9 @@ export const ISSUE_CODES = [
   "variableNotDeclared", // communicate: vars / editable name is not a variable of the program
   "editableInvalid", // communicate: editable is not an object of { min, max } integers with min <= max
   "timeoutNegative", // communicate: timeoutMs below 0
+  "summaryNeedsTarget", // summary: show without targetMs
+  "summaryTargetRange", // summary: targetMs outside 1 … 60000
+  "summaryShowRange", // summary: showMs outside 0 … 60000
   // warnings
   "noOutgoing",
   "unreachable",
@@ -494,6 +497,27 @@ function checkCommunicate(
   if (typeof block.timeoutMs === "number" && block.timeoutMs < 0) out.error("timeoutNegative", file, at("timeoutMs"));
 }
 
+/** summary bar (programFormat 6, programs.md §7.7): a target to show against, and the ranges of the two times. */
+const SUMMARY_TARGET_MAX_MS = 60000;
+const SUMMARY_SHOW_MAX_MS = 60000;
+
+function checkSummaryBar(
+  block: Record<string, unknown>,
+  file: string,
+  at: (field?: string, params?: Issue["params"]) => Partial<Issue>,
+  out: Collector,
+) {
+  if (block.show === true && block.targetMs === undefined) out.error("summaryNeedsTarget", file, at("targetMs"));
+  const target = block.targetMs;
+  if (typeof target === "number" && (!Number.isInteger(target) || target < 1 || target > SUMMARY_TARGET_MAX_MS)) {
+    out.error("summaryTargetRange", file, at("targetMs", { max: SUMMARY_TARGET_MAX_MS }));
+  }
+  const showMs = block.showMs;
+  if (typeof showMs === "number" && (!Number.isInteger(showMs) || showMs < 0 || showMs > SUMMARY_SHOW_MAX_MS)) {
+    out.error("summaryShowRange", file, at("showMs", { max: SUMMARY_SHOW_MAX_MS }));
+  }
+}
+
 function checkTypeRules(
   def: BlockTypeDef,
   block: Record<string, unknown>,
@@ -508,6 +532,7 @@ function checkTypeRules(
     out.error("randomTimeoutPair", file, at("minTimeoutMs"));
   }
   checkModes(def, block, file, at, out);
+  if (def.type === "summary") checkSummaryBar(block, file, at, out);
   // toggle: the game length is required, in one of two forms (like tools/validate_programs.py check_toggle)
   if (def.type === "toggle") {
     const range = block.minDurationMs !== undefined && block.maxDurationMs !== undefined;

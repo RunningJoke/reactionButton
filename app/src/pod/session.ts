@@ -121,7 +121,7 @@ function createTransport(kind: TransportKind, usedSetIds: string[]): Transport {
     case "serial":
       return new WebSerialTransport();
     case "simulated": {
-      // the demo pod is program format 5 (firmware 2.11): reports and remote ops (#41 / #42).
+      // the demo pod is program format 6 (firmware 2.13): reports and remote ops (#41 / #42), the summary bar.
       // A further demo connection gets a set of its own (#46).
       const demo = DEMO_SETS.find((d) => !usedSetIds.includes(d.setId)) ?? DEMO_SETS[0]!;
       const pod = new SimulatedPod({ files: DEFAULT_FILES, setId: demo.setId, setName: demo.setName });

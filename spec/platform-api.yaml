@@ -200,6 +200,9 @@ paths:
                             - variableNotDeclared
                             - editableInvalid
                             - timeoutNegative
+                            - summaryNeedsTarget
+                            - summaryTargetRange
+                            - summaryShowRange
                             - noOutgoing
                             - unreachable
                             - unknownVariable

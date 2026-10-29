@@ -408,8 +408,20 @@ Ports: `next`
 | `metric` | metric name | required |
 | `storeAverage`, `storeBest`, `storeWorst`, `storeCount` | variable names | – |
 | `reset` | clear the statistics afterwards | true |
+| `show` | bar on the central's ring, see below. `programFormat` ≥ 6 (§6) | false |
+| `targetMs` | value, 1 … 60000: the target time of the bar (half full). Required with `show` | – |
+| `showMs` | value, 0 … 60000: how long the bar stays. 0 = until the next light change, no wait | 3000 |
 
-Ports: `next`
+Ports: `next` (with `show` and `showMs` > 0: after the bar)
+
+```json
+{ "name": "Summary", "type": "summary", "metric": "reaction", "storeAverage": "AVG_REACTION",
+  "show": true, "targetMs": "TARGET_MS", "showMs": 3000, "next": "Report" }
+```
+
+With `show`, the block waits `showMs` while the bar is on the ring and then continues. The bar
+is the average of the metric (§7.7). A pod with an older format rejects a program that uses
+these fields (`fieldFormatTooOld`), it does not ignore them.
 
 ### `repeat` – counted loop
 `programFormat` ≥ 2 (§6).
@@ -471,8 +483,9 @@ SUMMARY,<metric>,<count>,<average>,<best>,<worst>
 
 The shipped programs use the metric `reaction` (`run` / `run5` also record `lap`, the time
 from the lights to the last press). `lib/loop.json` times each cycle (`cycle`, from
-`StartCycle` to the end of the last round), prints a summary after every `MAX_LOOPS` rounds
-and stores `AVG_REACTION` / `BEST_REACTION`. A program can then branch on those, for example
+`StartCycle` to the end of the last round), prints a summary after every `MAX_LOOPS` rounds,
+stores `AVG_REACTION` / `BEST_REACTION` and shows the average as a bar on the ring for 3 s
+(`show`, §7.7). A program can then branch on those, for example
 to show a colour by performance. Then its `Report` block (`communicate`, §2) sends a report
 with all metrics and `RUNS` / `MAX_LOOPS` and waits up to 3 s with a blue ring: a press or
 `continue` starts the next cycle, `repeat` starts it again (the report is discarded), `stop`
@@ -524,6 +537,7 @@ the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/
 | 3 | 2.9 | block type `effect` (§2, §7.11); `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` on `delay`, `button`, `remotePress`, `remoteMultiPress` (§2 *Countdown*, §7.12). With a countdown `timeoutMs` of `remotePress` / `remoteMultiPress` is read once on enter (§7.2). Block types `charge` (§2, §7.13) and `release` (§2, §7.14), with the hold reporting of link protocol revision 2 ([link-protocol.md](link-protocol.md) §2.2), also with `countdown`. Revision 3 is not released yet, so these were added to it without a new revision |
 | 4 | 2.10 | block type `toggle` (§2, §7.15), with the toggle activations of link protocol revision 3 ([link-protocol.md](link-protocol.md) §2.3), also with `countdown` |
 | 5 | 2.11 | block type `communicate` (§2, §7.16) with the report buffer and the ops `reports`, `ack`, `command`, `setVariables`, `session` ([config-api.md](config-api.md) §5) |
+| 6 | 2.13 | `summary` fields `show`, `targetMs`, `showMs`: the average as a bar on the central's ring (§2, §7.7). The bar is the `level` effect of link-protocol.md §2.1 on the central only; with `show` the block waits `showMs` |
 
 Programs of an older revision run unchanged on newer firmware. A program that uses fields
 or block types of a newer revision is rejected by older firmware only if it uses a new
@@ -564,7 +578,8 @@ changes, increase `programFormat` (§6).
 
 | Type | Finishes | Value read |
 |---|---|---|
-| `led`, `if`, `setVariable`, `remoteResetAll`, `summary`, `repeat` | immediately, in the pass it is entered | on execute |
+| `led`, `if`, `setVariable`, `remoteResetAll`, `repeat` | immediately, in the pass it is entered | on execute |
+| `summary` | immediately, with `show` after `showMs` (§7.7) | on execute |
 | `delay` | when `millis() ≥ entry + duration` (checked once per pass). A duration of 0 finishes in the entry pass | on enter (also the countdown fields) |
 | `button` | on press / release / timeout | timeout on enter, `shortMs` on release |
 | `remotePress` | on the peripheral's press / timeout. Immediately through `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass (on enter if `countdown` ≠ `secret`) |
@@ -661,6 +676,23 @@ Code: [SummaryBlock.cpp](../../firmware/src/Block/SummaryBlock/SummaryBlock.cpp)
   zeros are printed (`SUMMARY,<metric>,0,0,0,0`) and stored in the `store…` variables.
 - `best` is the smallest value, `worst` the largest.
 - With `reset` (default true) the metric is cleared afterwards.
+
+**Bar** (`show`, programFormat 6). Code: [SummaryBlock.cpp](../../firmware/src/Block/SummaryBlock/SummaryBlock.cpp),
+frame: `level` in [LEDManager.cpp](../../firmware/src/LEDManager/LEDManager.cpp).
+
+- Read once on entry, after the statistics are stored and before `reset`: the average `A` (ms, integer) and the target
+  `T` (`targetMs`, read as 1 … 60000) give the bar. Let `twice = 2 T`.
+  - `percent` = `(twice − A) · 100 / twice`, 0 when `A ≥ twice`, and at least **6** (one LED of 18 for any measured value).
+  - Lit LEDs: `(percent · 18 + 50) / 100`, from LED 0 on (the rest of the ring is dark). A full ring is 0 ms,
+    half a ring `T`, an empty ring `2T`.
+  - Colour: **green** if `A < T`; **yellow** (amber) if `A ≤ 1.5 T`; **red** otherwise.
+- The bar is a `level` effect (link-protocol.md §2.1, `param` = percent) on the central's ring, started at once. Peripherals
+  show nothing. It replaces the ring's colours, as any light does.
+- **Wait.** `showMs` (default 3000, 0 … 60000) after the bar starts, the block leaves through `next`. When the bar ends the ring is
+  switched off (as `turnOff`). `showMs` 0: no wait, the bar stays until the next light change.
+- **No values** for the metric (`count` = 0): no bar, no wait, as without `show`.
+- **Pause.** A pause during the bar keeps the bar; the block ends at the original time.
+- Without `show` the block is as before: it does not wait and does not touch the ring.
 
 ### 7.8 Other blocks
 

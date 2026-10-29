@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://runningjoke.github.io/reactionButton/spec/program.schema.json",
-  "x-programFormat": 5,
+  "x-programFormat": 6,
   "title": "ReactPod program",
-  "description": "ReactPod program file (/prog/*.json), program format 5. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
+  "description": "ReactPod program file (/prog/*.json), program format 6. Generated from packages/program-model – do not edit. Structure only: references between blocks, reachability and pod limits are checked by the validator (docs/firmware/programs.md). Fragments (include files) use $defs/fragment.",
   "type": "object",
   "required": [
     "name"
@@ -739,6 +739,17 @@
         "reset": {
           "type": "boolean",
           "description": "default: true"
+        },
+        "show": {
+          "type": "boolean",
+          "description": "default: false"
+        },
+        "targetMs": {
+          "$ref": "#/$defs/value"
+        },
+        "showMs": {
+          "$ref": "#/$defs/value",
+          "description": "default: 3000"
         },
         "timerStart": {
           "type": "string",
