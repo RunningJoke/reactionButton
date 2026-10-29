@@ -5,6 +5,8 @@
 #include "Settings/Settings.h"
 #include "Config/ConfigApi.h"
 #include "LEDManager/EffectJson.h"
+#include "LEDManager/Identity.h"
+#include <WiFi.h>
 
 using namespace Protocol;
 
@@ -17,6 +19,7 @@ PeripheralRole::PeripheralRole() {
     if(!this->link.begin(ESPNOW_CHANNEL)) {
         ESP_LOGE(TAG, "radio start failed");
     }
+    WiFi.macAddress(this->ownMac);
     this->becomeUnclaimed();
     ESP_LOGI(TAG, "peripheral started, set %08x", this->setId);
 }
@@ -25,7 +28,16 @@ void PeripheralRole::becomeUnclaimed() {
     this->state = State::UNCLAIMED;
     this->clock.clear();
     this->pairResetDone = false;
-    LEDManager::getManager()->setLEDColors(YELLOW);
+    this->identifyWanted = false;
+    this->identityShown = IdentityShow::NONE;
+    this->showUnclaimed();
+}
+
+// Yellow (waiting for a central) with a segment in a colour and at a position taken from the MAC
+void PeripheralRole::showUnclaimed() {
+    uint8_t first = this->ownMac[5] % NEOPIXEL_SIZE;
+    uint8_t color = Identity::PALETTE[this->ownMac[4] % Identity::COUNT];
+    LEDManager::getManager()->setSegment(first, Identity::UNCLAIMED_SEGMENT, color, Color::YELLOW);
 }
 
 void PeripheralRole::run() {
@@ -58,7 +70,7 @@ void PeripheralRole::run() {
             ESP_LOGI(TAG, "pairing cleared");
             LEDManager::getManager()->setLEDColors(WHITE);
             delay(500);
-            LEDManager::getManager()->setLEDColors(YELLOW);
+            this->showUnclaimed();
         }
         return;
     }
@@ -73,6 +85,10 @@ void PeripheralRole::run() {
         ESP_LOGW(TAG, "central lost");
         this->becomeUnclaimed();
         return;
+    }
+
+    if(this->state == State::READY) {
+        this->updateIdentity(now);
     }
 
     switch(this->state) {
@@ -109,6 +125,38 @@ void PeripheralRole::run() {
 
         default:
             break;
+    }
+}
+
+// Identity display of a ready pod (see the class comment). Only the pod's own LED changes are made here;
+// an activation or a game takes the ring first (handleArm clears identityShown).
+void PeripheralRole::updateIdentity(int64_t now) {
+    if(now < this->identityBlockedUntilUs) {
+        return;     // the central's effect (blink) owns the ring
+    }
+    IdentityShow wanted = now < this->identityFlashUntilUs ? IdentityShow::FLASH
+                        : this->identifyWanted ? IdentityShow::SPIN : IdentityShow::NONE;
+    if(wanted == this->identityShown) {
+        return;
+    }
+    this->identityShown = wanted;
+
+    LEDManager* leds = LEDManager::getManager();
+    uint8_t color = Identity::colorOf(this->podId);
+    uint8_t number = Identity::numberOf(this->podId);
+    switch(wanted) {
+        case IdentityShow::NONE:
+            leds->turnOff();
+            break;
+        case IdentityShow::FLASH:
+            leds->setSegment(0, number, color, Color::OFF);
+            break;
+        case IdentityShow::SPIN:
+        {
+            EffectDesc spin = {EffectId::SPIN, color, Color::OFF, 255, 0, Identity::SPIN_PERIOD_MS, number, 0};
+            leds->playEffect(spin);
+            break;
+        }
     }
 }
 
@@ -220,6 +268,7 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
             const Pong* pong = reinterpret_cast<const Pong*>(frame.data);
             this->clock.addSample(pong->t1, pong->t2, pong->t3, frame.rxUs);
             this->lastPongUs = frame.rxUs;
+            this->identifyWanted = (pong->flags & PONG_FLAG_IDENTIFY) != 0;     // revision 4; older centrals never set it
             this->sync.peerState(frame.mac, pong->store, (pong->flags & PONG_FLAG_SYNC_ALLOWED) != 0);
             break;
         }
@@ -239,6 +288,8 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
         case MsgType::RESET:
             this->hold.end();
             this->state = State::READY;
+            this->identityBlockedUntilUs = 0;
+            this->identityShown = IdentityShow::NONE;
             LEDManager::getManager()->turnOff();
             break;
 
@@ -274,6 +325,10 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
+    this->identityFlashUntilUs = esp_timer_get_time() + Identity::FLASH_US;
+    this->identityBlockedUntilUs = 0;
+    this->identityShown = IdentityShow::NONE;
+
     if(this->state == State::UNCLAIMED) {
         this->state = State::READY;
         this->lastPongUs = esp_timer_get_time();    // grace period until the first PONG
@@ -307,6 +362,8 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
         return;
     }
 
+    this->identityShown = IdentityShow::NONE;      // the activation takes the ring
+    this->identityBlockedUntilUs = 0;
     this->cmdSeq = arm.cmdSeq;
     this->mode = arm.mode;
     this->colorActive = arm.colorActive;
@@ -353,9 +410,15 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
 
 void PeripheralRole::handleEffect(const Effect& effect) {
     // only the LEDs change; an armed pod stays armed (its next LED change wins)
-    if(!LEDManager::getManager()->playEffect(effect.effect, this->localStartUs(effect.startAtUs))) {
+    int64_t startUs = this->localStartUs(effect.startAtUs);
+    if(!LEDManager::getManager()->playEffect(effect.effect, startUs)) {
         ESP_LOGW(TAG, "unknown effect %u ignored", (unsigned)effect.effect.effect);
+        return;
     }
+    // the identity comes back after the effect (endless: until the next ARM or RESET)
+    int64_t start = startUs == 0 ? esp_timer_get_time() : startUs;
+    this->identityBlockedUntilUs = effect.effect.durationMs == 0 ? INT64_MAX : start + (int64_t)effect.effect.durationMs * 1000;
+    this->identityShown = IdentityShow::NONE;
 }
 
 void PeripheralRole::activate() {

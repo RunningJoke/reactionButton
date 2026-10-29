@@ -1,5 +1,7 @@
 #include "PodNetwork.h"
 #include "_Definitions.h"
+#include "LEDManager/LEDManager.h"
+#include "LEDManager/Identity.h"
 
 using namespace Protocol;
 
@@ -168,7 +170,7 @@ void PodNetwork::handlePing(const RxFrame& frame, int16_t podId) {
     pong.t2 = frame.rxUs;
     pong.t3 = 0;    // stamped by the link when the frame goes to the radio
     pong.store = StoreSync::localState();
-    pong.flags = this->syncAllowed ? PONG_FLAG_SYNC_ALLOWED : 0;
+    pong.flags = (this->syncAllowed ? PONG_FLAG_SYNC_ALLOWED : 0) | (this->identify ? PONG_FLAG_IDENTIFY : 0);
     this->link.send(this->pods[podId].mac, &pong, sizeof(pong), 0, (int8_t)offsetof(Pong, t3));
 
     // the peripheral may have a newer program store than we do
@@ -300,6 +302,12 @@ void PodNetwork::describe(JsonArray out) const {
         snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x",
                  pod.mac[0], pod.mac[1], pod.mac[2], pod.mac[3], pod.mac[4], pod.mac[5]);
         entry["id"] = i;
+        entry["number"] = Identity::numberOf((uint8_t)i);
+        ColorSet rgb = {0, 0, 0};
+        LEDManager::colorOf(Identity::colorOf((uint8_t)i), rgb);
+        char color[8];
+        snprintf(color, sizeof(color), "#%02x%02x%02x", rgb.red, rgb.green, rgb.blue);
+        entry["color"] = color;
         entry["mac"] = mac;
         entry["alive"] = this->isAlive((uint8_t)i);
         entry["lastSeenMs"] = (uint32_t)((now - pod.lastSeenUs) / 1000);

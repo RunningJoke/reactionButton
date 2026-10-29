@@ -38,6 +38,9 @@
  * Link protocol revision 3 (firmware 2.10) adds toggle (LINK_FEATURE_TOGGLE): PodMode TOGGLE, the toggle
  * parameters appended to ARM and owner / flipCount appended to PRESSED.
  *
+ * Link protocol revision 4 (firmware 2.13) adds the identity flag (PONG_FLAG_IDENTIFY): the central tells the
+ * pods that it is in the menu, discovery or confirm, so they show their number. No new frame, no feature bit.
+ *
  *   SYNC_READ_REQ (path, offset) ───►
  *                                ◄─── SYNC_READ_RESP (offset, total, data)
  */
@@ -45,7 +48,7 @@ namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
     const uint8_t VERSION = 1;          // frame header version, see "Extensions" above
-    const uint8_t REVISION = 3;         // link protocol revision (reported as info.linkRevision)
+    const uint8_t REVISION = 4;         // link protocol revision (reported as info.linkRevision)
     const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
@@ -90,6 +93,9 @@ namespace Protocol {
         const uint8_t MAGENTA = 4;
         const uint8_t CYAN = 5;
         const uint8_t WHITE = 6;
+        // identity colours of the pods (firmware >= 2.13, see LEDManager/Identity.h), never sent by a central
+        const uint8_t ORANGE = 7;
+        const uint8_t VIOLET = 8;
         const uint8_t OFF = 255;
     }
 
@@ -201,6 +207,7 @@ namespace Protocol {
     };
 
     const uint8_t PONG_FLAG_SYNC_ALLOWED = 0x01;   // central is not running a game: sync may run
+    const uint8_t PONG_FLAG_IDENTIFY = 0x02;       // central in menu / discovery / confirm: pods show their identity (rev. 4)
 
     // central -> peripheral. t2 = central clock at PING reception, t3 = central clock at transmission
     struct __attribute__((packed)) Pong {

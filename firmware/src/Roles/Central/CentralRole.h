@@ -60,6 +60,8 @@ class CentralRole : public IRole {
         void opSelect(JsonObjectConst request, JsonDocument& response);
         void opStart(JsonDocument& response);
         void opEffect(JsonObjectConst request, JsonDocument& response);
+        void opBlink(JsonObjectConst request, JsonDocument& response);
+        void endBlink();
         void opReports(JsonObjectConst request, JsonDocument& response);
         void opAck(JsonObjectConst request, JsonDocument& response);
         void opCommand(JsonObjectConst request, JsonDocument& response);
@@ -89,5 +91,6 @@ class CentralRole : public IRole {
         int16_t drawnPodCount = -1;
         uint32_t pressCountAtConfirm = 0;
 
+        int64_t blinkEndUs = 0;            // "blink" of the central itself ends here (0 = not blinking)
         int64_t rebootAtUs = 0;            // "stop": reboot into the menu shortly after answering
 };

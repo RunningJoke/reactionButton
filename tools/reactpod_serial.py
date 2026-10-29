@@ -19,6 +19,7 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py session ath_42        # athlete id for the following reports ("" = clear)
     python tools/reactpod_serial.py pause                 # pause a running game from the phone (firmware >= 2.12)
     python tools/reactpod_serial.py resume                # end the phone pause
+    python tools/reactpod_serial.py blink 2               # find pod 3 (its number minus 1); no id = the central (firmware >= 2.13)
     python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
 
@@ -662,6 +663,8 @@ def main():
     p = sub.add_parser("session", help="athlete id copied into the following reports (\"\" = clear it)"); p.add_argument("athlete")
     sub.add_parser("pause", help="pause a running game (firmware >= 2.12); only resume ends it")
     sub.add_parser("resume", help="end a pause made by pause (firmware >= 2.12)")
+    p = sub.add_parser("blink", help="blink a pod for 2 s to find it (firmware >= 2.13), only before a game")
+    p.add_argument("pod", nargs="?", type=int, default=-1, help="pod id (number minus 1); omitted or -1 = the central")
     p = sub.add_parser("cmd", help="send one raw command (JSON or text form)"); p.add_argument("text")
     p = sub.add_parser("push", help="upload program files"); p.add_argument("directory")
     p = sub.add_parser("pull", help="download program files"); p.add_argument("directory")
@@ -740,6 +743,8 @@ def main():
             say(json.dumps(pod.request("session", check=False, athlete=args.athlete), indent=2, ensure_ascii=False))
         elif args.command in ("pause", "resume"):
             say(json.dumps(pod.request(args.command, check=False), indent=2))
+        elif args.command == "blink":
+            say(json.dumps(pod.request("blink", check=False, pod=args.pod), indent=2))
         elif args.command == "reboot":
             status = pod.reboot(args.role)
             if status:

@@ -57,7 +57,8 @@ A charge lasts about an hour of play. A battery display is planned.
 You need: the pods the game asks for (see §6), switched off.
 
 1. **Switch on the target pods.** Each one shows a blue light running around for about 2 seconds,
-   then turns **yellow**: it is waiting for a central.
+   then turns **yellow**: it is waiting for a central. The yellow ring has one short coloured mark,
+   different on every target, so you can tell them apart.
 2. **Switch on the central:** switch on one more pod and **press and hold its top while the blue
    light runs around**. Let go when the light goes out. A small pattern of lights now shows the
    first game of the **program menu**.
@@ -67,7 +68,9 @@ You need: the pods the game asks for (see §6), switched off.
    2 seconds), let go.
 5. **Wait for the targets:** the central shows blue lights in pairs, one pair per target it
    still needs. The yellow targets go dark one after the other as they join.
-   When all have joined, the central turns **green**.
+   When all have joined, the central turns **green**. While it waits, every target that has joined
+   shows its number: as many lights as its number, in its own colour (pod 1 one light, pod 2 two
+   lights, and so on). The colours are the same as in the app.
 6. **Start:** press the central once. Play!
 
 To play another game: switch the central off and on again (holding the top during the blue
@@ -105,6 +108,8 @@ themselves; the app shows them (see §8.6).
   central it meets.
 - With the app you can give a set a **name** (for example "Hall A"). The name is what you see
   when you connect by Bluetooth.
+- **Finding a pod:** in the app, Pod tab, *Pods of this set*, press *Blink* next to it: the pod
+  flashes for two seconds. This works before the game starts.
 
 If a target stays yellow and never joins, it most likely belongs to another set. Clear it as
 described above.
@@ -263,6 +268,7 @@ Settings.
 | The app can't find the pod over Bluetooth | The central must be in the program menu (switch on while holding the top). Use Chrome or Edge. On a computer, switching Bluetooth off and on often helps. |
 | "The pod is busy" in the app | A game is running. Switch the central off and on into the menu. |
 | The app asks for a PIN | The owner protected the set. Ask them, or clear the PIN over USB. |
+| Which pod is which? | In the app (Pod tab, *Pods of this set*) press *Blink* next to a pod: it flashes for two seconds. |
 | I want to play a different game | Switch the central off and on (holding the top during the blue light) and choose again. |
 
 ---
@@ -272,8 +278,11 @@ Settings.
 | Pod | Light | Meaning |
 |---|---|---|
 | any | blue light running around (2 s) | starting. Hold the top now to make it the central |
-| target | yellow | waiting for the central of its set |
+| target | yellow with one short coloured mark | waiting for the central of its set. The mark is different on every target |
+| target | as many lights as its number, in its colour, turning slowly | joined: its number (while the central waits for the targets) |
+| target | flashing for 2 s | found with *Blink* in the app |
 | target | white flash | set forgotten (held 3 s while yellow) |
+| central | flashing white for 2 s | the central itself, found with *Blink* in the app |
 | target | dark | ready |
 | target | green / red | press / don't press |
 | central | small pattern | program menu: short press = next game, hold = select |

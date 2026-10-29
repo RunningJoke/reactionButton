@@ -75,6 +75,8 @@ class LEDManager {
         void setLEDColors(uint8_t colorId);
         void setLEDColors(uint8_t index, ColorSet* pNewColorSet);
         void setLEDColors(LEDPattern* pattern);
+        // Static: `count` LEDs from LED `first` (wrapping) in colour `colorId`, the rest in `restId`
+        void setSegment(uint8_t first, uint8_t count, uint8_t colorId, uint8_t restId);
         void turnOff();
 
         // ------------------------------------------------------------ effect player

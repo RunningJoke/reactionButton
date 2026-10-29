@@ -9,6 +9,7 @@ import {
   type PutResponse,
   type ResponseBase,
   type SetNameResponse,
+  type BlinkResponse,
   type StatusResponse,
   type ValidateResponse,
 } from "./protocol";
@@ -85,6 +86,11 @@ export class PodClient {
   list() {
     return this.request<ListResponse>("list");
   }
+  /** Blinks a pod of the set for two seconds (firmware ≥ 2.13, feature `identify`); -1 = the central. */
+  blink(pod: number) {
+    return this.request<BlinkResponse>("blink", { pod });
+  }
+
   status() {
     return this.request<StatusResponse>("status");
   }

@@ -19,6 +19,18 @@
     "reconnecting": "Reconnecting…"
   },
   "pod": {
+    "podList": {
+      "title": "Pods of this set",
+      "central": "This pod (central)",
+      "number": "Pod {{number}}",
+      "offline": "not answering",
+      "blink": "Blink",
+      "blinkAria": "Blink pod {{number}}",
+      "blinkCentralAria": "Blink this pod",
+      "blinkHint": "Blink makes a pod flash for two seconds, so you can find it. Only before the game starts.",
+      "blinkBusy": "A pod can only blink before the game starts.",
+      "blinkFailed": "The pod could not blink."
+    },
     "intro": "Connect to a central in the program menu.",
     "menuHint": "To open the program menu, switch the pod on and hold the button during the blue boot animation.",
     "bleUnsupported": "This browser has no Bluetooth access. Use Chrome or Edge, on iPhone the app later.",

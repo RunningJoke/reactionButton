@@ -4,6 +4,7 @@
 #include "LEDManager/LEDManager.h"
 #include "LEDManager/ErrorAnimation.h"
 #include "LEDManager/EffectJson.h"
+#include "LEDManager/Identity.h"
 #include "BlockManager/BlockManager.h"
 #include "VariableManager/VariableManager.h"
 #include "Input/Button.h"
@@ -38,6 +39,8 @@ const char* CentralRole::stateName(State state) {
 
 void CentralRole::setState(State state) {
     this->state = state;
+    // the pods show their identity in the menu, discovery and confirm only (never during a game)
+    this->network.setIdentify(state == State::MENU || state == State::DISCOVERY || state == State::CONFIRM);
 
     JsonDocument event;
     event["event"] = "state";
@@ -93,6 +96,11 @@ void CentralRole::run() {
 
     // BLE requests are handled in every state: the phone stays connected during the game (liveBle)
     this->phone.service();
+
+    if(this->blinkEndUs != 0 && esp_timer_get_time() >= this->blinkEndUs) {
+        this->blinkEndUs = 0;
+        this->endBlink();
+    }
 
     switch(this->state) {
         case State::MENU:
@@ -362,6 +370,8 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         response["state"] = stateName(this->state);
     } else if(strcmp(op, "effect") == 0) {
         this->opEffect(request, response);
+    } else if(strcmp(op, "blink") == 0) {
+        this->opBlink(request, response);
     } else if(strcmp(op, "reports") == 0) {
         this->opReports(request, response);
     } else if(strcmp(op, "ack") == 0) {
@@ -494,6 +504,57 @@ void CentralRole::opEffect(JsonObjectConst request, JsonDocument& response) {
     response["ok"] = true;
     response["effect"] = LEDManager::effectName(effect.effect);
     response["startAtUs"] = startAtUs;
+}
+
+// Find a pod (firmware >= 2.13, feature identify): blinks one pod ("pod": its id, in its colour) or the
+// central itself (omitted or -1, white) for Identity::BLINK_MS. Only while no game runs, else busy.
+void CentralRole::opBlink(JsonObjectConst request, JsonDocument& response) {
+    if(this->state != State::MENU && this->state != State::DISCOVERY && this->state != State::CONFIRM) {
+        ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
+        return;
+    }
+    JsonVariantConst which = request["pod"];
+    int onePod = which.isNull() ? -1 : which.is<int>() ? which.as<int>() : -2;
+    if(onePod < -1 || onePod >= (int)this->network.podCount()) {
+        ConfigApi::setError(response, "bad_request", "'pod' must be a connected pod id or -1 (the central)");
+        return;
+    }
+
+    Protocol::EffectDesc blink = {Protocol::EffectId::BLINK, Identity::CENTRAL_COLOR, Protocol::Color::OFF, 255,
+                                  Identity::BLINK_MS, Identity::BLINK_PERIOD_MS, 0, Protocol::EFFECT_FLAG_END_OFF};
+    if(onePod < 0) {
+        LEDManager::getManager()->playEffect(blink);
+        this->blinkEndUs = esp_timer_get_time() + (int64_t)Identity::BLINK_MS * 1000;
+    } else {
+        blink.color = Identity::colorOf((uint8_t)onePod);
+        if(!this->network.effect((uint8_t)onePod, blink, 0)) {
+            ConfigApi::setError(response, "not_ready", "pod has older firmware (no effects)");
+            return;
+        }
+    }
+    response["ok"] = true;
+    response["pod"] = onePod;
+    response["durationMs"] = Identity::BLINK_MS;
+}
+
+// The central's own blink is over: paint the ring of the current state again
+void CentralRole::endBlink() {
+    LEDManager* leds = LEDManager::getManager();
+    switch(this->state) {
+        case State::MENU:
+            if(this->catalog.size() > 0) {
+                this->catalog.showMenu(this->selectedModel, *leds);
+            }
+            break;
+        case State::DISCOVERY:
+            this->drawnPodCount = -1;       // drawProgress paints the ring again
+            break;
+        case State::CONFIRM:
+            leds->setLEDColors(GREEN);
+            break;
+        default:
+            break;
+    }
 }
 
 // Report buffer: every report not acknowledged yet, oldest first. Paging (optional, for BLE):

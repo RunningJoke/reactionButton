@@ -86,11 +86,25 @@ describe("SimulatedPod (config API)", () => {
 
   it("reports the firmware 2.11 fields in info: program format 5 with the communicate block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.12", setName: "Halle 2", pinRequired: false, programFormat: 5 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle"]);
-    expect(info.linkRevision).toBe(3);
+    expect(info).toMatchObject({ firmware: "2.13", setName: "Halle 2", pinRequired: false, programFormat: 5 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify"]);
+    expect(info.linkRevision).toBe(4);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate"]));
+  });
+
+  it("identifies the pods (firmware 2.13): number and colour in status, blink in the menu", () => {
+    const pod = new SimulatedPod({ pods: 2 });
+    const status = call(pod, { op: "status" }) as { pods: Json[] };
+    expect(status.pods).toEqual([
+      expect.objectContaining({ id: 0, number: 1, color: "#ff0000" }),
+      expect.objectContaining({ id: 1, number: 2, color: "#00ff00" }),
+    ]);
+    expect(call(pod, { op: "blink", pod: 1 })).toMatchObject({ ok: true, pod: 1, durationMs: 2000 });
+    expect(call(pod, { op: "blink" })).toMatchObject({ ok: true, pod: -1 });
+    expect(call(pod, { op: "blink", pod: 5 })).toMatchObject({ ok: false, error: "bad_request" });
+    // older firmware: no identity, no blink
+    expect(call(new SimulatedPod({ programFormat: 4 }), { op: "blink" })).toMatchObject({ ok: false, error: "bad_request" });
   });
 
   it("simulates a central with programFormat 4 (firmware 2.10): toggle, no communicate, no reports or remote", () => {

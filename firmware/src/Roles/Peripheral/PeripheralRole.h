@@ -27,6 +27,10 @@
  * EFFECT frames play an effect on the ring in any claimed state; they do not change the
  * state. Effect start times are converted to the local clock with ClockSync.
  *
+ * Identity (LEDManager/Identity.h): a READY pod shows its number for a short time after the claim,
+ * and spins it while the central is in the menu, discovery or confirm (PONG_FLAG_IDENTIFY). An EFFECT
+ * (the central's blink) takes the ring for its length; the identity comes back afterwards.
+ *
  * Without PONG from the central for 2 s the pod goes back to UNCLAIMED and can be
  * claimed again (e.g. after a central reboot).
  *
@@ -45,6 +49,7 @@ class PeripheralRole : public IRole {
 
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };
+        enum class IdentityShow : uint8_t { NONE, FLASH, SPIN };
 
         static const int64_t HELLO_INTERVAL_US = 250000;
         static const int64_t PING_INTERVAL_US = 200000;
@@ -61,6 +66,8 @@ class PeripheralRole : public IRole {
         void runToggle();
         void showToggleOwner();
         void becomeUnclaimed();
+        void showUnclaimed();
+        void updateIdentity(int64_t now);
         void sendPing();
         static const char* stateName(State state);
 
@@ -77,6 +84,13 @@ class PeripheralRole : public IRole {
         int64_t lastPingUs = 0;
         int64_t lastPongUs = 0;
         bool pairResetDone = false;
+
+        // identity display (see the class comment)
+        uint8_t ownMac[6];
+        bool identifyWanted = false;                // PONG_FLAG_IDENTIFY of the last PONG
+        int64_t identityFlashUntilUs = 0;           // static number after a claim
+        int64_t identityBlockedUntilUs = 0;         // an EFFECT from the central owns the ring until then
+        IdentityShow identityShown = IdentityShow::NONE;
 
         // current activation
         uint8_t cmdSeq = 0;

@@ -144,6 +144,9 @@ stateDiagram-v2
   that count. Reaction time = press edge − `t0`, in µs.
 - Frames are processed when they arrive (no polling of values), in the order sent.
 - Holding the button 3 s while UNCLAIMED clears the stored set id (white flash).
+- Identity (firmware ≥ 2.13): UNCLAIMED shows yellow with a MAC-derived segment; READY shows the number for
+  1.5 s after a claim (`FLASH`), then spins it while the central sends `PONG_FLAG_IDENTIFY` (`SPIN`). An EFFECT
+  from the central (blink) takes the ring until it ends. Any ARM or RESET hands the ring back to the activation.
 
 ### 5.2 Central (`CentralRole`)
 
@@ -294,3 +297,9 @@ load time. Unknown variables read as 0. Variables set by the system:
   (`Block/EffectTarget`, `Block/Countdown`, programs.md §7.11, §7.12); `ledMask` is the block's `leds`.
 - Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included
   (default 255 = full brightness).
+- `setSegment(first, count, colorId, restId)` – static: `count` LEDs from `first` in one colour, the rest in another
+  (firmware ≥ 2.13, used for the identity and the MAC pattern of an unclaimed pod).
+- Pod identity (firmware ≥ 2.13): `LEDManager/Identity.h` holds the palette (colour indices 0…8, the identity
+  colours orange 7 and violet 8 are only used by pods), the numbers and the timings. The pattern itself is drawn by
+  `PeripheralRole::updateIdentity` (link-protocol.md §2.4). The central's own pattern is its `blink` op
+  (`CentralRole::opBlink`, white) and it sends the menu flag `PONG_FLAG_IDENTIFY` through `PodNetwork::setIdentify`.
