@@ -5,10 +5,14 @@
 #include "Settings/Settings.h"
 #include "Config/ConfigApi.h"
 #include "LEDManager/EffectJson.h"
+#include "Battery/Battery.h"
 
 using namespace Protocol;
 
 static const char* TAG = "PERIPHERAL";
+
+// Idle warning (#19): amber blink while claimed and idle (READY) with a low battery
+static const EffectDesc lowBatteryBlink = {EffectId::BLINK, Color::AMBER, Color::OFF, 255, 0, 1000, 0, 0};
 
 PeripheralRole::PeripheralRole() {
     this->setId = Settings::getSetId();
@@ -73,6 +77,19 @@ void PeripheralRole::run() {
         ESP_LOGW(TAG, "central lost");
         this->becomeUnclaimed();
         return;
+    }
+
+    // idle warning (#19): amber blink while ready with a low battery. Any activation or effect takes the
+    // ring (its LED change clears lowBatteryShown), so programs never see the warning during a game.
+    bool warn = this->state == State::READY && Battery::isLow();
+    if(warn && !this->lowBatteryShown) {
+        this->lowBatteryShown = true;
+        LEDManager::getManager()->playEffect(lowBatteryBlink);
+    } else if(!warn && this->lowBatteryShown) {
+        this->lowBatteryShown = false;
+        if(this->state == State::READY) {
+            LEDManager::getManager()->turnOff();
+        }
     }
 
     switch(this->state) {
@@ -194,6 +211,7 @@ void PeripheralRole::sendPing() {
     fillHeader(ping.header, MsgType::PING, this->setId);
     ping.t1 = 0;    // stamped by the link when the frame goes to the radio
     ping.store = StoreSync::localState();
+    ping.batteryMv = Battery::milliVolts();
     this->link.send(this->centralMac, &ping, sizeof(ping), 0, (int8_t)offsetof(Ping, t1));
 }
 
@@ -239,6 +257,7 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
         case MsgType::RESET:
             this->hold.end();
             this->state = State::READY;
+            this->lowBatteryShown = false;
             LEDManager::getManager()->turnOff();
             break;
 
@@ -271,13 +290,14 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ClaimAck ack;
     fillHeader(ack.header, MsgType::CLAIM_ACK, this->setId);
     ack.podId = this->podId;
-    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE;
+    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE | LINK_FEATURE_BATTERY;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
     if(this->state == State::UNCLAIMED) {
         this->state = State::READY;
         this->lastPongUs = esp_timer_get_time();    // grace period until the first PONG
         this->lastPingUs = 0;                       // ping right away to start the clock sync
+        this->lowBatteryShown = false;
         LEDManager::getManager()->turnOff();
         ESP_LOGI(TAG, "claimed as pod %u", this->podId);
     }
@@ -308,6 +328,7 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
     }
 
     this->cmdSeq = arm.cmdSeq;
+    this->lowBatteryShown = false;      // the ring is the activation's from now on
     this->mode = arm.mode;
     this->colorActive = arm.colorActive;
     this->colorAfter = arm.colorAfter;
@@ -353,6 +374,7 @@ void PeripheralRole::handleArm(const RxFrame& frame) {
 
 void PeripheralRole::handleEffect(const Effect& effect) {
     // only the LEDs change; an armed pod stays armed (its next LED change wins)
+    this->lowBatteryShown = false;
     if(!LEDManager::getManager()->playEffect(effect.effect, this->localStartUs(effect.startAtUs))) {
         ESP_LOGW(TAG, "unknown effect %u ignored", (unsigned)effect.effect.effect);
     }

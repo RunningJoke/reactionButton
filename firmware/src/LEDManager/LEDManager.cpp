@@ -58,6 +58,7 @@ bool LEDManager::colorOf(uint8_t colorId, ColorSet& out)
         case 4: out = ColorSet{255, 0, 255}; return true;
         case 5: out = ColorSet{0, 255, 255}; return true;
         case 6: out = ColorSet{255, 255, 255}; return true;
+        case 7: out = ColorSet{255, 160, 0}; return true;     // amber (Protocol::Color::AMBER)
         case 255: out = ColorSet{0, 0, 0}; return true;
     }
     return false;

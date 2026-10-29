@@ -77,6 +77,7 @@ class PeripheralRole : public IRole {
         int64_t lastPingUs = 0;
         int64_t lastPongUs = 0;
         bool pairResetDone = false;
+        bool lowBatteryShown = false;   // READY with the amber idle warning on the ring (Battery::isLow)
 
         // current activation
         uint8_t cmdSeq = 0;
