@@ -11,6 +11,9 @@ push them only after the user confirmed.
 ## Firmware `fw-vMAJOR.MINOR.PATCH`
 
 1. `main` is up to date and green (`gh run list --branch main --limit 5`).
+   Run the hardware release checklist ([testing.md](../../../docs/firmware/testing.md) §12) on the
+   release build and put the results in the release PR; ask the user for the lines that need them
+   (two sets, battery run-down, logic analyser).
 2. `FW_VERSION_MAJOR/MINOR` in `firmware/src/_Definitions.h` match the planned tag. If not:
    bump on a `chore/release-fw-…` PR, merge (squash), pull.
    PATCH is only in the tag (fixes without API change keep MAJOR.MINOR).
