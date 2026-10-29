@@ -13,7 +13,7 @@
  * Applied to all LED output in LEDManager::scaled(): static colours, effects, the boot gauge and
  * the identity. 255 = full brightness. Lower values reduce the current of the ring (battery).
 */
-#define LED_BRIGHTNESS_CAP 160
+#define LED_BRIGHTNESS_CAP 255
 
 /**
  * AUTO POWER-OFF (#21)

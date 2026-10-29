@@ -103,7 +103,7 @@ The table below is estimated.
 | `main.cpp` | idle wait | 1 ms (`EspNowLink::idleWait`) | only in the idle states, §1 |
 | `AutoPowerOff` | idle time before power-off | 10 min (`AUTO_POWER_OFF_MINUTES`) | timer restarts on every button edge (architecture.md §8.2) |
 | `AutoPowerOff` | goodbye | 1200 ms (white drain, then dark) | then deep sleep |
-| `LEDManager` | brightness cap | `LED_BRIGHTNESS_CAP` 160 of 255 | applied to all output |
+| `LEDManager` | brightness cap | `LED_BRIGHTNESS_CAP` 255 (full) | applied to all output |
 | `Battery.cpp` | battery sample | 16 × `analogReadMilliVolts`, refresh every 3000 ms | |
 | `ErrorAnimation.h` | blink | 1000 ms on / 1000 ms off | |
 | `LEDManager` | `MIN_FRAME_US` | 16 ms | minimum time between two effect frames |

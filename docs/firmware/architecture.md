@@ -299,7 +299,7 @@ load time. Unknown variables read as 0. Variables set by the system:
   The `effect` block and the `countdown` option build `EffectDesc`s from block fields
   (`Block/EffectTarget`, `Block/Countdown`, programs.md §7.11, §7.12); `ledMask` is the block's `leds`.
 - Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included.
-  The default is `LED_BRIGHTNESS_CAP` (160 of 255, firmware ≥ 2.14, #21), applied in `scaled()` only.
+  The default is `LED_BRIGHTNESS_CAP` (255 = full brightness; lower it to save power, firmware ≥ 2.14, #21), applied in `scaled()` only.
 - `present()` (firmware ≥ 2.14, #21): every driver write goes through it. `show()` runs only when the
   buffer differs from the last frame sent. Static calls that repeat the current colour cost no LED time.
 - `setSegment(first, count, colorId, restId)` – static: `count` LEDs from `first` in one colour, the rest in another
