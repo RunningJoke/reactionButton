@@ -34,4 +34,7 @@ class IRole {
         // Whether nothing is due before the next radio frame or button edge, so the loop may wait
         // for up to 1 ms instead of spinning (#21, timing.md §1). False during an armed activation.
         virtual bool idle() const { return false; }
+
+        // Whether the pod may go to deep sleep after the idle time (#21, Power/AutoPowerOff.h)
+        virtual bool powerOffAllowed() const { return false; }
 };

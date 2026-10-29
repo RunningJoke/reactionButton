@@ -7,6 +7,7 @@
 #include "Config/SerialConsole.h"
 #include "Diagnostics/Diag.h"
 #include "LEDManager/LEDManager.h"
+#include "Power/AutoPowerOff.h"
 
 RoleManager* RoleManager::manager = nullptr;
 
@@ -45,6 +46,7 @@ void RoleManager::run() {
     }
     // after the role: an effect started in this pass already showed its first frame
     LEDManager::getManager()->service();
+    AutoPowerOff::service(this->role != nullptr && this->role->powerOffAllowed());
 }
 
 bool RoleManager::idle() const {

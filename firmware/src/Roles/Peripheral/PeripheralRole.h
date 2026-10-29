@@ -48,6 +48,8 @@ class PeripheralRole : public IRole {
         bool storeEditable() const override;
         // UNCLAIMED and READY: no activation is armed, so a press or a frame is seen within 1 ms
         bool idle() const override { return this->state == State::UNCLAIMED || this->state == State::READY; }
+        // only unclaimed: a claimed pod belongs to a set and stays awake for its central
+        bool powerOffAllowed() const override { return this->state == State::UNCLAIMED; }
 
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };
