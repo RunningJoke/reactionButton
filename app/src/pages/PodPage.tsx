@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Activity, AlertTriangle, BookLock, ChevronRight, FileJson, Info, KeyRound, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
+import { Activity, AlertTriangle, BatteryFull, BatteryMedium, BatteryWarning, BookLock, ChevronRight, FileJson, Info, KeyRound, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug, Users } from "lucide-react";
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
 import { LedRing } from "../components/LedRing";
 import { Modal, modalStyles } from "../components/Modal";
 import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
-import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
+import { PodError, type BatteryLevel, type FileEntry, type ListResponse, type PodStatus } from "../pod/protocol";
+import { LOW_BATTERY_PERCENT } from "../pod/battery";
 import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
 import type { SyncStatus } from "../pod/sync";
 import { useSyncStates } from "../pod/syncActions";
@@ -75,13 +76,22 @@ function NotConnected({ busy }: { busy: boolean }) {
   );
 }
 
+/** The battery is shown from `status` (firmware >= 2.13); the status is read again this often. */
+const BATTERY_REFRESH_MS = 5000;
+
 function Connected() {
   const { t, i18n } = useTranslation();
   const session = usePodSession();
   const { info, list, role, kind } = session;
   const [renaming, setRenaming] = useState(false);
   const states = useSyncStates();
+  const refreshStatus = usePodSession((s) => s.refreshStatus);
+  useEffect(() => {
+    const timer = window.setInterval(() => void refreshStatus(), BATTERY_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [refreshStatus]);
   if (!info || !list) return null;
+  const podStatus = session.status;
   const readOnly = isReadOnly(session);
   const status = new Map(states?.map((s) => [s.path, s.status]));
 
@@ -113,6 +123,13 @@ function Connected() {
           <Fact label={t("pod.setId")} value={info.setId} mono />
           <Fact label={t("pod.generation")} value={String(list.generation)} />
           <Fact label={t("pod.free")} value={formatBytes(info.freeBytes, i18n.language)} />
+          {podStatus?.battery && (
+            <Fact
+              label={t("pod.battery")}
+              value={`${podStatus.battery.percent} % · ${formatVolts(podStatus.battery.mv, i18n.language)}`}
+              warn={podStatus.battery.percent < LOW_BATTERY_PERCENT}
+            />
+          )}
         </dl>
         {!firmwareSupported(info) && <p className={styles.warn}>{t("pod.firmwareUnsupported", { version: info.firmware })}</p>}
         {programFormatNewer(info) && (
@@ -127,10 +144,43 @@ function Connected() {
       </section>
 
       <PodTraining />
+      {podStatus?.pods && podStatus.pods.length > 0 && <PodList pods={podStatus.pods} />}
       <SyncSection states={states} readOnly={readOnly} />
       <FileGroups list={list} status={status} />
       <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />
     </>
+  );
+}
+
+/** The peripherals of the set with their battery (firmware >= 2.13); pods without a reading say so. */
+function PodList({ pods }: { pods: PodStatus[] }) {
+  const { t } = useTranslation();
+  return (
+    <section className={page.section}>
+      <h2>
+        <Users size={16} aria-hidden /> {t("pod.pods.title", { count: pods.length })}
+      </h2>
+      <ul className={styles.files}>
+        {pods.map((pod) => (
+          <li key={pod.id} className={styles.file}>
+            <span className={styles.path}>{t("pod.pods.pod", { id: pod.id + 1 })}</span>
+            {!pod.alive && <span className={styles.missing}>{t("pod.pods.offline")}</span>}
+            {pod.battery ? <BatteryBadge battery={pod.battery} /> : <span className={styles.size}>{t("pod.batteryUnknown")}</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Percent with an icon and a colour: low (below 15 %), mid (below 50 %), ok. */
+function BatteryBadge({ battery }: { battery: BatteryLevel }) {
+  const level = battery.percent < LOW_BATTERY_PERCENT ? "low" : battery.percent < 50 ? "mid" : "ok";
+  const Icon = level === "low" ? BatteryWarning : level === "mid" ? BatteryMedium : BatteryFull;
+  return (
+    <span className={styles.battery} data-level={level}>
+      <Icon size={18} aria-hidden /> {battery.percent} %
+    </span>
   );
 }
 
@@ -281,6 +331,10 @@ function FileGroups({ list, status }: { list: ListResponse; status: ReadonlyMap<
       </section>
     </>
   );
+}
+
+function formatVolts(mv: number, language: string): string {
+  return `${new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(mv / 1000)} V`;
 }
 
 function FileRow({ path, file, status }: { path: string; file?: FileEntry; status?: SyncStatus }) {

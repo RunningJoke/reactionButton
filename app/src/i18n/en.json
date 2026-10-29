@@ -41,7 +41,8 @@
       "overflow": "The pod could not keep up. Please try again.",
       "unknown": "Something went wrong.",
       "auth_required": "This pod is protected with a PIN. Enter it to make changes.",
-      "auth_failed": "Wrong PIN. Wait 3 seconds before you try again."
+      "auth_failed": "Wrong PIN. Wait 3 seconds before you try again.",
+      "low_battery": "A battery is below 5 %. Charge the pods before you start."
     },
     "kind": {
       "ble": "Bluetooth pod",
@@ -72,6 +73,13 @@
       "title": "Pod connection",
       "close": "Close",
       "addSet": "Add another set"
+    },
+    "battery": "Battery",
+    "batteryUnknown": "no reading",
+    "pods": {
+      "title": "Pods ({{count}})",
+      "pod": "Pod {{id}}",
+      "offline": "offline"
     },
     "notConnected": "No pod connected",
     "connectButton": "Connect",

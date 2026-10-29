@@ -86,9 +86,9 @@ describe("SimulatedPod (config API)", () => {
 
   it("reports the firmware 2.11 fields in info: program format 5 with the communicate block", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.12", setName: "Halle 2", pinRequired: false, programFormat: 5 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle"]);
-    expect(info.linkRevision).toBe(3);
+    expect(info).toMatchObject({ firmware: "2.13", setName: "Halle 2", pinRequired: false, programFormat: 5 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "battery"]);
+    expect(info.linkRevision).toBe(4);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate"]));
   });
@@ -263,6 +263,27 @@ describe("SimulatedPod (config API)", () => {
     call(pod, { op: "put", path: "/prog/a.json", data: "[]" });
     expect(pod.storeHash).not.toBe(before);
     expect(pod.manifest()).toBe(`/prog/a.json\t2\t${crcHex("[]")}\n`);
+  });
+});
+
+describe("SimulatedPod (battery, firmware 2.13)", () => {
+  it("reports the battery of the pod and of each peripheral in status, with the feature in info", () => {
+    const pod = new SimulatedPod({ pods: 2 });
+    const status = call(pod, { op: "status" });
+    expect(status.battery).toEqual({ percent: 67, mv: 3950 });
+    expect(status.pods).toEqual([
+      expect.objectContaining({ id: 0, alive: true, battery: { percent: 87, mv: 4080 } }),
+      expect.objectContaining({ id: 1, alive: true, battery: { percent: 39, mv: 3760 } }),
+    ]);
+    expect(call(pod, { op: "info" }).features).toContain("battery");
+  });
+
+  it("leaves the battery out for older firmware (battery: false)", () => {
+    const pod = new SimulatedPod({ pods: 1, battery: false });
+    const status = call(pod, { op: "status" });
+    expect(status).not.toHaveProperty("battery");
+    expect((status.pods as Json[])[0]).not.toHaveProperty("battery");
+    expect(call(pod, { op: "info" }).features).not.toContain("battery");
   });
 });
 
