@@ -395,6 +395,8 @@ export class SimulatedPod {
         }
         if (!this.isWaiting()) throw new ApiFailure("not_ready", "no communicate block is waiting");
         this.waiting = null;
+        // `stop` ends the game (MENU); continue and repeat go on (RUN)
+        if (req.name === "stop") this.state = "MENU";
         return {};
       }
     }
@@ -452,6 +454,8 @@ export class SimulatedPod {
       this.pendingReports.shift();
       this.droppedReports++;
     }
+    // a game runs while the report waits (the training view shows RUN, #46)
+    if (this.state === "MENU") this.state = "RUN";
     this.waiting = { block: "Report", editable: { MAX_LOOPS: { min: 1, max: 50 } } };
     this.onEvent?.(JSON.stringify(report));
     return report;

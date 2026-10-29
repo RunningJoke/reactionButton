@@ -95,3 +95,18 @@ export function sendAthlete(client: PodClient, athlete: string) {
 export function sendCommand(client: PodClient, name: CommandName) {
   return client.request("command", { name });
 }
+
+/** Sets editable variables of a waiting `communicate` block, all or nothing (#46, config-api.md §5). */
+export function sendVariables(client: PodClient, values: Record<string, number>) {
+  return client.request("setVariables", { values });
+}
+
+/** Pauses a running game from the phone (firmware ≥ 2.12, feature `pause`). */
+export function sendPause(client: PodClient) {
+  return client.request("pause");
+}
+
+/** Ends a phone pause (feature `pause`). */
+export function sendResume(client: PodClient) {
+  return client.request("resume");
+}
