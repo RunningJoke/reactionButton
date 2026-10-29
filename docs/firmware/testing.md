@@ -159,7 +159,11 @@ does not change. Only in the test build:
 - `select` / long press keeps BLE on (`keepBle`, default on), ESP-NOW starts as usual.
   Advertising stops while a client is connected and restarts after a disconnect, also in the game.
 - About 1 s after a connect during the game, the central requests a connection interval of
-  `intervalMs` (default 75 ms).
+  `intervalMs` (default 75 ms) and a peripheral latency of `latency` connection events (default 0,
+  capped so that the 6 s supervision timeout holds).
+- With BLE on, ESP-NOW starts with WiFi modem sleep (`WIFI_PS_MIN_MODEM`): the WiFi driver aborts
+  with `WIFI_PS_NONE` while Bluetooth is enabled (`Should enable WiFi modem sleep when both WiFi and
+  Bluetooth are enabled`). Without BLE, ESP-NOW keeps `WIFI_PS_NONE`.
 - The config API stays available over BLE in every state. A separate task sends the
   indications, so the game loop never waits for a confirmation.
 - While a client is connected, `{"event":"load","seq":…,"t":…,"pad":"…"}` lines of `loadBytes`
@@ -169,7 +173,7 @@ does not change. Only in the test build:
   indication results, queue and send times, longest loop pass gap (`loopGapUsMax`).
   On peripherals, `bleTest` counts scheduled ARMs that arrived late (`lateArms`), the smallest lead
   before the start time (`armLeadUsMin`) and how late the LEDs went on (`startLateUsMax`).
-- Op `bleTest` (USB or BLE): `{"op":"bleTest","keepBle":true,"intervalMs":75,"loadBytes":1024,
+- Op `bleTest` (USB or BLE): `{"op":"bleTest","keepBle":true,"intervalMs":75,"latency":0,"loadBytes":1024,
   "loadPeriodMs":2000,"reset":true,"brief":false}`. All fields are optional, and the values reset
   on every restart. The script sets them.
 
@@ -204,7 +208,10 @@ Set up:
 2. The peripherals at **3–5 m** from the central (as far as the USB cables reach), line of sight,
    about 1 m high. Write the distances down.
 3. Note the 2.4 GHz environment: `netsh wlan show networks` (number of networks), place, time.
-4. Close every other serial monitor. Switch the peripherals on normally (no button held: yellow).
+4. All pods must belong to the same set: the central only claims peripherals with its own set id
+   or none (`status` shows `setId`). A peripheral of another set stays yellow and the run hangs
+   in DISCOVERY. Clear its pairing: while yellow, hold the button 3 s (white flash).
+5. Close every other serial monitor. Switch the peripherals on normally (no button held: yellow).
    The script restarts the central into the program menu itself.
 
 ### 8.4 Runs
@@ -254,7 +261,10 @@ At the end it prints the summary and `PASS`/`FAIL` per criterion and writes:
    in run 4 and in run 6. Write down the maximum and the 95th percentile.
 
 Without an analyser, the summary gives `startSpreadEstimateMs` = 2 × clock offset jitter +
-the latest LED start. It is a rough upper bound, not a measurement. The ADR must say which one was used.
+max(latest peripheral LED start, longest central loop gap). It is a rough upper bound, not a
+measurement. The central lights its own ring when its loop next sees the start time
+(`RemoteMultiplePressBlock::execute`), so the loop gap dominates the estimate: about 7 ms
+already without BLE, 14–17 ms with a phone connected. The peripherals start within about 1 ms. The ADR must say which one was used.
 
 ### 8.6 Optional: Android phone
 
