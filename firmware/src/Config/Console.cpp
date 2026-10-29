@@ -1,7 +1,9 @@
 #include "Console.h"
 #include <esp_log.h>
+#include "hal/usb_serial_jtag_ll.h"
 
 HWCDC Console;
+static int emptyFree = 0;     // availableForWrite() with nothing queued
 
 static int logToConsole(const char* format, va_list args) {
     char buffer[256];
@@ -16,5 +18,21 @@ void consoleBegin() {
     Console.setTxBufferSize(4096);
     Console.setRxBufferSize(4096);
     Console.begin();
+    emptyFree = Console.availableForWrite();
     esp_log_set_vprintf(&logToConsole);
+}
+
+void consoleKick() {
+    static uint32_t lastKick = 0;
+    uint32_t now = millis();
+    if(now - lastKick < 10 || !HWCDC::isPlugged()) {
+        return;
+    }
+    lastKick = now;
+    if(Console.availableForWrite() >= emptyFree) {
+        return;     // nothing queued
+    }
+    // as HWCDC::write does: push the FIFO out and let the ISR move the queued bytes
+    usb_serial_jtag_ll_txfifo_flush();
+    usb_serial_jtag_ll_ena_intr_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY);
 }

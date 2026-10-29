@@ -16,3 +16,8 @@ extern HWCDC Console;
 
 // Starts the USB console and routes ESP-IDF log output (ESP_LOGx) to it as well
 void consoleBegin();
+
+// Pushes queued output out (#74). HWCDC sometimes left the end of a line in its buffer until
+// the next write, so a response arrived only with the next one (10-20 % of USB requests).
+// Does what HWCDC::write does at most every 10 ms while bytes are queued. Call once per loop pass.
+void consoleKick();
