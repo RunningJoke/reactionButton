@@ -383,17 +383,25 @@ def push(pod: PodSerial, directory: str):
         say(f"  {r['path']}: {r['size']} bytes, crc {r['crc']}")
 
 
+def battery_text(battery) -> str:
+    """'82 % (3.95 V)' from a battery entry (firmware >= 2.13); '-' while unknown or on older firmware."""
+    if not battery:
+        return "-"
+    return f"{battery['percent']} % ({battery['mv'] / 1000:.2f} V)"
+
+
 def print_pods(status: dict):
     pods = status.get("pods", [])
     if not pods:
         say("  (no peripherals connected)")
         return
-    say("  id  mac                alive  hold   toggle last seen   tx ok  retries  lost   rx   ack avg/max (us)")
+    say("  id  mac                alive  hold   toggle battery       last seen   tx ok  retries  lost   rx   ack avg/max (us)")
     for p in pods:
         link = p.get("link", {})
         hold = "-" if "hold" not in p else str(p["hold"])    # hold: firmware >= 2.9 (link revision 2)
         toggle = "-" if "toggle" not in p else str(p["toggle"])    # toggle: firmware >= 2.10 (link revision 3)
-        say(f"  {p['id']:<3} {p['mac']:<18} {str(p['alive']):<6} {hold:<5} {toggle:<6} {p['lastSeenMs']:>6} ms  "
+        battery = battery_text(p.get("battery"))    # battery: firmware >= 2.13 (link revision 4)
+        say(f"  {p['id']:<3} {p['mac']:<18} {str(p['alive']):<6} {hold:<5} {toggle:<6} {battery:<13} {p['lastSeenMs']:>6} ms  "
             f"{link.get('txFrames', 0):>6} {link.get('txRetries', 0):>8} {link.get('txLost', 0):>5} "
             f"{link.get('rxFrames', 0):>5}   {link.get('ackUsAvg', 0)}/{link.get('ackUsMax', 0)}")
 
@@ -404,6 +412,7 @@ def print_status(status: dict):
         f"set {status.get('setId')}, uptime {status.get('uptimeMs', 0) / 1000:.0f} s")
     say(f"  store generation {status.get('store', {}).get('generation')}, hash {status.get('store', {}).get('hash')}; "
         f"last reset: {reset.get('reason')} (step '{reset.get('lastStep')}')")
+    say(f"  battery {battery_text(status.get('battery'))}")
     if status.get("program"):
         p = status["program"]
         say(f"  program [{p.get('index')}] {p.get('name')} {p.get('path')} "

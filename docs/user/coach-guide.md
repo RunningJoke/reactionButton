@@ -77,8 +77,8 @@ itself. That is the moment to swap athletes.
   footwork (Weiche), course (Run). Swap stations after each cycle.
 - **Waiting athletes count or judge.** With Run5 they can watch for wrong presses; with Duo two
   athletes play against each other.
-- **Change the game** by switching the central off and on (holding the top during the blue
-  light) and choosing again. The targets can stay on.
+- **Change the game** by switching the central off and on (holding the top during the
+  battery ring at switch-on) and choosing again. The targets can stay on.
 
 ## 6. Measuring progress
 

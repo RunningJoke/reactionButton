@@ -49,7 +49,7 @@ class PeripheralRole : public IRole {
 
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };
-        enum class IdentityShow : uint8_t { NONE, FLASH, SPIN };
+        enum class IdentityShow : uint8_t { NONE, FLASH, LOW_BATTERY, SPIN };
 
         static const int64_t HELLO_INTERVAL_US = 250000;
         static const int64_t PING_INTERVAL_US = 200000;

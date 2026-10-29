@@ -8,6 +8,7 @@ import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_RE
 import { validateProgram, type Issue } from "@reactpod/program-model";
 import { crc32, crcHex, hex32 } from "../crc32";
 import type { ApiErrorCode, PodRole } from "../protocol";
+import { batteryPercent } from "../battery";
 import { byteLength, encodeUtf8 } from "../utf8";
 
 const BAD_PATH_MESSAGE = `path must be /programs.json or /prog/... (max ${MAX_PATH} characters)`;
@@ -42,6 +43,12 @@ export type SimulatedPodOptions = {
    * format 5. Adds the feature `liveBle` and `ble` in the central `status`.
    */
   liveBle?: boolean;
+  /**
+   * Battery reports (firmware ≥ 2.13, feature `battery`): `battery` in the status of the pod and of each
+   * `pods[]` entry, with demo cell voltages. `false` simulates older firmware (no field, no feature).
+   * Default: on with program format 5 (firmware 2.13).
+   */
+  battery?: boolean;
 };
 
 /** Reports the central keeps until they are acknowledged (#41). */
@@ -72,6 +79,7 @@ export class SimulatedPod {
   readonly programFormat: number;
   readonly podCount: number | undefined;
   private readonly liveBleOption: boolean | undefined;
+  private readonly batteryOption: boolean;
   blockTypes: string[];
   /** `status.timers.orphanStops` while a game runs (RUN / PAUSED, programs.md §7.9); set by tests and demos */
   orphanStops = 0;
@@ -112,9 +120,10 @@ export class SimulatedPod {
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
     this.podCount = options.pods;
     this.liveBleOption = options.liveBle;
+    this.batteryOption = options.battery ?? this.programFormat >= 5;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 5 ? "2.13" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 5 ? (this.batteryOption ? "2.13" : "2.12") : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -129,6 +138,23 @@ export class SimulatedPod {
   /** firmware ≥ 2.11 (program format 5): the reports and the remote ops, features `reports` and `remote` */
   get remote(): boolean {
     return this.programFormat >= 5;
+  }
+
+  /** firmware ≥ 2.13: battery levels, feature `battery` */
+  get battery(): boolean {
+    return this.batteryOption;
+  }
+
+  /** Demo cell voltage (mV) of the pod with this id; the central ("self") is at 3.95 V. */
+  private batteryMv(id: number | "self"): number {
+    if (id === "self") return 3950;
+    const demo = [4080, 3760, 3640, 4150, 3900, 3700, 4010];
+    return demo[id % demo.length]!;
+  }
+
+  private batteryLevel(id: number | "self"): Json {
+    const mv = this.batteryMv(id);
+    return { percent: batteryPercent(mv), mv };
   }
 
   /** firmware ≥ 2.12: BLE stays connected during the game, feature `liveBle` */
@@ -251,7 +277,7 @@ export class SimulatedPod {
       firmware: this.firmware,
       linkProtocol: 1,
       // firmware >= 2.9: hold reporting (link protocol revision 2), >= 2.10: toggle (revision 3), config-api.md
-      ...(this.programFormat >= 3 ? { linkRevision: this.identifies ? 4 : this.programFormat >= 4 ? 3 : 2 } : {}),
+      ...(this.programFormat >= 3 ? { linkRevision: this.identifies || this.battery ? 4 : this.programFormat >= 4 ? 3 : 2 } : {}),
       setId: this.setId,
       setName: this.setName,
       pinRequired: this.pin !== "",
@@ -273,6 +299,7 @@ export class SimulatedPod {
         ...(this.remote ? ["reports", "remote", "pause"] : []),
         ...(this.liveBle ? ["liveBle"] : []),
         ...(this.identifies ? ["identify"] : []),
+        ...(this.battery ? ["battery"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -291,6 +318,8 @@ export class SimulatedPod {
       ...(this.role === "central" && this.liveBle
         ? { ble: { connected: true, intervalMs: this.state === "MENU" ? 0 : 100 } }
         : {}),
+      // firmware >= 2.13: the battery of this pod (config-api.md §5)
+      ...(this.battery ? { battery: this.batteryLevel("self") } : {}),
       // central in a game, firmware ≥ 2.8 (config-api.md §5)
       ...(this.role === "central" && (this.state === "RUN" || this.state === "PAUSED") && this.programFormat >= 2
         ? { timers: { orphanStops: this.orphanStops } }
@@ -306,6 +335,7 @@ export class SimulatedPod {
               ...(this.programFormat >= 3 ? { hold: true } : {}),
               ...(this.programFormat >= 4 ? { toggle: true } : {}),
               ...(this.identifies ? { number: id + 1, color: IDENTITY_COLORS[id % IDENTITY_COLORS.length] } : {}),
+              ...(this.battery ? { battery: this.batteryLevel(id) } : {}),
             })),
           }
         : {}),

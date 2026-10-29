@@ -82,8 +82,8 @@ The table below is estimated.
 
 | Where | Constant | Value | Effect |
 |---|---|---|---|
-| `main.cpp` | boot animation | 2000 ms, refresh every 10 ms | role decision at the end |
-| `BootupAnimation.h` | step | 50 ms per LED → 900 ms per revolution | |
+| `main.cpp` | boot battery gauge | 2000 ms, loop every 10 ms (static ring) | role decision at the end |
+| `Battery.cpp` | battery sample | 16 × `analogReadMilliVolts`, refresh every 3000 ms | |
 | `ErrorAnimation.h` | blink | 1000 ms on / 1000 ms off | |
 | `LEDManager` | `MIN_FRAME_US` | 16 ms | minimum time between two effect frames |
 | | default period | 1000 ms | `blink`, `pulse`, `spin` with `periodMs` 0 |

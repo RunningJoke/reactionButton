@@ -2,6 +2,7 @@
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
 #include "LEDManager/Identity.h"
+#include "Battery/Battery.h"
 
 using namespace Protocol;
 
@@ -173,6 +174,9 @@ void PodNetwork::handlePing(const RxFrame& frame, int16_t podId) {
     pong.flags = (this->syncAllowed ? PONG_FLAG_SYNC_ALLOWED : 0) | (this->identify ? PONG_FLAG_IDENTIFY : 0);
     this->link.send(this->pods[podId].mac, &pong, sizeof(pong), 0, (int8_t)offsetof(Pong, t3));
 
+    // appended by firmware >= 2.13: a shorter PING (older pod) leaves the level unknown
+    this->pods[podId].batteryMv = frame.len >= sizeof(Ping) ? ping->batteryMv : 0;
+
     // the peripheral may have a newer program store than we do
     this->sync.peerState(frame.mac, ping->store, true);
 }
@@ -314,6 +318,11 @@ void PodNetwork::describe(JsonArray out) const {
         entry["effects"] = (pod.linkFeatures & LINK_FEATURE_EFFECTS) != 0;
         entry["hold"] = (pod.linkFeatures & LINK_FEATURE_HOLD) != 0;
         entry["toggle"] = (pod.linkFeatures & LINK_FEATURE_TOGGLE) != 0;
+        if(pod.batteryMv != 0) {
+            JsonObject b = entry["battery"].to<JsonObject>();
+            b["percent"] = Battery::percentOf(pod.batteryMv);
+            b["mv"] = pod.batteryMv;
+        }
 
         EspNowLink::LinkStats st;
         if(this->link.stats(pod.mac, st)) {

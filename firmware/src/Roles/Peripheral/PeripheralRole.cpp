@@ -6,11 +6,15 @@
 #include "Config/ConfigApi.h"
 #include "LEDManager/EffectJson.h"
 #include "LEDManager/Identity.h"
+#include "Battery/Battery.h"
 #include <WiFi.h>
 
 using namespace Protocol;
 
 static const char* TAG = "PERIPHERAL";
+
+// Idle warning (#19): amber blink while claimed and idle (READY) with a low battery
+static const EffectDesc lowBatteryBlink = {EffectId::BLINK, Color::AMBER, Color::OFF, 255, 0, 1000, 0, 0};
 
 PeripheralRole::PeripheralRole() {
     this->setId = Settings::getSetId();
@@ -87,6 +91,8 @@ void PeripheralRole::run() {
         return;
     }
 
+    // idle ring: identity (#20) and the low-battery warning (#19). Any activation or effect takes the
+    // ring, so programs never see either during a game.
     if(this->state == State::READY) {
         this->updateIdentity(now);
     }
@@ -135,6 +141,7 @@ void PeripheralRole::updateIdentity(int64_t now) {
         return;     // the central's effect (blink) owns the ring
     }
     IdentityShow wanted = now < this->identityFlashUntilUs ? IdentityShow::FLASH
+                        : Battery::isLow() ? IdentityShow::LOW_BATTERY
                         : this->identifyWanted ? IdentityShow::SPIN : IdentityShow::NONE;
     if(wanted == this->identityShown) {
         return;
@@ -150,6 +157,9 @@ void PeripheralRole::updateIdentity(int64_t now) {
             break;
         case IdentityShow::FLASH:
             leds->setSegment(0, number, color, Color::OFF);
+            break;
+        case IdentityShow::LOW_BATTERY:
+            leds->playEffect(lowBatteryBlink);     // amber blink (#19)
             break;
         case IdentityShow::SPIN:
         {
@@ -242,6 +252,7 @@ void PeripheralRole::sendPing() {
     fillHeader(ping.header, MsgType::PING, this->setId);
     ping.t1 = 0;    // stamped by the link when the frame goes to the radio
     ping.store = StoreSync::localState();
+    ping.batteryMv = Battery::milliVolts();
     this->link.send(this->centralMac, &ping, sizeof(ping), 0, (int8_t)offsetof(Ping, t1));
 }
 
@@ -322,7 +333,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ClaimAck ack;
     fillHeader(ack.header, MsgType::CLAIM_ACK, this->setId);
     ack.podId = this->podId;
-    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE;
+    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE | LINK_FEATURE_BATTERY;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
     this->identityFlashUntilUs = esp_timer_get_time() + Identity::FLASH_US;

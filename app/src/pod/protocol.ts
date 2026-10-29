@@ -19,7 +19,8 @@ export type ApiErrorCode =
   | "not_running" /** pause: the game is not in RUN (firmware ≥ 2.12) */
   | "not_paused" /** resume: no phone pause is active (firmware ≥ 2.12) */
   | "auth_required" /** a PIN is set: put / delete / setName need `auth` first (firmware ≥ 2.6) */
-  | "auth_failed"; /** wrong PIN, or a retry within 3 s */
+  | "auth_failed" /** wrong PIN, or a retry within 3 s */
+  | "low_battery"; /** start: the central or a pod is below 5 % (firmware ≥ 2.13, battery) */
 
 /** Errors raised by the app itself while talking to a pod. */
 export type ClientErrorCode =
@@ -76,8 +77,12 @@ export type InfoResponse = ResponseBase & {
  * `pause` (firmware ≥ 2.12): the ops pause and resume.
  * `liveBle` (firmware ≥ 2.12): the central keeps BLE during the game, file changes answer `busy` from DISCOVERY on.
  * `identify` (firmware ≥ 2.13): the op `blink` (find a pod); `status.pods[]` has `number` and `color`.
+ * `battery` (firmware ≥ 2.13): `battery` in `status` and `pods[]` (BatteryLevel).
  */
-export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | "identify" | (string & {});
+export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | "identify" | "battery" | (string & {});
+
+/** Battery of a pod (firmware ≥ 2.13): percent of a single Li-ion cell (3.3 V = 0, 4.2 V = 100) and the cell voltage. */
+export type BatteryLevel = { percent: number; mv: number };
 
 export type FileEntry = {
   path: string;
@@ -133,6 +138,8 @@ export type StatusResponse = ResponseBase & {
   /** BLE only (firmware ≥ 2.7) */
   mtu?: number;
   store: { generation: number; hash: string };
+  /** firmware ≥ 2.13: the level of this pod (missing = unknown, e.g. no reading yet) */
+  battery?: BatteryLevel;
   /** central: the game is paused by the phone (`pause`, firmware ≥ 2.12); missing = false */
   phonePaused?: boolean;
   /** firmware ≥ 2.12 */
@@ -159,6 +166,8 @@ export type PodStatus = {
   effects?: boolean;
   hold?: boolean;
   toggle?: boolean;
+  /** firmware ≥ 2.13: missing = unknown (older pod or no reading) */
+  battery?: BatteryLevel;
 };
 
 /** `blink` (firmware ≥ 2.13, feature `identify`). `pod` -1 = the central itself. */

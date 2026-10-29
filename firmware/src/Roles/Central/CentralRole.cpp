@@ -15,6 +15,7 @@
 #include "Diagnostics/Diag.h"
 #include "Results/Reports.h"
 #include "Block/CommunicateBlock/CommunicateBlock.h"
+#include "Battery/Battery.h"
 
 CentralRole::CentralRole() {
     // the button was held to select CENTRAL at boot; that hold must not count as a menu press
@@ -89,6 +90,7 @@ void CentralRole::run() {
         esp_restart();
     }
 
+    int64_t now = esp_timer_get_time();
     Button::get().update();
     if(this->state != State::MENU && this->state != State::ERROR) {
         this->network.service();
@@ -128,8 +130,16 @@ void CentralRole::run() {
             break;
 
         case State::CONFIRM:
+            if(this->refusedUntilUs != 0 && now >= this->refusedUntilUs) {
+                this->refusedUntilUs = 0;
+                LEDManager::getManager()->setLEDColors(GREEN);
+            }
             if(Button::get().pressCount() != this->pressCountAtConfirm) {
-                this->startGame();
+                if(this->batteryTooLow()) {
+                    this->refuseStart();
+                } else {
+                    this->startGame();
+                }
             }
             break;
 
@@ -197,6 +207,28 @@ bool CentralRole::startProgram() {
     this->drawnPodCount = -1;
     Diag::step("loop");
     return true;
+}
+
+// Battery (#19): the central itself and every connected pod with a reading must be at least CRITICAL_PERCENT.
+// Pods without a reading (older firmware) do not block the start.
+bool CentralRole::batteryTooLow() const {
+    if(Battery::known() && Battery::percent() < Battery::CRITICAL_PERCENT) {
+        return true;
+    }
+    for(uint8_t i = 0; i < this->network.podCount(); i++) {
+        uint16_t mv = this->network.batteryMv(i);
+        if(mv != 0 && Battery::percentOf(mv) < Battery::CRITICAL_PERCENT) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// The confirm press (or "start") is refused: red for one second, then green again (CONFIRM in run())
+void CentralRole::refuseStart() {
+    Console.println("Start refused: a battery is below " + String(Battery::CRITICAL_PERCENT) + " %");
+    LEDManager::getManager()->setLEDColors(RED);
+    this->refusedUntilUs = esp_timer_get_time() + 1000000;
 }
 
 bool CentralRole::startGame() {
@@ -732,7 +764,10 @@ void CentralRole::opResume(JsonDocument& response) {
 void CentralRole::opStart(JsonDocument& response) {
     switch(this->state) {
         case State::CONFIRM:
-            if(this->startGame()) {
+            if(this->batteryTooLow()) {
+                this->refuseStart();
+                ConfigApi::setError(response, "low_battery", "a battery is below " + String(Battery::CRITICAL_PERCENT) + " %");
+            } else if(this->startGame()) {
                 response["ok"] = true;
                 response["state"] = stateName(this->state);
             } else {

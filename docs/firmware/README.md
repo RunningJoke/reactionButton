@@ -36,7 +36,7 @@ Other files in this folder:
 | Phone | BLE (Bluedroid), central only, during the program menu |
 | LEDs | 18 × WS2812 (NeoPixel, GRB, 800 kHz) on GPIO 7 |
 | Button | GPIO 3, active LOW (external pull-up assumed, `pinMode INPUT`) |
-| Battery sense | GPIO 5 (configured as input, **not read yet**) |
+| Battery sense | GPIO 5, ADC (`analogReadMilliVolts`) through a 1:1 divider R6 / R7 (2 × 100 k), see `Battery/` (firmware 2.13) |
 | Libraries | Adafruit NeoPixel ^1.12.0, ArduinoJson ^7.4.2 |
 | Max set size in shipped programs | 5 pods (1 central + 4 peripherals) |
 | Firmware limit | 7 peripherals (`CentralRole::MAX_PERIPHERALS`) |

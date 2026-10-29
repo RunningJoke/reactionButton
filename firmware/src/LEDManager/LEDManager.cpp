@@ -60,6 +60,7 @@ bool LEDManager::colorOf(uint8_t colorId, ColorSet& out)
         case 6: out = ColorSet{255, 255, 255}; return true;
         case 7: out = ColorSet{255, 128, 0}; return true;
         case 8: out = ColorSet{128, 0, 255}; return true;
+        case 9: out = ColorSet{255, 160, 0}; return true;     // amber (Protocol::Color::AMBER)
         case 255: out = ColorSet{0, 0, 0}; return true;
     }
     return false;
@@ -78,6 +79,7 @@ void LEDManager::setLEDColors(uint8_t colorId)
         case 6: this->setLEDColors(WHITE); break;
         case 7: this->setLEDColors(ORANGE); break;
         case 8: this->setLEDColors(VIOLET); break;
+        case 9: this->setLEDColors(AMBER); break;
         case 255: this->setLEDColors(BLACK); break;
     }
 }

@@ -27,7 +27,7 @@ Technical reference. For a non-technical guide, see the [user manual](manual.md)
 | Pause / resume from the phone | ✅ firmware 2.12 |
 | Results on the LED ring | ❌ (#25) |
 | Countdown on timed blocks | ✅ (`countdown` option, firmware 2.9) |
-| Battery measurement / low-battery warning | ❌ (#19) |
+| Battery measurement / low-battery warning | ✅ firmware 2.13 |
 | Power saving / auto power-off | ❌ (#21) |
 | OTA firmware update | ❌ (not planned, flash over USB) |
 

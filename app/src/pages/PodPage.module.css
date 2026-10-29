@@ -201,6 +201,24 @@
   font-family: var(--font-mono);
 }
 
+.battery {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ok);
+}
+
+.battery[data-level="mid"] {
+  color: var(--warn);
+}
+
+.battery[data-level="low"] {
+  color: var(--error);
+}
+
 .warn,
 .note {
   margin: var(--space-2) 0 0;

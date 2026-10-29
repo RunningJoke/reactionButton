@@ -3,13 +3,25 @@
 #include <SPIFFS.h>
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
-#include "LEDManager/BootupAnimation.h"
+#include "Battery/Battery.h"
 #include "Roles/RoleManager.h"
 #include "Store/ProgramStore.h"
 #include "Settings/Settings.h"
 #include "Diagnostics/Diag.h"
 
 uint64_t timestamp = 0;
+
+// Boot gauge (#19): the ring filled to the charge. Green above 50 %, amber 20-50 %, red below 20 %.
+// Without a reading (0 mV) the ring is full in blue.
+static Protocol::EffectDesc batteryGauge() {
+  Protocol::EffectDesc gauge = {Protocol::EffectId::LEVEL, Protocol::Color::BLUE, Protocol::Color::OFF, 255, 0, 0, 100, 0};
+  if(Battery::known()) {
+    uint8_t percent = Battery::percent();
+    gauge.color = percent > 50 ? Protocol::Color::GREEN : percent >= 20 ? Protocol::Color::AMBER : Protocol::Color::RED;
+    gauge.param = percent;
+  }
+  return gauge;
+}
 
 
 void setup() {
@@ -33,9 +45,12 @@ void setup() {
 
   LEDManager::getManager()->turnOff();
 
+  // measured before the LEDs light up: 18 lit LEDs pull the battery voltage down
+  Battery::measure();
+  LEDManager::getManager()->playEffect(batteryGauge());
+
   timestamp = millis();
   while(millis() - timestamp < 2000) {
-    LEDManager::getManager()->setLEDColors(&bootupPattern);
     delay(10);
   }
 
@@ -61,6 +76,7 @@ void setup() {
 
 void loop() {
 
+  Battery::service();
   RoleManager::getManager()->run();
 
 

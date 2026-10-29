@@ -12,6 +12,7 @@
 #include "Results/Results.h"
 #include "Roles/RoleManager.h"
 #include "Diagnostics/Diag.h"
+#include "Battery/Battery.h"
 
 static const char* TAG = "CONFIGAPI";
 
@@ -172,6 +173,7 @@ void ConfigApi::opStatus(JsonDocument& response) {
     heap["free"] = (uint32_t)esp_get_free_heap_size();
     heap["minFree"] = (uint32_t)esp_get_minimum_free_heap_size();
     Diag::describe(response["lastReset"].to<JsonObject>());
+    Battery::describe(response.as<JsonObject>());      // missing while the level is unknown
     if(role != nullptr) {
         role->describe(response.as<JsonObject>());
     }
@@ -209,6 +211,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("pause");
     features.add("liveBle");
     features.add("identify");
+    features.add("battery");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

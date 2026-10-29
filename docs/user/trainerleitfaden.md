@@ -77,7 +77,7 @@ nächste Durchgang von selbst. Das ist der Moment zum Wechseln.
   Beinarbeit (Weiche), Parcours (Run). Nach jedem Durchgang die Station wechseln.
 - **Wartende zählen mit oder schiedsrichtern.** Bei Run5 achten sie auf falsche Drücke; bei Duo
   spielen zwei Sportler gegeneinander.
-- **Spiel wechseln:** Central aus- und wieder einschalten (während des blauen Lauflichts den
+- **Spiel wechseln:** Central aus- und wieder einschalten (während des Akku-Rings beim Einschalten den
   Deckel halten) und neu wählen. Die Ziele können anbleiben.
 
 ## 6. Fortschritt messen
