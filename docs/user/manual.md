@@ -60,6 +60,17 @@ boot gauge below. On USB the pod measures the charger's voltage, so it shows nea
 - **Below 5 %:** the game does not start. When you confirm on the central, its ring flashes **red** for a
   second. Charge the pod (or the central) first.
 
+### Auto power-off
+
+- A pod that is **not in a set** (waiting, no central) or a **central in the program menu with no app
+  connected** goes to sleep after **10 minutes** without a press.
+- Before it sleeps, the ring empties in white for about a second.
+- **Wake it:** press the top. The pod starts as usual (battery gauge first, then its role). Hold the top
+  during the gauge to make it the central.
+- A pod in a set, and every central during a set-up or a game, never goes to sleep.
+- The sleeping pod still draws a little current from its battery, and the lights draw a little more. Switch it
+  off with the switch for storage or for a long break.
+
 ---
 
 ## 3. Your first game in two minutes
@@ -300,6 +311,7 @@ Settings.
 | target | flashing for 2 s | found with *Blink* in the app |
 | target | slow amber blink, once a second | battery below 15 %, waiting in the set (not during a game) |
 | target | white flash | set forgotten (held 3 s while yellow) |
+| any | ring empties in white for about 1 s, then dark | going to sleep after 10 minutes without a press (press the top to wake) |
 | central | flashing white for 2 s | the central itself, found with *Blink* in the app |
 | target | dark | ready |
 | target | green / red | press / don't press |
