@@ -287,6 +287,7 @@ Besides responses, the serial port carries event lines, also one JSON object per
 |---|---|
 | `boot` | `role`, `firmware`, `lastReset {reason, lastStep}`: after every start. `reason` = `panic`/`*watchdog`/`brownout` means a crash, `lastStep` says where |
 | `state` | `state`, `program`, `pods`, `required`, `phonePaused` (bool, firmware ≥ 2.12): every central state change (MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR) |
+| `sleep` | `idleMinutes` (firmware ≥ 2.14): the pod goes to deep sleep after the auto power-off time (architecture.md §8.2). It wakes on a press of the top, with a normal boot (`boot` event) |
 | `block` | `name`, `t`: only while `trace` is on |
 | `report` | firmware ≥ 2.11, from a `communicate` block (programs.md §7.16): `id`, `program`, `setId`, `athlete` (if set), `cycle`, `startMs`, `endMs`, `values[] {t, metric, pod, ms}`, `stats {<metric>: {count, average, best, worst}}`, `vars {<name>: value}`, `valuesDropped` (if > 0) |
 

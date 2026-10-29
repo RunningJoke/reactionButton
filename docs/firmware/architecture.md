@@ -54,6 +54,7 @@ src/
 │   └── Console.*             USB serial port object (HWCDC) + ESP-IDF log redirection
 ├── Diagnostics/Diag.*        reset reason + last step across reboots (crash breadcrumbs)
 ├── Settings/Settings.*       values in flash (NVS): set id, store generation, boot role
+├── Power/AutoPowerOff.*      idle timer, goodbye animation, deep sleep (wake on the button, §8)
 ├── Battery/Battery.*         cell voltage on GPIO 5 (ADC2: needs `CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3` in sdkconfig; 32-sample average, smoothed over the updates), percent, low-battery thresholds
 ├── Store/
 │   ├── ProgramStore.*        program files: list, CRC, manifest, atomic commit, generation
@@ -121,6 +122,7 @@ flowchart TD
 ```
 
 The role cannot change without a reboot. Protocol details: [link-protocol.md](link-protocol.md).
+A wake-up from deep sleep (§8.2) is a normal boot through the same flow.
 
 ## 5. State machines
 
@@ -296,11 +298,56 @@ load time. Unknown variables read as 0. Variables set by the system:
 - `LEDManager/EffectJson` parses the JSON form of an effect (used by the `effect` test op).
   The `effect` block and the `countdown` option build `EffectDesc`s from block fields
   (`Block/EffectTarget`, `Block/Countdown`, programs.md §7.11, §7.12); `ledMask` is the block's `leds`.
-- Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included
-  (default 255 = full brightness).
+- Brightness cap `setBrightnessCap(0…255)` scales all output, static colours included.
+  The default is `LED_BRIGHTNESS_CAP` (160 of 255, firmware ≥ 2.14, #21), applied in `scaled()` only.
+- `present()` (firmware ≥ 2.14, #21): every driver write goes through it. `show()` runs only when the
+  buffer differs from the last frame sent. Static calls that repeat the current colour cost no LED time.
 - `setSegment(first, count, colorId, restId)` – static: `count` LEDs from `first` in one colour, the rest in another
   (firmware ≥ 2.13, used for the identity and the MAC pattern of an unclaimed pod).
 - Pod identity (firmware ≥ 2.13): `LEDManager/Identity.h` holds the palette (colour indices 0…8, the identity
   colours orange 7 and violet 8 are only used by pods), the numbers and the timings. The pattern itself is drawn by
   `PeripheralRole::updateIdentity` (link-protocol.md §2.4). The central's own pattern is its `blink` op
   (`CentralRole::opBlink`, white) and it sends the menu flag `PONG_FLAG_IDENTIFY` through `PodNetwork::setIdentify`.
+
+## 8. Power management (firmware ≥ 2.14, #21)
+
+Timing rules for the loop are in [timing.md](timing.md) §1.
+
+### 8.1 Idle loop
+
+In the idle states (peripheral UNCLAIMED / READY, central MENU / CONFIRM / ERROR) the loop waits up to
+1 ms for a radio frame instead of spinning (`IRole::idle()`, `EspNowLink::idleWait`). Armed activations
+and games never wait. The ESP-NOW receive queue wakes the loop at once when a frame arrives.
+
+### 8.2 Auto power-off
+
+`AutoPowerOff::service(allowed)` runs once per loop pass (from `RoleManager::run`). `allowed` is
+`IRole::powerOffAllowed()`:
+
+| Role state | Allowed | Notes |
+|---|---|---|
+| peripheral UNCLAIMED | yes | no central, no set in use |
+| peripheral READY / SCHEDULED / ACTIVE / HOLDING / DONE | no | a claimed pod stays awake for its central |
+| central MENU, no phone connected (`PhoneConfig::connected()`) | yes | |
+| central MENU with a phone, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR | no | |
+
+While allowed, a button press (or the button held) restarts the idle time. After `AUTO_POWER_OFF_MINUTES`
+(10) the pod drains the ring in white over 1.2 s (`DRAIN`, then dark), emits a `sleep` event
+([config-api.md](config-api.md)) and enters deep sleep with `esp_deep_sleep_enable_gpio_wakeup(BIT(3),
+ESP_GPIO_WAKEUP_GPIO_LOW)`. GPIO 3 is an RTC pin on the ESP32-C3 and the button pulls it LOW. The wake-up
+is a normal boot: the battery gauge runs, and holding the top at its end makes the pod the central.
+
+Limits:
+- Deep sleep draws a few µA from the chip. The 18 WS2812 LEDs still draw their quiescent current (about
+  0.5–1 mA each) if their supply is not switched off. The firmware cannot switch it off on this PCB:
+  check `hardware/pcb/PCB Board/PCB Board.kicad_sch` for an LED power switch before relying on a low
+  standby current. The hardware power switch cuts all power.
+- A pod that is asleep cannot answer HELLO. Before a game, press each pod that is waiting unclaimed to
+  wake it, then start the discovery on the central.
+
+### 8.3 Light sleep (not used)
+
+Light sleep on the peripherals is not used. ESP-NOW must keep receiving (the radio sleeps in light
+sleep, frames would be lost or delayed by the wake interval). A claimed pod is always listening for ARM
+and EFFECT frames, so its loop and radio stay on. Only deep sleep (§8.2) saves power, and only where
+no pod is in a set.

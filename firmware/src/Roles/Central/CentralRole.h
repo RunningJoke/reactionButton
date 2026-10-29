@@ -40,6 +40,10 @@ class CentralRole : public IRole {
         bool control(const char* op, JsonObjectConst request, JsonDocument& response) override;
         bool storeEditable() const override;
         bool engineIdle() const override;
+        // MENU, CONFIRM and ERROR: no game timing, a press or a frame is seen within 1 ms
+        bool idle() const override { return this->state == State::MENU || this->state == State::CONFIRM || this->state == State::ERROR; }
+        // the menu without a phone: nobody is configuring the pod, and no game is prepared
+        bool powerOffAllowed() const override { return this->state == State::MENU && !this->phone.connected(); }
 
     private:
         enum class State : uint8_t { MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR };

@@ -39,10 +39,26 @@ loop() → RoleManager::run()                       ESP-NOW receive callback
   Without a running effect `LEDManager::service()` returns at once. While a smooth effect
   runs on an armed pod, a press can be seen up to one `show()` (~0.6 ms) later; the
   reaction time is still measured from the first LED update of the activation.
-- **LEDs are only rewritten on changes.** The peripheral no longer refreshes its LEDs every
-  pass, so its loop runs in the µs range and polls the button and the radio queue very often.
-- **Busy loop**: `loop()` still never sleeps. WiFi power save is off, so the radio is
-  always receiving. This trades battery for latency. A ~1 h runtime target is acceptable.
+- **LEDs are only rewritten on changes.** Every driver write goes through `LEDManager::present()`,
+  which calls `show()` only when the frame differs from the last one sent (#21). The peripheral no
+  longer refreshes its LEDs every pass, so its loop runs in the µs range and polls the button and the
+  radio queue very often.
+- **Idle wait (firmware ≥ 2.14, #21)**: in the idle states the loop waits up to 1 ms for a radio frame
+  (`EspNowLink::idleWait`, a peek on the receive queue, so a frame wakes it at once). Otherwise it
+  spins. The rule:
+  - **Idle** (the loop may wait): peripheral UNCLAIMED and READY; central MENU, CONFIRM and ERROR.
+    Nothing is due in these states: no activation is armed and no game timing runs.
+  - **Never idle** (the loop runs without a wait): peripheral SCHEDULED, ACTIVE, HOLDING, DONE; central
+    DISCOVERY, RUN, PAUSED. A frame that arms an activation moves the state out of idle in the same
+    pass, so the first pass of an armed activation already runs without the wait.
+  - Effects and their timers (esp_timer) do not depend on the wait, because they are timed from the
+    clock, not from the loop pass.
+- **Busy loop**: outside the idle states `loop()` still never sleeps. WiFi power save is off, so the
+  radio is always receiving. This trades battery for latency. A ~1 h runtime target is acceptable.
+  Light sleep is not used on claimed pods (see [architecture.md](architecture.md) §8).
+- **Logging** (#21): `sdkconfig.NewBoard` sets `CONFIG_LOG_MAXIMUM_LEVEL=3` (INFO), so `ESP_LOGD` and
+  `ESP_LOGV` are removed at compile time. No print runs per loop pass: the ESP_LOG calls are per event
+  (frames lost, claims, state changes), and `RESULT` / `SUMMARY` lines are written once per measurement.
 
 ### 1.1 Typical loop pass duration
 
@@ -58,6 +74,7 @@ The table below is estimated.
 | Any pod, effect animating, new frame | one `show()`, at most every 16 ms (smooth effects: `dim`, `colorShift`, `pulse`) | ~0.6–1 ms |
 | Central, RUN, waiting block | button, `network.service()`, one `execute()` | µs range |
 | Central, RUN, block chain | instant blocks in one pass (max 32), one `show()` per LED block | ~0.6–1 ms per LED block |
+| Idle state (peripheral UNCLAIMED / READY, central MENU / CONFIRM / ERROR) | wait for a frame, at most 1 ms | 0–1 ms, a frame wakes it at once |
 | Any `Serial.print` / `ESP_LOGx` | USB-CDC output (Arduino log level INFO, ESP-IDF INFO) | variable |
 
 ## 2. Constants
@@ -83,6 +100,10 @@ The table below is estimated.
 | Where | Constant | Value | Effect |
 |---|---|---|---|
 | `main.cpp` | boot battery gauge | 2000 ms, loop every 10 ms (static ring) | role decision at the end |
+| `main.cpp` | idle wait | 1 ms (`EspNowLink::idleWait`) | only in the idle states, §1 |
+| `AutoPowerOff` | idle time before power-off | 10 min (`AUTO_POWER_OFF_MINUTES`) | timer restarts on every button edge (architecture.md §8.2) |
+| `AutoPowerOff` | goodbye | 1200 ms (white drain, then dark) | then deep sleep |
+| `LEDManager` | brightness cap | `LED_BRIGHTNESS_CAP` 160 of 255 | applied to all output |
 | `Battery.cpp` | battery sample | 16 × `analogReadMilliVolts`, refresh every 3000 ms | |
 | `ErrorAnimation.h` | blink | 1000 ms on / 1000 ms off | |
 | `LEDManager` | `MIN_FRAME_US` | 16 ms | minimum time between two effect frames |
