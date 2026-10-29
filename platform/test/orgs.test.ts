@@ -106,6 +106,22 @@ describe("invitations", () => {
     expect(exported.athleteProfiles).toEqual([expect.objectContaining({ id: athlete.id, name: "Mia" })]);
     expect((await env.call("POST", `/v1/orgs/${club.id}/invites`, { role: "athlete", athleteId: athlete.id }, owner)).status).toBe(409);
   });
+
+  it("the athlete sees their claimed profile in /v1/me; other users do not see it", async () => {
+    const athlete = (await env.call("POST", `/v1/orgs/${club.id}/athletes`, { consent: true, name: "Mia", birthYear: 2014 }, owner)).body;
+    const token = await join("mia@example.org", { role: "athlete", athleteId: athlete.id });
+    const me = (await env.call("GET", "/v1/me", undefined, token)).body;
+    expect(me.athleteProfiles).toEqual([{ athleteId: athlete.id, orgId: club.id, orgName: "TV Muster", name: "Mia", birthYear: 2014 }]);
+    expect((await env.call("GET", "/v1/me", undefined, owner)).body.athleteProfiles).toEqual([]);
+
+    // a user who is not a club member, and a claimed profile of a user who left the club
+    const stranger = await env.signIn("stranger@example.org");
+    expect((await env.call("GET", "/v1/me", undefined, stranger)).body.athleteProfiles).toEqual([]);
+    const members = (await env.call("GET", `/v1/orgs/${club.id}/members`, undefined, owner)).body.members as { userId: string; role: string }[];
+    const mia = members.find((m) => m.role === "athlete")!;
+    await env.call("DELETE", `/v1/orgs/${club.id}/members/${mia.userId}`, undefined, owner);
+    expect((await env.call("GET", "/v1/me", undefined, token)).body.athleteProfiles).toEqual([]);
+  });
 });
 
 describe("members and ownership", () => {

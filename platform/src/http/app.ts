@@ -60,7 +60,7 @@ export function createApp({ ports, corsOrigins, publicUrl, trustProxy = false }:
   app.use(requestId());
   app.use(
     "/v1/*",
-    cors({ origin: [...corsOrigins], allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "If-Match"] }),
+    cors({ origin: [...corsOrigins], allowHeaders: ["Content-Type", "Authorization", "If-Match"] }),
   );
 
   app.onError((error, c) => {
