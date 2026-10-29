@@ -136,6 +136,21 @@ void ToggleBlock::enter(BlockContext& ctx) {
         this->participants |= 1UL << i;
         ordinal++;
     }
+
+    if(this->participants & (1UL << this->podCount)) {
+        this->armCentral(ctx);
+    }
+}
+
+// The central lights up at startAtUs like the pods: LEDManager draws it from a timer
+void ToggleBlock::armCentral(BlockContext& ctx) {
+    uint8_t color = this->colorOf(this->owner[this->podCount]);
+    EffectDesc effect = {EffectId::SOLID, color, Color::OFF, 255, 0, 0, 0, 0};
+    if(this->centralCountdown.effect != EffectId::NONE) {
+        effect = this->centralCountdown;
+        effect.color = color;
+    }
+    ctx.leds.playEffect(effect, this->startAtUs);   // same start time as the pods
 }
 
 void ToggleBlock::showCentral(BlockContext& ctx) {
@@ -180,7 +195,7 @@ BlockStatus ToggleBlock::execute(BlockContext& ctx) {
     int64_t now = esp_timer_get_time();
 
     if((this->participants & centralBit) && !this->centralLit && now >= this->startAtUs) {
-        this->showCentral(ctx);
+        // lit at startAtUs by the timer armed in enter(); here only the start is marked
         this->centralLit = true;
         this->pressCountAtLight = ctx.button.pressCount();
     }

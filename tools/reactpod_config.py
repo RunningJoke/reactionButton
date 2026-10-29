@@ -3,7 +3,8 @@
 Reference client for the ReactPod configuration API (BLE, see docs/firmware/config-api.md).
 
 The central must be in the program menu (booted with the button held, before a program
-is selected). Requires: pip install bleak
+is selected); file changes are refused (`busy`) once a program is selected, from firmware 2.12
+on the connection stays during the game, but uploads belong in the menu. Requires: pip install bleak
 
     python tools/reactpod_config.py info
     python tools/reactpod_config.py list

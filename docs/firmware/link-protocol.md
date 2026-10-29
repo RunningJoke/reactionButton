@@ -330,16 +330,26 @@ the central ([StoreSync](../../firmware/src/Store/StoreSync.cpp), [ProgramStore]
 
 ## 6. Phone configuration (BLE)
 
-Only on the central, only in the program menu. When a program is selected, BLE is shut
-down, and then ESP-NOW starts. The two radios never run at the same time. The program
-upload/download API is described in [config-api.md](config-api.md). [ADR 0005](../decisions/0005-live-results-over-ble.md)
-(accepted) changes this with #39: BLE stays connected during the game.
+Only on the central. BLE runs from boot through the game ([ADR 0005](../decisions/0005-live-results-over-ble.md),
+firmware ≥ 2.12, `liveBle`): when a program is selected, ESP-NOW starts and the phone keeps its connection.
+The two radios run together: the WiFi driver uses modem sleep (`WIFI_PS_MIN_MODEM`) while the BT controller
+is on, see `EspNowLink::begin`. The program upload/download API is described in [config-api.md](config-api.md).
+
+- **Connection interval:** after `select` (and on a phone that connects during the game) the central asks for
+  100 ms (80 units) with peripheral latency 0 and a 6 s supervision timeout (`esp_ble_gap_update_conn_params`).
+  The phone may answer differently; the interval it got is in `status.ble.intervalMs` (0 = not known yet).
+- **Advertising** stops while a phone is connected and restarts on disconnect, also during the game.
+- **Indications from a sender task:** responses and report events are queued (8 lines) and indicated by a
+  separate task at priority 2. The game loop never waits for a confirmation. A line is dropped if the queue is
+  full, or if no phone is connected (a report stays in the report buffer and is read with `reports`).
+- **Game-time requests:** `PhoneConfig::service()` runs in every state. File changes answer `busy` from
+  DISCOVERY on (config-api.md §1).
 
 | Characteristic | UUID | Props | Meaning |
 |---|---|---|---|
 | MaxLoop | `12345678-1234-1234-1234-1234567890a7` | W, R | ASCII number > 0 overrides `MAX_LOOPS` of the selected program |
 | Command | `12345678-1234-1234-1234-1234567890b1` | W, W-NR | config API requests (JSON lines) |
-| Response | `12345678-1234-1234-1234-1234567890b2` | Indicate | config API responses (JSON lines) |
+| Response | `12345678-1234-1234-1234-1234567890b2` | Indicate | config API responses and `report` events (JSON lines) |
 
 Device name: "ReactPod <last 4 hex digits of setId>" or "ReactPod <set name>" (see
 [config-api.md](config-api.md) §2.1). Service UUID `12345678-1234-1234-1234-1234567890ab`.

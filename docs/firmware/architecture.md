@@ -151,7 +151,7 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> MENU : program menu, BLE for the phone
     MENU --> ERROR : no programs / load error
-    MENU --> DISCOVERY : long press ≥ ~1.8 s<br/>load program, BLE off, ESP-NOW on
+    MENU --> DISCOVERY : long press ≥ ~1.8 s<br/>load program, BLE stays on, ESP-NOW on
     DISCOVERY --> CONFIRM : claimed == required (blue progress bar)
     CONFIRM --> RUN : new press (LEDs green)
     RUN --> PAUSED : a pod silent > 1.5 s (all yellow)
@@ -164,7 +164,14 @@ stateDiagram-v2
   (~1.8 s, a white LED group ramps up in brightness) loads it. The phone's MaxLoop value
   is read at this moment. See [game-modes.md](../user/game-modes.md).
 - **DISCOVERY**: does not block. Pods are claimed one at a time, as their HELLOs arrive.
-  SOLO (0 peripherals) does not start the radio at all.
+  SOLO (0 peripherals) does not start the ESP-NOW radio at all. BLE stays connected from here on
+  (firmware ≥ 2.12, `liveBle`, [ADR 0005](../decisions/0005-live-results-over-ble.md)): the phone
+  keeps its connection through DISCOVERY, CONFIRM, RUN and PAUSED. Its requests are handled in
+  every state (`PhoneConfig::service()` runs in `CentralRole::run()`); the response and event
+  lines go out from a sender task ([link-protocol.md](link-protocol.md) §6).
+- **RUN, the central's own ring**: a light with a start time (`syncStartMs`) is armed on an
+  esp_timer by `LEDManager::playEffect` and drawn at that time, not by the loop pass
+  ([timing.md](timing.md) §4.1).
 - **CONFIRM**: a press that starts after CONFIRM was entered starts the program. Events
   that arrived before are discarded.
 - **PAUSED**: the game resumes automatically. The current block is left and re-entered,

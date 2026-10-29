@@ -3,6 +3,15 @@
 using Protocol::EffectDesc;
 using Protocol::EffectId;
 
+namespace {
+    // holds the LED output mutex for one call (recursive: effect and static calls nest)
+    struct OutputGuard {
+        SemaphoreHandle_t mutex;
+        explicit OutputGuard(SemaphoreHandle_t m) : mutex(m) { xSemaphoreTakeRecursive(mutex, portMAX_DELAY); }
+        ~OutputGuard() { xSemaphoreGiveRecursive(mutex); }
+    };
+}
+
 LEDManager* LEDManager::manager = nullptr;
 
 LEDManager* LEDManager::getManager() {
@@ -20,6 +29,14 @@ LEDManager::LEDManager(uint8_t neoPixelPin)
 
     this->pixelManager = new Adafruit_NeoPixel(NEOPIXEL_SIZE, neoPixelPin, NEO_GRB + NEO_KHZ800);
     this->pixelManager->begin();
+
+    this->outputMutex = xSemaphoreCreateRecursiveMutex();
+    esp_timer_create_args_t timerArgs = {};
+    timerArgs.callback = &LEDManager::onStartTimer;
+    timerArgs.arg = this;
+    timerArgs.dispatch_method = ESP_TIMER_TASK;     // a task, not an ISR: the LED driver may block
+    timerArgs.name = "ledStart";
+    esp_timer_create(&timerArgs, &this->startTimer);
 }
 
 uint32_t LEDManager::scaled(const ColorSet& color, uint8_t level) const
@@ -63,6 +80,7 @@ void LEDManager::setLEDColors(uint8_t colorId)
 
 void LEDManager::setLEDColors(ColorSet* pNewColorSet)
 {
+    OutputGuard guard(this->outputMutex);
     this->stopEffect();
     this->pCurrentColorConfiguration = pNewColorSet;
 
@@ -75,6 +93,7 @@ void LEDManager::setLEDColors(ColorSet* pNewColorSet)
 
 void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
 {
+    OutputGuard guard(this->outputMutex);
     this->stopEffect();
     if(index < NEOPIXEL_SIZE) {
         this->pixelManager->setPixelColor(index, this->scaled(*pNewColorSet, 255));
@@ -84,6 +103,7 @@ void LEDManager::setLEDColors(uint8_t index, ColorSet* pNewColorSet)
 
 void LEDManager::setLEDColors(LEDPattern* pattern)
 {
+    OutputGuard guard(this->outputMutex);
     this->stopEffect();
     if(pattern->animation != nullptr) {
         pattern->animation->animate(millis());
@@ -156,6 +176,7 @@ bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs, uint32_t 
         return true;
     }
 
+    OutputGuard guard(this->outputMutex);
     int64_t now = esp_timer_get_time();
     this->effect = effect;
     this->ledMask = ledMask & ALL_LEDS;
@@ -165,12 +186,25 @@ bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs, uint32_t 
     this->effectState = EffectState::RUNNING;
     if(now >= this->effectStart) {
         this->renderEffect(now);
+    } else {
+        // the first frame is drawn by the timer at the start time, not by the next loop pass
+        esp_timer_stop(this->startTimer);               // not running: error, ignored
+        esp_timer_start_once(this->startTimer, (uint64_t)(this->effectStart - now));
     }
     return true;
 }
 
+void LEDManager::onStartTimer(void* arg)
+{
+    static_cast<LEDManager*>(arg)->serviceEffect();
+}
+
 void LEDManager::serviceEffect()
 {
+    OutputGuard guard(this->outputMutex);
+    if(this->effectState != EffectState::RUNNING) {
+        return;     // stopped (or finished) since the timer was armed
+    }
     int64_t now = esp_timer_get_time();
     if(now < this->effectStart) {
         return;     // not started yet

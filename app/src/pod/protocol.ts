@@ -69,8 +69,11 @@ export type InfoResponse = ResponseBase & {
   features?: PodFeature[];
 };
 
-/** `validateInline`: validate accepts `data`; `listMeta`: list reports program metadata. */
-export type PodFeature = "validateInline" | "listMeta" | (string & {});
+/**
+ * `validateInline`: validate accepts `data`; `listMeta`: list reports program metadata;
+ * `liveBle` (firmware ≥ 2.12): the central keeps BLE during the game, file changes answer `busy` from DISCOVERY on.
+ */
+export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "liveBle" | (string & {});
 
 export type FileEntry = {
   path: string;
@@ -126,6 +129,22 @@ export type StatusResponse = ResponseBase & {
   /** BLE only (firmware ≥ 2.7) */
   mtu?: number;
   store: { generation: number; hash: string };
+  /** firmware ≥ 2.12 */
+  heap?: { free: number; minFree: number };
+  /** central, firmware ≥ 2.12: BLE connection; intervalMs 0 = not known yet */
+  ble?: { connected: boolean; intervalMs: number };
+};
+
+/**
+ * `reports` (firmware ≥ 2.11). Request fields `from` (index into the unacknowledged reports,
+ * default 0) and `max` (count, default all) page the answer; without them all are returned.
+ * `total` = unacknowledged reports, `more` = reports follow this page (paging: firmware ≥ 2.12).
+ */
+export type ReportsRequest = { from?: number; max?: number };
+export type ReportsResponse = ResponseBase & {
+  reports: Record<string, unknown>[];
+  total?: number;
+  more?: boolean;
 };
 
 /** Event lines on the USB serial port (§5 Events). */

@@ -2,6 +2,9 @@
 
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include "ColorSet/ColorSet.h"
 #include "Link/Protocol.h"
 
@@ -49,6 +52,10 @@ struct LEDPattern {
  * skips ahead. service() (once per loop pass, RoleManager::run) draws a new frame only when
  * it differs from the last one, at most every MIN_FRAME_US. When no effect animates,
  * service() returns at once and isAnimating() is false (light sleep allowed, #21).
+ *
+ * A start time in the future is armed on an esp_timer, so the first frame is drawn at the start
+ * time and not at the next loop pass (up to one loop gap late, see docs/firmware/timing.md).
+ * The timer runs in the esp_timer task; the output is guarded by a mutex (outputMutex).
  *
  * All output is scaled by the brightness cap (default 255 = unchanged).
  */
@@ -124,6 +131,10 @@ class LEDManager {
         uint32_t scaled(const ColorSet& color, uint8_t level) const;
         void serviceEffect();
         void renderEffect(int64_t nowUs);
+        static void onStartTimer(void* arg);
+
+        SemaphoreHandle_t outputMutex = nullptr;    // recursive: the LEDs are written by the loop and the timer task
+        esp_timer_handle_t startTimer = nullptr;    // draws the first frame of an effect at its start time
 
         Protocol::EffectDesc effect = {Protocol::EffectId::NONE, 0, 0, 0, 0, 0, 0, 0};
         EffectState effectState = EffectState::IDLE;

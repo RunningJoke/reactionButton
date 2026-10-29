@@ -102,19 +102,27 @@ void RemoteMultiplePressBlock::enter(BlockContext& ctx) {
         this->countdown.describe(centralAvoid ? this->remoteAvoidColor : this->remoteHitColor,
                                  (uint32_t)countdownMs, this->centralCountdown);
     }
+
+    if(this->includeCentral) {
+        // the central lights up like the pods: armed here, drawn at startAtUs by a timer (LEDManager),
+        // not by a loop pass that may come up to one loop gap late
+        bool centralAvoid = (this->avoidMask & (1UL << this->podCount)) != 0;
+        Protocol::EffectDesc light = {Protocol::EffectId::SOLID, centralAvoid ? this->remoteAvoidColor : this->remoteHitColor,
+                                      Protocol::Color::OFF, 255, 0, 0, 0, 0};
+        if(this->centralCountdown.effect != Protocol::EffectId::NONE) {
+            light = this->centralCountdown;
+        }
+        ctx.leds.playEffect(light, this->startAtUs);
+    }
 }
 
 BlockStatus RemoteMultiplePressBlock::execute(BlockContext& ctx) {
     uint32_t centralBit = 1UL << this->podCount;
 
     if(this->includeCentral && !this->centralLit && esp_timer_get_time() >= this->startAtUs) {
-        if(this->centralCountdown.effect != Protocol::EffectId::NONE) {
-            ctx.leds.playEffect(this->centralCountdown, this->startAtUs);   // same start time as the pods
-        } else {
-            ctx.leds.setLEDColors((this->avoidMask & centralBit) ? &this->localAvoidColor : &this->localHitColor);
-        }
+        // the light went on at startAtUs (see enter); here only the start is marked
         this->centralLit = true;
-        this->centralLitUs = esp_timer_get_time();
+        this->centralLitUs = this->startAtUs;
         this->pressCountAtLight = ctx.button.pressCount();
     }
 
