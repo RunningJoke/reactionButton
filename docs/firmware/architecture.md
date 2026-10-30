@@ -91,11 +91,11 @@ order. An EFFECT takes the ring until it ends; ARM or RESET gives the ring back 
 
 | State | Enter / behaviour |
 |---|---|
-| MENU | menu from `/programs.json`, the program's own pattern shown at once (static); the boot hold is ignored until released; short press (< 1 s) = next program; hold: after 200 ms SELECT (white fills clockwise, full at 1.8 s = load it), released earlier: SELECT_CANCEL (§7.1); MaxLoop override read now |
+| MENU | menu from `/programs.json`, the program's own pattern shown at once (static); the boot hold is ignored until released; short press (< 1 s) = next program; hold: after 200 ms SELECT (white fills clockwise, full at 1.8 s = load it), released earlier: SELECT_CANCEL (§7.1); MaxLoop override read now, then the characteristic is reset to `-1` (it applies to this select only) |
 | SELECTED | the ring flashes white twice (0.7 s), then DISCOVERY |
 | ERROR | no programs or load error: red blink (1 s on/off), reboot needed. Programs can still be uploaded |
 | DISCOVERY | non-blocking, one claim per HELLO; LEDs 0–7 pod markers in the pod colour, SEARCH on 8–17 (§7.1); SOLO (0 peripherals) never starts ESP-NOW |
-| CONFIRM | all required pods claimed: READY (whole ring breathes green); a press that starts after entering starts the game; earlier events dropped. Start refused below 5 % battery: red 1 s |
+| CONFIRM | all required pods claimed: READY (whole ring breathes green); a press that starts after entering starts the game; earlier events dropped. `setVariables` is accepted here (`startVars`, config-api §3): the values are used by the first cycle. Start refused below 5 % battery: red 1 s |
 | RUN | the game |
 | PAUSED | PAUSED pattern (whole ring breathes amber) for a pod silent > 1.5 s or phone `pause` (`phonePaused`). Pod loss resumes by itself when all are back; a phone pause only with `resume` (config-api §5). The current block is left and re-entered (re-arms its pods) |
 

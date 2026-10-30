@@ -26,7 +26,7 @@ Service `12345678-1234-1234-1234-1234567890ab`.
 |---|---|---|---|
 | Command | `…90b1` | Write, Write w/o response | requests |
 | Response | `…90b2` | **Indicate only** (CCCD) | responses + `report` events |
-| MaxLoop | `…90a7` | Write, Read | ASCII number > 0 overrides `MAX_LOOPS` of the next selected program |
+| MaxLoop | `…90a7` | Write, Read | ASCII number > 0 overrides `MAX_LOOPS` of the next selected program only; then the characteristic is reset to `-1` (none) |
 
 Subscribe for indications (Web Bluetooth `startNotifications()`, Android / bleak `start_notify()` pick them).
 Confirmations are the flow control (fw 2.0 also offered notify, which made responses get lost). The pod
@@ -110,6 +110,7 @@ Bluetooth does not expose it). `features` and fields by firmware:
 | 2.13 | `identify`, `battery` | op `blink`, `pods[].number`/`color`; `status.battery`, `pods[].battery`, `low_battery`; `programFormat` 6 |
 | 2.14 | – | `status.powerOff`, `sleep` event |
 | 2.15 | `patterns` | op `pattern`; system patterns (architecture §7.1); link revision 5 (colour 10, identity as n LEDs in the new palette) |
+| 2.17 | `startVars` | `setVariables` also in CONFIRM; `status.ready.editable` (§3 start variables); MaxLoop override cleared after the next select |
 
 **Battery** (`{percent, mv}`, missing = unknown): one Li-ion cell, 3.30 V = 0 %, 4.20 V = 100 %, piecewise
 linear (`Battery.cpp`); 16 samples, refreshed every 3 s; on USB it reads the charge voltage (≈ 100 %).
@@ -158,7 +159,7 @@ store (upload changed includes first), nothing is written, the request must fit 
 | op | Where | Request | Response / effect |
 |---|---|---|---|
 | `help` | any | – | list of ops |
-| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE), `store`, `heap {free, minFree}`, `powerOff {idleMs, limitMs, usbHost}`, `battery`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `ble {connected, intervalMs}`, `pods[] {id, mac, alive, lastSeenMs, effects, hold, toggle, number, color, battery, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN/PAUSED, programs.md §7.9), `variables`, `athlete`, `reports {pending, dropped}`, `waiting {block, editable {<name>: {min, max, value}}}` (while a `communicate` block waits), `phonePaused`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
+| `status` | any | – | `role`, `state`, `firmware`, `uptimeMs`, `setId`, `mtu` (BLE), `store`, `heap {free, minFree}`, `powerOff {idleMs, limitMs, usbHost}`, `battery`, `lastReset {reason, lastStep}`. Central: `program`, `requiredPeripherals`, `radio`, `syncing`, `ble {connected, intervalMs}`, `pods[] {id, mac, alive, lastSeenMs, effects, hold, toggle, number, color, battery, link {txFrames, txRetries, txLost, rxFrames, rxDuplicates, ackUsLast, ackUsAvg, ackUsMax}}`, `block`, `timers {orphanStops}` (RUN/PAUSED, programs.md §7.9), `variables`, `athlete`, `reports {pending, dropped}`, `waiting {block, editable {<name>: {min, max, value}}}` (while a `communicate` block waits), `ready {editable {<name>: {min, max, value}}}` (CONFIRM only, §3 start variables), `phonePaused`. Peripheral: `podId`, `central`, `lastPongMs`, `clock {synced, offsetUs}`, `link` |
 | `programs` | central | – | `programs[] {index, name, path, peripherals}`, `selected` |
 | `select` | central, MENU | `program`: index, path or name | load, radio on, DISCOVERY |
 | `start` | central, CONFIRM | – | like the confirm press; `not_ready` while pods are missing; `low_battery` |
@@ -176,10 +177,25 @@ store (upload changed includes first), nothing is written, the request must fit 
 | `reports` | central (`reports`) | `from`, `max` (paging, fw ≥ 2.12) | unacknowledged reports, oldest first (fields of the `report` event), `total`, `more`. A full buffer ≈ 20 KB: over BLE use `{"max":2}`, `ack`, repeat while `more` |
 | `ack` | central | `reportId` | removes it and all older; unknown ids are fine (`id` is the request id) |
 | `command` | central (`remote`) | `name`: `continue`/`repeat`/`stop` | answers a waiting `communicate` block; else `not_ready` |
-| `setVariables` | central (`remote`) | `values {name: int}` | only while `communicate` waits, only its `editable`, within min…max, all or nothing → `variables` |
+| `setVariables` | central (`remote`) | `values {name: int}` | in CONFIRM (`startVars`) or while `communicate` waits; only names `editable` in the loaded program's `communicate` blocks (see start variables below); within min…max; errors `bad_request`, `not_editable`, `out_of_range`; all or nothing → `variables`. In CONFIRM the values are used by the first cycle. MENU / DISCOVERY → `not_ready` |
 | `session` | central (`remote`) | `athlete` ≤ 40 bytes, `""` clears | opaque id copied into following reports (RAM). MENU/DISCOVERY/CONFIRM or while `communicate` waits, else `busy` |
 | `pause` | central (`pause`) | – | RUN → PAUSED with `phonePaused`, current block left; else `not_running` |
 | `resume` | central (`pause`) | – | re-enters the block (a `communicate` block keeps its report) → `state` RUN, or PAUSED while a pod is missing; without a phone pause `not_paused` |
+
+### Start variables (`startVars`, fw 2.17)
+
+In CONFIRM (READY) the app sets the program's variables, then starts. Allowed names: the union of `editable`
+of all `communicate` blocks of the loaded program (incl. includes); a name in several blocks uses the narrowest
+range (largest `min`, smallest `max`). `status.ready.editable` lists the same names with that range and the
+current `value` (after a MaxLoop override); absent outside CONFIRM. Without `startVars` (fw < 2.17): `setVariables`
+in CONFIRM → `not_ready`, no `ready` field.
+
+```json
+{ "op": "status" }
+// CONFIRM → { ..., "state": "CONFIRM", "ready": { "editable": { "MAX_LOOPS": { "min": 1, "max": 50, "value": 12 } } } }
+{ "op": "setVariables", "values": { "MAX_LOOPS": 20 } }   // in CONFIRM → { "variables": { "MAX_LOOPS": 20 } }
+{ "op": "start" }                                            // first cycle runs with MAX_LOOPS 20
+```
 
 **Reports** are RAM only: `stop` and every reboot clear them, ids restart at 1.
 
