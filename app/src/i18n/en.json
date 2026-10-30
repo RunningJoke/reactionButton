@@ -227,6 +227,47 @@
       "start": "Start block",
       "noPresets": "No library parts linked. This program is self-contained."
     },
+    "exit": {
+      "title": "Exits",
+      "next": "Next step",
+      "countMiss": "Count a miss",
+      "countMissThen": "Count a miss, then continue",
+      "nextRound": "Next round",
+      "leave": "Leave the loop",
+      "aStep": "A step…",
+      "newStep": "A new step here…",
+      "noAfter": "Nothing follows the rounds",
+      "instant": "Goes round without waiting: the program would stop",
+      "stepN": "Step {{n}}",
+      "rounds": "the rounds",
+      "goesOn": "The game goes on",
+      "ends": "The program ends",
+      "role": {
+        "then": "Then",
+        "ifTooSlow": "If too slow",
+        "ifLeftAlone": "If left alone",
+        "shortPress": "After a short press",
+        "longPress": "After a long press",
+        "ifRedHit": "If a red pod is hit",
+        "ifYes": "If yes",
+        "ifNo": "If no",
+        "eachRound": "Each round",
+        "afterLast": "After the last round",
+        "ifReleasedEarly": "If released early",
+        "ifFull": "When full",
+        "ifNoHold": "If nobody holds",
+        "ifFalseStart": "If released too early",
+        "ifAllA": "When everyone is team A",
+        "ifAllB": "When everyone is team B",
+        "whenTimeOver": "When time is up",
+        "ifContinued": "If you choose continue",
+        "ifPressed": "If the button was pressed",
+        "ifTimedOut": "If nobody answers",
+        "ifRepeated": "If you choose repeat",
+        "ifStopped": "If you choose stop",
+        "ifPressedEarly": "If pressed too early"
+      }
+    },
     "sprinkle": {
       "title": "Sprinkles",
       "add": "Add sprinkle",
@@ -293,6 +334,10 @@
         "target": "Target time",
         "howLong": "Shown for"
       },
+      "goTo": {
+        "name": "Then go to…",
+        "desc": "Jump to another step instead of the next one"
+      },
       "stopwatch": {
         "name": "Stopwatch",
         "desc": "Time from this step to another",
@@ -350,6 +395,8 @@
       "notConnected": "nothing (the program ends)",
       "goTo": "{{role}}: go to {{target}}",
       "records": "records time",
+      "advanced_one": "{{count}} advanced setting",
+      "advanced_other": "{{count}} advanced settings",
       "problems_one": "{{count}} problem",
       "problems_other": "{{count}} problems",
       "unsupported": "not supported by your pod",
@@ -580,6 +627,12 @@
       }
     },
     "add": {
+      "group": {
+        "light": "Light",
+        "wait": "Wait",
+        "think": "Think",
+        "results": "Results"
+      },
       "title": "Add a step",
       "afterStep": "Inserted after step {{n}}",
       "endOfRound": "Added at the end of the round",

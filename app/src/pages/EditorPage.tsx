@@ -194,6 +194,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     },
     remove,
     programFormat: source.programFormat,
+    steps: model.steps,
+    blocks: model.blockMap,
     duplicate: (name) => {
       const { doc: next, name: copy } = duplicateStep(json, name, taken);
       apply(next, { select: copy });
@@ -325,23 +327,29 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           <Plus size={26} aria-hidden />
         </button>
 
-        {panel === "palette" && !pending && (
+        {/* a step added from an exit ("a new step here…") is connected to that exit */}
+        {panel === "palette" && (!pending || view === "steps") && (
           <AddStepSheet
             doc={json}
-            after={(view === "steps" ? insertAt.after : selectedNode?.own && !selectedNode.external ? selectedNode.id : null) ?? undefined}
+            after={pending?.from ?? (view === "steps" ? insertAt.after : selectedNode?.own && !selectedNode.external ? selectedNode.id : null) ?? undefined}
+            connect={pending ?? undefined}
             supportedTypes={source.supportedTypes}
             programFormat={source.programFormat}
             taken={taken}
             library={{ paths: model.library, read: model.read }}
             onAdd={(next, focus) => {
               apply(next, { select: focus });
+              setPending(null);
               setPanel(null);
             }}
-            onClose={() => setPanel(null)}
+            onClose={() => {
+              setPending(null);
+              setPanel(null);
+            }}
           />
         )}
         {/* expert: "new block…" in a port select connects a block of the chosen type to that port */}
-        {panel === "palette" && pending && (
+        {panel === "palette" && pending && view !== "steps" && (
           <Palette
             context={`${pending.from} · ${t(`ports.${pending.port}`)} →`}
             templates={model.library}

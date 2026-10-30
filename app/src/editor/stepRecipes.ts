@@ -38,6 +38,21 @@ export const INTENTS = [
 
 export type Intent = (typeof INTENTS)[number]["id"];
 
+/** The palette's four groups (#88): what the step lights, waits for, thinks about or shows. */
+export const INTENT_GROUPS = [
+  ["light", ["light", "effect", "pod", "race", "off"]],
+  ["wait", ["pause", "press", "charge", "release", "domination"]],
+  ["think", ["count", "decide", "repeat"]],
+  ["results", ["results", "report"]],
+] as const satisfies readonly (readonly [string, readonly Intent[]])[];
+export type IntentGroup = (typeof INTENT_GROUPS)[number][0];
+
+/** The palette group of a block type (the tile that creates it). */
+export function groupOfType(type: string): IntentGroup {
+  const intent = INTENTS.find((i) => i.type === type)?.id;
+  return INTENT_GROUPS.find(([, ids]) => (ids as readonly string[]).includes(intent ?? ""))?.[0] ?? "think";
+}
+
 export const RECIPES = ["countMiss", "pauseBetweenRounds", "flashFalseStart"] as const;
 export type Recipe = (typeof RECIPES)[number];
 

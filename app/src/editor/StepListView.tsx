@@ -1,11 +1,14 @@
 import { memo, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CornerDownRight, Lock, OctagonX, Repeat, Timer, Unplug } from "lucide-react";
+import { AlertTriangle, CircleAlert, CornerDownRight, Lock, OctagonX, Repeat, SlidersHorizontal, Unplug } from "lucide-react";
 import type { Block, Issue } from "@reactpod/program-model";
-import { blockCategory } from "./blockStyle";
+import { advancedCount } from "./behaviours";
+import { blockCategory, blockIcon } from "./blockStyle";
+import { exitLabel } from "./ExitPicker";
+import { exitValue } from "./exits";
 import { repeatSentence, sentenceOptions, stepSentence, type SentenceOptions } from "./sentence";
 import { settingLabel } from "./settingLabels";
-import { portsOf, type Step, type StepBranch } from "./structure";
+import { isCatchEarly, portsOf, type Step, type StepBranch } from "./structure";
 import styles from "./StepList.module.css";
 import "./editor.css";
 
@@ -97,6 +100,20 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
     return block ? stepSentence(block, t, options) : name;
   };
 
+  /** The exits that leave the normal flow, as "If too slow · Count a miss" lines under their step. */
+  const lines = (step: Step): Line[] => {
+    const block = blocks.get(step.block);
+    if (!block) return [];
+    return step.branches.flatMap((branch) => {
+      const value = exitValue(blocks, steps, block, branch.port);
+      if (value.kind === "next") return [];
+      const label = exitLabel(block, branch.port, t);
+      const where = targetLabel(branch, step);
+      const text = value.kind === "countMiss" ? t("editor.exit.countMiss") : value.kind === "nextRound" ? t("editor.step.nextRound") : value.kind === "leave" ? t("editor.exit.leave") : where.text;
+      return [{ port: branch.port, label, text, to: where.to }];
+    });
+  };
+
   const render = (list: Node[], inBracket: boolean) => {
     const out: React.ReactNode[] = [];
     let afterBracket = false;
@@ -149,7 +166,7 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
           unsupported={!!supportedTypes && !supportedTypes.includes(String(blocks.get(step.block)?.type))}
           selected={selected === step.block}
           onSelect={onSelect}
-          branches={step.branches.map((b) => ({ branch: b, ...targetLabel(b, step) }))}
+          lines={lines(step)}
         >
           {node.children.length > 0 && <div className={styles.branchSteps}>{render(node.children, true)}</div>}
         </StepCard>,
@@ -167,6 +184,8 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
   );
 }
 
+type Line = { port: string; label: string; text: string; to?: string };
+
 type CardProps = {
   step: Step;
   block?: Block;
@@ -176,61 +195,59 @@ type CardProps = {
   unsupported: boolean;
   selected: boolean;
   onSelect: (name: string | null) => void;
-  branches: { branch: StepBranch; text: string; to?: string }[];
+  lines: Line[];
   children?: React.ReactNode;
 };
 
-const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupported, selected, onSelect, branches, children }: CardProps) {
+const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupported, selected, onSelect, lines, children }: CardProps) {
   const { t } = useTranslation();
+  const Icon = blockIcon(block && isCatchEarly(block) ? "delay" : block?.type);
   const records = typeof block?.record === "string";
+  const advanced = block ? advancedCount(block, step) : 0;
   const ends = block && portsOf(block).every((p) => typeof block[p] !== "string");
   return (
     <div className={styles.card} data-category={blockCategory(block?.type)} data-selected={selected || undefined} data-step={step.block}>
       <button type="button" className={styles.main} aria-pressed={selected} onClick={() => onSelect(step.block)}>
         <span className={styles.num}>{step.number}</span>
-        <span className={styles.body}>
-          <span className={styles.text}>
-            {text}
-            {!own && <Lock size={13} className={styles.lock} aria-label={t("editor.step.locked")} />}
-          </span>
-          {(issues.length > 0 || records || unsupported || ends) && (
-            <span className={styles.meta}>
-              <IssueBadge issues={issues} />
-              {unsupported && (
-                <span className={styles.chip} data-kind="error">
-                  <CircleAlert size={12} aria-hidden /> {t("editor.step.unsupported")}
-                </span>
-              )}
-              {records && (
-                <span className={styles.chip} data-kind="record">
-                  <Timer size={12} aria-hidden /> {t("editor.step.records")}
-                </span>
-              )}
-              {ends && (
-                <span className={styles.chip}>
-                  <OctagonX size={12} aria-hidden /> {t("editor.step.ends")}
-                </span>
-              )}
-            </span>
-          )}
+        <span className={styles.tile} aria-hidden>
+          <Icon size={16} />
         </span>
+        <span className={styles.text}>
+          {text}
+          {records && ` · ${t("editor.step.records")}`}
+          {!own && <Lock size={13} className={styles.lock} aria-label={t("editor.step.locked")} />}
+        </span>
+        {(issues.length > 0 || unsupported || advanced > 0) && (
+          <span className={styles.meta}>
+            <IssueBadge issues={issues} />
+            {unsupported && (
+              <span className={styles.chip} data-kind="error">
+                <CircleAlert size={12} aria-hidden /> {t("editor.step.unsupported")}
+              </span>
+            )}
+            {advanced > 0 && (
+              <span className={styles.chip} role="img" aria-label={t("editor.step.advanced", { count: advanced })}>
+                <SlidersHorizontal size={12} aria-hidden /> {advanced}
+              </span>
+            )}
+          </span>
+        )}
       </button>
-      {branches.length > 0 && (
+      {(lines.length > 0 || ends) && (
         <ul className={styles.branches}>
-          {branches.map(({ branch, text: where, to }) => {
-            const role = t(`editor.step.role.${branch.role}`, { defaultValue: branch.role });
+          {lines.map(({ port, label, text: where, to }) => {
             const content = (
               <>
                 <CornerDownRight size={14} aria-hidden />
                 <span>
-                  <b>{role}</b> → {where}
+                  <b>{label}</b> · {where}
                 </span>
               </>
             );
             return (
-              <li key={branch.port}>
+              <li key={port}>
                 {to ? (
-                  <button type="button" className={styles.branch} onClick={() => onSelect(to)} aria-label={t("editor.step.goTo", { role, target: where })}>
+                  <button type="button" className={styles.branch} onClick={() => onSelect(to)} aria-label={t("editor.step.goTo", { role: label, target: where })}>
                     {content}
                   </button>
                 ) : (
@@ -239,6 +256,14 @@ const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupp
               </li>
             );
           })}
+          {ends && (
+            <li>
+              <span className={styles.branch}>
+                <OctagonX size={14} aria-hidden />
+                <span>{t("editor.step.ends")}</span>
+              </span>
+            </li>
+          )}
         </ul>
       )}
       {children}

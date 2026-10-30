@@ -85,10 +85,10 @@ mark "pass" only when the user reported it.
 | ID | Steps | Expected |
 |---|---|---|
 | AT-E1 | simulate a `repeat` (3) + timer pair; same program on fw 2.8 with `trace on` | 3 × `body`, `done`; one timer value per pass; same sequence |
-| AT-E2 | open a `button` step | essentials and *Time limit*, *Record reaction time*, *Long press*; no raw keys or port selects |
-| AT-E3 | *Time limit* on, 2 s, "count a miss"; off again; undo | fields + miss branch appear / disappear; undo restores |
+| AT-E2 | open a `button` step | essentials, "+ Add sprinkle" with *Time limit*, *Record reaction*, *Long press* (Rules / Measure / Flow); no raw keys or port selects |
+| AT-E3 | add the Sprinkle *Time limit*, 2 s, exit "If too slow" → "Count a miss, then continue"; Remove; undo | fields + miss branch appear / disappear; undo restores |
 | AT-E4 | random pause with shortest > longest | problem in words on the card and the sheet |
-| AT-E5 | open `solo`, `stern`, `run5` | numbered sentences, one Repeat bracket, branch chips, no block / port names |
+| AT-E5 | open `solo`, `stern`, `run5` | one line per numbered step (number, tile, sentence), one Repeat bracket, exit lines under steps ("If too slow · Count a miss"), sliders badge only for advanced Sprinkles, no block / port names |
 | AT-E6 | move a step, delete one, Undo on the toast | links follow; still validates and simulates; undo restores step and links |
 | AT-E7 | wizard: each of the 5 games with defaults | ≤ 6 screens, short story, Try it simulates |
 | AT-E8 | wizard with a format-2 pod, then format-1 | `repeat` / `lib/loop` pattern; same bracket and simulation |
@@ -98,6 +98,11 @@ mark "pass" only when the user reported it.
 | AT-E12 | Adjust on a local, shipped and pod program (also read-only pod), Try, Save | local copy, same path; read-only note; pod unchanged until push |
 | AT-E13 | expert mode on, reload | block view, port selects, raw keys; remembered |
 | AT-E14 | de ↔ en on every new screen | all translated |
+| AT-E15 | step sheet of every block type (360 px, both themes) | essentials, Sprinkle rows, "+ Add sprinkle"; "More options" has at most 3 entries, none of them a Sprinkle field; rows open one at a time; nothing cut off; no animation with reduced motion |
+| AT-E16 | add and remove every Sprinkle on every block it applies to; Undo | fields, exit and helper blocks appear and go; nothing else changes; "Turn pods off afterwards" adds / removes one step; opening and saving a shipped program changes nothing |
+| AT-E17 | normal mode: set every exit of Decide, Repeat, Hold to charge, Let go, Domination, Report and the time-out of a press with the exit picker, incl. "A new step here…" and a target that would loop without waiting | steps named by number and sentence; the instant loop is greyed out with the reason; no expert mode needed |
+| AT-E18 | Report: results as checkboxes, time limit, "Phone can change settings" (include / coach may change with min and max) | `metrics`, `timeoutMs`, `vars`, `editable` change; limit 8 per list; raw lists only in expert mode |
+| AT-E19 | Add a step: tiles | grouped Light / Wait / Think / Results; a format-1 pod greys out the Sprinkles it cannot run |
 
 ## U – Usability
 | ID | Steps | Expected |
@@ -116,5 +121,6 @@ mark "pass" only when the user reported it.
 | AT-B1–B7 | 2026-10-26 | 2.9 | pass (2.0 blocked: no indications) |
 | AT-P1–P13, AT-M1–M5 | 2026-10-19 | 2.7 | accepted (P5, P6) |
 | AT-R1–R6, AT-E1–E14, AT-U1–U6 | 2026-10-26 | 2.9 | pass (P7, P8) |
+| AT-E2, E3, E5, E15–E19 | – | – | open (#88, step sheet and step list rebuilt, ready for test) |
 | AT-L1–L12 | – | 2.12 | open (P9, ready for test; L3 changed by #87) |
 | AT-L13–L17 | – | – | open (#87, specified, not built) |

@@ -490,3 +490,21 @@ export function removeExit(doc: ProgramJson, blockName: string, port: string): P
   cutBranch(d, blockName, port);
   return finish(d);
 }
+
+/** Does this block count a miss (the `+1` of the exit picker's "Count a miss")? Exported for the exit picker. */
+export const isMissCounterBlock = (b: Block | undefined, missVar?: string): b is Block => isMissCounter(b, missVar);
+
+/** The exit `port` leads to a new miss counter that continues where the step's main exit goes. */
+export function linkMissCounter(doc: ProgramJson, blockName: string, port: string): ProgramJson {
+  const d = draft(doc);
+  cutBranch(d, blockName, port);
+  const block = d.blocks.find((b) => b.name === blockName);
+  if (!block) return doc;
+  const counted = ownBlocks(doc).find((b) => isMissCounter(b));
+  const base = `${blockName}${port.charAt(0).toUpperCase()}${port.slice(1)}Miss`;
+  block[port] = addMissCounter(d, blockName, base, mainTarget(block), (counted?.var as string | undefined) ?? MISSES);
+  return finish(d);
+}
+
+/** The step's round head (where "next round" leads), as the time-out choice "End the round" uses it. */
+export const roundHeadOf = (doc: ProgramJson, blockName: string): string | undefined => roundHead(doc, blockName);

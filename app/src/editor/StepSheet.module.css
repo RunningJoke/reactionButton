@@ -386,3 +386,100 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+
+/* exits (#88 §4): "If too slow → Count a miss", and the picker page */
+.exits {
+  display: flex;
+  flex-direction: column;
+}
+
+.exitRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.exitRow:focus-visible,
+.option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
+}
+
+.exitLabel {
+  flex: none;
+  max-width: 55%;
+  font-weight: 500;
+}
+
+.exitValue {
+  flex: 1;
+  min-width: 0;
+  color: var(--accent);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+}
+
+.optionsTitle {
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-2) 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.option > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.radioDot {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--text-muted);
+  border-radius: 50%;
+}
+
+.option[aria-checked="true"] .radioDot {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) 0 5px, transparent 6px);
+}

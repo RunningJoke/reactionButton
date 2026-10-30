@@ -300,7 +300,7 @@ With the remembered last common CRC (`SyncState`):
 
 ### 9.6 Measurement (#87)
 
-Specified, not built. Config App only: no firmware, program format, validator or schema change. Every field
+Items 1 and 2 are built in the step editor (#88, Sprinkles: Record reaction, Stopwatch, Report to phone; `editor-ux.md` §4 D); item 3 and the training view are not. Config App only: no firmware, program format, validator or schema change. Every field
 below already exists (timers since program format 2, `communicate` since 5, the summary bar since 6;
 `programs.md` §6), so the editor follows the existing `programFormat` gating.
 

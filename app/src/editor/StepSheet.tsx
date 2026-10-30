@@ -10,20 +10,21 @@ import { AlertTriangle, ArrowDown, ArrowUp, CircleAlert, Copy, Plus, Trash2, Wre
 import { Sheet } from "../components/Sheet";
 import { IF_OPS, isObject, type Block, type Issue } from "@reactpod/program-model";
 import { Segmented, SwitchRow } from "../wizard/controls";
-import { BlockExpertFields, PortRow, type InspectorContext } from "./BlockInspector";
+import { BlockExpertFields, type InspectorContext } from "./BlockInspector";
 import { blockCategory, blockIcon } from "./blockStyle";
 import { EFFECTS, effectKind, hasEnd, isPeriodic, isTimed, setEffectKind, setEffectTarget, setEndless, usesColor } from "./effectStep";
 import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, releaseMode, setChargeMode, setChargeStyle, setGoRandom, setHoldPod, setReleaseMode } from "./holdStep";
 import { DEFAULT_GAME_MS, TOGGLE_STARTS, durationIsRandom, setDurationRandom, setTeamColor, setToggleStart, teamColors, toggleStart } from "./toggleStep";
+import { ExitPickerPage, ExitRow, type ExitEnv } from "./ExitPicker";
 import { ColorField, LedsField, ValueField } from "./fields";
 import { MoreOptions } from "./MoreOptions";
-import { isValidVariableName, setBlockField, setProgramField } from "./ops";
+import { isValidVariableName, ownBlocks, setBlockField, setProgramField } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
 import { stepSentence, type SentenceOptions } from "./sentence";
 import { settingLabel } from "./settingLabels";
 import { CountValue, Field, FixedOrRandomTime, fieldWords, TimeValue, type Apply, type FieldProps } from "./sheetParts";
 import { AddSprinklePage, ReportResults, SprinkleSection, type SprinkleContext } from "./Sprinkles";
-import { isCatchEarly, type LoopInfo, type Step } from "./structure";
+import { isCatchEarly, stepList, type LoopInfo, type Step } from "./structure";
 import { switchState, setSwitch } from "./switches";
 import inspector from "./Inspector.module.css";
 import styles from "./StepSheet.module.css";
@@ -74,7 +75,7 @@ export function StepSheet(props: StepSheetProps) {
 
 function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheetProps) {
   const { t } = useTranslation();
-  const [page, setPage] = useState<"main" | "add">("main");
+  const [page, setPage] = useState<{ kind: "main" } | { kind: "add" } | { kind: "exit"; port: string }>({ kind: "main" });
   const [open, setOpen] = useState<string | null>(null);
   const doc = ctx.json;
   const name = block.name;
@@ -85,26 +86,39 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
   const kind = t(`editor.step.kind.${isCatchEarly(block) ? "delay" : block.type}`, { defaultValue: t("editor.step.kind.unknown") });
   const title = step?.number ? t("editor.step.title", { n: step.number, kind }) : kind;
   const labelOf = (v: string) => settingLabel(v, t).label;
-  const sprinkles: SprinkleContext = { block, doc, set, apply, variables: ctx.variables, metrics: ctx.metrics, inLoop: !!step?.inLoop, format: ctx.programFormat };
+  const exits: ExitEnv = {
+    doc,
+    steps: ctx.steps ?? stepList(doc),
+    blocks: ctx.blocks ?? new Map(ownBlocks(doc).map((b) => [b.name, b])),
+    sentence,
+    apply,
+    open: (port) => setPage({ kind: "exit", port }),
+    addConnected: ctx.addConnected,
+  };
+  const sprinkles: SprinkleContext = { block, doc, set, apply, variables: ctx.variables, metrics: ctx.metrics, format: ctx.programFormat, exits };
+  const back = () => setPage({ kind: "main" });
 
   return (
     <Sheet title={title} icon={<Icon size={18} aria-hidden />} category={blockCategory(block.type)} sub={step?.inLoop ? t("editor.step.inRound") : undefined} onClose={() => ctx.select(null)}>
       <div className={styles.body}>
-        {page === "add" ? (
+        {page.kind === "exit" ? (
+          <ExitPickerPage env={exits} block={block} port={page.port} onBack={back} />
+        ) : page.kind === "add" ? (
           <AddSprinklePage
             ctx={sprinkles}
-            onBack={() => setPage("main")}
+            onBack={back}
             onAdded={(id) => {
               setOpen(id);
-              setPage("main");
+              back();
             }}
           />
         ) : (
           <>
             <p className={styles.story}>{stepSentence(block, t, sentence)}</p>
             <ProblemList issues={issues} />
-            <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} metrics={ctx.metrics} ctx={ctx} />
-            <SprinkleSection ctx={sprinkles} open={open} setOpen={setOpen} onAdd={() => setPage("add")} />
+            <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} metrics={ctx.metrics} />
+            <ExitsSection env={exits} block={block} />
+            <SprinkleSection ctx={sprinkles} open={open} setOpen={setOpen} onAdd={() => setPage({ kind: "add" })} />
             <MoreOptions block={block} doc={doc} set={set} apply={apply} variables={ctx.variables} metrics={ctx.metrics} />
 
             <div className={inspector.actions}>
@@ -144,9 +158,45 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
   );
 }
 
+/* ---------------------------------------------------------------- exits */
+
+/** The exits a block of this type owns itself; the others belong to a Sprinkle (time limit, long press, red pods, hold first, then go to). */
+export function blockExits(block: Block): string[] {
+  switch (block.type) {
+    case "if":
+      return ["true", "false"];
+    case "repeat":
+      return ["body", "done"];
+    case "charge":
+      return ["early", "full"];
+    case "release":
+      return releaseMode(block) === "signal" ? ["falseStart"] : [];
+    case "toggle":
+      return ["allA", "allB"];
+    case "communicate":
+      return ["pressed", "repeat", "stop"];
+    default:
+      return [];
+  }
+}
+
+function ExitsSection({ env, block }: { env: ExitEnv; block: Block }) {
+  const { t } = useTranslation();
+  const ports = blockExits(block);
+  if (ports.length === 0) return null;
+  return (
+    <section className={styles.exits} aria-label={t("editor.exit.title")}>
+      <h4 className={styles.sectionTitle}>{t("editor.exit.title")}</h4>
+      {ports.map((port) => (
+        <ExitRow key={port} env={env} block={block} port={port} />
+      ))}
+    </section>
+  );
+}
+
 /* ---------------------------------------------------------------- essentials */
 
-function Essentials({ block, doc, set, apply, labelOf, variables, metrics, ctx }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; metrics: readonly string[]; ctx: InspectorContext }) {
+function Essentials({ block, doc, set, apply, labelOf, variables, metrics }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; metrics: readonly string[] }) {
   const { t } = useTranslation();
   switch (block.type) {
     case "led":
@@ -253,7 +303,7 @@ function Essentials({ block, doc, set, apply, labelOf, variables, metrics, ctx }
     case "toggle":
       return <ToggleFields block={block} doc={doc} set={set} apply={apply} />;
     case "communicate":
-      return <CommunicateFields block={block} doc={doc} set={set} apply={apply} ctx={ctx} metrics={metrics} />;
+      return <CommunicateFields block={block} doc={doc} set={set} apply={apply} metrics={metrics} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -529,15 +579,12 @@ function ReleaseFields({ block, doc, set, apply }: FieldProps) {
  * communicate (programs.md §7.16): the time limit and the ports the client's answers and the button
  * lead to. The lists and the editable variables are under "More options".
  */
-function CommunicateFields({ block, doc, set, apply, ctx, metrics }: FieldProps & { ctx: InspectorContext; metrics: readonly string[] }) {
+function CommunicateFields({ block, doc, set, apply, metrics }: FieldProps & { metrics: readonly string[] }) {
   const { t } = useTranslation();
   return (
     <>
       <p className={styles.hint}>{t("editor.step.communicate.hint")}</p>
       <ReportResults block={block} doc={doc} set={set} apply={apply} metrics={metrics} />
-      {(["pressed", "timeout", "repeat", "stop"] as const).map((port) => (
-        <PortRow key={port} port={port} block={block} ctx={ctx} hasNext />
-      ))}
     </>
   );
 }

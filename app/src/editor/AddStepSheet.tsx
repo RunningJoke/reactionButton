@@ -11,7 +11,8 @@ import { blockIcon } from "./blockStyle";
 import { useExpertMode } from "./expertMode";
 import { insertTemplate, ownBlocks, type ProgramJson } from "./ops";
 import { LibraryParts } from "./Palette";
-import { INTENTS, RECIPES, applyRecipe, createStep, defaultInsertAfter, intentUnavailable, recipeUnavailable, type Intent, type Recipe } from "./stepRecipes";
+import { connectNewStep } from "./exits";
+import { INTENT_GROUPS, INTENTS, RECIPES, applyRecipe, createStep, defaultInsertAfter, intentUnavailable, recipeUnavailable, type Intent, type Recipe } from "./stepRecipes";
 import { stepList } from "./structure";
 import styles from "./AddStepSheet.module.css";
 
@@ -29,9 +30,11 @@ export type AddStepSheetProps = {
   taken?: ReadonlySet<string>;
   /** library parts offered in expert mode, as copies */
   library?: { paths: readonly string[]; read: (path: string) => string | undefined };
+  /** the new step goes on this exit of a step (the exit picker's "a new step here…") instead of into the flow */
+  connect?: { from: string; port: string };
 };
 
-export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd, onClose, taken, library }: AddStepSheetProps) {
+export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd, onClose, taken, library, connect }: AddStepSheetProps) {
   const { t } = useTranslation();
   const [expert] = useExpertMode();
 
@@ -50,7 +53,7 @@ export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd,
 
   const addIntent = (id: Intent) => {
     const added = createStep(id, doc, after, { taken: names });
-    onAdd(added.doc, added.focus);
+    onAdd(connect ? connectNewStep(doc, added.doc, connect.from, connect.port, added.focus) : added.doc, added.focus);
   };
   const addRecipe = (id: Recipe) => {
     const added = applyRecipe(id, doc, after, { taken: names });
@@ -65,6 +68,7 @@ export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd,
 
   return (
     <Sheet title={t("editor.add.title")} icon={<Plus size={18} aria-hidden />} sub={where} onClose={onClose}>
+      {!connect && (
       <section className={styles.group} aria-labelledby="add-recipes">
         <h4 id="add-recipes">{t("editor.add.recipes")}</h4>
         {recipes.map(({ id, reason }) => (
@@ -77,26 +81,34 @@ export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd,
           </button>
         ))}
       </section>
+      )}
 
       <section className={styles.group} aria-labelledby="add-steps">
         <h4 id="add-steps">{t("editor.add.steps")}</h4>
-        <div className={styles.tiles}>
-          {intents.map(({ id, type, reason }) => {
-            const Icon = blockIcon(type);
-            return (
-              <button key={id} type="button" className={styles.tile} data-category={blockType(type)?.category} disabled={!!reason} onClick={() => addIntent(id)}>
-                <Icon size={20} aria-hidden />
-                <strong>{t(`editor.add.intent.${id}.name`)}</strong>
-                {expert && <code>{type}</code>}
-                {reason ? (
-                  <span className={styles.reason}>{t(`editor.add.reason.${reason}`)}</span>
-                ) : (
-                  !expert && <span>{t(`editor.add.intent.${id}.hint`)}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {INTENT_GROUPS.map(([group, ids]) => (
+          <div key={group} role="group" aria-label={t(`editor.add.group.${group}`)}>
+            <h5 className={styles.subgroup}>{t(`editor.add.group.${group}`)}</h5>
+            <div className={styles.tiles}>
+              {intents
+                .filter((i) => (ids as readonly string[]).includes(i.id))
+                .map(({ id, type, reason }) => {
+                  const Icon = blockIcon(type);
+                  return (
+                    <button key={id} type="button" className={styles.tile} data-category={blockType(type)?.category} disabled={!!reason} onClick={() => addIntent(id)}>
+                      <Icon size={20} aria-hidden />
+                      <strong>{t(`editor.add.intent.${id}.name`)}</strong>
+                      {expert && <code>{type}</code>}
+                      {reason ? (
+                        <span className={styles.reason}>{t(`editor.add.reason.${reason}`)}</span>
+                      ) : (
+                        !expert && <span>{t(`editor.add.intent.${id}.hint`)}</span>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        ))}
       </section>
 
       {expert && library && <LibraryParts paths={library.paths} title={t("editor.add.library")} help={t("editor.add.libraryHint")} onPick={addPart} />}
