@@ -1,633 +1,338 @@
-# ReactPod Config App – Specification
+# Config App – specification
 
-Status: **agreed** (2026-10-18), P0–P6 accepted (2026-10-19) · Branch: `main` · Date: 2026-10-19
+PWA for coaches (not developers), phone in one hand in a sports hall: connect to a set, show and build
+programs, simulate them, keep them on the phone, push them to the pods, run training sessions and keep
+results. Pod contract: [config-api.md](../firmware/config-api.md); program format and engine:
+[programs.md](../firmware/programs.md); styling: [app/DESIGN.md](../../app/DESIGN.md); editor:
+[editor-ux.md](editor-ux.md). The platform client is a preview and on hold (ADR 0007).
 
-The ReactPod Config App is a configuration tool for coaches and trainers, separate from
-the firmware. It connects to a ReactPod set, shows the block types and programs, lets the
-user build new programs visually, simulates them, keeps them on the device and pushes
-them to the pods.
-
-It is developed as a web app (PWA) first and later packaged as a native Android / iOS
-app. Everything the app may do on a pod is defined by [docs/firmware/config-api.md](../firmware/config-api.md).
-Program format and block semantics: [docs/firmware/programs.md](../firmware/programs.md).
-
----
-
-## 1. Goals and non-goals
-
-### Version 1 (this spec)
+## 1. Scope
 
 | # | Feature |
 |---|---|
-| F1 | Connect to a central over **BLE** (Web Bluetooth) or **USB serial** (Web Serial) |
-| F2 | Read the pod: `info`, `list`, `get` of all program files and the menu |
-| F3 | Show the **block types** (palette) and the **library** (`/prog/lib/*`, read-only) |
-| F4 | Show existing programs as a **block graph** (one column, automatic order) |
-| F5 | **Visual editor**: create and edit programs (blocks, ports, parameters, variables, menu LEDs) |
-| F6 | Live **validation** while editing (TypeScript port of `tools/validate_programs.py`) |
-| F7 | **Simulator**: all pods of the program on screen, current block highlighted, run / pause / step |
-| F8 | **Local storage** of programs (offline), JSON import / export |
-| F9 | **Push** changed files to the pod, update `/programs.json`, run `validate` on the pod |
-| F10 | **Menu editor**: order of programs, 18-LED ring picker for each program's menu pattern |
-| F11 | **Restore defaults**: put the shipped programs back on the pod |
-| F12 | **i18n** from the start: English (primary, fallback) and German |
-| F13 | **Offline PWA** prepared (installable once hosted), mobile first |
+| F1 | connect to a central over BLE or USB serial; demo pod without hardware |
+| F2 | read `info`, `list`, all program files, the menu |
+| F3 | block palette and library (`/prog/lib/*`, read-only) |
+| F4–F5 | programs as a step list / block column; editor (editor-ux.md) |
+| F6 | live validation (`@reactpod/program-model`, port of `tools/validate_programs.py`) |
+| F7 | simulator with all pods, run / pause / step |
+| F8 | local programs (IndexedDB, offline), `.json` and set `.zip` import / export |
+| F9 | push changed files, update `/programs.json`, validate on the pod |
+| F10 | menu editor: order, LED pattern per program |
+| F11 | restore the shipped programs |
+| F12 | i18n en (primary, fallback) + de |
+| F13 | installable offline PWA, mobile first |
+| F14 | athletes, sessions, reports, statistics, CSV (§9.5) |
+| F15 | training view: live state, `communicate` controls, pause / resume, reconnect (§9.5) |
 
-### Not in version 1
+Not planned: editing library fragments, firmware OTA (ADR 0006), several sets at once (#46, on hold).
+Native shell (Capacitor) later; all platform access is behind interfaces (§4).
 
-- Live control (`status`, `select`, `start`, `press`, `results`, MaxLoop override), results display.
-- Native apps (the architecture prepares for them, see §3).
-- Editing library fragments (`/prog/lib/*` is read-only).
-- Cloud storage / accounts (later a remote database may replace the local store, see §6).
-  Planned as the community platform: [docs/platform/spec.md](../platform/spec.md) (§5.4 app integration).
-  **The platform is on hold** ([ADR 0007](../decisions/0007-platform-on-hold.md)): new app features are
-  designed without it; the existing platform client (preview) stays in place and keeps working.
-- Firmware OTA (not planned, [ADR 0006](../decisions/0006-no-ota.md)).
+## 2. Platforms
 
----
-
-## 2. Users and platforms
-
-**Users:** coaches and trainers (customers), not developers. They use a phone in a sports
-hall. The UI must be usable with one hand and must not lose data by accident.
-
-| Platform | Editor / simulator / local store | BLE | USB serial |
+| Platform | Editor / simulator / store | BLE | USB |
 |---|---|---|---|
-| Android Chrome (PWA) | ✅ | ✅ | – (desktop only in v1) |
-| Desktop Chrome / Edge | ✅ | ✅ | ✅ |
-| iPhone / iPad Safari (PWA) | ✅ (offline only) | ❌ no Web Bluetooth | ❌ |
-| Native app (later, Capacitor) | ✅ | ✅ native | – |
+| Android Chrome (PWA) | yes | yes | – |
+| Desktop Chrome / Edge | yes | yes | yes |
+| iOS Safari | yes (offline) | no Web Bluetooth (explain: needs the app) | no |
+| Native (Capacitor, later) | yes | native | – |
 
-Web Bluetooth and Web Serial need **HTTPS** (or `localhost`). The app is a PWA (manifest,
-service worker, offline cache, relative base path). It is published on **GitHub Pages**:
-https://runningjoke.github.io/reactionButton/ , built and deployed by
-[.github/workflows/app.yml](../../.github/workflows/app.yml) on every push
-to `main` that touches `app/` or `firmware/data/`. Development runs on `localhost`.
-
----
+Web Bluetooth / Web Serial need HTTPS or `localhost`. Hosted on GitHub Pages
+(https://runningjoke.github.io/reactionButton/), deployed by `.github/workflows/app.yml` on every push to
+`main` touching `app/` or `firmware/data/` (also manual: Actions → "Config app (GitHub Pages)").
 
 ## 3. Technology
 
-| Concern | Choice | Reason |
-|---|---|---|
-| Language | TypeScript (strict) | shared types for program format, API messages |
-| UI | React 19 + Vite | large ecosystem, works unchanged inside Capacitor |
-| Native shell (later) | Capacitor | same web code becomes the Android / iOS app |
-| BLE | `@capacitor-community/bluetooth-le` | one API: Web Bluetooth in the browser, native BLE in the app |
-| USB serial | Web Serial API (own small adapter) | desktop testing |
-| Block graph | own column view (HTML cards + SVG arrows) | compact on phones, native scrolling, no canvas library needed |
-| State | Zustand | small, no boilerplate |
-| Local store | IndexedDB via `idb` | offline, large enough, behind an interface |
-| i18n | `i18next` + `react-i18next` | standard, lazy language files |
-| Icons | `lucide-react` | consistent line icons, tree-shakeable |
-| Styling | plain CSS with design tokens (CSS variables), CSS modules | no heavy UI kit, easy theming |
-| PWA | `vite-plugin-pwa` (Workbox) | offline cache, install prompt |
-| Tests | Vitest (unit), Playwright (later, e2e on the simulated pod) | |
-
-All platform access sits behind interfaces (§4.2), so the native app replaces adapters
-and nothing else.
-
----
+TypeScript strict · React 19 + Vite · BLE `@capacitor-community/bluetooth-le` (Web Bluetooth in the browser,
+native in the app) · Web Serial (own adapter) · own column view (HTML + SVG arrows) · Zustand · IndexedDB via
+`idb` · `i18next` · `lucide-react` · plain CSS + CSS modules with tokens · `vite-plugin-pwa` · Vitest.
+Routing by URL hash (`#/programs`), so the build runs from any path and in a webview. A new version activates
+only after the user confirms (update prompt), so an edit in progress is never reloaded away.
 
 ## 4. Architecture
 
-```
-app/
-├── public/                      icons, manifest assets
-├── src/
-│   ├── app/                     shell, routing, navigation, theme
-│   ├── i18n/                    de.json, en.json, setup
-│   ├── model/                   program format: types, block type definitions, checks, formatting
-│   │   ├── blockTypes.ts        ports, fields, defaults per block type (app-owned copy)
-│   │   ├── program.ts           ProgramFile, FragmentFile, Block, ProgramIndex types
-│   │   ├── colors.ts, limits.ts colours, store limits, path rules, name → path
-│   │   ├── validate.ts          port of tools/validate_programs.py (+ warnings), issue codes
-│   │   └── format.ts            writes files in the style of firmware/data/ (one block per line)
-│   ├── pod/                     everything about talking to a pod
-│   │   ├── transport/           Transport interface, BleTransport (capacitor BLE plugin), WebSerialTransport
-│   │   ├── simulated/           SimulatedPod (config API in memory) + SimulatedTransport
-│   │   ├── utf8.ts, crc32.ts    byte counting, UTF-8 safe splitting, line decoder, CRC-32
-│   │   ├── protocol.ts          request / response types, PodError
-│   │   ├── client.ts            PodClient: one request at a time, ids, timeouts, resend on "overflow"
-│   │   ├── files.ts             chunked get / put, UTF-8 byte offsets, CRC check both ways
-│   │   ├── session.ts           sessions per set (#46, list + active one): connect, reconnect, info / status / list, read-only role, log
-│   │   ├── sync.ts              compare local vs pod, push / restore plan, push execution
-│   │   └── syncActions.ts       sync for the UI: states of the connected set, keep pod / mine, push, delete
-│   ├── store/                   local persistence (Storage interface + IndexedDB adapter), workspace (local programs + menu)
-│   ├── results/                 athletes, training sessions, reports (#47): report model of #41, IndexedDB "reactpod-results",
-│   │                            ReportFeed (`report` events → store → `ack`), statistics, CSV
-│   ├── platform/                typed client of the platform API, sign-in settings, upload queue (#48)
-│   ├── editor/                  column view + layout, editing operations (ops.ts), undo / redo, inspector, fields, palette, program settings
-│   ├── programs/                catalog, sources (pod / shipped / local), program actions (new, edit copy, export, delete)
-│   ├── pages/                   one component per screen (Pod, Programs, program view, Editor, Menu, Settings)
-│   ├── components/              LED ring + LED ring picker, sheet, modal
-│   ├── simulator/               engine.ts (TS port of the block semantics), seeded random, useSimulation (real-time loop)
-│   └── defaults/                shipped programs, bundled from ../firmware/data at build time (raw text)
-└── docs/
-    └── acceptance-tests.md      acceptance criteria and test procedures on real pods
-```
-
-### 4.1 Layers
-
-```mermaid
-flowchart TB
-    UI["UI (React): editor, simulator, menu, pod screen"] --> M["model: program types, validation"]
-    UI --> S["store: Storage interface"]
-    UI --> P["pod: PodClient, sync"]
-    UI --> SIM["simulator engine"]
-    SIM --> M
-    P --> T["Transport interface"]
-    T --> BLE["BLE adapter (capacitor-community/bluetooth-le)"]
-    T --> SER["Web Serial adapter"]
-    T --> FAKE["Simulated pod (in-memory, implements config-api.md)"]
-    S --> IDB["IndexedDB adapter (later: native FS / remote DB)"]
-```
-
-### 4.2 Interfaces
+Folders: CLAUDE.md "Config App". Layers: UI → `editor/`, `simulator/` (→ program model), `store/` (Storage),
+`pod/` (PodClient, sync) → Transport (BLE | Web Serial | simulated pod), `results/`, `platform/`.
 
 ```ts
-interface Transport {                       // byte/line level
-  connect(): Promise<void>;                 // shows the platform device chooser
+interface Transport {                       // line level
+  connect(): Promise<void>;                 // platform device chooser
   disconnect(): Promise<void>;
-  send(line: string): Promise<void>;        // one JSON object + "\n", chunked to MTU−3 (BLE)
+  send(line: string): Promise<void>;        // one JSON object + "\n", chunked to MTU − 3 (BLE)
   onLine(cb: (line: string) => void): void; // complete lines; non-JSON lines are logs (serial)
   onDisconnect(cb: () => void): void;
   readonly kind: "ble" | "serial" | "simulated";
   readonly mtu?: number;
 }
-
-interface PodClient {                       // API level, on top of Transport
-  request<T>(op: string, args?: object): Promise<T>; // serialised, id-matched, timeout, retry on "overflow"
-  info(); list(); getFile(path); putFile(path, text); deleteFile(path); validate(path);
+interface PodClient {                       // serialised, id-matched, timeout, resend on "overflow"
+  request<T>(op: string, args?: object): Promise<T>;
+  info(); list(); getFile(path); putFile(path, text); deleteFile(path); validate(path, data?);
 }
-
-interface Storage {                         // local programs, swappable for a remote DB later
+interface Storage {                         // swappable later
   listPrograms(); saveProgram(p); deleteProgram(id);
-  getMenu(); saveMenu(paths);               // the local menu (§6)
-  getSyncState(setId); saveSyncState(state);          // per set, in IndexedDB "meta" as sync:<setId>
+  getMenu(); saveMenu(paths);
+  getSyncState(setId); saveSyncState(state); // IndexedDB "meta", key sync:<setId>
 }
 ```
 
-The **simulated pod** implements the API from [config-api.md](../firmware/config-api.md) in
-memory (files, generation, CRC, chunking, error codes). It is used for development,
-unit tests and demos without hardware.
+The **simulated pod** (`pod/simulated/SimulatedPod.ts`) implements config-api.md in memory (files,
+generation, CRC, chunking, errors, reports, `info.programFormat` and feature switches for older firmware).
+Used for development, tests and demos; it must behave like the firmware.
 
----
+## 5. Screens
 
-## 5. Screens (mobile first)
+Phone: header (title, connection chip, settings gear) + floating tab bar with five tabs; from 900 px a side
+rail with all destinations. Icon first, short label.
 
-Floating tab bar on phones with five tabs (Pod, Programs, Editor, Simulate, Results; Menu is
-linked from the Pod page, Settings is the gear icon in the header), side rail with all seven on
-wide screens (≥ 900 px). Icon first, short label below. Look and styling: [app/DESIGN.md](../../app/DESIGN.md).
+| Tab | Content |
+|---|---|
+| **Pod** | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
+| **Programs** | local, pod and shipped programs + library; new (chooser), duplicate, Adjust, import, export, set export / import |
+| **Editor** | one program (§7, editor-ux.md) |
+| **Simulate** | pods + graph + controls (§8) |
+| **Results** | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
+| Menu (from Pod) | order of `/programs.json`, LED ring picker per program |
+| Settings (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
 
-| Tab | Icon | Content |
-|---|---|---|
-| **Pod** | pod (puck) | set id, firmware, free space, generation; file list with sync state; push, restore defaults. Not connected: a Connect button that opens the connection dialog |
-| **Programs** | list | local programs + programs read from the pod + library (read-only); create, duplicate, import, export |
-| **Editor** | workflow | graph of one program (§7) |
-| **Simulate** | play | pods + graph + controls (§8) |
-| **Menu** | circle-dot | order of programs in `/programs.json`, LED ring picker per program |
-| **Results** | trophy | athletes on this phone; per athlete statistics (counted reports only), training sessions → reports → single values, discard / count again, CSV export (one row per measurement); link to a platform athlete profile. The Pod tab gets a *Training* section: who trains now, the live report, continue / repeat / stop (only with the pod features `reports` / `remote`, #41 / #42) |
-| **Settings** | settings | language, platform (preview: server, sign-in by mail code or token, club, upload queue), about, advanced (delete files, see §9.4) |
+- Touch targets ≥ 44 px, primary action in the thumb zone, every edit works without drag and drop.
+- State = colour + icon + text, never colour alone.
+- The connection chip is always visible; tapping it opens the connection dialog (Bluetooth / USB / demo pod,
+  or the connected pod and Disconnect).
+- When BLE fails, explain how to get the central into the menu (hold the button during the boot gauge).
 
-UX rules:
-- Touch targets ≥ 44 px. Primary action in the thumb zone (bottom right floating button).
-- Every editing action works **without drag and drop** too (bottom sheets with selects),
-  because drawing wires on a small screen is error prone.
-- State shown by colour + icon + text (never colour alone).
-- The connection state is always visible (small status chip in the header). Tapping the chip opens the
-  **connection dialog**: connect (Bluetooth / USB / demo pod) or, when connected, the pod and **Disconnect**.
-- When the BLE connection is not possible, the app explains how to get the central
-  into the program menu (hold button during the blue boot animation).
-
----
-
-## 6. Local data model
+## 6. Local data
 
 ```ts
-type ProgramDoc = {
-  id: string;                 // local uuid
-  path: string;               // target path on the pod, e.g. "/prog/sprint.json"
-  json: ProgramJson;          // exactly what goes to the pod (format of programs.md)
-  origin: "local" | "pod" | "default";   // made here, or a copy of a pod / shipped program
-  updatedAt: number;
-};
-
-type SyncState = {            // per pod set (setId), remembered after each sync
-  setId: string;
-  files: Record<string /*path*/, { crc: string; size: number }>; // last known common state
-};
+type ProgramDoc = { id: string; path: string /* "/prog/sprint.json" */; json: ProgramJson;
+                    origin: "local" | "pod" | "default"; updatedAt: number };
+type SyncState  = { setId: string; files: Record<string /*path*/, { crc: string; size: number }> };
 ```
 
-- **Layout is not stored on the pod** (keeps files small). The block order of the column view
-  is computed every time a program is opened (§7.1), so there are no node positions to keep.
-- Paths: generated from the program name. Slug ≤ 20 characters so that
-  `/prog/<slug>.json` stays ≤ 31 characters. Allowed characters as in config-api §4.
-- **Local programs are always editable.** Shipped and pod programs are read-only in the app;
-  **Edit** makes a local copy with the **same path** (origin `pod` / `default`), which replaces the
-  file on the pod at push (decision 10). If a local copy of that path exists, Edit opens it.
-  **Duplicate** makes a new program with its own name and path. Library files are never local.
-- A new program's path must not collide with a local, pod or shipped path.
-- **Local menu** (decision 11): one menu, the set being built. Until the user changes it, the
-  menu tab shows the connected pod's menu, else the shipped one. Changing the menu pattern of a
-  program that is not local makes a local copy (same path).
-- Every change is saved to IndexedDB at once; undo / redo (100 steps) lives in memory per open program.
-- Import / export: a single program `.json` (v1). A whole set as a `.zip`
-  (`programs.json` + `prog/…`, the same layout as `firmware/data/`): **Export set** on the Programs tab
-  writes the local menu, its programs with their includes and every local program. **Import set**
-  takes the menu and the programs (library parts are ignored); local programs with the same path
-  are replaced after a confirmation. A single top folder in the archive is accepted.
-
----
+- No layout on the pod: the column order is computed when a program opens (`model/graph.ts`).
+- Path from the name: slug ≤ 20 characters, so `/prog/<slug>.json` ≤ 31; must not collide with a local,
+  pod or shipped path.
+- Local programs are editable; shipped and pod programs are read-only. **Edit** (and Adjust) makes a local
+  copy with the **same path** that replaces the pod file at push; an existing copy opens instead.
+  **Duplicate** = new name and path. Library files are never local.
+- **One local menu** = the set being built; until changed it shows the pod's menu, else the shipped one.
+  Changing the pattern of a non-local program makes a local copy.
+- Saved to IndexedDB on every change; undo / redo 100 steps in memory per open program.
+- Set `.zip` = `programs.json` + `prog/…` (layout of `firmware/data/`). Export: local menu, its programs with
+  includes, every local program. Import: menu + programs (library ignored, one top folder accepted); same
+  paths replaced after confirmation.
 
 ## 7. Editor
 
-> Proposed redesign for untrained users and coaches (simple step view, switches for optional
-> features, game wizard, expert mode): [editor-ux.md](editor-ux.md). Not implemented yet.
+Simple step view, step sheet, wizard, Adjust, expert mode: [editor-ux.md](editor-ux.md). This section is the
+block column (expert mode) and the rules both views share.
 
-### 7.1 Graph
+### 7.1 Block column
+- One card per block (icon, type colour, name, type; key parameters on one wrapping line), in flow order from
+  `start`: loops ignored, rest topological, first port first, so the main path reads down and a short
+  branch sits between its fork and its rejoin.
+- One connection to the block directly below = no arrow. Every other connection is an arrow beside the
+  column from the port row to the target header: down on the right, loops up on the left; a block with a
+  choice shows all ports as arrows; arrows into one target share a lane.
+- A card that continues down through a port other than `next` names the port. Unconnected port with `next`
+  fallback → "→ next" hint. Start block flagged, ends marked, unreachable blocks dimmed, targets no loaded
+  file defines are dashed "external" cards. Tapping selects and highlights its arrows.
 
-- All blocks in **one column**, one card per block. Header: icon + type colour + block name + type.
-  Body: the key parameters on one wrapping line (e.g. `3000 ms`, `RUNS >= MAX_LOOPS`).
-- **Order:** flow order from the start block. Loops are ignored for the order, the rest is placed
-  topologically, first port first: the main path reads straight down and a short branch sits between
-  its fork and the block where it rejoins.
-- A block with **one** connection to the block directly below just continues downwards (no arrow).
-- Every other connection is an **arrow beside the column**: it leaves from a port row of the card
-  (`timeout → CentralMiss`) and enters the header of the target. Arrows going down run on the
-  **right**, loops back up on the **left**. A block with a choice (several ports) has all its ports
-  as arrows, also the one to the block below. Arrows into the same target share a lane.
-- The fallback rule of the firmware is visible: if a port is unconnected and the block
-  has `next`, a "→ next" hint is shown on the card.
-- The **start block** has a flag icon. Blocks without any target (program ends) get an end marker.
-- Blocks unreachable from `start` are dimmed.
-- Targets that no loaded file defines (a library part viewed on its own) are dashed "external" cards.
-- The view scrolls natively; tapping a card selects it, its arrows are highlighted, and the block sheet shows its details.
-
-### 7.2 Library: presets and templates (decision 4c)
-
-`/prog/lib/*` is read-only. A program can use a fragment in two ways:
-
-| Mode | What happens | Graph |
+### 7.2 Library: presets and templates
+| Mode | Effect | Graph |
 |---|---|---|
-| **Preset** (include) | `include: ["/prog/lib/loop.json"]` is kept. The program links to its blocks (e.g. `EnterProgram` → `EndLoop`) | fragment blocks shown greyed with a lock and the file name ("Set variable · loop"). No frame: a preset like `loop` has blocks at the start *and* the end of a program, a frame would span the whole graph |
-| **Template** (copy) | the fragment's blocks and variables are copied into the program; name clashes get a suffix | normal editable blocks |
+| **Preset** (include kept) | the program links to fragment blocks (`EnterProgram` → `EndLoop`) | fragment blocks greyed with a lock and the file name, no frame |
+| **Template** (copy) | blocks and variables copied, clashes get a suffix | editable |
 
-Existing programs that use includes open in preset mode. "Convert to editable copy"
-turns all presets into templates (flattens the program). New programs are
-self-contained by default.
+Programs with includes open as presets; "convert to editable copy" flattens. New programs are
+self-contained. Push uploads missing preset fragments from the bundled defaults.
 
-On push, preset fragments the pod does not have are uploaded too (from the bundled defaults).
+### 7.3 Editing
+| Action | How |
+|---|---|
+| add block | + or "add after" → palette grouped Light, Wait, Input, Logic, Remote, Stats, library as copy |
+| parameters | tap → sheet (phone) / side panel (desktop) |
+| connect a port | per port a "go to" select with all names + "new block…" |
+| delete, duplicate, rename, set start | sheet actions (Delete key on desktop) |
+| undo / redo | header buttons, Ctrl+Z / Ctrl+Y |
 
-### 7.3 Editing actions
+Renaming a block updates every port pointing to it; renaming a variable updates every block using it.
+New block: after the selected one (selected → new → old next), else at the end unconnected (first block
+of an empty program = start); "new block…" connects that port. Own blocks a preset continues at cannot be
+renamed or deleted. A type change keeps the fields and ports the new type has.
 
-| Action | Touch | Desktop |
-|---|---|---|
-| Add block | floating button or "add block after" in the inspector → palette sheet (grouped: Light, Wait, Input, Logic, Remote, Stats, library as copy) | same, palette in the side panel |
-| Edit parameters | tap node → inspector bottom sheet | inspector side panel |
-| Connect port | inspector: per port a "go to" select with all block names (+ "new block…") | same as touch |
-| Delete / duplicate / rename | inspector actions | inspector actions, Delete key |
-| Set start block | inspector | inspector |
-| Undo / redo | header buttons | Ctrl+Z / Ctrl+Y |
-
-Renaming a block updates every port that points to it. With a block selected, a new block is
-inserted after it (selected → new → the old next, decision 12); otherwise it is added at the end,
-unconnected (the first block of an empty program becomes the start). "New block…" in a port
-select adds a block and connects that port to it. Own blocks that a preset continues at (e.g.
-`EnterProgram` for `loop`) cannot be renamed or deleted. Renaming a variable updates every block
-that reads or writes it. Changing the block type keeps the fields and ports the new type has.
-
-A block that continues straight down through a port other than `next` (e.g. a button with only
-`timeout`) shows the port name on the card, so the column view never hides which exit is taken.
-
-### 7.4 Parameter inputs
-
-- **value** fields (number or variable): a number field with a toggle to choose a variable
-  from the program's variables + built-ins (`REQUIRED_PERIPHERALS`, `NODE_COUNT`).
-- **Colours**: swatches. Fields sent to peripherals (`remotePress.color`, `colorAfter`,
-  `hitColor`, `avoidColor`) offer **only the 8 named colours**. Central `led.color` also
-  offers a free colour picker (`#RRGGBB`).
-- **LED indices** (`led.leds`, `menu[].leds`): the **18-LED ring picker** (tap LEDs on a
-  ring, "all" shortcut). The same component is used in the menu editor.
-- **Metric names** (`record`, `summary.metric`): free text with suggestions from the metrics
-  already used (default `reaction`).
-- **Program header**: name, description, number of peripherals (0–7, more cannot be entered), variables table,
-  start block, menu pattern.
+### 7.4 Inputs
+- *value*: number with a toggle to pick a variable (program variables + `REQUIRED_PERIPHERALS`, `NODE_COUNT`).
+- Colours: swatches; fields for peripherals offer only the 8 named colours, central `led.color` also `#RRGGBB`.
+- LED indices (`led.leds`, `menu[].leds`): 18-LED ring picker with "all" (also in the menu editor).
+  LED 0 at the top, clockwise.
+- Metric names: free text with suggestions (default `reaction`).
+- Program header: name, description, peripherals 0–7 (the editor prevents more), variables, start, menu
+  pattern. No tap target needs drag and drop.
 
 ### 7.5 Validation
-
-Runs on every change. It mirrors `tools/validate_programs.py`: known types, required
-fields, unique names over program + includes, all targets exist, start exists, colours
-valid (named only towards peripherals), value fields are numbers or known variables,
-path length, file size ≤ 16384 bytes, block types supported by the connected pod
-(`info.blockTypes`). Problems are listed in a sheet, and tapping one selects the block.
-Errors block the push. Warnings (e.g. "program ends here", unreachable blocks) do not.
-
----
+On every change, `@reactpod/program-model`: known types, required fields, unique names over program +
+includes, targets and start exist, colours (named towards peripherals), values are numbers or known
+variables, path length, file ≤ 16384 bytes, block types and fields supported by the connected pod
+(`info.blockTypes`, `programFormat`). Problems show on the step / card and in the Check sheet (tap selects).
+Errors block the push; warnings ("program ends here", unreachable, `rangeReversed`) do not.
 
 ## 8. Simulator
 
-The simulator runs the program in the browser with the same semantics as the firmware
-(`src/BlockManager/BlockManager.cpp` and the block classes):
+`simulator/engine.ts` follows programs.md §7 rule by rule: one pass per simulated ms, 32 steps per pass,
+`enter` takes times and random values, fallback to `next`, unknown variables 0, `uint8_t` pod ids,
+`timeoutMs: 0` = none for `button` / immediate for remote blocks, 20 ms debounce, seeded random.
 
-- Instant blocks (`led`, `setVariable`, `if`, `summary`, …) chain in the same pass, waiting
-  blocks (`delay`, `button`, `remote*`) wait. Fallback to `next` for unconnected ports. No
-  target = program ends. Same limit of steps per pass as the firmware (`MAX_STEPS_PER_PASS`),
-  so an endless loop of instant blocks behaves like on the pod.
-- `REQUIRED_PERIPHERALS` and `NODE_COUNT` come from `peripherals`. Pod ids as in programs.md §1.3.
-- Button rules: only presses that start after the block was entered count. `pressed` on the
-  edge, `short`/`long` on release (`shortMs`).
-- `remoteMultiPress`: random draw of avoid pods incl. the central, `syncStartMs`, `avoidHit`.
+- The set always has the program's `peripherals`. Peripherals behave like `PeripheralRole`: armed pods light
+  (at once or at `syncStartMs`), a press shows `colorAfter` and reports; presses of earlier activations are
+  dropped when polled.
+- View: all pods as pucks (central + peripherals, wrapping), tap = press, hold = long press; compact graph
+  with the current block and the edge just taken; panels: variables (changes flash), metrics (lit → click),
+  log of entered blocks + `RESULT` / `SUMMARY`.
+- Controls: run / pause (×0.25 … ×4) · **Step** = until the next block is entered (a block waiting for a
+  press stays; pods that light by themselves are lit) · **Skip wait** = jump to the end of a delay / timeout;
+  a block without timeout leaves via `timeout` (fallbacks apply), a pressed `button` keeps waiting for the
+  release · Reset · Seed · breakpoint on a block · **Copy trace** in the pod's `trace on` format (AT-M5).
+- While paused a press or release is handled at once (one step).
+- Logic only, no radio timing; reaction times are click times.
+- Entry points: Simulate tab (picker: own programs and the menu), play in the editor and the program view.
+  Programs with errors are not simulated.
 
-### 8.1 View
-
-- All pods of the program side by side (central + `peripherals` pods, wraps on phones):
-  each pod is an **18-LED ring** with its id, and a big round button in the middle.
-- **Tap / click a pod = press its button** (press and hold = long press, for `short`/`long`).
-- The graph (compact) with the **current block highlighted**, and the edge just taken animated.
-- Panels: variables (live values, changed ones flash), metrics (reaction times measured
-  from "lit" to the simulated press), log of entered blocks (like the firmware `trace`).
-
-### 8.2 Controls
-
-| Control | Effect |
-|---|---|
-| Run / pause | simulated time runs in real time (speed ×0.25 … ×4) |
-| **Step** | runs until the next block is **entered**, then pauses (instant blocks one by one) |
-| Skip wait | ends the current waiting block through its timeout / time-out port (no waiting for a delay) |
-| Reset | back to start, variables to initial values |
-| Seed | random numbers come from a seeded generator, so a run can be repeated exactly |
-| Breakpoint | tap a block in the graph → pause when entered |
-
-In step mode a waiting block stays current until the user presses a pod or uses "skip wait".
-
-The simulator models logic, not radio timing. Reaction times shown are user click times,
-not pod measurements.
-
-### 8.3 Implementation notes
-
-- `src/simulator/engine.ts` follows [programs.md](../firmware/programs.md) §7 rule by rule: one engine
-  pass per simulated ms, 32 steps per pass, `enter` takes times and random values, unconnected
-  ports fall back to `next`, unknown variables read 0, `uint8_t` pod ids, `timeoutMs: 0` means *no
-  timeout* for `button` but *at once* for the remote blocks, 20 ms button debounce.
-- The set always has the program's `peripherals` connected. Peripherals behave like
-  `PeripheralRole`: an armed pod lights (at once or at `syncStartMs`), a press shows `colorAfter`
-  and reports the reaction time; the central then resets it. Presses of earlier activations are
-  dropped when a block polls them, like on the pod.
-- **Step** runs the current pass until the next block is entered. A block waiting for a press stays
-  current ("waiting"); pods that light by themselves (`syncStartMs`) are lit by the step, because
-  that is no wait for the user. While paused, a press or release is handled at once (one step).
-- **Skip wait** jumps the simulated clock to the end of a delay or timeout. A block that waits
-  without a timeout (`button`, `remotePress`, `remoteMultiPress`) leaves through its `timeout` port
-  (fallback rules apply); a `button` already pressed keeps waiting for the release.
-- The log has every entered block and the `RESULT` / `SUMMARY` lines. **Copy trace** gives the
-  block events in the format of the pod's `trace on` (AT-M5).
-- Entry points: the Simulate tab (program picker: own programs and the menu), the play button in
-  the editor and in the program view. Programs with errors are not simulated.
-
----
-
-## 9. Pod connection and sync
+## 9. Pod connection, sync, training
 
 ### 9.1 Connect
+1. BLE (chooser filtered by service UUID and `ReactPod` prefix) or USB.
+2. Subscribe to Response (indications), request MTU 517 (native) / take what the browser gives.
+3. `info`: firmware, `linkProtocol`, `blockTypes`, `programFormat`, `features`, limits. BLE writes
+   `info.mtu − 3` bytes (fw < 2.7: 20).
+4. `status` → role; `list` → files, menu, generation. 5. Changed files are read with chunked `get` (cache).
 
-1. User picks BLE or USB. BLE: device chooser filtered by the service UUID. The pod
-   advertises as `ReactPod <set name>` or `ReactPod <last 4 digits of setId>` (firmware ≥ 2.2).
-2. Subscribe to Response (indications, firmware ≥ 2.1), request MTU 517 (native) / use what the browser negotiates.
-3. `info` → check `firmware`, `linkProtocol`, `blockTypes`, limits (`maxRequest`, `maxGetChunk`).
-   BLE: write `info.mtu − 3` bytes per write (firmware ≥ 2.7, else 20).
-4. `status` → role. `list` → files with size + CRC, menu, generation.
-5. Files whose CRC differs from the local copy are read with chunked `get`.
+Optional fields and features: config-api §5 table; a missing one means the old behaviour (e.g. no
+`listMeta` → no program names in the file list; `programFormat` newer than the app's `PROGRAM_FORMAT` → warning).
 
-Optional `info` fields (missing = older firmware, the app keeps the old behaviour):
+**Writes only go to a central.** A peripheral over USB is read-only (push, restore, delete disabled).
+USB: lines not starting with `{` are firmware log (debug console in Settings → Advanced). **Never toggle
+DTR/RTS** (resets the ESP32-C3).
 
-| Field | Firmware | Use in the app |
+### 9.2 Sync state per file
+With the remembered last common CRC (`SyncState`):
+
+| Local vs pod | State | Default |
 |---|---|---|
-| `setName` | 2.2 | shown as the set's name; Pod tab → rename (`setName`) |
-| `programFormat` | 2.3 | warning if the pod is newer than the app's block types (`PROGRAM_FORMAT`) |
-| `features: validateInline` | 2.4 | `PodClient.validate(path, data)` dry run, for push (P5) |
-| `features: listMeta` | 2.5 | program names in the Pod tab file list |
-| `pinRequired` | 2.6 | PIN asked before the first write (`auth`), once per connection |
-| `mtu` | 2.7 | BLE write size |
-
-**Writes only go to a central.** The app reads `status.role` after connecting. Over USB a
-peripheral can be connected and inspected (read-only), but push, restore and delete are
-disabled.
-
-USB serial: 115200 baud, lines that do not start with `{` are firmware log (shown in a
-debug console in Settings → Advanced). The app must **not toggle DTR/RTS** (risk R1, §11).
-
-### 9.2 Sync states per file
-
-Using the remembered `SyncState` (last common CRC) the app can tell who changed a file:
-
-| Local vs pod | State | Default action |
-|---|---|---|
-| same CRC | in sync | – |
+| same CRC or equal JSON | in sync | – |
 | local changed, pod = last sync | local newer | push |
 | pod changed, local = last sync | pod newer | take over |
-| both changed / never synced | **conflict** | user chooses **"keep pod"** or **"keep mine"** (no diff view, decision 9) |
+| both changed / never synced | **conflict** | "keep pod" / "keep mine" (no diff) |
 | only local | new | push |
-| only on pod | pod only | take over (shown in the list) |
+| only on pod | pod only | take over |
 
-### 9.3 Push
+### 9.3 Push (`pod/sync.ts`)
+1. Validate locally; errors stop. 2. Plan: changed / new programs + missing presets (from the shipped library)
+   + menu entries the pod lacks (from the shipped programs), `/programs.json` **last**; the user can deselect;
+   conflicts and pod-newer files are skipped and listed. 3. With `validateInline`: dry-run every program on the
+   pod before writing any program or the menu (library parts first, the dry run reads includes from the
+   store); without it, `validate` after the upload. 4. Upload: ≤ 2048-character chunks at character
+   boundaries, UTF-8 byte offsets, CRC on the final chunk; `overflow` → resend; `busy` → stop and explain.
+   5. Map pod errors to the block. 6. Save the sync state **after each file** (an interrupted push shows the
+   right states; pushing again finishes it). 7. Tell the user to start any program once with all pods on.
 
-1. Validate locally. Errors stop the push.
-2. Build the plan: changed / new programs + missing preset fragments, then `/programs.json`
-   **last** (config-api §7). Show the plan ("3 files will be uploaded").
-3. Upload each file: chunks ≤ 2048 characters at character boundaries, offsets in UTF-8
-   bytes, CRC-32 on the final chunk. `overflow` → resend that request. `busy` → stop
-   and explain.
-4. `validate` each program in the menu, map errors back to the block in the editor.
-5. Save the new `SyncState`. Tell the user to start any program once with all pods on, so
-   the set syncs.
+- `pinRequired` → the push dialog asks for the PIN (`auth`) before the first write.
+- Last common CRC is set after every upload, on "take over" / "keep pod", on "keep mine" (the pod's current
+  CRC, so the local file wins), when a local copy is made from a pod program; an untouched copy of a
+  shipped program uses the shipped file.
+- Menu: a saved local menu that differs from the pod's is pushed unless the pod's changed since the last
+  sync (conflict). "Keep pod" for the menu forgets the local menu.
+- **Push never deletes.** Unknown pod files stay.
 
-**Push never deletes** (decision 8). Files on the pod that the app does not know stay.
+### 9.4 Delete and restore defaults
+- Removing a program from the menu leaves the file.
+- Deleting files: only Settings → Advanced: select, then a dialog naming the files with a "hold to delete"
+  button. Library and `/programs.json` cannot be deleted.
+- Restore defaults (Pod tab, confirmation): uploads the shipped programs, library and default menu; user
+  programs stay, only leave the menu.
 
-Implementation notes (`src/pod/sync.ts`):
-- A pod file counts as **in sync** when its CRC equals the app's formatted text *or* its JSON is
-  equal (key order and formatting ignored), so a pod copy that was never edited is not a change.
-- The **last common CRC** is remembered per set and path: after every upload, on "take over" /
-  "keep pod", on "keep mine" (the pod's current CRC, so the local file wins) and when a local
-  copy is made from a pod program. An untouched copy of a shipped program uses the shipped file.
-- The **menu** is the set being built (decision 11): a saved local menu that differs from the pod's
-  is pushed, unless the pod's menu changed since the last sync (then conflict). "Keep pod" for the
-  menu forgets the local menu, so the Menu tab follows the pod again.
-- With `features: validateInline` (firmware ≥ 2.4) every program is checked by the pod's loader
-  (dry run) **before** any program or the menu is written; library parts are uploaded first, because
-  the dry run reads includes from the store. Without it, `validate` runs after the upload only.
-- Menu entries the pod does not have are uploaded from the shipped programs, missing presets from
-  the shipped library. The plan lets the user deselect programs; conflicts and pod-newer files are
-  never pushed and are listed as skipped.
-- The sync state is saved after each file, so an interrupted push (busy, lost connection, wrong PIN)
-  shows the right states afterwards; pushing again finishes it.
-- With `info.pinRequired` the push dialog asks for the PIN (`auth`) before the first write.
+### 9.5 Training, results and reconnect (P7, P9)
+- **One set at a time.** Sessions (`pod/session.ts`: transport, PodClient, info, status, list, files, log)
+  form a list with one active session (`usePodSessions` / `usePodSession`); `connectPod` ends every existing
+  session first. The list stays as the structure for several sets later (#46, on hold).
+- **Reconnect** (BLE, while the page lives, no chooser): after 1 s, doubling to 30 s; state *Reconnecting*.
+  When up: `info`, `status`, `list`, then **`reports` → store → `ack`** (`results/podLink.ts`); files from the
+  cache. User disconnect = no retry. Serial and demo pod end on a drop. After a reload the set is picked again
+  with one tap; the pod still holds unacknowledged reports.
+- **Results** (`results/`, IndexedDB `reactpod-results`): `ReportFeed` stores each `report` event, then
+  `ack`s it (no `ack` if storing fails, e.g. IndexedDB blocked → warning). Reports grouped into sessions per
+  athlete; *Repeat* marks a report discarded (not in statistics). CSV: `;` (de) / `,` (en).
+- **Training view** (`/training`, from the Pod page, Pod tab stays highlighted), one card: set name, state
+  (`status.state` or connecting / reconnecting / not connected), *Waiting for you* while `communicate` waits;
+  athlete (as on the Pod tab, sent with `session`); last report with link to the session; while waiting
+  **Continue / Repeat / Stop** (`command`) and one number input per `status.waiting.editable` variable
+  (`setVariables`, range checked before sending); **Pause / Resume** in RUN or during a phone pause;
+  Disconnect. `status` is re-read on `state` / `report` events and after each command.
+- **Feature detection:** no `reports` → the card says the firmware sends no results; no `remote` → no
+  commands; no `pause` → no pause button; no `liveBle` → note that Bluetooth goes off during a game.
+- **Wake lock** while the view is open (`navigator.wakeLock`; absent or refused → nothing). Known PWA limit:
+  the screen can still lock; a hidden tab or sleeping phone drops BLE; reports wait on the pod.
+- **Demo pod:** each connection gets its own set: `5f3a91c2` (no name), `9b2e7d40` "Halle 2", `c71f0a8e`
+  "Halle 3", `3e6d9b15` "Halle 4". "Demo: send a report" emits a sample report; while it waits the game is in
+  RUN; `stop` → MENU.
 
-### 9.4 Deleting and restoring defaults
+### 9.6 Platform client (preview, on hold – keep working, do not extend)
+- Upload (`platform/upload.ts`): reports the platform lacks, per session, `POST /training/upload`, by the
+  auto-upload setting or *Upload now*; idempotent by the app's ids.
+- Queued deletions (`PlatformDelete[]`, IndexedDB) run when online and signed in: after sign-in, at app start,
+  when queued, when the connection returns; independent of auto-upload; kept while unreachable, 404 = done.
+- Deleting a linked athlete on the phone (`results/athleteDeletion.ts`) removes it with sessions and reports;
+  the platform gets the self-delete `DELETE /v1/orgs/{orgId}/me/athletes/{id}` if the user claimed it
+  (`claimedAthleteIds` from `/v1/me`), else the coach delete `DELETE /v1/orgs/{orgId}/athletes/{id}` (403 →
+  self-delete). Its queued uploads are dropped.
+- Tombstones (`deletedAthletes`): later reports for that athlete are `ack`ed but not stored or uploaded.
+  If it is the athlete set on a connected pod with `remote`, the app sends `session {athlete: ""}`.
 
-- Removing a program from the **menu** is a normal action (the file stays on the pod).
-- **Deleting files** on the pod is only in Settings → Advanced: select files, then confirm in a
-  dialog that names the files and needs an extra tap on a "hold to delete" button.
-  Library and menu (`/programs.json`) cannot be deleted.
-- **Restore defaults** (Pod tab): uploads the shipped programs + library and the default
-  `/programs.json`. User programs on the pod are not deleted, only removed from the menu.
-  Confirmation dialog. The defaults are bundled with the app from `../firmware/data` at build time.
+## 10. i18n and accessibility
+All UI text in `src/i18n/{en,de}.json`; English primary and fallback; language from the browser, switchable.
+Block type and field names stay technical in expert mode, each with a translated label and help. Contrast
+AA, visible focus, every icon button labelled.
 
-### 9.5 Training view and reconnect (#46, phase P9)
-
-**Several sets at once are on hold (decision 2026-10-29).** The hardware test on a phone showed only
-one set and no way to switch, so *Add another set* was removed. It needs more investigation before it
-comes back (#46).
-
-- **Sessions.** One session per connected set (`src/pod/session.ts`): transport, PodClient, `info`,
-  `status`, `list`, files and log. The sessions form a list (`usePodSessions`) with one *active*
-  session, which the Pod, Programs and Sync pages read through `usePodSession`. **One set at a time:**
-  `connectPod` ends every existing session before it opens the new one. The list stays as the
-  structure for several sets later.
-- **Reconnect.** A BLE link that drops is opened again while the page lives, without the device
-  chooser: first try after 1 s, the delay doubles per failed try up to 30 s. The set keeps its
-  card; its state is *Reconnecting*. When the link is up again the app runs `info`, `status`, `list`,
-  then **`reports` → store → `ack`** (the reports the pod kept while the link was down, see
-  [`results/podLink.ts`](../../app/src/results/podLink.ts)). Files come from the cache. A user
-  disconnect ends the session without a retry. Serial and the demo pod end the session on a drop.
-- **After a reload** the app knows no set. Each set is picked again with one tap; the pod still holds
-  its unacknowledged reports and sends them with `reports`.
-- **Training view** (route `/training`, linked from the Pod page; the header keeps the Pod tab
-  highlighted). One card for the connected set:
-  - set name, state (`status.state`: MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR, or connecting /
-    reconnecting / not connected), *Waiting for you* while a `communicate` block waits;
-  - athlete: same list and assignment as the Training section of the Pod tab;
-  - last report: values and statistics, link to the session;
-  - while a block waits: **Continue**, **Repeat**, **Stop** (`command`) and one number input per
-    editable variable of `status.waiting.editable` (`setVariables`, range checked before sending);
-  - **Pause** / **Resume** (`pause` / `resume`) in RUN or while the phone holds a pause;
-  - *Disconnect* ends it.
-- **Feature detection** (`info.features`, a missing field means the old behaviour): without
-  `reports` the card says that the firmware cannot send results; without `remote` there are no
-  commands; without `pause` there is no pause button; without `liveBle` (firmware < 2.12) the card
-  notes that Bluetooth goes off during a game.
-- **Status** is read again on `state` and `report` events and after each command.
-- **Wake lock.** While the training view is open the app requests a screen wake lock
-  (`navigator.wakeLock`, screen). Without the API nothing happens; a refused request changes nothing.
-  **Known PWA limit:** the screen can still lock, and a hidden tab or a sleeping phone suspends the
-  page and drops BLE. The sessions reconnect while the page lives; reports sent in the meantime wait
-  on the pod until the reconnect fetches them.
-- **Demo pod.** Each connection to the demo pod gets a set of its own: `5f3a91c2` (no name), `9b2e7d40`
-  "Halle 2", `c71f0a8e` "Halle 3", `3e6d9b15` "Halle 4". While a demo report waits the demo game is in
-  RUN; `stop` ends it (MENU).
-
-### 9.6 Upload and deletion on the platform (#48)
-
-- **Upload** (`platform/upload.ts`) sends every report the platform does not have yet, grouped per
-  session, as `POST /training/upload`. It follows the auto-upload setting (or *Upload now*).
-- **Queued deletions** (`PlatformDelete[]`, kept in IndexedDB) are repeated when the phone is
-  online and signed in: right after a sign-in, at app start, when a deletion is queued, and when
-  the connection returns. This does not depend on the auto-upload setting. A deletion is kept while
-  the platform cannot be reached; 404 means it is gone already.
-- **Deleting a linked athlete on the phone** (`results/athleteDeletion.ts`): the athlete with all
-  sessions and reports is removed here. The platform gets:
-  - the **self-delete** (`DELETE /v1/orgs/{orgId}/me/athletes/{id}`) when the signed-in user claimed
-    the profile (the ids come from `/v1/me` at sign-in, `claimedAthleteIds`), or
-  - the **coach delete** (`DELETE /v1/orgs/{orgId}/athletes/{id}`) otherwise. A 403 there falls back
-    to the self-delete, in case the claim is newer than the last sign-in.
-  Queued uploads of the athlete go with its sessions, so they are never sent.
-- **Tombstones.** The local ids of deleted athletes are kept (`deletedAthletes`). A report that a
-  pod sends later for such an athlete (its `athlete` field) is acknowledged on the pod (`ack`) but
-  neither stored nor uploaded. Reports without an athlete tag are unaffected.
-- **Pods.** If the deleted athlete is the one set on a connected pod with `remote`, the app sends
-  `session {athlete: ""}`, so the pod stops tagging reports with them.
-
----
-
-## 10. i18n and design
-
-- All UI text in `src/i18n/{en,de}.json`. **English is the primary language** and the fallback
-  for missing keys. Language from the browser, switchable in Settings.
-  Block type names and JSON field names stay technical (`button`, `timeoutMs`), and every
-  one gets a translated label and help text.
-- Design: minimal, functional, icon driven. Neutral surfaces, one accent colour, LED
-  colours only where they mean LED colours. Light and dark theme (system setting).
-  Design tokens in one CSS file, so a brand theme can be dropped in later.
-- Accessibility: contrast AA, focus visible, every icon button has a label (also for screen readers).
-
----
-
-## 11. Risks
-
-| # | Risk | Mitigation |
-|---|---|---|
-| R1 | Opening the port with Web Serial may set DTR/RTS and reset the ESP32-C3 (config-api "Serial specifics") | test early on hardware (AT-S1), if needed set signals explicitly after open, document in acceptance tests |
-| R2 | Several centrals in range all advertise "ReactPod Config", so the user can't pick the right set | solved by CR-1 (firmware 2.2): `ReactPod <xxxx>` / set name |
-| R3 | Simulator semantics drift from the firmware | engine unit tests use the shipped programs; acceptance test compares a stepped run with the pod's `trace` |
-| R4 | Browser-negotiated BLE MTU is small (23) → slow upload | chunking works with any MTU, show progress; measure in AT-B3 |
-| R6 | Firmware indicates on the Response characteristic, browsers / Android subscribe for notifications → BLE responses never arrive | solved by CR-0 (firmware 2.1): indications only. Firmware 2.0 still times out over BLE |
-| R5 | Two pods of a set edited separately → only one store survives (config-api §6) | show `setId` + generation, hint after push to let the set sync |
-
----
+## 11. Known risks
+| Risk | Mitigation |
+|---|---|
+| Web Serial open toggles DTR/RTS → reset | never toggle; AT-S1 passed |
+| simulator drifts from the firmware | engine tests on the shipped programs; AT-M5 trace comparison; change both sides together |
+| small browser MTU (23) | chunking works with any MTU; progress shown |
+| two pods edited separately → one store lost | show set id + generation; hint after push |
 
 ## 12. Decisions
-
-| # | Topic | Decision |
-|---|---|---|
-| O1 | Manual node positions | none: the column view computes the block order (§7.1) |
-| O2 | Hosting | GitHub Pages (`runningjoke.github.io/reactionButton`), deployed from `main` by GitHub Actions. Own domain later |
-| O3 | Languages | English (primary, fallback) and German |
-| O4 | Long press in the simulator | press and hold = held button, release = release (`shortMs` decides) |
-| O5 | Number of peripherals | the editor prevents more than 7. No other warning |
-| O6 | Write target | only a central. Peripherals are read-only in the app |
-| 4 | Library | `/prog/lib/*` read-only, used as preset (include) or template (copy) |
-| 5 | Layout on the pod | none, automatic order in one column |
-| 7 | Block type definitions | app keeps its own copy, separate from the firmware |
-| 8 | Push | update only, never delete unless the user asks |
-| 9 | Conflicts | simple choice "keep pod" / "keep mine", no diff |
-| 10 | Editing a shipped / pod program | local copy with the same path; replaces the pod file at push |
-| 11 | Menu before push exists | one local menu, starting from the pod's (or the shipped) menu |
-| 12 | Where a new block goes | after the selected block (rewired), else at the end unconnected |
-
----
+| Topic | Decision |
+|---|---|
+| node positions | none; computed column order |
+| hosting | GitHub Pages from `main`; own domain later |
+| long press in the simulator | press and hold = held button, `shortMs` decides |
+| peripherals | the editor prevents more than 7 |
+| write target | only a central |
+| library | read-only, preset (include) or template (copy) |
+| block definitions | the app's own copy in `@reactpod/program-model`, mirrored from the firmware by `/fw-api-change` |
+| push | update only, never delete unless the user asks |
+| conflicts | "keep pod" / "keep mine" |
+| editing a shipped / pod program | local copy, same path, replaces at push |
+| menu before a push exists | one local menu from the pod's (or shipped) menu |
+| new block position | after the selected block, else at the end unconnected |
 
 ## 13. Phases
+The user approves each phase; acceptance tests: [acceptance-tests.md](acceptance-tests.md).
 
-| Phase | Content | Done when | Status |
-|---|---|---|---|
-| P0 | Scaffold: Vite + React + TS, PWA, i18n, theme, navigation | `npm run build` + `npm test` pass, production build works offline from `localhost`, language switch works | done |
-| P1 | Model + validation + simulated pod + PodClient + file transfer | unit tests: all `firmware/data/` programs parse and validate; get/put with chunking and CRC against the simulated pod | done |
-| P2 | Transports: Web Serial, BLE | AT-S*, AT-B* pass on hardware | USB done (AT-S1–S4 pass), BLE ready for test with firmware 2.7 (AT-B*) |
-| P3 | Programs list, read-only graph view with auto layout, library browser | all shipped programs display correctly | done |
-| P4 | Editor + menu editor + LED ring picker | a new program can be created on a phone without drag and drop | done |
-| P5 | Sync + push + validate + restore defaults | AT-P* pass on hardware | done (accepted 2026-10-19) |
-| P6 | Simulator | AT-M* pass, stepped run matches pod trace | done (accepted 2026-10-19); AT-M1–M4 also covered by unit tests |
-| P7 | Athletes, result history, platform upload (#47, #48 app side) | AT-R* pass | done (AT-R* passed 2026-10-26); real pods need `reports` / `remote` (#41, #42) for live results |
-| P8 | Block builder for first-timers and coaches ([editor-ux.md](editor-ux.md)): format 2 in model + simulator, step sheet, step list, game wizard, add a step by intent, program sheet, Adjust, expert mode | AT-E* pass | done (AT-E* passed 2026-10-26) |
-| P9 | Training view and reconnect (#46): BLE reconnect with reports fetch and ack, training view `/training` (live state, communicate controls, pause / resume), wake lock (§9.5). Several sets at once: on hold | AT-L* pass (multi-set tests on hold) | ready for test |
+| Phase | Content | Status |
+|---|---|---|
+| P0 | scaffold, PWA, i18n, theme, navigation | done |
+| P1 | model, validation, simulated pod, PodClient, file transfer | done |
+| P2 | transports Web Serial, BLE | done (AT-S*, AT-B* pass) |
+| P3 | programs list, graph view, library | done |
+| P4 | editor, menu editor, LED ring picker | done |
+| P5 | sync, push, validate, restore defaults | done (accepted 2026-10-19) |
+| P6 | simulator | done (accepted 2026-10-19) |
+| P7 | athletes, results, platform upload (#47, #48) | done (AT-R* 2026-10-26) |
+| P8 | block builder for first-timers (editor-ux.md) | done (AT-E* 2026-10-26) |
+| P9 | training view, reconnect, wake lock (#46); several sets on hold | ready for test (AT-L*) |
 
-Acceptance criteria and test procedures on real pods: [docs/acceptance-tests.md](acceptance-tests.md).
-**Firmware / API changes the app needs** are requested as **GitHub issues** in this repository
-(label `firmware`): what is missing, why the app needs it, a proposed API, acceptance. The app
-must keep working without the change (check `info`, missing field → old behaviour). The earlier
-change requests CR-0 … CR-7 are all done and archived in
-[../docs/archive/changerequest/config-app-api.md](../archive/changerequest/config-app-api.md).
-
----
-
-## 14. Development
-
-```sh
-cd app
-npm install
-npm run dev        # http://localhost:5173 (Web Bluetooth / Web Serial work on localhost)
-npm test           # unit tests (Vitest)
-npm run build      # type check + production build with service worker → dist/
-npm run preview    # serve dist/ on http://localhost:4173, e.g. to test offline mode
-npm run icons      # redraw public/icons/* (scripts/make-icons.mjs)
-node scripts/screenshots.mjs <dir>   # screenshots of the preview build (local Chrome, playwright-core)
-node scripts/offline-check.mjs       # AT-U1: preview build loads offline
-```
-
-Deployment: merging to `main` runs the Pages workflow (`npm ci`, `npm test`, `npm run build`,
-upload `dist/`). It can also be started by hand (Actions → "Config app (GitHub Pages)" → Run).
-
-Routing uses the URL hash (`#/programs`), so the build runs from any path, offline and later
-inside the Capacitor webview. A new app version is only activated after the user confirms
-(update prompt), so an edit in progress is never reloaded away.
-
+## 14. Commands
+`npm run dev` · `npm test` · `npm run build` · `npm run preview` · `npm run icons` (redraws `public/icons/`
+from `scripts/make-icons.mjs`) · `node scripts/screenshots.mjs <dir>` · `node scripts/offline-check.mjs`
+(AT-U1, preview build offline).

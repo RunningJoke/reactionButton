@@ -1,152 +1,114 @@
-# Acceptance tests – Config App v1
+# Acceptance tests – Config App
 
-Test procedures on real hardware. Each test lists its setup, its steps and the expected
-result. Record the result (pass / fail, browser + version, firmware version, notes) in the
-table at the end.
-
-**Standard setup:** a set of at least 3 pods (1 central + 2 peripherals), charged, firmware
-2.0. The central is in the program menu (switch it on and hold the button during the blue
-boot animation). Desktop Chrome with a USB-C cable, and an Android phone with Chrome.
-
-Before a test session: run `python tools/reactpod_serial.py` → `info` to note the
-generation and store hash.
-
----
+On real hardware unless stated. Standard setup: ≥ 3 charged pods (central + 2 peripherals), central in the
+menu (button held during the boot gauge), desktop Chrome with USB-C, Android phone with Chrome. Note
+generation and store hash first (`reactpod_serial.py` → `info`). Record results in the table at the end;
+mark "pass" only when the user reported it.
 
 ## S – USB serial (desktop Chrome)
-
 | ID | Steps | Expected |
 |---|---|---|
-| AT-S1 | Plug in the central (in the menu), app → Pod → USB, pick the port | connected, **the pod does not reset** (no boot animation), `info` shown |
-| AT-S2 | Same with a peripheral | connected, role "peripheral" shown, push / restore / delete disabled (read-only) |
-| AT-S3 | Unplug the cable while connected | app shows "disconnected" within 2 s, no frozen UI |
-| AT-S4 | Open Settings → Advanced → debug console | firmware log lines appear, separate from API responses |
+| AT-S1 | central in the menu, Pod → USB | connected, **no reset** (no boot gauge), `info` shown |
+| AT-S2 | same with a peripheral | role "peripheral", push / restore / delete disabled |
+| AT-S3 | unplug while connected | "disconnected" within 2 s, UI responsive |
+| AT-S4 | Settings → Advanced → debug console | firmware log separate from API responses |
 
-
-## B – BLE (Android Chrome, desktop Chrome)
-
-Needs firmware ≥ 2.1 (change request CR-0, archived in `docs/archive/changerequest/config-app-api.md`). With firmware 2.0 the app connects, then reports "The pod did not answer" (timeout). AT-B5…B7 need firmware ≥ 2.6.
-
+## B – BLE (Android and desktop Chrome; fw ≥ 2.1, B5–B7 ≥ 2.6)
 | ID | Steps | Expected |
 |---|---|---|
-| AT-B1 | App → Pod → Bluetooth | chooser lists "ReactPod xxxx" (last 4 digits of the set id), connecting works, `info` shown |
-| AT-B2 | Central not in the menu (game running) | the app does not find it and shows the hint how to open the menu |
-| AT-B3 | Read all programs of the default set | completes. Note the duration and the MTU (`info.mtu`, debug console) |
-| AT-B4 | Select a program on the pod (long press) while connected | app shows "disconnected" (BLE off), no data loss locally |
-| AT-B5 | Two centrals in the menu at the same time | the chooser shows two different names; each suffix matches the set id in the Pod tab |
-| AT-B6 | Pod tab → rename the set to "Halle 2", disconnect, connect again | the chooser and the Pod tab show "ReactPod Halle 2" / "Halle 2" |
-| AT-B7 | Set a PIN over USB (`reactpod_serial.py set-pin 1234`), then rename over BLE | the app asks for the PIN; a wrong PIN shows "Wrong PIN", the right one saves. Clear the PIN over USB afterwards |
+| AT-B1 | Pod → Bluetooth | chooser lists "ReactPod xxxx", connect, `info` shown |
+| AT-B2 | central not in the menu (fw < 2.12, game running) | not found; hint how to open the menu |
+| AT-B3 | read all programs of the default set | completes; note duration and `info.mtu` |
+| AT-B4 | select a program on the pod while connected | fw < 2.12: "disconnected", nothing lost locally; fw ≥ 2.12: stays connected |
+| AT-B5 | two centrals in the menu | two names; each suffix matches the set id on the Pod tab |
+| AT-B6 | rename the set to "Halle 2", reconnect | chooser and Pod tab show it |
+| AT-B7 | PIN over USB (`reactpod_serial.py set-pin 1234`), rename over BLE | PIN asked; wrong → "Wrong PIN", right → saved; clear the PIN afterwards |
 
 ## P – Sync and push
-
 | ID | Steps | Expected |
 |---|---|---|
-| AT-P1 | Fresh pod with default programs, connect | all files "in sync" or "pod only", library read-only |
-| AT-P2 | Create a new program in the app (2 peripherals, uses preset `loop`), add it to the menu, push | plan shows program + `/programs.json`; upload ok; `validate` ok; the pod menu shows the new pattern |
-| AT-P3 | Select the new program on the pod with all pods on, play it | it behaves like in the simulator |
-| AT-P4 | Then switch on a pod of the set that was off during P2, start a program | the new program spreads to it (check with `list` over serial) |
-| AT-P5 | Edit a program, push a version with a type error (forced through serial / test hook) | app shows the pod's `invalid_program` message on the right block |
-| AT-P6 | Change a program on the pod via `tools/reactpod_config.py` and in the app, connect | conflict shown, "keep pod" and "keep mine" both work |
-| AT-P7 | Push while the central runs a game (serial) | `busy` explained, nothing half written (old file intact, CRC unchanged) |
-| AT-P8 | Upload a program with umlauts in name / description (`Übung`) | CRC ok, file identical when read back |
-| AT-P9 | Restore defaults on a pod with a user program | default menu restored, user program file still present (`list`) |
-| AT-P10 | Delete a file via Settings → Advanced | needs the extra confirmation, library and menu are not offered |
-| AT-P11 | Programs → Export set, then on another browser / after clearing site data: Import set, push | the same programs and menu arrive on the pod; files identical (`list` CRCs) |
-| AT-P12 | PIN set over USB, push over BLE | the push dialog asks for the PIN; a wrong PIN stops with "Wrong PIN" before anything is written |
-| AT-P13 | Push a program with an unknown block type to a pod (firmware ≥ 2.4, e.g. edit the JSON and import it) | the pod's dry run reports it, "Nothing was changed", `list` unchanged |
+| AT-P1 | fresh pod with defaults, connect | all "in sync" or "pod only", library read-only |
+| AT-P2 | new program (2 peripherals, preset `loop`), add to menu, push | plan = program + `/programs.json`; upload, `validate` ok; pod menu shows the pattern |
+| AT-P3 | play it on the pods | behaves like the simulator |
+| AT-P4 | switch on a pod that was off during P2, start a program | the program spreads to it (`list` over serial) |
+| AT-P5 | push a version with a type error (test hook / serial) | pod's `invalid_program` shown on the right block |
+| AT-P6 | change a program via `reactpod_config.py` and in the app | conflict; "keep pod" and "keep mine" work |
+| AT-P7 | push while a game runs | `busy` explained, old file intact (CRC unchanged) |
+| AT-P8 | umlauts in name / description (`Übung`) | CRC ok, identical when read back |
+| AT-P9 | restore defaults with a user program on the pod | default menu, user file still there |
+| AT-P10 | delete a file (Settings → Advanced) | extra confirmation; library and menu not offered |
+| AT-P11 | export set, import in a fresh browser, push | same programs and menu, identical CRCs |
+| AT-P12 | PIN set, push over BLE | PIN asked; wrong PIN stops before any write |
+| AT-P13 | push a program with an unknown block type (fw ≥ 2.4) | dry run reports it, "Nothing was changed", `list` unchanged |
 
-## M – Simulator (no hardware needed, compare with hardware)
-
+## M – Simulator (compare with hardware)
 | ID | Steps | Expected |
 |---|---|---|
-| AT-M1 | Simulate `duo.json`, press the pods as they light | central + 1 peripheral shown, current block highlighted, metric `reaction` and `MISSES` update |
-| AT-M2 | Step mode through `dreieck.json`, 3 rounds | every entered block is shown one by one, `SELECTED` never repeats |
-| AT-M3 | `run5.json`, press a red pod | `avoidHit` → `Fail` path |
-| AT-M4 | Same seed twice | identical block sequence |
-| AT-M5 | Compare: run `solo.json` on the pod with `trace on` (serial) and in the simulator with the same presses | same block sequence |
+| AT-M1 | simulate `duo.json`, press as they light | central + 1 peripheral, current block, `reaction` and `MISSES` update |
+| AT-M2 | step through `dreieck.json`, 3 rounds | every entered block one by one, `SELECTED` never repeats |
+| AT-M3 | `run5.json`, press a red pod | `avoidHit` → `Fail` |
+| AT-M4 | same seed twice | identical sequence |
+| AT-M5 | `solo.json` on the pod with `trace on` vs simulator, same presses | same block sequence |
 
-## R – Athletes and results (#47, #48)
-
-AT-R1 … AT-R5 run with the demo pod (it emits sample reports: **Demo: send a report** on the Pod
-tab). On real pods they need the firmware features `reports` (#41) and `remote` (#42); pods without
-them must work exactly as before (AT-R6).
-
+## R – Athletes and results (demo pod: "Demo: send a report"; real pods need `reports` / `remote`)
 | ID | Steps | Expected |
 |---|---|---|
-| AT-R1 | Results: add an athlete. Pod: connect, choose the athlete under *Training*, send 3 reports, **Repeat** after the 2nd | one session with 3 reports, the 2nd marked discarded and not counted in the statistics |
-| AT-R2 | Reload the app, then restart the phone | athletes, sessions and reports are still there |
-| AT-R3 | Results → athlete → **Export CSV**, open it in a spreadsheet (de: `;`, en: `,`) | one row per measurement, umlauts readable |
-| AT-R4 | A report arrives while IndexedDB is blocked (private window) | warning on the Results tab; the pod keeps the report (no `ack`) |
-| AT-R5 | Settings → Platform: server of a test platform, sign in with the mail code, choose a club; link the athlete (new profile, consent); go offline, record reports, go online | the reports appear in the profile once; **Upload now** again creates no duplicates; discarding a report later updates only its flag |
-| AT-R6 | Real central without `reports` (firmware 2.7) | Pod tab says it sends no results yet; sync, push and all programs work as before |
+| AT-R1 | add an athlete, choose it under *Training*, 3 reports, **Repeat** after the 2nd | one session, 3 reports, the 2nd discarded and not counted |
+| AT-R2 | reload, restart the phone | everything still there |
+| AT-R3 | athlete → Export CSV, open in a spreadsheet | one row per measurement, `;` (de) / `,` (en), umlauts readable |
+| AT-R4 | report while IndexedDB is blocked (private window) | warning; the pod keeps the report (no `ack`) |
+| AT-R5 | platform preview: test server, mail code, club, link athlete (consent), record offline, go online | reports appear once; *Upload now* again: no duplicates; a later discard updates only its flag |
+| AT-R6 | central without `reports` (fw 2.7) | Pod tab says no results yet; everything else as before |
 
-## L – Training view and reconnect (P9, #46, spec §9.5)
-
-Needs firmware 2.12 (`reports`, `remote`, `pause`, `liveBle`). **Several sets at once are on hold** (2026-10-29: the phone showed only one set, *Add another set* was removed): AT-L1, L2 and L8 are on hold; L6, L11 and L12 are run with one set.
-
+## L – Training view and reconnect (P9; fw 2.12; L1, L2, L8 on hold with #46)
 | ID | Steps | Expected |
 |---|---|---|
-| AT-L1 | *(on hold)* Pod: connect set A, then set B | two cards, each with its set name |
-| AT-L2 | *(on hold)* Both sets in a game, each at a *Report* block: tap *Continue* on set B only | only set B's card leaves *Waiting for you*; set A keeps its block and its values |
-| AT-L3 | Card of a waiting set: set *MAX_LOOPS* to 20 and *Set*; then *Continue* | the pod's next round uses 20 loops; a value outside 1–50 is refused on the card, nothing is sent |
-| AT-L4 | Game running on a set: *Pause*, wait 10 s, *Resume* | pod PAUSED (all yellow) while paused, then the game goes on in the same round |
-| AT-L5 | Switch set A off for 20 s during a game, switch it on again; do not touch the app | card shows *Reconnecting…*, then *Connected* without a tap; reports sent during the drop appear on the session after the reconnect (none lost, none twice) |
-| AT-L6 | Reload the app with the set in reach | the set is picked again with one tap; the reports the pods kept are shown in the sessions |
-| AT-L7 | Training view open, phone unattended for 3 min (screen on) | screen stays on; with the screen locked BLE drops and the app reconnects after unlock (known PWA limit, document only) |
-| AT-L8 | *(on hold)* Demo pod: connect two demo sets | two cards "ReactPod …" and "Halle 2", distinct set ids; demo report and *Continue* on one card do not change the other |
-| AT-L9 | Central with firmware 2.10 (no `reports`) in the training view | card says the firmware cannot send results yet; no Continue / Pause buttons; the athlete can still be chosen |
-| AT-L10 | Central with firmware 2.11 (no `liveBle`, no `pause`) | card notes that Bluetooth goes off during a game; no Pause button; Continue / Repeat / Stop work |
-| AT-L11 | Training view on a phone 360 px wide, light and dark theme | no cut-off text, no horizontal scroll, all buttons at least 44 px, text readable in both themes |
-| AT-L12 | Connect another set (or the same set again) while one is connected | the first connection ends; one card, for the new connection |
+| AT-L1 | *(on hold)* connect set A, then B | two cards |
+| AT-L2 | *(on hold)* both at a *Report* block, *Continue* on B | only B leaves *Waiting for you* |
+| AT-L3 | waiting card: *MAX_LOOPS* = 20, *Set*, *Continue* | next round uses 20; a value outside 1–50 is refused on the card, nothing sent |
+| AT-L4 | *Pause*, 10 s, *Resume* | PAUSED (all yellow), then the same round goes on |
+| AT-L5 | switch the central off 20 s in a game, on again, do not touch the app | *Reconnecting…* → *Connected*; reports from the drop appear, none lost or doubled |
+| AT-L6 | reload with the set in reach | picked again with one tap; kept reports shown |
+| AT-L7 | training view open, 3 min unattended (screen on) | screen stays on; after a lock BLE drops and reconnects after unlock (document only) |
+| AT-L8 | *(on hold)* two demo sets | two independent cards |
+| AT-L9 | central fw 2.10 (no `reports`) | card says no results; no Continue / Pause; athlete selectable |
+| AT-L10 | central fw 2.11 (no `liveBle`, `pause`) | note that Bluetooth goes off in a game; no Pause; Continue / Repeat / Stop work |
+| AT-L11 | 360 px, light and dark | nothing cut off, no horizontal scroll, buttons ≥ 44 px, readable |
+| AT-L12 | connect another set (or the same again) | the first connection ends; one card |
 
-## E – Block builder (P8, [editor-ux.md](editor-ux.md))
-
-Demo pod or no pod unless stated; phone width (360 px) unless stated. "Format 1 pod" = a
-central with firmware before 2.8 (or the demo pod set to `programFormat` 1).
-
+## E – Block builder (P8; demo or no pod, 360 px; "format-1 pod" = fw < 2.8 or demo pod with `programFormat` 1)
 | ID | Steps | Expected |
 |---|---|---|
-| AT-E1 | (P8a) Simulate a program with a `repeat` block (count 3) and a `timerStart` / `timerStop` pair; run the same program on a pod with firmware 2.8 and `trace on` | 3 passes through `body`, then `done`; one timer measurement per pass; same block sequence as the pod |
-| AT-E2 | (P8a) Editor: open a `button` step | only essentials and the switches *Time limit*, *Record reaction time*, *Long press*; no raw keys, no port selects |
-| AT-E3 | (P8a) Turn *Time limit* on, set 2 s, choose "If too slow → count a miss"; turn it off again | fields and the miss branch appear; turning off removes the fields and the branch; undo brings them back |
-| AT-E4 | (P8a) Set a random pause with shortest > longest | the problem shows in words on the card and at the top of the step sheet |
-| AT-E5 | (P8b) Open `solo.json`, `stern.json`, `run5.json` in the editor | numbered steps in sentences, the round loop as one "Repeat … rounds" bracket, branches as chips; no block or port names |
-| AT-E6 | (P8b) Move a step up and down inside the round, delete a step, tap Undo on the toast | links follow the move; the program still validates and simulates; undo restores the step and its links |
-| AT-E7 | (P8c) Programs → + → Start from a game: make each of the 5 games with the defaults | each finishes in ≤ 6 screens, the Ready screen tells the program as a short story, Try it runs it in the simulator |
-| AT-E8 | (P8c) Wizard with a format-2 pod connected, then with a format-1 pod | format 2: a `repeat` block; format 1: the `lib/loop` counter pattern; both show the same Repeat bracket in the editor and run the same in the simulator |
-| AT-E9 | (P8c) Save and add to menu, push to a real set, play a round | the program is in the pod's menu and runs like in the simulator |
-| AT-E10 | (P8d) + in the step list: add "Wait for a press" after a light, and the recipe "Count a miss when too slow" | the step gets values from the round (colour, time limit), never a placeholder variable; the recipe adds the counter and its branch |
-| AT-E11 | (P8e) Program sheet: change "Rounds" and "Shortest pause" | labelled steppers in seconds, not raw variable names; values in the file change |
-| AT-E12 | (P8e) Programs → Adjust on a local, a shipped and a pod program (also on a read-only pod), change rounds, Try it, Save | a local copy with the same path; the read-only case says the copy stays on this phone; the pod's program is unchanged until a push |
-| AT-E13 | (P8e) Turn on expert mode (Settings → Advanced), reload | today's block view, port selects and raw keys are back; the switch is remembered |
-| AT-E14 | Language de ↔ en on every new screen | all texts translated |
+| AT-E1 | simulate a `repeat` (3) + timer pair; same program on fw 2.8 with `trace on` | 3 × `body`, `done`; one timer value per pass; same sequence |
+| AT-E2 | open a `button` step | essentials and *Time limit*, *Record reaction time*, *Long press*; no raw keys or port selects |
+| AT-E3 | *Time limit* on, 2 s, "count a miss"; off again; undo | fields + miss branch appear / disappear; undo restores |
+| AT-E4 | random pause with shortest > longest | problem in words on the card and the sheet |
+| AT-E5 | open `solo`, `stern`, `run5` | numbered sentences, one Repeat bracket, branch chips, no block / port names |
+| AT-E6 | move a step, delete one, Undo on the toast | links follow; still validates and simulates; undo restores step and links |
+| AT-E7 | wizard: each of the 5 games with defaults | ≤ 6 screens, short story, Try it simulates |
+| AT-E8 | wizard with a format-2 pod, then format-1 | `repeat` / `lib/loop` pattern; same bracket and simulation |
+| AT-E9 | save and add to menu, push, play | in the pod's menu, runs like the simulator |
+| AT-E10 | + "Wait for a press" after a light; recipe "Count a miss when too slow" | values from the round, no placeholder variable; counter + branch added |
+| AT-E11 | program sheet: "Rounds", "Shortest pause" | labelled steppers in seconds; file values change |
+| AT-E12 | Adjust on a local, shipped and pod program (also read-only pod), Try, Save | local copy, same path; read-only note; pod unchanged until push |
+| AT-E13 | expert mode on, reload | block view, port selects, raw keys; remembered |
+| AT-E14 | de ↔ en on every new screen | all translated |
 
-## U – Usability and platform
-
+## U – Usability
 | ID | Steps | Expected |
 |---|---|---|
-| AT-U1 | (once hosted) Phone, airplane mode, open the installed PWA. Before hosting: desktop, `npm run preview`, DevTools offline, reload | app works, local programs, editor and simulator available |
-| AT-U2 | Phone (360 px wide): create a 5-block program without drag and drop | possible, nothing cut off |
-| AT-U3 | Switch language de ↔ en | all texts translated, no missing keys |
-| AT-U4 | iPhone Safari | editor + simulator work, connecting explains that Bluetooth needs the app |
-| AT-U5 | Compare the menu pattern of each program in the app (Programs list) with the pod's menu | same LEDs lit at the same positions. The app assumes LED 0 at the top, clockwise; if not, tell the developer the position of LED 0 and the direction |
-| AT-U6 | Programs: open every shipped program and the 4 library parts, tap blocks | graphs readable on a phone, block details match the JSON file |
+| AT-U1 | installed PWA in airplane mode (or `npm run preview` + DevTools offline) | local programs, editor, simulator work |
+| AT-U2 | 360 px: 5-block program without drag and drop | possible, nothing cut off |
+| AT-U3 | de ↔ en | no missing keys |
+| AT-U4 | iPhone Safari | editor + simulator; connecting explains Bluetooth needs the app |
+| AT-U5 | menu pattern in the app vs the pod | same LEDs (LED 0 top, clockwise) |
+| AT-U6 | open every shipped program and the 4 library parts | readable, details match the JSON |
 
----
-
-## Results
-
-| ID | Date | Device / browser | Firmware | Result | Notes |
-|---|---|---|---|---|---|
-| AT-S1 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
-| AT-S2 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
-| AT-S3 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
-| AT-S4 | 2026-10-18 | desktop Chrome / Edge, USB | 2.0 | pass | reported by Patrick Stähle |
-| AT-B1 … AT-B5 | – | – | 2.0 | blocked | firmware 2.0 lacks CR-0 |
-| AT-B1 … AT-B7 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle |
-| AT-P1 … AT-P13 | 2026-10-19 | – | 2.7 | accepted | P5 confirmed as implemented by Patrick Stähle |
-| AT-M1 … AT-M5 | 2026-10-19 | – | 2.7 | accepted | P6 confirmed as implemented by Patrick Stähle |
-| AT-R1 … AT-R6 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle; P7 |
-| AT-E1 … AT-E14 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle; P8 |
-| AT-U1 … AT-U6 | 2026-10-26 | – | 2.9 | pass | reported by Patrick Stähle |
-| AT-L1 … AT-L12 | – | – | 2.12 | open | P9 (#46), ready for test; not run yet |
+## Results (reported by Patrick Stähle)
+| IDs | Date | Firmware | Result |
+|---|---|---|---|
+| AT-S1–S4 | 2026-10-18 | 2.0 | pass |
+| AT-B1–B7 | 2026-10-26 | 2.9 | pass (2.0 blocked: no indications) |
+| AT-P1–P13, AT-M1–M5 | 2026-10-19 | 2.7 | accepted (P5, P6) |
+| AT-R1–R6, AT-E1–E14, AT-U1–U6 | 2026-10-26 | 2.9 | pass (P7, P8) |
+| AT-L1–L12 | – | 2.12 | open (P9, ready for test) |

@@ -5,27 +5,23 @@ description: Request a ReactPod firmware/API change that the Config App or the t
 
 # Firmware request (issue)
 
-Do not change the firmware on the side. Open an issue instead (unless the user asks you to
-implement it):
+Do not change the firmware on the side (unless the user asks). Open an issue:
 
 ```sh
 gh issue create --label "type: fw-request" --label "area: firmware" --title "<short API name>: <what>" --body-file <file>
 ```
 
-The body follows `.github/ISSUE_TEMPLATE/fw-request.yml`:
+Body (fields of `.github/ISSUE_TEMPLATE/fw-request.yml`):
 
 ```markdown
 ### What is missing
 ### Why the app (or tool) needs it
 ### Proposed API
-(JSON request/response, `info.features` flag, block fields – as it would appear in
-docs/firmware/config-api.md or programs.md)
+(JSON request/response, `info.features` flag, block fields – as in docs/firmware/config-api.md or programs.md)
 ### Fallback without the change
-(how the app detects the feature via `info`, and what it does with older firmware)
+(how the app detects it via `info`, what it does with older firmware)
 ### Acceptance test
 ```
 
-Then:
-- Link the issue from the app code or PR where the fallback lives (`// fw-request #n`).
-- Add it to the matching milestone if one exists (`gh issue edit <n> --milestone "<name>"`).
-- Tell the user the issue number.
+Then link the issue where the fallback lives (`// fw-request #n`), add it to a matching milestone
+(`gh issue edit <n> --milestone "<name>"`) and tell the user the number.

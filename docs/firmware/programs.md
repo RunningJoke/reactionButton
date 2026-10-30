@@ -1,997 +1,476 @@
-# Writing Programs (JSON)
+# Programs (JSON)
 
-Game programs are JSON files on the central's file system (SPIFFS). They are not compiled
-into the firmware. To add or change a game, you edit files in `firmware/data/`, check them, and
-upload the file system image:
-
-```sh
-python tools/validate_programs.py   # checks types, fields, links, colours, path lengths
-pio run -d firmware -e NewBoard -t uploadfs     # writes firmware/data/ to the SPIFFS partition (USB)
-python tools/reactpod_config.py push firmware/data   # or: upload over BLE to a central in the menu
-```
-
-Programs uploaded over BLE spread to all pods of the set automatically. See
-[config-api.md](config-api.md).
-
-> Flashing the firmware (`-t upload`) does **not** update `firmware/data/`. After a fresh flash run
-> `uploadfs` once, otherwise the central shows the red error blink ("No programs found").
+Game programs are JSON files on SPIFFS, not compiled into the firmware. Edit `firmware/data/`, then
+`python tools/validate_programs.py` and `pio run -d firmware -e NewBoard -t uploadfs` (USB), or
+`python tools/reactpod_config.py push firmware/data` (BLE, central in the menu); the set syncs them.
+`-t upload` does not write `firmware/data/`: after a fresh flash run `uploadfs` once, else the central
+shows the error blink.
 
 ## 1. Files
 
 ```
-firmware/data/
-├── programs.json          menu: list and order of programs
-└── prog/
-    ├── solo.json          complete program, all blocks inline
-    ├── weiche.json        small programs: metadata + includes
-    ├── …
-    └── lib/
-        ├── loop.json      shared cycle: round counter, cycle timer, summary, report
-        ├── star.json      star game logic
-        ├── random.json    random game logic
-        └── multi.json     run / avoid game logic
+firmware/data/programs.json     menu: list and order
+firmware/data/prog/*.json       programs (inline or metadata + includes)
+firmware/data/prog/lib/         loop.json (round counter, cycle timer, summary, report), star.json,
+                                random.json, multi.json (run / avoid)
 ```
-
-SPIFFS paths (including the leading `/`) must be at most 31 characters long.
+Paths ≤ 31 characters incl. the leading `/`.
 
 ### 1.1 `programs.json`
-
-```json
-{ "programs": ["/prog/solo.json", "/prog/weiche.json", "..."] }
-```
-
-The order in this list is the order in the menu. Short press = next entry, long press = start.
+`{ "programs": ["/prog/solo.json", …] }`: menu order (short press = next, long press = start).
 
 ### 1.2 Program file
-
 ```json
-{
-  "version": 1,
-  "name": "Dreieck",
-  "description": "free text, ignored by the firmware",
-  "peripherals": 2,
-  "menu": [ { "leds": [7, 9, 11], "color": "blue" } ],
-  "variables": { "MAX_LOOPS": 12 },
-  "include": ["/prog/lib/loop.json", "/prog/lib/random.json"],
-  "start": "StartCycle",
-  "blocks": [ ]
-}
+{ "version": 1, "name": "Dreieck", "description": "ignored by the firmware", "peripherals": 2,
+  "menu": [ { "leds": [7, 9, 11], "color": "blue" } ], "variables": { "MAX_LOOPS": 12 },
+  "include": ["/prog/lib/loop.json", "/prog/lib/random.json"], "start": "StartCycle", "blocks": [ ] }
 ```
 
 | Field | Meaning |
 |---|---|
-| `peripherals` | Number of peripherals the central connects before the game. Sets the variables `REQUIRED_PERIPHERALS` (= peripherals) and `NODE_COUNT` (= peripherals + 1) |
-| `menu` | LEDs lit in the program menu. Each group has `leds` (indices 0–17) and `color` |
-| `variables` | Initial values (integers). Override values from included files |
-| `include` | Fragment files with more `variables` and `blocks`. Loaded first, in order. Max nesting depth 3 |
-| `start` | Name of the first block. Default: the first block |
-| `blocks` | The block graph (see §2) |
+| `version` | file layout (1), not the program format (§6) |
+| `peripherals` | pods the central claims before the game; sets `REQUIRED_PERIPHERALS` and `NODE_COUNT` (+1) |
+| `menu` | LED groups in the menu: `leds` (0–17), `color` |
+| `variables` | integer start values; override those of includes |
+| `include` | fragments with more `variables` / `blocks`, loaded first in order, depth ≤ 3 |
+| `start` | first block (default: the first block) |
 
-Block names must be unique across the program and all its includes. A fragment can link
-to blocks it does not define itself. For example, `lib/star.json` ends in `EndLoop`, which
-comes from `lib/loop.json`.
+Block names are unique over the program and its includes; a fragment may link to blocks it does not
+define (`lib/star.json` ends in `EndLoop` from `lib/loop.json`).
 
 ### 1.3 Pod ids
-
-Peripherals have ids `0 … peripherals-1`, in connection order. The central itself has id
-`peripherals` (= `REQUIRED_PERIPHERALS`). Results use the same ids.
+Peripherals `0 … peripherals − 1` in claim order; the central is `peripherals` (= `REQUIRED_PERIPHERALS`).
+Results use the same ids.
 
 ## 2. Blocks
 
-Every block has `name`, `type` and its output **ports**. A port is a JSON key whose
-value is the name of the next block:
+Every block has `name`, `type` and ports (key = port, value = target block name):
+`{ "name": "Wait", "type": "button", "pressed": "FalseStart", "timeout": "Go" }`.
 
-```json
-{ "name": "Wait", "type": "button", "pressed": "FalseStart", "timeout": "Go" }
-```
+- An unconnected port falls back to `next` if the type has `next`; no target at all = program ends
+  (validator note). Instant blocks chain in one pass; waiting blocks never block the loop (§7).
+- *value* fields take a number or a variable name, read when the block uses them (§7.2).
+- Colours: `"red"`, `"#FF8800"`, `[255,136,0]`; named: off/black, red, green, blue, yellow, magenta, cyan,
+  white. Colours for **peripherals** must be named (the link carries colour indices only).
 
-Rules:
-- If a block leaves through a port that is not connected, the engine uses `next`
-  instead, if the block has a `next` port.
-- If there is no target at all, the program ends. The validator prints a note for such blocks.
-- Blocks that finish immediately (LED, setVariable, if, …) run in the same loop pass as the
-  following block. Waiting blocks never block the main loop.
+### Timers – any block (`programFormat` ≥ 2)
 
-**Values**: numeric parameters marked *value* accept a number (`12`) or a variable
-name (`"MAX_LOOPS"`). Variables are read when the block runs.
-
-**Colours**: `"red"`, `"#FF8800"` or `[255, 136, 0]`. Named colours: off/black, red, green,
-blue, yellow, magenta, cyan, white. Colours sent to **peripherals** must be named
-colours, because the BLE protocol only transports these 8.
-
-### Timers – fields of every block
-
-`programFormat` ≥ 2 (§6). Any block, of any type, may also carry:
-
-| Field | | Default |
-|---|---|---|
-| `timerStart` | timer name. Starts the timer when the block is **entered** | – |
-| `timerStop` | timer name. When the block is **left**, records *now − start* (ms) as the metric `<name>` with the central's pod id, then clears the timer | – |
-
-```json
-{ "name": "Go",     "type": "remotePress", "pod": 0, "timerStart": "lap", "next": "Back" },
-{ "name": "Finish", "type": "button", "timerStop": "lap", "next": "Report" }
-```
-
-- A timer name is a non-empty string, like a metric name. A program (with its includes)
-  may use at most 16 different timer names.
-- The time is recorded exactly like `record`: `RESULT` line, statistics, `summary`.
-- On a waiting block (`button`, `remotePress`, …) the stop time is the moment the block
-  is left, i.e. the press. For remote blocks that is when the central receives the press
-  (a few ms after the press on the peripheral).
-- A block with both fields and the same name measures its own duration.
-- Engine details (restart, orphan stops, pause): §7.9.
-
-### Countdown – option of the timed blocks
-
-`programFormat` ≥ 3 (§6). `delay`, `button`, `remotePress`, `remoteMultiPress`, `charge`, `release` and `toggle` (≥ 4) may show how
-much of their time limit is left on the LED ring:
-
-| Field | | Default |
-|---|---|---|
-| `countdown` | `secret`, `drain`, `fill`, `dim`, `colorShift` or `trafficLight` | `secret` (no animation, as before) |
-| `countdownColor` | named colour, end colour of `colorShift` | red |
-| `countdownTarget` | `delay` only: `"central"`, `"all"`, `"peripherals"` or a pod id (value) | `"central"` |
-| `countdownFrom` | `delay` and `button` only: named start colour (these blocks have no lit colour of their own) | green |
-
-```json
-{ "name": "Hit", "type": "remotePress", "pod": "P", "timeoutMs": 1500, "countdown": "drain", "next": "Ok", "timeout": "Miss" },
-{ "name": "Ready", "type": "delay", "minMs": 2000, "maxMs": 4000, "countdown": "trafficLight", "countdownTarget": "all", "next": "Go" }
-```
-
-- The countdown runs over the block's **time limit**: the duration of a `delay` (`ms`, or the
-  random duration), the timeout of the others (`timeoutMs`, or the random timeout of `button`).
-  It starts with the lit colour of the block (`color` of `remotePress`, `hitColor` / `avoidColor`
-  of `remoteMultiPress`, `countdownFrom` of `delay` and `button`).
-- Styles: `drain` = the ring is full and empties LED by LED (empty at the end); `fill` = it starts
-  empty and fills up; `dim` = full brightness fades to dark; `colorShift` = the lit colour blends
-  into `countdownColor`; `trafficLight` = green, yellow, red, one third of the time each (the lit
-  colour is not used).
-- A `button`, `remotePress` or `remoteMultiPress` without a time limit and with `countdown` ≠
-  `secret` is rejected (validator and firmware).
-- On peripherals the countdown runs on the pod itself (ARM carries the effect), so it ends
-  with the pod's timeout. On `remoteMultiPress` all lit pods and the central count down together.
-- With a countdown `timeoutMs` is read **once when the block is entered** (§7.2).
-- A press stops the countdown. `colorAfter`, press handling and reaction times are unchanged
-  (reaction times count from the first lighting).
-- Pods with older firmware (no `effects`) count down `secret`: they stay lit with the lit colour.
-- `charge`: the countdown runs over `timeoutMs` on the idle ring and ends with the first hold. `release`: over
-  `maxHoldMs` from the start of the hold (trigger), or over `timeoutMs` from the colour switch (signal);
-  `countdownFrom` is not used. Details: §7.13, §7.14.
-- `toggle`: the countdown runs over the whole game on every pod and the central, in the colour of the pod's current team (a flip
-  changes the colour, the animation goes on). Details: §7.15.
-- Details: §7.12.
-
-### `effect` – ring effect
-`programFormat` ≥ 3 (§6). Plays an animation on the ring of the central and / or the peripherals.
-
-| Field | | Default |
-|---|---|---|
-| `target` | `"central"`, `"all"` (central + all peripherals), `"peripherals"` or a pod id (value; the central's own id = the central) | `"central"` |
-| `effect` | `solid`, `fill`, `drain`, `dim`, `colorShift`, `trafficLight`, `blink`, `pulse`, `spin`, `off` | required |
-| `color`, `color2` | named colours | white, off |
-| `durationMs` | value, length of the effect. For `blink`, `pulse`, `spin`: 0 / missing = endless (until the next LED change) | – |
-| `periodMs` | value, one cycle of `blink`, `pulse`, `spin` | 500 |
-| `brightness` | value 0 … 255 | 255 |
-| `leds` | LED indices, **central only** (ignored on pods) | all 18 |
-| `syncStartMs` | value: all targets start together this long after the block starts | 20 |
-| `wait` | `false`: start the effect and continue at once. `true`: continue when the effect has ended | `false` |
-
-Ports: `next`
-
-```json
-{ "name": "Ready", "type": "effect", "target": "all", "effect": "pulse", "color": "blue",
-  "periodMs": 500, "durationMs": 2000, "wait": true, "next": "Go" }
-```
-
-| `effect` | Shows |
+| Field | |
 |---|---|
-| `solid` | the ring in `color` |
-| `fill` | LEDs light one by one in `color` (background `color2`) over `durationMs`, ends with a full ring |
-| `drain` | full ring in `color` that empties LED by LED over `durationMs`, ends with the background `color2` |
-| `dim` | `color` fades from `brightness` to dark over `durationMs` |
-| `colorShift` | `color` blends into `color2` over `durationMs` |
-| `trafficLight` | green, yellow, red, one third of `durationMs` each (colours ignored) |
-| `blink` | `color` and `color2` alternate, one cycle per `periodMs` |
-| `pulse` | `color` fades down to dark and up again, one cycle per `periodMs` |
-| `spin` | a segment of 3 LEDs in `color` turns once per `periodMs` on `color2` |
-| `off` | the ring goes dark |
+| `timerStart` | timer name; starts when the block is **entered** |
+| `timerStop` | when the block is **left**, records *now − start* (ms) as metric `<name>` for the central's id, then clears |
 
-- `fill`, `drain`, `dim`, `colorShift` and `trafficLight` are timed: without `durationMs` they jump to
-  their end frame. `blink`, `pulse` and `spin` with a `durationMs` end in a steady `color`.
-- `wait: true` with an endless effect (`blink`, `pulse`, `spin` without a constant `durationMs` > 0) is an error.
-- A later `led`, `remotePress`, `remoteResetAll`, … on the same ring replaces the effect.
-  With `wait: false` the effect keeps running while the next blocks execute.
-- Pods without effect support (older firmware) show `color` statically (`off` switches them off).
-- Details: §7.11.
+≤ 16 timer names per program. Recorded like `record`. On waiting blocks the stop is the moment the block
+is left (remote: when the central receives the press). Same name on one block = its own duration. §7.9.
 
-### `led` – set central LEDs
-| Field | | Default |
-|---|---|---|
-| `color` | colour | required |
-| `leds` | list of LED indices | all 18 |
+### Countdown – timed blocks (`programFormat` ≥ 3)
 
-Ports: `next`
-
-### `delay` – wait
-| Field | | Default |
-|---|---|---|
-| `ms` | value | – |
-| `minMs`, `maxMs` | value, random duration in [min, max] | – |
-| `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` | optional ring countdown over the duration (see *Countdown*) | `secret` |
-
-Ports: `next`
-
-### `button` – wait for the central's button
-| Field | | Default |
-|---|---|---|
-| `shortMs` | value, short/long threshold | 1000 |
-| `timeoutMs` | value | no timeout |
-| `minTimeoutMs`, `maxTimeoutMs` | value, random timeout | – |
-| `record` | metric name: records *press time − block entry* | – |
-| `storeAs` | variable for the same time | – |
-| `countdown`, `countdownColor`, `countdownFrom` | optional ring countdown over the timeout, needs a timeout (see *Countdown*) | `secret` |
-
-Ports: `pressed` (press edge), `short`, `long` (on release), `next` (fallback for
-short/long), `timeout`.
-
-Only presses that **start after** the block was entered count. A button that is still
-held from the previous step is ignored.
-
-### `if` – branch
-| Field | | Default |
-|---|---|---|
-| `left`, `right` | value | required |
-| `op` | `==` `!=` `>` `<` `>=` `<=` | `==` |
-
-Ports: `true`, `false` (no fallback)
-
-### `setVariable` – change a variable
-| Field | | Default |
-|---|---|---|
-| `var` | variable name | required |
-| `op` | `=`, `+`, `-`, `random` (0 … value−1), `randomOther` (like random but ≠ current value) | `=` |
-| `value` | value | required |
-
-Ports: `next`
-
-### `remotePress` – light one peripheral, wait for its press
-| Field | | Default |
-|---|---|---|
-| `pod` | value, peripheral id | required |
-| `mode` | `hit` / `avoid` | `hit` |
-| `color` / `colorAfter` | named colour while waiting / after press | green (red for avoid) / off |
-| `timeoutMs` | value | no timeout |
-| `countdown`, `countdownColor` | optional countdown on the pod, needs `timeoutMs` (see *Countdown*) | `secret` |
-| `record`, `storeAs` | reaction time measured **on the peripheral** | – |
-
-Ports: `next` (pressed), `timeout` (also taken if the pod does not exist).
-Only the press that belongs to this activation counts. Presses of earlier activations
-are ignored.
-
-### `remoteMultiPress` – light several pods at once
-| Field | | Default |
-|---|---|---|
-| `pods` | value, number of peripherals | all connected |
-| `avoid` | value, number of red "do not press" pods (central included in the draw) | 0 |
-| `includeCentral` | central takes part | true |
-| `hitColor`, `avoidColor` | named colours | green, red |
-| `syncStartMs` | value: all pods (and the central) light together this long after the block starts. 0 = each pod as soon as its command arrives | 20 |
-| `timeoutMs` | value | no timeout |
-| `countdown`, `countdownColor` | optional countdown on all lit pods and the central, needs `timeoutMs` (see *Countdown*) | `secret` |
-| `record` | metric for every green pod's reaction time | – |
-
-Ports: `next` (all green pods pressed), `avoidHit`, `timeout`. Pods that were not pressed
-stay lit, so follow with `remoteResetAll`.
-
-### `charge` – hold the button to charge
-`programFormat` ≥ 3 (§6). The ring shows how long the button has been held. Needs the `hold` link feature on
-peripherals (firmware ≥ 2.9, [link-protocol.md](link-protocol.md) §2.2).
+`delay`, `button`, `remotePress`, `remoteMultiPress`, `charge`, `release`, `toggle` (≥ 4):
 
 | Field | | Default |
 |---|---|---|
-| `pod` | `"central"` or a peripheral id (value). The central's own id also means the central | `"central"` |
-| `onsetMs` | value. Minimum hold before charging starts | 0 |
-| `maxMs` | value, ≥ 1. Hold time (after the onset) for a full charge | required |
+| `countdown` | `secret`, `drain`, `fill`, `dim`, `colorShift`, `trafficLight` | `secret` (none) |
+| `countdownColor` | named end colour of `colorShift` | red |
+| `countdownTarget` | `delay` only: `"central"`, `"all"`, `"peripherals"`, pod id (value) | `"central"` |
+| `countdownFrom` | `delay`, `button` only: named start colour | green |
+
+Runs over the block's time limit, starting in the lit colour. A `button`, `remotePress` or
+`remoteMultiPress` with a countdown but no time limit is rejected. A press stops it; reaction times are
+unchanged. Pods without `effects` stay lit (`secret`). Exact behaviour per block: §7.12–§7.15.
+
+### Block reference
+
+| Type | Fields (default) | Ports |
+|---|---|---|
+| `led` | `color` (req.), `leds` (all 18) | next |
+| `delay` | `ms`, or `minMs` + `maxMs` (random); countdown fields | next |
+| `button` | `shortMs` (1000), `timeoutMs` or `minTimeoutMs` + `maxTimeoutMs` (none), `record`, `storeAs` (press − entry), countdown fields (needs a timeout) | pressed, short, long, next, timeout |
+| `if` | `left`, `right` (req.), `op` `==` `!=` `>` `<` `>=` `<=` (`==`) | true, false (no fallback) |
+| `setVariable` | `var`, `value` (req.), `op` `=` `+` `-` `random` `randomOther` (`=`) | next |
+| `remotePress` | `pod` (req.), `mode` `hit`/`avoid`, `color` (green / red for avoid), `colorAfter` (off), `timeoutMs` (none), `countdown`, `countdownColor`, `record`, `storeAs` (reaction measured on the pod) | next (pressed), timeout (also: pod missing) |
+| `remoteMultiPress` | `pods` (all), `avoid` (0, central in the draw), `includeCentral` (true), `hitColor`, `avoidColor` (green, red), `syncStartMs` (20; 0 = on arrival), `timeoutMs`, `countdown`, `countdownColor`, `record` (every green pod) | next (all green pressed), avoidHit, timeout. Unpressed pods stay lit: follow with `remoteResetAll` |
+| `remoteResetAll` | `pods` (all), `ledsOff` (true: central too) | next |
+| `summary` | `metric` (req.), `storeAverage`, `storeBest`, `storeWorst`, `storeCount`, `reset` (true); format ≥ 6: `show` (false), `targetMs` (1…60000, req. with `show`), `showMs` (3000, 0…60000) | next |
+| `repeat` (≥ 2) | `count` (req.), `storeIndex` (pass 1…count) | body, done (both fall back to `next`) |
+| `effect` (≥ 3) | see below | next |
+| `charge` (≥ 3) | see below | released, early, full, timeout, next |
+| `release` (≥ 3) | see below | next, noHold, falseStart, timeout |
+| `toggle` (≥ 4) | see below | next, allA, allB |
+| `communicate` (≥ 5) | see below | next, pressed, timeout, repeat, stop |
+
+A pod with an older format rejects a program with new block types (`validate`); for new fields of known
+types older firmware ignores them (validator warning `fieldNeedsFormat`), except fields marked
+`rejectedByOlder` in the program model, e.g. `summary.show` (error `fieldFormatTooOld`). Check `programFormat`.
+
+### `effect`
+| Field | | Default |
+|---|---|---|
+| `target` | `"central"`, `"all"`, `"peripherals"`, pod id (value; the central's id = central) | `"central"` |
+| `effect` | `solid`, `fill`, `drain`, `dim`, `colorShift`, `trafficLight`, `blink`, `pulse`, `spin`, `off` | req. |
+| `color`, `color2` | named | white, off |
+| `durationMs` | value; `blink`/`pulse`/`spin`: 0 / missing = endless | – |
+| `periodMs` | value, `blink`/`pulse`/`spin` cycle | 500 |
+| `brightness` | value 0…255 | 255 |
+| `leds` | central only | all |
+| `syncStartMs` | value: common start after entry | 20 |
+| `wait` | `true`: continue when the effect ended; `false`: at once | false |
+
+Frames as link-protocol §2.1 (`spin` segment 3). Timed effects without `durationMs` jump to the end frame.
+`wait: true` with an endless effect is an error. Any later light on the same ring replaces it. §7.11.
+
+### `charge` – hold to charge (needs `hold` on peripherals)
+| Field | | Default |
+|---|---|---|
+| `pod` | `"central"` or peripheral id (value) | `"central"` |
+| `onsetMs` | value: hold before charging starts | 0 |
+| `maxMs` | value ≥ 1: charging time for full | req. |
 | `style` | `fill`, `brightness`, `trafficLight`, `colorShift` | `fill` |
-| `color` | named colour while charging | green |
-| `color2` | `colorShift` only: end colour | red |
-| `mode` | `release`: releasing ends the block. `accumulate`: releasing pauses (or drains, see `decayMs`) the charge, the block ends at `full` / `timeout` | `release` |
-| `decayMs` | value, `accumulate` only: time to drain a full charge while released. 0 = keep the charge | 0 |
-| `timeoutMs`, or `minTimeoutMs` + `maxTimeoutMs` | value, from the entry of the block (random like `button`). 0 / missing = none. `countdown` applies | none |
-| `countdown`, `countdownColor` | optional countdown over the timeout on the idle ring (see *Countdown*); needs a timeout | `secret` |
-| `storeAs` | variable: charge in ms (0 … `maxMs`) | – |
-| `storePercent` | variable: charge 0 … 100 | – |
-| `record` | metric for the charge in ms | – |
+| `color`, `color2` | named; `color2` for `colorShift` | green, red |
+| `mode` | `release` (release ends) or `accumulate` (release pauses / drains) | `release` |
+| `decayMs` | value, accumulate: drain time of a full charge, 0 = keep | 0 |
+| `timeoutMs` or `minTimeoutMs` + `maxTimeoutMs` | value from entry, 0 = none | none |
+| `countdown`, `countdownColor` | over the timeout on the idle ring | `secret` |
+| `storeAs`, `storePercent`, `record` | charge ms / 0…100 / metric ms | – |
 
-Ports: `released` (released after the onset), `early` (released before the onset; falls back to `released`
-with charge 0), `full` (maximum reached: the block ends at once, the ring flashes), `timeout`, `next` (fallback
-for the others).
+Ports: `released` (after onset), `early` (before onset; → `released` with 0), `full` (at once, ring
+flashes), `timeout`, `next` fallback. §7.13.
 
-```json
-{ "name": "Charge", "type": "charge", "pod": "central", "onsetMs": 200, "maxMs": 2000, "style": "fill", "color": "green",
-  "storeAs": "CHARGE", "record": "charge", "released": "Score", "full": "Overcharged", "timeout": "Missed" }
-```
-
-- As with `button`, a hold that started before the block was entered does not count: the button must be
-  released and pressed again.
-- Ring: `fill` lights the LEDs one by one, `brightness` fades from dim to full, `trafficLight` goes green,
-  yellow, red, `colorShift` blends `color` into `color2`. Before the first hold the ring shows the start frame
-  (`fill`: dark, `brightness`: dim, `trafficLight`: green, `colorShift`: `color`) or the countdown.
-- The hold is measured and shown on the pod itself (it reports PRESSED when a hold starts and RELEASED when it
-  ends), so the charge is exact to about 1 ms and the ring is smooth.
-- A pod that does not exist, or has older firmware (no `hold` link feature), makes the block take `timeout` at once.
-- Details: §7.13.
-
-### `release` – the release is the event
-`programFormat` ≥ 3 (§6). Two modes. Needs the `hold` link feature on peripherals.
-
-1. `trigger`: the athlete holds the pod, letting go is the event, e.g. the start of a run.
-2. `signal`: the athlete holds, the colour switches after a fixed or random time, and the athlete must let go as
-   fast as possible (start reaction with false-start detection).
+### `release` – the release is the event (needs `hold`)
+Modes: `trigger` (letting go is the event) and `signal` (hold, colour switches after a time, let go fast;
+false-start detection).
 
 | Field | Mode | | Default |
 |---|---|---|---|
-| `mode` | both | `trigger` or `signal` | `trigger` |
-| `pod` | both | `"central"` or a peripheral id (value) | `"central"` |
-| `holdColor` | both | named colour while waiting for the hold | yellow |
-| `heldColor` | both | named colour once the hold is detected ("you're set") | = `holdColor` |
-| `allowHeld` | both | a hold that is already active on entry counts (it starts on entry) | `true` for `trigger`, `false` for `signal` |
-| `holdTimeoutMs` | both | value. No hold within this time from the entry → `noHold`. 0 / missing = none | none |
-| `maxHoldMs` | trigger | value. Held longer than this (from the start of the hold) → `timeout`. 0 / missing = none. `countdown` applies | none |
-| `storeAs` | trigger | variable: hold duration in ms | – |
-| `goColor` | signal | named colour of the switch | green |
-| `goMs`, or `minGoMs` + `maxGoMs` | signal | value. Time from the start of the hold to the switch; random in [min, max] (inclusive), drawn once on entry. Required | – |
-| `timeoutMs` | signal | value. Not released this long after the switch → `timeout`. 0 / missing = none. `countdown` applies | none |
-| `record`, `storeAs` | signal | reaction = release − switch, measured **on the pod** (ms) | – |
-| `countdown`, `countdownColor` | both | optional countdown (see *Countdown*): trigger over `maxHoldMs` from the start of the hold, signal over `timeoutMs` from the switch | `secret` |
+| `mode` | | `trigger` / `signal` | `trigger` |
+| `pod` | both | `"central"` or id | `"central"` |
+| `holdColor`, `heldColor` | both | waiting for the hold / hold detected | yellow, = `holdColor` |
+| `allowHeld` | both | a hold already active on entry counts (from entry) | trigger true, signal false |
+| `holdTimeoutMs` | both | value: no hold → `noHold` | none |
+| `maxHoldMs` | trigger | value: held longer → `timeout` | none |
+| `goColor` | signal | switch colour | green |
+| `goMs` or `minGoMs` + `maxGoMs` | signal | hold start → switch, drawn on entry (req.) | – |
+| `timeoutMs` | signal | not released after the switch → `timeout` | none |
+| `storeAs` | both | trigger: hold ms; signal: reaction ms | – |
+| `record` | signal | reaction (release − switch, on the pod) | – |
+| `countdown`, `countdownColor` | both | trigger over `maxHoldMs` from hold start, signal over `timeoutMs` from the switch | `secret` |
 
-Ports: `next` (released; in `signal` released after the switch, reaction recorded), `noHold`, `falseStart`
-(`signal` only: released before the switch), `timeout` (`trigger`: held too long, `signal`: released too late).
-Unconnected `noHold`, `falseStart` and `timeout` fall back to `next`.
+Ports: `next`, `noHold`, `falseStart` (signal), `timeout`; unconnected → `next`. §7.14.
 
-```json
-{ "name": "Go",    "type": "release", "mode": "trigger", "pod": 0, "holdColor": "yellow",
-  "storeAs": "HOLD_MS", "next": "Run", "noHold": "Idle" },
-{ "name": "Start", "type": "release", "mode": "signal", "pod": 0, "holdColor": "yellow", "goColor": "green",
-  "minGoMs": 1500, "maxGoMs": 3000, "timeoutMs": 1000, "record": "start",
-  "next": "Run", "falseStart": "Foul", "noHold": "Idle", "timeout": "Late" }
-```
-
-- `trigger` leaves the block at the release (the central's receive time of RELEASED, as for remote presses), so a
-  `timerStart` on the next block starts at the release.
-- A pod that does not exist, or has older firmware, makes the block take `timeout` at once (`next` if unconnected).
-- Details: §7.14.
-
-### `toggle` – pods change team on every press
-`programFormat` ≥ 4 (§6). Team and capture games ("domination"): the pods stay lit and every press flips a pod between
-two team colours. Needs the `toggle` link feature on peripherals (older ones are left out of the game).
-
-| Field | | Default |
-|---|---|---|
-| `pods` | value, number of peripherals | all connected |
-| `includeCentral` | the central's own button takes part | true |
-| `colors` | the two team colours `[A, B]` (named) | `["red", "blue"]` |
-| `start` | `a`, `b`, `alternate` (every other pod, A first), `random` (each pod), `off` (unowned and dark until the first press, which makes the pod A) | `alternate` |
-| `durationMs`, or `minDurationMs` + `maxDurationMs` | value. Game length; random in [min, max], drawn once on entry. Required | – |
-| `cooldownMs` | value. Minimum time between two flips of one pod (0 … 65535) | 300 |
-| `syncStartMs` | value. All pods and the central start this long after the block was entered (as `remoteMultiPress`) | 20 |
-| `countdown`, `countdownColor` | optional countdown over the game, see *Countdown* | `secret` |
-| `storeA`, `storeB` | variables: number of pods per team at the end | – |
-| `storeTimeA`, `storeTimeB` | variables: owned time per team at the end, summed over all pods (ms) | – |
-| `storeFlips` | variable: total number of flips | – |
-
-Ports: `next` (time over), `allA`, `allB` (every pod and the central has team A / B, `allA` / `allB` are optional: an
-unconnected one does **not** fall back to `next`, the game goes on). After the block the pods stay lit in their final
-colour and a press no longer changes it; follow with `remoteResetAll`.
-
-```json
-{ "name": "Domination", "type": "toggle", "pods": "NODE_COUNT", "includeCentral": true,
-  "colors": ["red", "blue"], "start": "alternate", "durationMs": 60000, "cooldownMs": 500, "countdown": "secret",
-  "storeA": "RED_PODS", "storeB": "BLUE_PODS", "storeTimeA": "RED_MS", "storeTimeB": "BLUE_MS", "storeFlips": "FLIPS",
-  "next": "Result", "allA": "RedWins", "allB": "BlueWins" }
-```
-
-- Details: §7.15.
-
-### `remoteResetAll` – switch peripherals off
+### `toggle` – pods change team on each press (needs `toggle`)
 | Field | | Default |
 |---|---|---|
 | `pods` | value | all connected |
-| `ledsOff` | also switch the central off | true |
+| `includeCentral` | | true |
+| `colors` | `[A, B]` named | `["red","blue"]` |
+| `start` | `a`, `b`, `alternate` (A first), `random`, `off` (dark until pressed → A) | `alternate` |
+| `durationMs` or `minDurationMs` + `maxDurationMs` | value, game length (req.) | – |
+| `cooldownMs` | value 0…65535: minimum between two flips of one pod | 300 |
+| `syncStartMs` | value | 20 |
+| `countdown`, `countdownColor` | over the game, in the pod's team colour | `secret` |
+| `storeA`, `storeB`, `storeTimeA`, `storeTimeB`, `storeFlips` | pods per team, owned ms per team (sum over pods), total flips | – |
 
-Ports: `next`
+Ports: `next` (time over), `allA` / `allB` (everyone one team; **unconnected = game goes on**, no fallback).
+Pods stay lit in their final colour and ignore presses: follow with `remoteResetAll`. §7.15.
 
-### `summary` – statistics of a metric
+### `communicate` – report and wait for the phone (central only)
 | Field | | Default |
 |---|---|---|
-| `metric` | metric name | required |
-| `storeAverage`, `storeBest`, `storeWorst`, `storeCount` | variable names | – |
-| `reset` | clear the statistics afterwards | true |
-| `show` | bar on the central's ring, see below. `programFormat` ≥ 6 (§6) | false |
-| `targetMs` | value, 1 … 60000: the target time of the bar (half full). Required with `show` | – |
-| `showMs` | value, 0 … 60000: how long the bar stays. 0 = until the next light change, no wait | 3000 |
+| `timeoutMs` | value; 0 = none | none |
+| `metrics` | ≤ 8 metric names, `[]` = all | all |
+| `vars` | ≤ 8 variable names included | – |
+| `editable` | `{ name: { "min": int, "max": int } }`, ≤ 8, changeable with `setVariables` while waiting | – |
+| `color` | central LEDs while waiting | `"cyan"` |
 
-Ports: `next` (with `show` and `showMs` > 0: after the bar)
-
-```json
-{ "name": "Summary", "type": "summary", "metric": "reaction", "storeAverage": "AVG_REACTION",
-  "show": true, "targetMs": "TARGET_MS", "showMs": 3000, "next": "Report" }
-```
-
-With `show`, the block waits `showMs` while the bar is on the ring and then continues. The bar
-is the average of the metric (§7.7). A pod with an older format rejects a program that uses
-these fields (`fieldFormatTooOld`), it does not ignore them.
-
-### `repeat` – counted loop
-`programFormat` ≥ 2 (§6).
-
-| Field | | Default |
-|---|---|---|
-| `count` | value, number of passes through `body` | required |
-| `storeIndex` | variable that gets the current pass (1 … `count`) | – |
-
-Ports: `body` (one more pass), `done` (after `count` passes). Both fall back to `next`.
-
-```json
-{ "name": "Rounds", "type": "repeat", "count": "MAX_LOOPS", "storeIndex": "RUNS", "body": "OneRound", "done": "Summary" }
-```
-
-The last block of the body links back to the repeat block. Entering the block again after
-`done` starts a new series of `count` passes. Details: §7.10.
-
-### `communicate` – send a report, wait for an answer
-`programFormat` ≥ 5 (§6). Central only.
-
-| Field | | Default |
-|---|---|---|
-| `timeoutMs` | value; 0 = no timeout | no timeout |
-| `metrics` | list of metric names included in the report (max 8); `[]` = all | all |
-| `vars` | list of variable names whose values are included in the report (max 8) | – |
-| `editable` | object: variable name → `{ "min": int, "max": int }`. Variables the client may change with `setVariables` while the block waits (max 8) | – |
-| `color` | colour of the central's LEDs while waiting | `"cyan"` |
-
-Ports: `next` (client `command` `continue`), `pressed` (central's button), `timeout`,
-`repeat` (client `command` `repeat`), `stop` (client `command` `stop`). Unconnected ports fall
-back to `next` (§2), so a program without a phone runs on after a press or the timeout.
-
-```json
-{ "name": "Report", "type": "communicate",
-  "timeoutMs": 3000, "metrics": ["reaction", "cycle"], "vars": ["RUNS", "MAX_LOOPS"],
-  "editable": { "MAX_LOOPS": { "min": 1, "max": 50 } },
-  "next": "StartCycle", "repeat": "ResetRuns", "stop": "End" }
-```
-
-On enter the block turns the measurements since the last report into a **report**, keeps it
-in the report buffer and sends it as a `report` event ([config-api.md](config-api.md) §5),
-then waits for a client `command`, a press or the timeout. Details: §7.16.
-
-- `vars` and the names in `editable` must be variables of the program (`variables`, also
-  from includes). `min` ≤ `max`.
-- Metric and variable names: non-empty, at most 32 characters.
+Ports: `next` (`continue`), `pressed`, `timeout`, `repeat`, `stop`; unconnected → `next`, so without a phone
+the program goes on after a press or the timeout. `vars` / `editable` names must be program variables,
+`min` ≤ `max`; names ≤ 32 characters. §7.16.
 
 ## 3. Measurements
 
-Blocks with `record` add a measurement to a named metric, and so does every `timerStop`
-(metric = the timer name, pod id = the central's). Every measurement is printed on
-the serial console (115200 baud):
+`record` and `timerStop` add a value to a metric (central's id for timers). Printed as
+`RESULT,<millis>,<metric>,<podId>,<ms>` / `SUMMARY,<metric>,<count>,<avg>,<best>,<worst>`. A new kind of
+measurement only needs `ctx.results.record("<metric>", podId, value)`.
 
-```
-RESULT,<millis>,<metric>,<podId>,<value_ms>
-SUMMARY,<metric>,<count>,<average>,<best>,<worst>
-```
+Shipped programs: metric `reaction` (`run`/`run5` also `lap`: lights → last press). `lib/loop.json` times
+each cycle (`cycle`, `StartCycle` → end of the last round), summarises after `MAX_LOOPS` rounds, stores
+`AVG_REACTION` / `BEST_REACTION`, shows the average bar 3 s (`show`), then `Report` (`communicate`, all
+metrics + `RUNS`/`MAX_LOOPS`, 3 s, blue): press / `continue` = next cycle, `repeat` = cycle again (report
+discarded), `stop` = `End`. Programs including it start at `StartCycle`; a reset of `RUNS` must link to
+`StartCycle`, not `StartLoop`.
 
-The shipped programs use the metric `reaction` (`run` / `run5` also record `lap`, the time
-from the lights to the last press). `lib/loop.json` times each cycle (`cycle`, from
-`StartCycle` to the end of the last round), prints a summary after every `MAX_LOOPS` rounds,
-stores `AVG_REACTION` / `BEST_REACTION` and shows the average as a bar on the ring for 3 s
-(`show`, §7.7). A program can then branch on those, for example
-to show a colour by performance. Then its `Report` block (`communicate`, §2) sends a report
-with all metrics and `RUNS` / `MAX_LOOPS` and waits up to 3 s with a blue ring: a press or
-`continue` starts the next cycle, `repeat` starts it again (the report is discarded), `stop`
-ends the program (block `End`). Without a phone the game goes on after 3 s as before.
-Programs that include `lib/loop.json` start at `StartCycle`; a reset of `RUNS` must link to
-`StartCycle`, not `StartLoop`, so the cycle timer restarts.
+## 4. New block types
 
-To add a new kind of measurement (e.g. press duration or misses), a block calls
-`ctx.results.record("<metric>", podId, value)`. No other code needs to change.
+Firmware: architecture.md §6.3. Then the `/fw-api-change` skill.
 
-## 4. Adding a new block type (firmware)
+## 5. MaxLoop override
 
-1. Create `src/Block/MyBlock/MyBlock.{h,cpp}` deriving from `Block`:
-   - `configure(json, ctx)`: read parameters (use `Value` for numbers, `JsonUtil` for
-     colours). Return `ctx.fail("…")` on bad input.
-   - `enter(ctx)`: reset state, take timestamps.
-   - `execute(ctx)`: return `BlockStatus::running()` while waiting, `BlockStatus::done(port)` when finished.
-   - `portCount()` / `portName(i)` if the block has more than `next`.
-   - `onProgramStart()` if the block keeps state across entries (e.g. a loop counter).
-2. Add one line to the table in [BlockFactory.cpp](../../firmware/src/Block/BlockFactory/BlockFactory.cpp).
-3. Add the type to `BLOCK_TYPES` in [tools/validate_programs.py](../../tools/validate_programs.py)
-   and document it here.
-
-`BlockContext` gives access to variables, LEDs, the button, results and the pod network
-(`IPodNetwork`: `arm`, `reset`, `pollEvent`, `nowUs`). Blocks should not use the
-singletons directly.
-
-## 5. Phone override
-
-During the program menu the central offers a BLE characteristic `MaxLoop`. A number
-> 0 written there replaces `MAX_LOOPS` of the program that is selected next. After the
-selection BLE is switched off, so the value cannot be changed during a game.
+The BLE characteristic MaxLoop (config-api §2): a number > 0 replaces `MAX_LOOPS` of the program selected
+next; read at selection, so changing it during a game has no effect on that game.
 
 ## 6. Program format revisions
 
-The config API reports the revision of the program format a firmware understands as
-`programFormat` in `info` ([config-api.md](config-api.md) §5). It is increased whenever a
-block type gets new fields, ports or semantics, so configuration software can tell whether a
-pod supports a program before it uploads it. The firmware constant is
-`BlockFactory::PROGRAM_FORMAT` ([BlockFactory.h](../../firmware/src/Block/BlockFactory/BlockFactory.h)),
-the validator's is `PROGRAM_FORMAT` in [tools/validate_programs.py](../../tools/validate_programs.py).
+`info.programFormat` = the revision of block fields, ports and semantics a firmware understands
+(`BlockFactory::PROGRAM_FORMAT`, `PROGRAM_FORMAT` in `tools/validate_programs.py` and
+`packages/program-model/src/limits.ts`). Missing (fw < 2.3) = 1. Raise it whenever a block gets new
+fields, ports or semantics, or a detail of §7 changes.
 
-`"version": 1` in a program file is the file layout (§1.2), not this revision.
-
-| `programFormat` | Firmware | Changes |
+| Format | fw | Changes |
 |---|---|---|
-| 1 | 2.0 | first JSON program format: block types `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` as described in §2 |
-| 2 | 2.8 | `timerStart` / `timerStop` on every block (§2 *Timers*, §7.9); block type `repeat` (§2, §7.10) |
-| 3 | 2.9 | block type `effect` (§2, §7.11); `countdown`, `countdownColor`, `countdownTarget`, `countdownFrom` on `delay`, `button`, `remotePress`, `remoteMultiPress` (§2 *Countdown*, §7.12). With a countdown `timeoutMs` of `remotePress` / `remoteMultiPress` is read once on enter (§7.2). Block types `charge` (§2, §7.13) and `release` (§2, §7.14), with the hold reporting of link protocol revision 2 ([link-protocol.md](link-protocol.md) §2.2), also with `countdown`. Revision 3 is not released yet, so these were added to it without a new revision |
-| 4 | 2.10 | block type `toggle` (§2, §7.15), with the toggle activations of link protocol revision 3 ([link-protocol.md](link-protocol.md) §2.3), also with `countdown` |
-| 5 | 2.11 | block type `communicate` (§2, §7.16) with the report buffer and the ops `reports`, `ack`, `command`, `setVariables`, `session` ([config-api.md](config-api.md) §5) |
-| 6 | 2.13 | `summary` fields `show`, `targetMs`, `showMs`: the average as a bar on the central's ring (§2, §7.7). The bar is the `level` effect of link-protocol.md §2.1 on the central only; with `show` the block waits `showMs` |
+| 1 | 2.0 | `led`, `delay`, `button`, `if`, `setVariable`, `remotePress`, `remoteMultiPress`, `remoteResetAll`, `summary` |
+| 2 | 2.8 | `timerStart`/`timerStop` on every block (§7.9); `repeat` (§7.10) |
+| 3 | 2.9 | `effect` (§7.11); countdown fields (§7.12; with a countdown `timeoutMs` of the remote blocks is read once on enter); `charge`, `release` (§7.13, §7.14) with link revision 2 |
+| 4 | 2.10 | `toggle` (§7.15), link revision 3 |
+| 5 | 2.11 | `communicate` (§7.16), report buffer and its ops |
+| 6 | 2.13 | `summary` `show`, `targetMs`, `showMs` (§7.7) |
 
-Programs of an older revision run unchanged on newer firmware. A program that uses fields
-or block types of a newer revision is rejected by older firmware only if it uses a new
-block type; unknown fields are ignored there, so check `programFormat` before uploading.
-
-Firmware before 2.3 does not report `programFormat`; treat a missing field as revision 1.
+Older programs run unchanged on newer firmware.
 
 ## 7. Engine semantics
 
-Exact runtime behaviour of the block engine, for simulators (e.g. the Config App) that must
-behave like the pod. Code references are relative to `src/`. When one of these details
-changes, increase `programFormat` (§6).
+Exact runtime behaviour; the app simulator (`app/src/simulator/engine.ts`) and the demo pod must follow it.
+Code paths are relative to `firmware/src/`.
 
-### 7.1 Loop passes and step limit
-
-- The central calls `BlockManager::run()` once per loop pass (`loop()` never sleeps, a pass
-  takes µs while blocks wait, see [timing.md](timing.md) §1.1).
-- In one pass the engine executes the current block. If it finishes, the block is left
-  (`exit`), the next block is entered (`enter`) and executed **in the same pass**, and so on.
-- At most `MAX_STEPS_PER_PASS = 32` blocks are executed per pass
-  ([BlockManager.h](../../firmware/src/BlockManager/BlockManager.h), `BlockManager::run`). When the limit is
-  reached, the block that was entered last is executed in the next pass. Nothing is lost
-  or skipped. An endless loop of instant blocks therefore never hangs the pod: it runs 32
-  steps per pass, and the button, the radio and the serial console keep working.
-- `enter()` is called every time a block becomes current, also when a block links to
-  itself. Times (entry time, random durations, random timeouts) are taken in `enter()`.
-- Port selection (`BlockManager::run`): the block's result port is used if it is connected.
-  Otherwise, if the block's port 0 is called `next` (every type except `if`), `next` is used.
-  If that is not connected either, the program ends (`running = false`, no error).
-- After a pause (a peripheral was lost, or a phone `pause`, state PAUSED) the central re-enters
-  the current block (`BlockManager::restartCurrentBlock`: `exit` + `enter`). Its timers restart and
-  random values are drawn again. A pause does not change the block; `communicate` is the
-  exception (§7.16).
-- Values that name a variable are read when the block uses them (see the table below).
-  An unknown variable reads as 0 (`VariableManager::resolve` creates it with 0).
+### 7.1 Passes and step limit
+- `BlockManager::run()` once per loop pass. A finished block is left (`exit`), the next entered (`enter`)
+  and executed **in the same pass**, up to `MAX_STEPS_PER_PASS = 32`; then the last entered block runs in the
+  next pass. Nothing is skipped; an endless instant loop never hangs the pod.
+- `enter()` runs every time a block becomes current (also self-links); entry time, random durations and
+  timeouts are taken there.
+- Port selection: the result port if connected; else `next` if port 0 is `next` (all types but `if`); else
+  the program ends (no error).
+- Pause (pod lost or phone `pause`): `restartCurrentBlock` = `exit` + `enter` (`resume()`, default
+  `enter()`): times restart, random values are drawn again; `communicate` is the exception (§7.16).
+- Unknown variables read 0 (created by `VariableManager::resolve`).
 
 ### 7.2 Instant and waiting blocks
 
-| Type | Finishes | Value read |
+| Type | Finishes | Values read |
 |---|---|---|
-| `led`, `if`, `setVariable`, `remoteResetAll`, `repeat` | immediately, in the pass it is entered | on execute |
-| `summary` | immediately, with `show` after `showMs` (§7.7) | on execute |
-| `delay` | when `millis() ≥ entry + duration` (checked once per pass). A duration of 0 finishes in the entry pass | on enter (also the countdown fields) |
-| `button` | on press / release / timeout | timeout on enter, `shortMs` on release |
-| `remotePress` | on the peripheral's press / timeout. Immediately through `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass (on enter if `countdown` ≠ `secret`) |
-| `remoteMultiPress` | when all green pods are pressed / an avoid pod is pressed / timeout | `pods`, `avoid`, `syncStartMs` on enter, `timeoutMs` every pass (on enter if `countdown` ≠ `secret`) |
-| `effect` | `wait: false`: immediately. `wait: true`: when `now ≥ start + durationMs` (checked once per pass) | all fields in the entry pass (first execute) |
-| `charge` | on release / full charge / timeout (§7.13). Immediately through `timeout` if the pod does not exist or cannot measure holds | everything (also the random timeout) on enter |
-| `release` | on release / timeout / no hold (§7.14). Immediately through `timeout` as for `charge` | everything (also the random switch delay) on enter |
-| `toggle` | when the game time is over / all pods one colour (§7.15) | everything (also the random duration) on enter |
+| `led`, `if`, `setVariable`, `remoteResetAll`, `repeat` | at once | on execute |
+| `summary` | at once; with `show` after `showMs` | on execute |
+| `delay` | `millis() ≥ entry + duration` (checked per pass); 0 = in the entry pass | on enter (also countdown) |
+| `button` | press / release / timeout | timeout on enter, `shortMs` on release |
+| `remotePress` | press / timeout; at once via `timeout` if the pod does not exist | `pod` on enter, `timeoutMs` every pass (on enter with a countdown) |
+| `remoteMultiPress` | all green pressed / avoid pressed / timeout | `pods`, `avoid`, `syncStartMs` on enter, `timeoutMs` every pass (on enter with a countdown) |
+| `effect` | `wait: false` at once; `wait: true` at `start + durationMs` | all in the entry pass |
+| `charge`, `release`, `toggle` | §7.13–§7.15; at once via `timeout` if the pod cannot take part | all on enter |
+| `communicate` | command / press / timeout | `timeoutMs` on enter |
 
-### 7.3 Random numbers
-
-All random numbers come from `esp_random()` ([Block/RandomUtil.h](../../firmware/src/Block/RandomUtil.h)).
-
-- `setVariable` `random`: uniform in **[0, value − 1]**. `value` ≤ 1 gives 0.
-- `setVariable` `randomOther` ([SetVariableBlock.cpp](../../firmware/src/Block/SetVariableBlock/SetVariableBlock.cpp)):
-  - `value` ≥ 2 and the current value is in [0, value − 1]: uniform among the other
-    `value − 1` numbers, never the current one.
-  - `value` ≥ 2 and the current value is outside that range: like `random`.
-  - `value` ≤ 1: always 0 (there is no other number to choose).
-- `delay` `minMs`/`maxMs` and `button` `minTimeoutMs`/`maxTimeoutMs`: uniform in
-  **[min, max], both inclusive** (`RandomUtil::between`). A negative `min` counts as 0.
-  If `max` ≤ `min`, the result is `min`. `ms` / `timeoutMs` is the same with min = max.
-- `charge` `minTimeoutMs`/`maxTimeoutMs` and `release` `minGoMs`/`maxGoMs`: the same, drawn once on enter.
-  `goMs` is `minGoMs` = `maxGoMs`.
+### 7.3 Random numbers (`esp_random()`, `Block/RandomUtil.h`)
+- `setVariable random`: uniform in [0, value − 1]; value ≤ 1 → 0.
+- `randomOther`: value ≥ 2 and current in [0, value − 1] → uniform among the other value − 1 numbers;
+  current outside → like `random`; value ≤ 1 → 0.
+- min/max pairs (`delay`, `button`, `charge` timeout, `release` go, `toggle` duration): uniform in
+  [min, max] inclusive (`RandomUtil::between`); negative min → 0; max ≤ min → min; single fields = min = max.
 
 ### 7.4 `button`
-
-Code: [ButtonBlock.cpp](../../firmware/src/Block/ButtonBlock/ButtonBlock.cpp), [Input/Button.h](../../firmware/src/Input/Button.h).
-
-- Only a press **edge after** the block was entered counts (the press counter is stored in
-  `enter`). A button held while the block is entered is ignored until it is released and
-  pressed again.
-- Debounce: an edge is taken immediately, further edges within 20 ms are ignored.
-- On the press edge the reaction time (*press time − entry time*, ms) is recorded
-  (`record`) and stored (`storeAs`).
-- If the `pressed` port is **connected**, the block leaves through `pressed` on the press
-  edge. `short` / `long` are never taken then.
-- Otherwise the block waits for the **release** and leaves through `short` if the press
-  lasted **less than** `shortMs`, else `long` (a press of exactly `shortMs` is `long`).
-  Nothing happens when `shortMs` is reached while the button is still held: `long` is
-  taken only on the release. Unconnected `short` / `long` fall back to `next`.
-- `timeout` is only checked **before** a new press. A held button from before the block
-  does not stop the timeout. Once a new press has started, the timeout no longer applies
-  and the block waits for the release, however long it takes.
-- A timeout of 0 (or a random timeout that comes out as 0, or a negative one) means
-  **no timeout**.
+- Only a press **edge after entry** counts (press counter stored in `enter`); a held button is ignored
+  until released and pressed again. Debounce: first edge at once, further edges within 20 ms ignored.
+- On the edge: `record` / `storeAs` = press − entry (ms).
+- `pressed` connected → leave on the edge (`short`/`long` never taken). Else wait for the release:
+  duration < `shortMs` → `short`, else `long` (exactly `shortMs` = long); reaching `shortMs` while held does
+  nothing. Unconnected `short`/`long` → `next`.
+- `timeout` only applies before a new press; once pressed, the block waits for the release. Timeout ≤ 0
+  (also a random 0) = **no timeout**.
 
 ### 7.5 `remotePress`
-
-Code: [RemotePressBlock.cpp](../../firmware/src/Block/RemotePressBlock/RemotePressBlock.cpp).
-
-- `pod` is a peripheral id `0 … connected − 1`. Any higher id, **including the central's
-  own id** (`REQUIRED_PERIPHERALS`), does not exist: nothing is lit
-  and the block leaves through `timeout` in the pass it is entered. The same happens in a
-  program without peripherals. (`pod` is taken modulo 256, so do not use negative ids.)
-- Only the press that answers this activation (command sequence number) counts.
-- After the press the pod is reset (`colorAfter`); the reaction time measured on the
-  peripheral is recorded / stored.
-- `timeoutMs` counts from the entry. **0 means an immediate timeout** (unlike `button`).
-  Without `timeoutMs` the block waits forever. On timeout the pod is reset.
+- `pod` = peripheral `0 … connected − 1` (taken mod 256). Any other id, **including the central's**, or no
+  peripherals: nothing lit, leave via `timeout` in the entry pass.
+- Only the press answering this activation (`cmdSeq`) counts; then the pod is reset (`colorAfter`), its
+  measured reaction recorded / stored.
+- `timeoutMs` from entry; **0 = immediate timeout** (unlike `button`); none = forever. Timeout resets the pod.
 
 ### 7.6 `remoteMultiPress`
-
-Code: [RemoteMultiplePressBlock.cpp](../../firmware/src/Block/RemoteMultiplePressBlock/RemoteMultiplePressBlock.cpp).
-
-- Number of peripherals `n` = `pods` (default: all connected), limited to
-  **[0, connected peripherals]** (and 31). `pods` larger than the number of connected
-  peripherals uses all connected ones, no error. Peripherals `0 … n − 1` take part.
-- The central takes part as id `n` in the draw if `includeCentral` (default true); its
-  results use its normal id (`REQUIRED_PERIPHERALS`). Total
-  `t = n + (includeCentral ? 1 : 0)`.
-- The number of avoid pods is `avoid` limited to **[0, t − 1]**, so at least one pod is
-  always green. The avoid pods are drawn uniformly from all `t` ids, **the central
-  included**.
-- `t = 0` (no peripherals, central excluded): the block leaves through `next` immediately.
-- Peripherals light at network time *entry + `syncStartMs`* (default 20 ms; 0 = when the
-  command arrives). The central lights at the same time. Presses of the central before it
-  is lit do not count.
-- A press of an avoid pod (peripheral or central) leaves through `avoidHit` immediately.
-  The other pods stay lit.
-- A green peripheral is reset when pressed and its reaction time recorded. A green central
-  switches its LEDs off when pressed; its reaction time is measured from the moment it lit.
-- When all green pods are pressed the block leaves through `next`. `timeoutMs` counts from
-  the entry, **0 means an immediate timeout**; without it there is no timeout.
-- Pods that were not pressed stay lit (also after `avoidHit` / `timeout`).
+- `n` = `pods` (default all) clamped to [0, connected] (and 31); peripherals `0 … n − 1` take part. With
+  `includeCentral` the central draws as id `n` (results use its normal id). `t = n + central`.
+- `avoid` clamped to [0, t − 1] (≥ 1 green), drawn uniformly from all `t`, central included.
+  `t = 0` → `next` at once.
+- All light at network time entry + `syncStartMs` (0: on arrival), the central too; central presses before
+  it lit do not count.
+- Avoid pod pressed → `avoidHit` at once. Green peripheral pressed → reset, reaction recorded; green central
+  pressed → its LEDs off, reaction from its lighting. All green pressed → `next`. `timeoutMs` from entry,
+  0 = immediate, none = no timeout. Unpressed pods stay lit after every exit.
 
 ### 7.7 `summary`
-
-Code: [SummaryBlock.cpp](../../firmware/src/Block/SummaryBlock/SummaryBlock.cpp), [Results.cpp](../../firmware/src/Results/Results.cpp).
-
-- Statistics are kept per metric since the last `summary` of that metric with `reset`
-  (or the `results` API op with `reset`). `average` is the integer average (truncated).
-- **No values** for the metric: `count` = 0, `average` = 0, `best` = 0, `worst` = 0. These
-  zeros are printed (`SUMMARY,<metric>,0,0,0,0`) and stored in the `store…` variables.
-- `best` is the smallest value, `worst` the largest.
-- With `reset` (default true) the metric is cleared afterwards.
-
-**Bar** (`show`, programFormat 6). Code: [SummaryBlock.cpp](../../firmware/src/Block/SummaryBlock/SummaryBlock.cpp),
-frame: `level` in [LEDManager.cpp](../../firmware/src/LEDManager/LEDManager.cpp).
-
-- Read once on entry, after the statistics are stored and before `reset`: the average `A` (ms, integer) and the target
-  `T` (`targetMs`, read as 1 … 60000) give the bar. Let `twice = 2 T`.
-  - `percent` = `(twice − A) · 100 / twice`, 0 when `A ≥ twice`, and at least **6** (one LED of 18 for any measured value).
-  - Lit LEDs: `(percent · 18 + 50) / 100`, from LED 0 on (the rest of the ring is dark). A full ring is 0 ms,
-    half a ring `T`, an empty ring `2T`.
-  - Colour: **green** if `A < T`; **yellow** (amber) if `A ≤ 1.5 T`; **red** otherwise.
-- The bar is a `level` effect (link-protocol.md §2.1, `param` = percent) on the central's ring, started at once. Peripherals
-  show nothing. It replaces the ring's colours, as any light does.
-- **Wait.** `showMs` (default 3000, 0 … 60000) after the bar starts, the block leaves through `next`. When the bar ends the ring is
-  switched off (as `turnOff`). `showMs` 0: no wait, the bar stays until the next light change.
-- **No values** for the metric (`count` = 0): no bar, no wait, as without `show`.
-- **Pause.** A pause during the bar keeps the bar; the block ends at the original time.
-- Without `show` the block is as before: it does not wait and does not touch the ring.
+- Statistics per metric since the last `summary` with `reset` (or `results` with `reset`). `average` =
+  integer, truncated; `best` smallest, `worst` largest. No values → all 0, printed and stored.
+- **Bar** (`show`): read once on entry, after storing, before `reset`. Average `A`, target `T` (1…60000),
+  `twice = 2T`: `percent = (twice − A)·100 / twice`, 0 if `A ≥ twice`, at least **6**; lit LEDs
+  `(percent·18 + 50) / 100` from LED 0, rest dark (full = 0 ms, half = `T`, empty = 2T). Colour green if
+  `A < T`, yellow if `A ≤ 1.5T`, else red. A `level` effect on the central only, at once.
+- Leaves via `next` `showMs` after the bar starts, then the ring is switched off; `showMs` 0 = no wait, the bar
+  stays until the next light. No values → no bar, no wait. A pause keeps the bar and the original end time.
 
 ### 7.8 Other blocks
+`led` without `leds` sets all 18; with `leds` the others keep their colour. `if` has no `next`
+(unconnected = end). `remoteResetAll` resets peripherals `0 … min(pods, connected) − 1` and the central
+unless `ledsOff: false`.
 
-- `led` without `leds` sets all 18 LEDs. With `leds`, the other LEDs keep their colour.
-- `if` has no `next`: an unconnected `true` / `false` ends the program.
-- `remoteResetAll` resets peripherals `0 … min(pods, connected) − 1` (default all connected),
-  and switches the central's LEDs off unless `ledsOff` is false.
-
-### 7.9 Timers (`timerStart` / `timerStop`)
-
-Code: [BlockManager.cpp](../../firmware/src/BlockManager/BlockManager.cpp) (`enterCurrent`, `stopTimer`).
-
-- `timerStart` is applied when the block is entered, **before** its `enter()`: the timer
-  stores `millis()` and is running. A start on a running timer restarts it.
-- `timerStop` is applied when the block is left, **after** its `exit()`, also when the
-  program ends in that block. A running timer records *`millis()` − start* (ms) for the
-  central's pod id (`REQUIRED_PERIPHERALS`) and stops. A stop on a timer that is not running
-  is ignored and counted (`status.timers.orphanStops`, config-api.md §5).
-- When a block is left and the next one entered, the stop of the old block comes before
-  the start of the new one. A block that links to itself with both fields and the same
-  name therefore records each of its passes.
-- An instant block is entered and left in the same pass, so its own duration is 0 ms.
-  Timer values are accurate to one loop pass.
-- A pause (`restartCurrentBlock`) does not leave the block: timers keep running (the pause
-  is part of the measured time) and are neither started nor stopped.
-- All timers are stopped and the orphan count is 0 when the program starts.
+### 7.9 Timers (`BlockManager::enterCurrent`, `stopTimer`)
+- `timerStart` before `enter()`: stores `millis()`; restarts a running timer.
+- `timerStop` after `exit()`, also when the program ends there: records `millis() − start` for
+  `REQUIRED_PERIPHERALS` and stops. A stop without a running timer is ignored and counted
+  (`status.timers.orphanStops`).
+- Stop of the old block before start of the new one (a self-linked block with both measures each pass).
+  Instant blocks measure 0 ms; accuracy = one pass.
+- A pause does not leave the block: timers keep running. All timers cleared at program start.
 
 ### 7.10 `repeat`
+Own counter per block, 0 at program start. On execute: counter + 1, read `count`; counter ≤ count →
+`storeIndex` = counter, `body`; else counter = 0, `done` (`storeIndex` keeps its value). `count` 3 →
+body, body, body, done, then a new series. `count` ≤ 0 → always `done`. Lowering `count` below the passes
+made ends at the next entry. Nested repeats count independently. A pause does not change the counter.
+Leaving the body for good keeps the counter until the next `done` (not detected).
 
-Code: [RepeatBlock.cpp](../../firmware/src/Block/RepeatBlock/RepeatBlock.cpp).
+### 7.11 `effect` (`EffectBlock`, `EffectTarget`, `LEDManager::renderEffect`)
+- In the entry pass all fields are read once: `durationMs` < 0 → 0, `periodMs` ≤ 0 → 500 (max 65535),
+  `brightness` clamped 0…255, `syncStartMs` < 0 → 0. `start` = entry + `syncStartMs` on the network clock;
+  sent with that start (`syncStartMs` 0 = now, per pod on arrival). Before `start` rings keep their colours.
+- Target: `central`; `peripherals` = 0 … connected − 1; `all`; a pod id (read at start), the central's id =
+  central, other ids ignored (block continues).
+- `leds` (central) masks output but keeps the whole-ring geometry of `fill`/`drain`/`spin`. `off` = steady
+  dark. `dim` fades `brightness` → 0; otherwise `brightness` scales.
+- `wait: false`: `next` in the same pass, effect keeps running. `wait: true`: `next` at
+  `now ≥ start + durationMs` (so `syncStartMs + durationMs` after entry; duration 0 → right after
+  `syncStartMs`). Endless effects with `wait: true` (constant `durationMs` ≤ 0 or none) are rejected at
+  load. Leaving does not stop the effect.
+- End frames: `fill` full, `drain`/`off`/`dim` dark, `colorShift` `color2`, `trafficLight` red;
+  `blink`/`pulse`/`spin` with a duration end steady `color`.
+- Replaced by any later static light or effect on that ring (peripheral: ARM, press result, RESET).
+- Pods without `effects`: `color` static at `start` (`off` = RESET) until the next ARM / RESET; the block
+  still waits the full duration.
 
-- Every block has its own counter, 0 when the program starts (`onProgramStart`).
-- On execute (once per entry) the counter is incremented and `count` is read. If
-  counter ≤ `count`: `storeIndex` = counter, leave through `body`. Otherwise: counter = 0,
-  leave through `done`; `storeIndex` keeps its last value.
-- So `count` = 3 gives `body`, `body`, `body`, `done`, and the next entry starts again
-  with pass 1. `count` ≤ 0 leaves through `done` on every entry and never sets `storeIndex`.
-  A `count` lowered during the loop below the passes already made ends the loop at the
-  next entry.
-- Unconnected `body` or `done` fall back to `next` (§7.1). With neither connected the
-  program ends.
-- Nested repeats count independently: an outer `count` 2 around an inner `count` 3 runs
-  the inner body 6 times.
-- A pause (`restartCurrentBlock`) does not change the counter: the counter changes only on
-  execute, and a re-entered block has not been executed yet.
-- If the program leaves the body for good (never returns to the repeat block), the counter
-  keeps its value until the block next reaches `done`. This is not detected.
+### 7.12 Countdown (`Block/Countdown.cpp`)
+A ring effect with lit colour `L`, playing time `D`:
 
-### 7.11 `effect`
-
-Code: [EffectBlock.cpp](../../firmware/src/Block/EffectBlock/EffectBlock.cpp), [EffectTarget.cpp](../../firmware/src/Block/EffectTarget.cpp),
-effect player: [LEDManager.cpp](../../firmware/src/LEDManager/LEDManager.cpp) (`renderEffect`), frame formulas: [link-protocol.md](link-protocol.md) §2.1.
-
-- **Start.** In the first `execute` after the entry (the entry pass; a pause re-enters the block
-  and starts it again) all fields are read once. `durationMs` < 0 counts as 0, `periodMs` ≤ 0 as
-  500 (max 65535), `brightness` is limited to [0, 255], `syncStartMs` < 0 counts as 0.
-  Let `lead = syncStartMs` (default 20) and `start = entry time + lead` on the network clock
-  (= the central's clock). The effect is sent to the targets with start time `start` (with
-  `lead` = 0: "now", each pod as its command arrives). Until `start` the ring keeps its old
-  colours; from `start` the frames are a function of `now − start` (a late pod joins the animation).
-- **Target.** `central`: the central only. `peripherals`: peripheral ids 0 … connected − 1.
-  `all`: both. A pod id (value, read at start): that peripheral; the central's own id
-  (`REQUIRED_PERIPHERALS`) means the central; any other id is ignored (nothing shown, the
-  block continues). Without peripherals only the central is affected.
-- **Effect parameters.** The effect runs for the whole ring. `leds` (central only) limits the
-  output to those LEDs, the others keep their colour; the geometry of `fill` / `drain` / `spin`
-  stays that of the whole ring. `off` is a steady dark ring (colour off). `dim` fades from
-  `brightness` to 0, for all other effects `brightness` scales the output. Colours are named
-  colours for the central too.
-- **`wait: false`** (instant block): continues in the same pass through `next`. The effect keeps
-  running while the following blocks execute.
-- **`wait: true`**: leaves through `next` when `now ≥ start + durationMs` (checked once per pass),
-  so it takes `syncStartMs + durationMs` from the entry. Duration 0 (e.g. a variable that is 0)
-  finishes right after `syncStartMs`. `blink`, `pulse`, `spin` with a constant `durationMs` ≤ 0 or
-  none are rejected when the program is loaded. The effect is not stopped when the block is left.
-- **End frames.** Timed effects stay in their end frame (`fill` full, `drain` and `off` dark,
-  `colorShift` = `color2`, `trafficLight` red, `dim` dark). `blink`, `pulse` and `spin` with a
-  duration end in a steady `color`. Endless effects run until the ring is changed.
-- **Replacement.** On the central any static LED call (`led`, `remoteResetAll` with `ledsOff`,
-  a pressed central in `remoteMultiPress`, …) or another effect replaces it. On a peripheral an
-  ARM activation, a press result or RESET replaces it.
-- **Old pods.** A peripheral without the `effects` link feature shows `color` statically at
-  `start` (an ARM with `colorActive`; `off` is a RESET). It stays lit until the next ARM / RESET.
-  The block still waits for the full duration.
-
-### 7.12 Countdown
-
-Code: [Countdown.cpp](../../firmware/src/Block/Countdown.cpp) (effect for a style), the four blocks.
-
-A countdown is a ring effect (link-protocol.md §2.1) with `color` = the lit colour `L` and
-`durationMs` = the playing time `D`:
-
-| `countdown` | Effect | Ring at the end |
+| `countdown` | Effect | End |
 |---|---|---|
-| `drain` | `drain`, `color` L, background off | dark |
-| `fill` | `fill`, `color` L, background off | full, colour L |
-| `dim` | `dim`, `color` L, brightness 255 → 0 | dark |
-| `colorShift` | `colorShift`, L → `countdownColor` (default red) | `countdownColor` |
-| `trafficLight` | `trafficLight` (colours ignored) | red |
+| `drain` | `drain`, L, background off | dark |
+| `fill` | `fill`, L, background off | full L |
+| `dim` | `dim`, L, 255 → 0 | dark |
+| `colorShift` | L → `countdownColor` | `countdownColor` |
+| `trafficLight` | colours ignored | red |
 
-`D` is the time limit `T` read on enter (minus the lead time where noted). If `T` ≤ 0 (a
-timeout of 0 for `remote…`, a delay of 0, `button` without timeout) there is no countdown. `secret`
-never plays an effect.
+`T` = time limit read on enter; `T` ≤ 0 → no countdown; `secret` never plays.
+- `delay`: L = `countdownFrom`. Central only: starts on enter, `D = T`. Target with peripherals and
+  `T > 20`: starts 20 ms after entry on all targets, `D = T − 20`. Leaving stops the central's effect (last
+  frame stays).
+- `button`: L = `countdownFrom`, central, `D = T` from enter; the counting press or leaving stops it.
+- `remotePress`: `T` = `timeoutMs` read once; L = `color`; carried by ARM (`D = T`), played from the
+  activation, so it ends a few ms after the central's timeout. Press / timeout reset the pod.
+- `remoteMultiPress`: all lit pods (hit and avoid) and the central (if in) start at entry + `syncStartMs`
+  with `D = T − syncStartMs` (≤ 0 → none), each in its lit colour. Pressed green pod reset, pressed central
+  off; the others run to the end frame, also after `avoidHit` / `timeout`.
+- Without a countdown `timeoutMs` is read every pass. The central's countdown is replaced by any later light.
 
-- **`delay`**: `T` = the drawn duration, `L` = `countdownFrom` (green). Central only: the effect
-  starts on enter (`D = T`). If the target includes peripherals and `T` > 20 ms, it starts
-  20 ms after the entry on all targets and `D = T − 20`, so that it ends with the delay.
-  `countdownTarget` as for the `effect` block, pods without effect support show nothing. When the
-  block is left the central stops its effect (the ring keeps the last frame).
-- **`button`**: `T` = the drawn timeout, `L` = `countdownFrom`. The effect starts on enter on the
-  central (`D = T`). A press (the edge that counts) or leaving the block stops it; the ring
-  keeps the last frame. Timeout and reaction time are unchanged.
-- **`remotePress`**: `T` = `timeoutMs` **read once on enter**, `L` = the pod's `color`
-  (`colorActive`). The ARM command carries the effect (`D = T`), which the pod plays from its
-  activation (the ARM command's arrival, as before). Because the central times out `T` after
-  its entry, the pod's countdown ends a few ms (link latency) after the timeout is taken. On press or
-  timeout the pod is reset as before (the countdown ends). A pod without effect support stays lit with `L`.
-- **`remoteMultiPress`**: `T` = `timeoutMs` read once on enter, `L` per pod = its lit colour
-  (`hitColor` / `avoidColor`). All lit pods (hit and avoid) and the central (if it takes part, with its
-  own lit colour) start the effect at the common start time `entry + syncStartMs` and
-  `D = T − syncStartMs`, so they run out together at the timeout. If `D` ≤ 0 there is no countdown.
-  A pressed green pod is reset, a pressed central switches off (both end their countdown); the
-  other pods keep counting down until the end frame, also after `avoidHit` / `timeout` (follow
-  with `remoteResetAll` as before).
-- Without a countdown `timeoutMs` is still read every pass (§7.2).
-- The central's countdown uses the same effect player as the `effect` block: a later static LED
-  call replaces it.
+### 7.13 `charge` (`ChargeBlock`, `HoldBlock`, `Link/HoldSession`; wire: link-protocol §2.2)
+**Enter.** Read once: `pod`, `onsetMs` (< 0 → 0), `maxMs` (< 1 → 1), `decayMs` (< 0 → 0, accumulate only),
+timeout `T` (`timeoutMs` or random; ≤ 0 / missing = **none**, like `button`). `pod` = central if
+`"central"`, missing or the central's id; else a peripheral `0 … connected − 1` with `hold`; anything else
+**cannot take part**: nothing lit or stored, `timeout` in the entry pass. Then the idle ring.
 
-### 7.13 `charge`
+**Hold.** Starts at a press edge after entry (a held button must be released first). `p` press, `r` release
+(button timestamps, 20 ms debounce). While held: `charge = min(maxMs, c0 + max(0, (t − p) − onsetMs))`, `c0` =
+0 in `release` mode, the kept charge in `accumulate`; the onset applies to **every** hold. Released in
+accumulate: kept if `decayMs` 0, else `max(0, c − (t − r)·maxMs/decayMs)`. Reported in whole ms.
 
-Code: [ChargeBlock.cpp](../../firmware/src/Block/ChargeBlock/ChargeBlock.cpp), [HoldBlock.cpp](../../firmware/src/Block/HoldBlock.cpp),
-the hold itself: [Link/HoldSession.cpp](../../firmware/src/Link/HoldSession.cpp) (the central's own button and the
-peripheral run the same code), wire format: [link-protocol.md](link-protocol.md) §2.2.
+**Ring.** Idle: `fill` dark, `brightness` the colour at 40/255, `trafficLight` green, `colorShift` `color`;
+with a countdown and `T > 0` the countdown instead (lit colour `color`, from enter). Hold start shows the
+frame for the current charge (a countdown does not come back). From `p + onsetMs` the charge effect runs
+on `charge / maxMs`: `fill` LED n at n/18, `brightness` 40 → 255, `trafficLight` thirds, `colorShift`
+`color` → `color2`. Accumulate: a release freezes the frame (redrawn ≈ 30/s while draining).
 
-**Enter.** Read once: `pod`, `onsetMs` (< 0 counts as 0), `maxMs` (< 1 counts as 1), `decayMs` (< 0 as 0; ignored
-unless `accumulate`) and the timeout `T`: `timeoutMs`, or a random value in [`minTimeoutMs`, `maxTimeoutMs`] (§7.3);
-`T ≤ 0` or no timeout field means **no timeout** (as `button`, unlike `remotePress`). `pod` is the central if it is
-`"central"`, missing, or equals the central's own id (`REQUIRED_PERIPHERALS`). Otherwise it is a peripheral id
-`0 … connected − 1`; a peripheral without the `hold` link feature, or any other id, **cannot take part**: nothing
-is lit or stored and the block leaves through `timeout` in the pass it is entered. Then the idle ring is shown.
+**End, `release` mode** (first of):
+1. `full` at `p + onsetMs + maxMs`, reported then without waiting (a release at or after also counts):
+   flash (`color`; `trafficLight` red; `colorShift` `color2`; 600 ms, 200 ms period, then dark), **not**
+   reset; stores `maxMs`, 100 %, record `maxMs`.
+2. release with `r − p < onsetMs` → `early` (→ `released`), charge 0.
+3. other release → `released`, charge = `(r − p) − onsetMs`.
+4. timeout.
 
-**Hold.** A hold starts at a press edge **after** the entry (the press counter is stored on enter, §7.4); a button
-that is down on entry is ignored until it is released and pressed again. Let `p` be the press edge, `r` the release
-edge (button timestamps, not the time a pass notices them; the debounce is 20 ms). Charge in ms:
+`storeAs` (ms), `storePercent` (`(charge·100 + maxMs/2) / maxMs`), `record` (pod id, central =
+`REQUIRED_PERIPHERALS`) for 1–3. After `released`, `early`, `timeout` the ring is reset (dark).
 
-- while held: `charge = min(maxMs, c0 + max(0, (t − p) − onsetMs))`. `c0` is the charge at `p`: 0 in `release` mode,
-  in `accumulate` the charge kept from earlier holds. The onset applies to **every** hold.
-- after a release in `accumulate`: `decayMs = 0`: `charge` is kept. Else it drains linearly,
-  `charge(t) = max(0, c − (t − r) · maxMs / decayMs)`.
-- the charge is rounded to whole ms when it is reported.
+**End, `accumulate`:** only `full` (at `p + onsetMs + (maxMs − c0)`) and `timeout`.
 
-**Ring** (central and pod alike). Idle (before the first hold): `fill` dark, `brightness` the colour at brightness 40
-(of 255), `trafficLight` green, `colorShift` `color`; if the block has a countdown and `T > 0`, the countdown
-(§7.12, lit colour `color`, duration `T`, started on enter) instead. At the start of a hold the ring shows the frame
-for the current charge (this replaces a countdown, which does not come back). From `p + onsetMs` the charge effect
-runs, a function of `charge / maxMs`: `fill`: LED n lights at n/18 of the charge, `brightness`: 40 → 255, `trafficLight`:
-green, yellow, red in thirds, `colorShift`: `color` → `color2` (default red). In `accumulate` a release freezes the
-ring at the charge (drawn about 30 times a second while it drains).
+**Timeout.** `T` from entry until the block ends, **also during a hold** (checked after the pass's events;
+an event in the same pass wins). `release` mode: `timeout`, nothing stored, reset. `accumulate`: the pod
+stops `T` after its activation and reports its charge (decayed if released); `timeout` with that charge
+stored; the central waits ≤ 300 ms after its own `T` for the report, else nothing is stored.
 
-**Ending, `release` mode.** The first of:
+**Pause.** Activation ended and re-entered: charge 0, new random timeout. An unreachable pod keeps its ring
+until the new ARM.
 
-1. `full`: the charge reaches `maxMs`, i.e. at `p + onsetMs + maxMs`. The pod / central reports it at that moment, without
-   waiting for the release (a release edge at or after that time also counts as full). The ring flashes (`color`;
-   `trafficLight`: red; `colorShift`: `color2`; 600 ms, 200 ms period, dark afterwards) and is **not** reset. The
-   block leaves through `full`; stored: `maxMs`, 100 %, `record` `maxMs`.
-2. A release edge `r` with `r − p < onsetMs`: port `early`, if it is not connected `released`. Charge 0 is stored.
-3. Any other release edge: port `released`, charge = `(r − p) − onsetMs` (0 for an exact `onsetMs`).
-4. Timeout (below).
+### 7.14 `release` (`ReleaseBlock`, `HoldBlock`, `Link/HoldSession`)
+**Enter.** Read once: `pod`, `holdTimeoutMs`, `maxHoldMs`, go delay `G` (`goMs` or random, negative → 0),
+`timeoutMs`, `allowHeld`; ≤ 0 / missing = none. Pod resolved as in §7.13; cannot take part → `timeout`
+(→ `next`) at once. Ring `holdColor`.
 
-`storeAs` (ms), `storePercent` (`(charge · 100 + maxMs / 2) / maxMs`, integer) and `record` (ms, with the pod's id, or
-`REQUIRED_PERIPHERALS` for the central) are written for 1, 2 and 3. After `released`, `early` and `timeout` the pod / ring
-is reset (dark).
+**Hold start `s`.** A press edge after entry; with `allowHeld` a button already down starts it **at the
+entry** (trigger `storeAs` counts from there); else it must be released first. Ring `heldColor` (trigger
+with a countdown and `maxHoldMs > 0`: countdown over `maxHoldMs`, colour `heldColor`, from `s`). The
+central learns of it from PRESSED (its own button: the pass that sees it).
 
-**Ending, `accumulate` mode.** Only `full` (as above, with the charge that has accumulated: the `full` moment is
-`p + onsetMs + (maxMs − c0)`) and `timeout`. `released` and `early` are never taken; a release only pauses the charge.
+**`trigger`.** Release `r` → `next`, `storeAs` = `r − s` ms. Left in the pass the central receives
+RELEASED, so a `timerStart` on the next block starts then (a few ms late for peripherals). Ring reset.
 
-**Timeout.** `T` counts from the entry **until the block ends, also during a hold** (checked after the events of a pass;
-an event received in the same pass wins). `release` mode: leave through `timeout`, nothing is stored, the pod is reset.
-`accumulate` mode: the pod (or the central's own session) stops `T` ms after its activation and reports the charge it
-has then (decayed if released); the block leaves through `timeout` with that charge stored (`storeAs`, `storePercent`,
-`record`). The central waits up to 300 ms after its own `T` for the pod's report; if it does not come, nothing is stored.
+**`signal`.** At `s + G` the ring switches to `goColor` (with a countdown and `timeoutMs > 0`: countdown
+over `timeoutMs`, colour `goColor`). Release `r < s + G` → `falseStart`, nothing stored. Else reaction =
+`r − switch` (the pod's LED update at `s + G`; simulator: `s + G`), ≥ 0, rounded → `record`, `storeAs`, `next`.
 
-**Pause.** `restartCurrentBlock` ends the activation and enters again: charge 0, a new random timeout. A peripheral
-that cannot be reached keeps its ring until the new ARM.
+**Timeouts** (central clock; the simulator ignores link latency): `noHold` if no hold `holdTimeoutMs` after
+entry (only before a hold); trigger `timeout` = not released `maxHoldMs` after `s`; signal `timeout` = not
+released `G + timeoutMs` after `s`. Events before timeouts; after `noHold` / `timeout` reset, nothing
+stored. Unconnected `noHold`, `falseStart`, `timeout` → `next`. Pause: as `charge`.
 
-### 7.14 `release`
+### 7.15 `toggle` (`ToggleBlock`, `PeripheralRole::runToggle`; wire: link-protocol §2.3)
+**Enter.** Read once: `pods`, `cooldownMs` (0…65535), `syncStartMs` (< 0 → 0), duration `D` (≤ 0 ends at
+the start), random start owners. Participants: peripherals `0 … pods − 1` with `toggle` (others left out,
+log "cannot toggle") and, with `includeCentral`, the central (index `pods`). Start owners in that order
+(central last): `a`, `b`, `alternate` (A for 1st, 3rd, …), `random`, `off` (nobody). `t0` = entry +
+`syncStartMs`: everyone shows its colour at `t0`; the game runs `t0 … t0 + D`.
 
-Code: [ReleaseBlock.cpp](../../firmware/src/Block/ReleaseBlock/ReleaseBlock.cpp), [HoldBlock.cpp](../../firmware/src/Block/HoldBlock.cpp),
-[Link/HoldSession.cpp](../../firmware/src/Link/HoldSession.cpp), wire format: [link-protocol.md](link-protocol.md) §2.2.
+**Flip.** A press edge after `t0`: A → B, B → A, nobody → A. Ignored if < `cooldownMs` after the last
+accepted press of that pod (timestamps; the first always counts); several presses in one pass count once.
+Pods flip themselves and report `{owner, flipCount}`; the central's own button flips in its pass.
 
-**Enter.** Read once: `pod`, `holdTimeoutMs`, `maxHoldMs` (trigger), `goMs` / `minGoMs` + `maxGoMs` (signal: the switch
-delay `G` is drawn once, §7.3, negative values count as 0), `timeoutMs` (signal), `allowHeld`; for each value `≤ 0` or
-missing means none. The pod is resolved as for `charge` (§7.13): a pod that does not exist or cannot measure holds
-makes the block leave through `timeout` at once (`next` if `timeout` is unconnected). Then the ring shows `holdColor`.
+**Bookkeeping.** Per participant: owner, flipCount, time of the last change. A PRESSED counts if pod and
+`cmdSeq` match, `flipCount` is higher than seen, and it was received ≤ `t0 + D`. Skipped `flipCount`s add to
+the total. An owner change gives the elapsed time to the old owner, at the **central's receive time**
+(simulator: the press time). Owned time per team sums over participants (up to N·D).
 
-**Start of the hold.** A press edge after the entry. With `allowHeld` a button that is already down on entry starts the
-hold **at the entry** (not at the physical press, so `storeAs` of `trigger` counts from the entry). Without it a button
-that is down is ignored until released and pressed again. Let `s` be the start of the hold. The ring shows `heldColor`
-(`trigger` with a countdown and `maxHoldMs > 0`: the countdown over `maxHoldMs`, lit colour `heldColor`, from `s`).
-The central learns of the start when it receives PRESSED (its own button: in the pass that sees it).
+**End** (each pass after events): 1. `allA`/`allB`: after a flip everyone (central too) is one team and the
+port is connected (unconnected: go on; never checked on entry; ≥ 1 participant). 2. `now ≥ t0 + D` → `next`.
+Then owned time is closed (`t0 + D` for `next`, now for `allA`/`allB`), `storeA`/`storeB` (nobody not
+counted), `storeTimeA`/`storeTimeB` (rounded ms), `storeFlips` (all flipCounts incl. central) written.
+Final colours frozen: the central's ring set (countdown ends), each peripheral gets a plain activation in
+its colour before and after a press. Nothing reset: follow with `remoteResetAll`.
 
-**`trigger`.** A release edge `r`: leave through `next`; `storeAs` = `r − s` in ms (rounded). The block is left in the
-pass in which the central receives RELEASED (the central's own button: the pass that sees the release), so a
-`timerStart` on the next block starts then, a few ms after the physical release for a peripheral. The pod / ring is reset.
+**Pause.** Re-entered: new duration, new owners, counts and times from zero. Unreached pods keep their
+state until the new ARM.
 
-**`signal`.** At `s + G` the ring switches to `goColor` (or, with a countdown and `timeoutMs > 0`, the countdown over
-`timeoutMs`, lit colour `goColor`). A release edge `r`:
-
-- `r < s + G`: false start, port `falseStart`. Nothing is stored or recorded.
-- otherwise: reaction = `r − switch` where `switch` is the moment the pod updated its LEDs at `s + G` (an ideal
-  simulator: `s + G`); ≥ 0, rounded to ms. `record` and `storeAs` get it, port `next`.
-
-**Timeouts** (the central's clock, a few ms of link latency are not modelled by the simulator):
-
-- `noHold`: the hold has not started `holdTimeoutMs` after the entry. Only checked until a hold has started.
-- `trigger` `timeout`: not released `maxHoldMs` after the start of the hold (where the central saw it start).
-- `signal` `timeout`: not released `G + timeoutMs` after the start of the hold, i.e. `timeoutMs` after the switch.
-- Events of a pass are handled before the timeouts. After `noHold` and `timeout` the pod / ring is reset, nothing is stored.
-
-An unconnected `noHold`, `falseStart` or `timeout` falls back to `next` (§7.1). **Pause:** as `charge`.
-
-### 7.15 `toggle`
-
-Code: [ToggleBlock.cpp](../../firmware/src/Block/ToggleBlock/ToggleBlock.cpp), the flip on the pod:
-[PeripheralRole.cpp](../../firmware/src/Roles/Peripheral/PeripheralRole.cpp) (`runToggle`), wire format:
-[link-protocol.md](link-protocol.md) §2.3.
-
-**Enter.** Read once: `pods`, `cooldownMs` (clamped to 0 … 65535), `syncStartMs` (< 0 counts as 0), the duration `D`
-(`durationMs`, or random in [`minDurationMs`, `maxDurationMs`], §7.3; `D ≤ 0` ends the block at the start) and, for
-`start: "random"`, one draw per participant. The participants are the peripherals `0 … pods − 1` that have the `toggle`
-link feature (the others are left out, the log has "cannot toggle") and, with `includeCentral`, the central (index
-`pods`). The start owner is set per participant in this order (central last): `a`, `b`, `alternate` = A for the 1st, 3rd, …
-participant and B for the others, `random`, `off` = nobody. Let `t0` = entry + `syncStartMs`: all pods and the central show their
-colour at `t0` (as in `remoteMultiPress`, §7.6). The game runs from `t0` to `t0 + D`.
-
-**Flip.** A press edge after `t0` flips the pod: A → B, B → A, nobody → A. A press less than `cooldownMs` after the
-last *accepted* press of that pod is ignored (button timestamps, not the time a pass notices them); the first press always
-counts. Several presses noticed in one pass count once. The pod flips on its own and reports `{owner, flipCount}` (the
-central's own button flips in the pass that sees the press). The ring shows the new colour at once.
-
-**Central bookkeeping.** For every participant the central keeps `owner`, `flipCount` and the time of the last owner change.
-A PRESSED event counts if pod and `cmdSeq` match the activation, `flipCount` is above the last one seen (older and
-duplicate frames are dropped) and it was received no later than `t0 + D`. A skipped `flipCount` (lost frame) adds to the
-flip total; if the owner differs, the time since the last change goes to the old owner, with the **central's receive
-time** as the moment of the change (a few ms after the press; an ideal simulator uses the press time). Owned time per team
-is the sum over all participants, so with N pods it can reach N · D.
-
-**Ending.** Checked each pass after the events:
-
-1. `allA` / `allB`: after a flip, every participant (also the central) has the same team and the port is connected.
-   Not connected: the game goes on. At least one participant is needed. This is checked only after a flip, never on entry.
-2. Time over: `now ≥ t0 + D` → `next`.
-
-At the end the owned time of the current owners is closed at the end time (`t0 + D` for `next`, the current time for
-`allA` / `allB`) and `storeA` / `storeB` (pods per team, nobody is not counted), `storeTimeA` / `storeTimeB`
-(rounded ms), `storeFlips` (sum of all `flipCount`s, central included) are written. Participants then show their final
-colour frozen: the central's ring is set (a countdown ends), a peripheral gets a plain activation with that colour before and
-after the press (so a press changes nothing). Nothing is reset; follow with `remoteResetAll`.
-
-**Pause.** `restartCurrentBlock` enters again: new random duration, new start owners, flips and times start from zero. A pod
-that is not reached keeps its state until the new ARM.
-
-### 7.16 `communicate`
-
-Code: `Block/CommunicateBlock`, `Results/Reports`.
-
-**Measurement log.** Besides the statistics (§7.7), the central keeps every measurement
-(`record`, `timerStop`, §3) since the last report: `t` (`millis()` when recorded), metric,
-pod id, value in ms. The log holds at most 48 values; further values are not listed but
-still counted in the report's `stats` and in `valuesDropped`. The log is cleared when the
-program starts and when a report is built. `summary` and the `results` op do not touch it.
+### 7.16 `communicate` (`Block/CommunicateBlock`, `Results/Reports`)
+**Measurement log.** Every `record` / `timerStop` since the last report: `t` (`millis()`), metric, pod, ms;
+≤ 48 values, further ones only counted (`stats`, `valuesDropped`). Cleared at program start and when a
+report is built; `summary` and `results` do not touch it.
 
 **Enter.**
-1. Build a report: `id` (counts from 1 since boot, never reused until reboot), `program`
-   (path), `setId`, `athlete` (only if a `session` set one), `cycle` (reports built since the
-   program started, 1 for the first), `startMs` (time of the previous report, or the program
-   start), `endMs` (now), `values` (the log, oldest first, only the metrics in `metrics`;
-   all without `metrics`), `stats` per listed metric that has values (`count`, `average`
-   truncated, `best` = smallest, `worst` = largest; over all values of the log, also the
-   dropped ones), `vars` (current values of `vars`), `valuesDropped` (only if > 0).
-2. Clear the log (all metrics, also those not listed).
-3. Put the report into the report buffer (8 reports, RAM). A full buffer drops its oldest
-   report and counts it (`status.reports.dropped`).
-4. Send it as a `report` event line on USB serial ([config-api.md](config-api.md) §5).
-5. Set all central LEDs to `color`, read `timeoutMs` (a value, read once), start waiting.
+1. Build a report: `id` (from 1 since boot), `program` (path), `setId`, `athlete` (if a `session` set one),
+   `cycle` (reports since program start, from 1), `startMs` (previous report or program start), `endMs`
+   (now), `values` (the log, oldest first, only `metrics`; all without), `stats` per listed metric with
+   values (`count`, truncated `average`, `best` smallest, `worst` largest; over all values incl. dropped),
+   `vars`, `valuesDropped` (if > 0).
+2. Clear the log (all metrics).
+3. Buffer it (8 reports, RAM); a full buffer drops the oldest (`status.reports.dropped`).
+4. Emit the `report` event (USB serial; BLE indication from fw 2.12).
+5. Central LEDs `color`, read `timeoutMs` once, wait.
 
-**Wait.** Checked each pass, the first that applies wins:
-1. A client `command` (`continue` → `next`, `repeat` → `repeat`, `stop` → `stop`).
-2. A press of the central's button (press edge after entering) → `pressed`.
-3. `timeoutMs` > 0 and *now − entry* ≥ `timeoutMs` → `timeout`.
+**Wait** (each pass, first wins): 1. client `command` (`continue` → `next`, `repeat` → `repeat`, `stop` →
+`stop`). 2. press edge of the central after entry → `pressed`. 3. `timeoutMs` > 0 elapsed → `timeout`.
+Unconnected → `next`, none → end. `setVariables` works only while waiting. `repeat` only picks the port;
+the report stays as sent (the client marks it discarded).
 
-Unconnected ports fall back to `next` (§7.1); with no `next` the program ends.
-`setVariables` (config-api.md §5) changes the `editable` variables only while the block waits.
-`repeat` only selects the port: the report stays as it was sent (the client marks it as
-discarded).
-
-**Pause.** While PAUSED the block does not wait: `command` and `setVariables` answer
-`not_ready`, `status` has no `waiting`. This holds for a peripheral lost and for a phone pause
-(`pause` / `resume`, config-api.md §5). A phone pause can start while the block waits.
-`restartCurrentBlock` resumes the block (`Block::resume()`, by default `enter()`) without building
-a second report: the block keeps the report of this entry, sets its LEDs again and restarts the
-timeout. The client answers after `resume`, with the same report.
+**Pause.** While PAUSED the block does not wait (`command`/`setVariables` → `not_ready`, no
+`status.waiting`), for both pause kinds; a phone pause may start while it waits. `restartCurrentBlock`
+calls `resume()`: no second report, LEDs set again, timeout restarted; the client answers after `resume`
+with the same report.

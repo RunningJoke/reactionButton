@@ -1,328 +1,159 @@
-# Block builder UX – simple by default, everything still reachable
+# Block builder UX – simple by default, everything reachable
 
-Status: **implemented** (phase P8, approved 2026-10-21, [spec.md §13](spec.md#13-phases)); acceptance tests AT-E*
-are open. Deviations from this text: §8. The clickable prototype is
-[`prototypes/editor-flow.html`](prototypes/editor-flow.html). It is a page fragment (no
-`<html>` wrapper) that opens in any browser and runs on its own: a game wizard, the step list, step
-sheets with working switches, expert mode and a small simulator.
+Implemented in P8 (AT-E* passed 2026-10-26). Extends [spec.md §7](spec.md#7-editor). Clickable prototype:
+[prototypes/editor-flow.html](prototypes/editor-flow.html) (page fragment, opens in any browser).
 
-This document lists everything the block builder must let people do, who uses it and for what,
-and a redesigned flow. The flow hides optional things (measuring, storing, tuning) behind plain
-toggles and keeps the block-level view for people who want it. It extends
-[spec.md §7](spec.md#7-editor) and is phase P8 (§6 below).
+## 1. Problems the design solves
 
-## 1. Today (what the code does)
+Numbered, referenced from the code. The old editor (now expert mode, §4 H):
+1. showed every field and port at once; 2. put exclusive fields side by side (`ms` vs `minMs`/`maxMs`);
+3. showed raw keys, port names and operators; 4. used jargon (peripherals, metric, pods from 0, bytes);
+5. gave new blocks placeholder values that silently created variables and metrics; 6. connected by
+picking generated names; 7. created variables / metrics from typos; 8. showed problems only in the Check
+sheet; 9. dropped fields and links without asking; 10. had no guided start.
 
-The editor (`app/src/editor/`) shows a program as one column of cards (`ProgramColumnView.tsx`).
-Tapping a card opens the inspector (`BlockInspector.tsx`). The inspector always shows the whole
-block: name, type select, one "go to" select per port, and every field of the type, each with its
-raw JSON key. Program settings (`ProgramSettings.tsx`) mix name and description with the start
-block, a variables table, library includes and "flatten". "New program" asks for a name and
-opens an empty program (`programs/actions.tsx`).
+## 2. Users
 
-Problems that matter for people who have never seen a block graph:
-
-| # | Problem | Where |
+| Persona | Sees blocks? | Main path |
 |---|---|---|
-| 1 | Every field and every port is always shown: `button` has 6 fields and 5 ports, `remoteMultiPress` has 8 fields and 3 ports | `BlockInspector.tsx:78-89` |
-| 2 | Fields that exclude each other sit side by side: `ms` vs `minMs`/`maxMs`, `timeoutMs` vs `minTimeoutMs`/`maxTimeoutMs`; only help text explains it | `blockTypes.ts` |
-| 3 | Raw keys and port names: `<code>storeAverage</code>` under every label; ports read `next`, `short`, `pressed`, `timeout`, `true`; `if` operators are `>=`, `!=` | `BlockInspector.tsx:216`, `BlockDetails.tsx:42-48,100`, `en.json` `ports` |
-| 4 | Jargon: peripherals, central, metric, "library presets" vs "library as copy", ms everywhere, pods counted from 0, file path in the title, size in bytes | inspector, settings, check sheet |
-| 5 | New blocks get placeholder values (`VALUE`, `reaction`, `0`) that silently create variables and metrics | `ops.ts:41-56` |
-| 6 | Connecting means picking from a long list of generated names (`Button1`, `Led3`); a block added with nothing selected is left unconnected | `BlockInspector.tsx:225-252` |
-| 7 | Variable and metric fields are free text, so a typo creates a new one without warning | `fields.tsx:231-265` |
-| 8 | Problems appear only in the Check sheet, not on the card or in the inspector | `EditorPage.tsx:282-286` |
-| 9 | Deleting a block or changing its type drops fields and links without asking; palette tiles have no description; templates are bare file names | `ops.ts:108-148`, `Palette.tsx` |
-| 10 | No guided start: you must already know that a reaction game is led + delay + button + remotePress + setVariable + if + summary | `actions.tsx:60-105` |
+| First-timer ("3 pods, a reaction game, now") | no | chooser → wizard → Try → add to menu |
+| Coach ("same drill, 20 rounds, 1–3 s pause, 2 s limit") | steps in words | Programs → Adjust; simple editor with switches |
+| Tinkerer (must keep working) | yes | expert mode |
 
-Gap in the model: `@reactpod/program-model` is still at `PROGRAM_FORMAT = 1`, while firmware 2.8
-and programs.md §6 have format 2 (`repeat` block, `timerStart`/`timerStop`). The plan below
-uses both. The model update is P8a's first step.
+Phone in one hand, gloves or sweaty fingers, nothing lost by accident.
 
-## 2. Who uses it
+## 3. Capability levels
 
-| Persona | Typical sentence | Sees blocks? | Main path |
-|---|---|---|---|
-| **First-timer** (parent, PE teacher, someone who got a set) | "I have 3 pods. I want a reaction game, now." | No, unless they ask | Chooser → game wizard → Try → Add to menu |
-| **Coach / trainer** | "Same drill as last week, 20 rounds, 1–3 s random pause, 2 s time limit, record times; red means don't touch." | Steps in plain language, occasionally adds one | Programs → Adjust; or editor in simple mode with toggles |
-| **Tinkerer** (secondary, must keep working) | "I want a branch on long press and a variable that counts streaks." | Yes, everything | Editor with expert mode on (today's UI) |
+**S** = simple view, **T** = behind a switch or "More options", **E** = expert mode only.
 
-Shared context from spec §2: a phone held in one hand in a sports hall, often with gloves or
-sweaty fingers, set already switched on. Nothing may get lost by accident.
-
-## 3. What we want to be able to do
-
-Level: **S** = simple view, always visible · **T** = behind a toggle or "More options" in the
-simple view · **E** = expert mode only. "Today" says whether the app already offers it.
-
-### 3.1 Start a program
-
-| Capability | Level | Today |
-|---|---|---|
-| Start from a game recipe (wizard): solo, star, random pod, all at once (with red pods), duo | S | no |
-| Copy a program (mine, on the pod, shipped) and change it | S | yes (duplicate / edit copy) |
-| Start empty | E | yes |
-| Import a `.json` file | S | yes (Programs page) |
-
-### 3.2 Adjust without touching the flow (coach's daily job)
-
-| Capability | Maps to | Level | Today |
-|---|---|---|---|
-| Number of rounds | `variables.MAX_LOOPS` or `repeat.count` | S | as a raw variable |
-| Pause before the light: fixed or random between two times | `delay.ms` / `minMs`+`maxMs` | S | both fields shown |
-| Time limit per press, and what happens when it runs out | `timeoutMs` + `timeout` port | T | always shown |
-| Colours of target and "don't touch" pods | `color`, `hitColor`, `avoidColor` | S | yes |
-| Number of red "don't touch" pods | `remoteMultiPress.avoid` | T | yes |
-| Number of pods the program needs | `peripherals` | S | as "peripherals" |
-| Catch presses that come too early (false start) | `button` with random timeout as the pause | T | only by building it |
-
-### 3.3 Change the flow
-
-| Capability | Level | Today |
-|---|---|---|
-| Add a step after this one, chosen by intent ("Wait for a press", "Light a pod") | S | by block type |
-| Add a step into a branch ("If too slow → …") | S | via port select "new block…" |
-| Move a step up or down within the round | S | no |
-| Delete (with undo), duplicate a step | S | yes, no undo prompt |
-| Repeat a group of steps N times | S (shown as a bracket) | via if/counter only |
-| Decide on a value (`if`) with words ("is at least") | T | operators as symbols |
-| Short vs. long press go different ways | T | ports always shown |
-| Rename a step, change its block type, set the start block | E | yes |
-| Connect any port to any block | E | yes |
-
-### 3.4 Measure (all optional, all off unless the recipe turns them on)
-
-| Capability | Maps to | Level | Today |
-|---|---|---|---|
-| Record the reaction time of this press | `record: "reaction"` | T (one switch) | free-text metric |
-| Count misses when too slow / when a red pod is hit | `setVariable MISSES +1` on `timeout` / `avoidHit` | T | build by hand |
-| Show results at the end (average, best, worst, count) | `summary` + `store…` | S (one step, checkboxes) | raw store fields |
-| Keep the last time in a setting | `storeAs` | T (More options) | always shown |
-| Measure the time between two steps (stopwatch) | `timerStart`/`timerStop` (format 2) | T (More options) | no |
-| Name of the measurement (metric) | `record`, `summary.metric` | E | always shown |
+- **Start:** game wizard S · copy a program S · import `.json` S · start empty E.
+- **Adjust:** rounds (`MAX_LOOPS` / `repeat.count`) S · pause fixed or random S · time limit and what
+  happens when it runs out T · colours S · number of red pods T · pods needed S · catch false starts T.
+- **Flow:** add a step by intent S · add into a branch S · move up / down S · delete with undo, duplicate S ·
+  repeat N times (bracket) S · `if` in words T · short vs long press T · rename, change type, set start,
+  connect any port E.
+- **Measure** (off unless the recipe turns it on): record reaction T · count misses (`setVariable MISSES +1`
+  on `timeout` / `avoidHit`) T · show results at the end (`summary` + `store…`) S · keep the last time
+  (`storeAs`) T · stopwatch (`timerStart`/`timerStop`) T · metric name E.
 
 ### 3.5 Settings (variables)
+Program numbers as labelled controls ("Rounds: 12") S · a setting instead of a fixed number in a step T ·
+create / rename / delete settings, built-ins E.
 
-| Capability | Level | Today |
-|---|---|---|
-| See the program's numbers as labelled controls ("Rounds: 12") | S | raw table |
-| Use a setting instead of a fixed number in a step | T | yes (# / variable switch) |
-| Create, rename, delete settings; built-ins `REQUIRED_PERIPHERALS`, `NODE_COUNT` | E | yes |
+- **Reuse:** recipes in "Add a step" S · library as preset or copy, convert to editable copy E.
+- **Menu entry, check and try:** name, description, LED pattern S · problems on the step in words S ·
+  simulator from anywhere S · undo / redo S · size as "uses 23 % of the space" S · steps the pod cannot run
+  marked S. "Save and add to menu" S; push stays on the Pod page.
 
-### 3.6 Reuse
+## 4. Flow
 
-| Capability | Level | Today |
-|---|---|---|
-| Recipe snippets in the add-step list ("Count a miss when too slow", "Pause between rounds") | S | no |
-| Library part as linked preset (locked) or as copy; "convert to editable copy" | E | yes |
-
-### 3.7 Menu entry
-
-Name, description and the LED pattern shown in the pod's menu: S (today: yes).
-
-### 3.8 Check and try
-
-| Capability | Level | Today |
-|---|---|---|
-| Problems shown on the step and in its sheet, in words | S | Check sheet only |
-| Try it in the simulator from anywhere | S | yes |
-| Undo / redo | S | yes |
-| Size budget as "uses 23 % of the space" | S | bytes |
-| Steps the connected pod cannot run are marked | S | yes |
-
-### 3.9 Get it onto the pods
-
-"Save and add to menu" ends the wizard and the editor: S. Push stays on the Pod page (spec §9).
-
-## 4. Redesigned flow
-
-```mermaid
-flowchart LR
-  P[Programs] -->|+| C{New program}
-  C -->|Start from a game| W1[1 Game] --> W2[2 Pods] --> W3[3 Rounds & timing] --> W4[4 Colours] --> W5[5 Measure] --> D[Ready]
-  C -->|Copy one| E
-  C -->|Empty| E
-  D -->|Try it| S[Simulator]
-  D -->|Change steps| E[Editor: step list]
-  D -->|Save & add to menu| M[Menu]
-  P -->|Adjust| A[Adjust sheet] --> S
-  E -->|tap step| SS[Step sheet]
-  E -->|+| AS[Add a step]
-  E -->|title| PS[Program sheet]
-  E -.->|More → Expert mode| X[Today's block view]
-```
+Programs → **+** → chooser (A) → wizard (B) → Ready: *Try it* (simulator), *Change steps* (editor C),
+*Save and add to menu*. Programs → *Adjust* (G). Editor: tap a step → step sheet (D); **+** → add a step
+(E); title → program sheet (F); More → expert mode (H).
 
 ### A. "New program" chooser
+Three cards: **Start from a game** (recommended), **Copy one of my programs**, **Start empty** ("for people
+who know blocks").
 
-Three large cards: **Start from a game** (recommended, with a short line per game), **Copy one
-of my programs**, **Start empty** (marked "for people who know blocks"). Replaces the name-only
-dialog.
+### B. Game wizard
+One question per screen, Back / Next, prefilled, ≤ 6 screens:
+1. Game: solo, star, random pod (never twice), all at once (with red pods), duo; animated LED preview and
+   the pod count. 2. Pods: stepper; games that need more are explained, not hidden. 3. Rounds and timing:
+   pause fixed / random between (seconds), time limit switch. 4. Colours: 8 named; red pods and their count
+   for "all at once". 5. Measure: record reaction (on), count misses (on with a time limit), show average and
+   best (on), catch false starts (solo only).
 
-### B. Game wizard (one screen per question, Back / Next, everything prefilled)
-
-1. **Game**: solo (central only), star (central and a random pod take turns), random pod (never
-   the same twice), all at once (with red "don't touch" pods), duo (two pods take turns). Each
-   card shows an animated LED preview and the pod count it needs.
-2. **Pods**: stepper "how many pods do you have", with a drawing of the set. Games that need more
-   pods are explained, not hidden.
-3. **Rounds and timing**: rounds; pause **fixed** or **random between** (seconds, not ms); time
-   limit switch.
-4. **Colours**: target colour from the 8 named colours; for "all at once", a switch for red pods
-   and their count.
-5. **Measure**: switches "Record reaction times" (on), "Count misses" (on when there is a time
-   limit), "Show average and best at the end" (on), "Catch false starts" (solo only).
-
-The last screen shows the name (prefilled, editable), the menu LED pattern and the program as
-a short story ("12 rounds: pause 1–3 s, light a random pod green, wait for the press (max 2 s)…").
-Actions: **Try it**, **Change steps**, **Save and add to menu**.
-
-The generated program is self-contained (spec §7.2: templates, not includes). The round steps
-follow the shipped programs (`star`, `random`, `multi`, `solo`, `duo`). The wizard's answers are
-written into variables (`ROUNDS`, `PAUSE_MIN_MS`…) and fields, so the Adjust sheet can change them
-later.
-
-The loop is a **`repeat` block** (decision 2): `count: "ROUNDS"`, `storeIndex: "RUNS"`, `body` =
-the first round step, `done` = the first step after the last round. The last round step and the
-early exits (false start, red pod hit) link back to the `repeat` block (programs.md §7.10). The
-wizard checks `info.programFormat` (`pod/session.ts` reads it already). If it is below 2 or
-missing, or no pod is connected and the program is pushed later to an older pod, the wizard
-uses the `lib/loop` pattern instead (`setVariable RUNS +1`, `if RUNS >= MAX_LOOPS`). The editor
-shows both forms as the same Repeat bracket.
+Ready screen: name (editable), menu pattern, the program as a short story ("12 rounds: pause 1–3 s, light a
+random pod green, wait for the press (max 2 s)…"). Generated programs are self-contained (templates), follow
+the shipped `star`, `random`, `multi`, `solo`, `duo`, use only blocks the firmware has, and write answers into
+variables (`ROUNDS`, `PAUSE_MIN_MS`, …) and fields so Adjust can change them. Loop (decision 2): a `repeat`
+block (`count: "ROUNDS"`, `storeIndex: "RUNS"`, `body` = first round step, `done` = first step after; the last
+round step and early exits link back) if `info.programFormat` ≥ 2; otherwise (older or no pod) the `lib/loop`
+pattern (`setVariable RUNS +1`, `if RUNS >= MAX_LOOPS`). Both show as the same Repeat bracket.
 
 ### C. Editor, simple view (default)
-
-- The column becomes a **numbered step list** in plain language: "Light all LEDs green", "Wait
-  1–3 s (random)", "Wait for a press · max 2 s · records time". Card summaries
-  (`editor/summary.ts`) get a sentence form.
-- Loops become a **"Repeat 12 rounds" bracket** around the steps. It is detected from `repeat`
-  (format 2) or from the `lib/loop` pattern (setVariable + if on a counter).
-- Branches are **chips** under the step: "If too slow → count a miss", "If a red pod is hit →
-  flash red". Tapping a chip opens the branch steps.
-- Block names, port names and the file path are not shown. Badges show on the card: a check
-  problem, "records time", "not supported by your pod".
-- One floating **+** adds a step after the selected step, or at the end of the round.
+Numbered step list in plain language (`editor/sentence.ts`): "Light all LEDs green", "Wait 1–3 s (random)",
+"Wait for a press · max 2 s · records time". Loops = "Repeat 12 rounds" bracket (from `repeat` or the
+`lib/loop` pattern, `editor/structure.ts`). Branches = chips under the step ("If too slow → count a miss");
+tapping opens the branch. No block names, port names or file paths; badges for a problem, "records time",
+"not supported by your pod". One floating **+** adds after the selected step or at the end of the round.
 
 ### D. Step sheet (replaces the inspector in the simple view)
+Top to bottom: 1. **Problems** in words. 2. **Essentials**: 1–3 large controls (swatches, LED ring, "which
+pod" chips Pod 1…n / random pod / random never the same twice (`editor/podChoice.ts`), pause with Fixed |
+Random). 3. **Feature switches** (`editor/switches.ts`): fields only when on; off removes the fields and the
+branch it created: *Time limit* (seconds, "If too slow → go on | count a miss | end the round"), *Record
+reaction time*, *Count a miss* (with a time limit or red pods), *Red "don't touch" pods* (count, colour, "If
+a red pod is hit → …"), *Catch early presses* (pause becomes the button-with-random-timeout pattern of
+`solo.json`), *Long press does something else* (hold time, second chip). 4. **More options** (collapsed):
+§5 "More". 5. **Actions**: add after, move up / down, duplicate, delete (undo toast). 6. **Expert** (expert
+mode): name, type, raw keys, a "go to" select per port, raw JSON.
 
-Order, top to bottom:
-
-1. **Problems** for this step, in words ("The shortest pause must be shorter than the longest").
-2. **Essentials**: 1–3 large controls (colour swatches, LED ring, "which pod" chips with "Pod 1…n",
-   "random pod", "random, never the same twice"; pause with a Fixed | Random switch).
-3. **Feature switches**. Each one shows its fields only when on, and turning it off removes the
-   fields and the branch it created:
-   - *Time limit* → seconds (+ "random" sub-switch) and "If too slow → go on | count a miss | end
-     the round"
-   - *Record reaction time*
-   - *Count a miss* (only with a time limit or red pods)
-   - *Red "don't touch" pods* → count, colour, "If a red pod is hit → …"
-   - *Catch early presses* (on a pause) → turns the pause into the button-with-random-timeout
-     pattern from `solo.json`
-   - *Long press does something else* → hold time, second chip
-4. **More options** (collapsed): tuning fields from the table in §5 (keep time in a setting,
-   colour after, sync start, include the central, stopwatch start/stop).
-5. **Actions**: add a step after, move up/down, duplicate, delete (with an undo toast).
-6. **Expert** (only in expert mode): step name, block type, raw keys, one "go to" select per
-   port, raw JSON.
-
-### E. "Add a step" by intent
-
-Tiles with an icon and one line: Light up the central, Pause, Wait for a press, Light a pod,
-Race: all pods at once, Count or remember, Decide, Repeat, Show results, Turn all pods off.
-Above them, **recipes** that add several blocks at once: "Count a miss when too slow", "Pause
-between rounds", "Flash red on a false start". In expert mode the tiles show the block type, and
-library parts (as copy or linked preset) come last.
+### E. "Add a step" by intent (`editor/AddStepSheet.tsx`, `stepRecipes.ts`)
+Tiles: Light up the central, Pause, Wait for a press, Light a pod, Race: all pods at once, Count or remember,
+Decide, Repeat, Show results, Turn all pods off. Above them recipes that add several blocks: "Count a miss
+when too slow", "Pause between rounds", "Flash red on a false start". Values come from the context (problem 5):
+colour of the previous light, the round's time limit; a value field never creates a variable by itself
+("new setting…" asks for a name). Expert mode shows block types and library parts last.
 
 ### F. Program sheet
+**Basics**: name, description, pods besides the central (picture stepper), menu pattern. **Settings you can
+tweak**: variables as labelled steppers; labels from a table in the app (decision 1,
+`editor/settingLabels.ts`, texts in en/de): `MAX_LOOPS`/`ROUNDS` → "Rounds", `PAUSE_MIN_MS` → "Shortest
+pause", a known `_MS` suffix → seconds; unknown names as is. **Expert**: start block, library parts,
+convert to editable copy, raw variables.
 
-- **Basics**: name, description, "pods besides the central" as a picture stepper, menu LED pattern.
-- **Settings you can tweak**: the program's variables as labelled steppers ("Rounds", "Pause min").
-  Labels come from a name table **in the app** (decision 1), e.g. `app/src/editor/settingLabels.ts`
-  with the texts in `i18n/en.json` and `de.json`: `MAX_LOOPS`/`ROUNDS` → "Rounds",
-  `PAUSE_MIN_MS` → "Shortest pause", a known `_MS` suffix → shown in seconds. Unknown names show
-  as is. The program file format does not change.
-- **Expert**: start block, library parts and "convert to editable copy", raw variables table.
-
-### G. Adjust sheet (coach shortcut, on the Programs page)
-
-"Adjust" on a program row opens a sheet with the program's settings (from F) and the switches
-that apply to the whole program (time limit, record times, results at the end). **Try it**
-and **Save** sit at the bottom. Adjust is offered for every program: mine, on the pod (also a
-read-only pod) and shipped (decision 3). Anything that is not already a local program is saved
-as a local copy with the same path, as Edit does today; the program on the pod stays as it is
-until the next push. The coach never has to open the editor for the weekly change.
-
-On a read-only pod the sheet says so before saving: the copy is kept on this phone and can be
-tried in the simulator or pushed to another set (decision 3).
+### G. Adjust sheet (Programs page)
+The program's settings (F) and whole-program switches (time limit, record times, results at the end), with
+**Try it** and **Save** at the bottom; for every program: mine, pod (also a read-only pod), shipped
+(decision 3). Non-local programs are saved as a local copy with the same path; the pod's file stays until the
+next push. On a read-only pod the sheet says the copy stays on this phone.
 
 ### H. Expert mode
-
-A switch under More (editor) and Settings → Advanced, remembered per device. When it is on, the
-step list shows block names and port arrows (today's `ProgramColumnView`), sheets show the
-expert section, and the palette shows block types. Nothing is removed: expert mode is today's
-editor.
+Switch under More (editor) and Settings → Advanced, remembered per device (`editor/expertMode.ts`): block
+names and port arrows (spec §7.1 column), expert sections in sheets, block types in the palette. Nothing is
+removed.
 
 ## 5. Field levels per block type
 
-**Essential** shows in the step sheet. **Switch** shows behind the named switch. **More** shows
-under "More options". **Expert** shows only in expert mode. Ports are named in words.
+**Essential** = step sheet, **Switch** = behind the named switch, **More** = More options, **Expert** = expert
+mode only. Metadata: `level` and `group` on `FieldDef` in `packages/program-model/src/blockTypes.ts` (shared
+with the platform), port labels per type.
 
-| Block | Essential | Switch | More | Expert | Port names |
-|---|---|---|---|---|---|
-| `led` | `color`, `leds` | – | `timerStart`/`timerStop` | name | – |
-| `delay` | `ms` or `minMs`+`maxMs` (Fixed / Random switch) | *Catch early presses* (becomes a `button`) | timers | | – |
-| `button` | – | *Time limit*: `timeoutMs` / `minTimeoutMs`+`maxTimeoutMs`, `timeout`; *Record*: `record`; *Long press*: `shortMs`, `short`, `long` | `storeAs`, timers | `pressed` vs `next`, metric name | pressed/next "Then", timeout "If too slow", short "Short press", long "Long press" |
-| `remotePress` | `pod` (chips), `color` | *Time limit*: `timeoutMs`, `timeout`; *Don't touch*: `mode: avoid`; *Record*: `record` | `colorAfter`, `storeAs`, timers | metric name | timeout "If too slow" (avoid: "If left alone") |
-| `remoteMultiPress` | `hitColor`, `pods` (all / pick) | *Red pods*: `avoid`, `avoidColor`, `avoidHit`; *Time limit*: `timeoutMs`; *Record*: `record` | `includeCentral`, `syncStartMs`, timers | metric name | avoidHit "If a red pod is hit", timeout "If too slow" |
-| `remoteResetAll` | – | – | `pods`, `ledsOff` | | – |
-| `setVariable` | `var` (pick, with "new setting…"), `op` in words, `value` | – | – | raw op | – |
-| `if` | `left`, `op` in words ("is at least"), `right` | – | – | raw op | true "If yes", false "If no" |
-| `summary` | what to show: average / best / worst / count (each creates its `store…` variable) | – | `reset` | `metric` | – |
-| `repeat` (format 2) | `count` | – | `storeIndex` | | body "Each round", done "After the last round" |
+| Block | Essential | Switch | More | Expert |
+|---|---|---|---|---|
+| `led` | `color`, `leds` | – | timers | name |
+| `delay` | `ms` or `minMs`+`maxMs` | *Catch early presses* (→ `button`) | timers | |
+| `button` | – | *Time limit* `timeoutMs`, `timeout`; *Record* `record`; *Long press* `shortMs`, `short`, `long` | `storeAs`, timers | `pressed` vs `next`, metric |
+| `remotePress` | `pod`, `color` | *Time limit*; *Don't touch* `mode: avoid`; *Record* | `colorAfter`, `storeAs`, timers | metric |
+| `remoteMultiPress` | `hitColor`, `pods` | *Red pods* `avoid`, `avoidColor`, `avoidHit`; *Time limit*; *Record* | `includeCentral`, `syncStartMs`, timers | metric |
+| `remoteResetAll` | – | – | `pods`, `ledsOff` | |
+| `setVariable` | `var` (pick / "new setting…"), `op` in words, `value` | – | – | raw op |
+| `if` | `left`, `op` in words ("is at least"), `right` | – | – | raw op |
+| `summary` | average / best / worst / count (each creates its `store…` variable) | – | `reset` | `metric` |
+| `repeat` | `count` | – | `storeIndex` | |
 
-Defaults that remove problem 5: new steps get their values from the recipe or the step before
-(colour of the previous light, the time limit already used in the round). A `value` field never
-creates a variable on its own; "new setting…" asks for a name.
+Newer blocks (`effect`, `charge`, `release`, `toggle`, `communicate`) have their own steps
+(`editor/effectStep.ts`, `holdStep.ts`, `toggleStep.ts`, `ListFields.tsx`, `countdown.ts`).
 
-Implementation: add `level: "essential" | "more" | "expert"` and an optional `group` (switch id)
-to `FieldDef` in `packages/program-model/src/blockTypes.ts`, plus port labels per type. The app
-and the platform then read the same table.
+**Port names** (in words): pressed / next "Then", timeout "If too slow" (avoid pod: "If left alone"), short
+"Short press", long "Long press", avoidHit "If a red pod is hit", true / false "If yes" / "If no", body
+"Each round", done "After the last round"; app-only role `ifPressedEarly` for the false-start press.
 
-## 6. Phase P8
+## 6. Decisions (2026-10-21)
+1. Setting labels live in the app (name table); the program file gets no new key.
+2. The wizard uses `repeat` with `programFormat` ≥ 2, else the `lib/loop` pattern.
+3. Adjust is offered on a read-only pod too; it saves a local copy and says it cannot be pushed there.
 
-| Step | Content |
-|---|---|
-| P8a | Program model to format 2 (`repeat`, timers); `level`/`group` metadata; step sheet with switches and More options; expert section; inline problems |
-| P8b | Sentence summaries, step list with Repeat bracket and branch chips; move up/down; delete with undo toast |
-| P8c | "New program" chooser and game wizard. Generator with two loop forms (`repeat` for format 2, `lib/loop` pattern for format 1); tests that each recipe in each form validates and runs in the simulator |
-| P8d | "Add a step" by intent, recipes |
-| P8e | Program sheet split, settings label table in the app (en + de), Adjust sheet on Programs for every source, expert mode switch |
-
-Each step gets acceptance tests in [acceptance-tests.md](acceptance-tests.md) before it is
-marked done (AT-E*). Generated programs use only blocks the firmware already has. The
-simulator and the demo pod get format 2 (`repeat`, timers, programs.md §7.9, §7.10) in P8a;
-they do not have it yet, and the firmware does since 2.8.
-
-## 7. Decisions (2026-10-21)
-
-1. **Setting labels live in the app.** A name table in the app maps variable names to labels and
-   units. The program file gets no new key, so no firmware change is needed.
-2. **The wizard uses the `repeat` block** when the pod reports `programFormat` 2 or newer, and
-   the `lib/loop` pattern otherwise.
-3. **Adjust is offered for programs on a read-only pod too.** It saves a local copy and says
-   that the copy cannot be pushed to that pod. Implemented in P8e (confirmed 2026-10-21).
-
-## 8. As built (2026-10-21)
-
-Where the app differs from the text above, and why:
+## 7. As built – deviations
 
 | Topic | As built | Reason |
 |---|---|---|
-| Port role "If pressed too early" | The false-start press (button used as a pause) has its own role `ifPressedEarly`, app only | The model's roles describe the block, not this pattern |
-| Time limit of a press | Fixed only; existing random limits still show both values | A random limit without a recorded time is how the step list recognises a false-start pause |
-| "Don't touch" on a single pod | Turning it on also sets a time limit and stops recording; turning it off does not restore the old values exactly | A red pod without a time limit waits forever |
-| "End the round" when too slow | Not offered for "all at once" (also not in the wizard) | Its pods stay lit after a timeout, so the round goes on anyway |
-| Adjust, Try it | With unsaved changes the button is "Save and try" | The simulator opens saved programs only |
-| Adjust, switches | Shipped programs built only from library parts (Stern, Run5) show no program switches; Duo has no results switch | Switches change the program's own steps; library parts are read-only until converted |
-| Add a step | "Light a pod" and "Race" are off while the program uses no pods; "Race" also adds "Turn all pods off"; "Repeat" adds 3 rounds with a 1 s pause; recipes do not reset Misses between series | Keep the program valid and runnable after every single tap |
-| Reversed range | New validator warning `rangeReversed` (app and `tools/validate_programs.py`): shortest time above longest, variables with their start value | The firmware then always uses the shortest time (programs.md §7.3), so "random" is silently fixed |
+| false-start press | own port role `ifPressedEarly` (app only) | the model's roles describe the block, not the pattern |
+| time limit of a press | fixed only; existing random limits show both values | a random limit without a recorded time marks a false-start pause |
+| "Don't touch" on one pod | on: also sets a time limit, stops recording; off: does not restore exactly | a red pod without a limit waits forever |
+| "End the round" when too slow | not for "all at once" | its pods stay lit after a timeout |
+| Adjust with unsaved changes | "Save and try" | the simulator opens saved programs only |
+| Adjust switches | none for programs built only from library parts (Stern, Run5); Duo has no results switch | switches edit the program's own steps |
+| Add a step | "Light a pod" / "Race" off without pods; "Race" adds "Turn all pods off"; "Repeat" adds 3 rounds with 1 s pause; recipes do not reset Misses between series | valid and runnable after every tap |
+| reversed range | validator warning `rangeReversed` (app and `validate_programs.py`) | the firmware then always uses the shortest time (programs.md §7.3) |

@@ -1,9 +1,9 @@
 # Deploying the platform on a VPS (Hetzner)
 
 One server runs the API, Postgres and Caddy (HTTPS) with Docker Compose
-([compose.yaml](compose.yaml)). CI builds the image `ghcr.io/runningjoke/reactpod-platform`
-and deploys over SSH ([.github/workflows/platform.yml](../../.github/workflows/platform.yml)).
-The deploy job is skipped until the secrets below exist.
+([compose.yaml](compose.yaml)). Planned: a CI workflow `.github/workflows/platform.yml` builds the
+image `ghcr.io/runningjoke/reactpod-platform` and deploys over SSH once the secrets below exist. **That
+workflow is not in the repository** (platform on hold, ADR 0007); until it is added, build and deploy by hand.
 
 ## One-time server setup
 
