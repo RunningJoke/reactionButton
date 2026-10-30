@@ -115,3 +115,8 @@ sign-in codes in the log; real Postgres: `docker compose -f compose.dev.yaml up 
 - `firmware/data/` goes to the pods from the CRLF working copy, Pages bundles LF. The app compares programs
   by JSON content, so only CRCs differ (restore defaults may re-upload shipped files).
 - `gh` is logged in for `RunningJoke/reactionButton`.
+
+
+## graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.

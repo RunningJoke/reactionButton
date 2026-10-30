@@ -6,3 +6,4 @@ firmware/.vscode/launch.json
 firmware/.vscode/ipch
 hardware/pcb/PCB Board/PCB Board-backups
 __pycache__/
+graphify-out
