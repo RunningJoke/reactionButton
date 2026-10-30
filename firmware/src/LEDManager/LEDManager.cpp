@@ -77,9 +77,10 @@ bool LEDManager::colorOf(uint8_t colorId, ColorSet& out)
         case 4: out = ColorSet{255, 0, 255}; return true;
         case 5: out = ColorSet{0, 255, 255}; return true;
         case 6: out = ColorSet{255, 255, 255}; return true;
-        case 7: out = ColorSet{255, 128, 0}; return true;
-        case 8: out = ColorSet{128, 0, 255}; return true;
-        case 9: out = ColorSet{255, 160, 0}; return true;     // amber (Protocol::Color::AMBER)
+        case 7: out = *ORANGE; return true;
+        case 8: out = *VIOLET; return true;
+        case 9: out = *AMBER; return true;
+        case 10: out = *CREAM; return true;
         case 255: out = ColorSet{0, 0, 0}; return true;
     }
     return false;
@@ -99,6 +100,7 @@ void LEDManager::setLEDColors(uint8_t colorId)
         case 7: this->setLEDColors(ORANGE); break;
         case 8: this->setLEDColors(VIOLET); break;
         case 9: this->setLEDColors(AMBER); break;
+        case 10: this->setLEDColors(CREAM); break;
         case 255: this->setLEDColors(BLACK); break;
     }
 }
@@ -217,9 +219,33 @@ bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs, uint32_t 
     }
 
     OutputGuard guard(this->outputMutex);
-    int64_t now = esp_timer_get_time();
     this->effect = effect;
+    this->mode = Mode::EFFECT;
     this->ledMask = ledMask & ALL_LEDS;
+    this->startPlayer(startUs);
+    return true;
+}
+
+void LEDManager::playPattern(SystemPattern::Id id, const SystemPattern::Args& args, int64_t startUs)
+{
+    if(id == SystemPattern::Id::NONE || (uint8_t)id >= (uint8_t)SystemPattern::Id::COUNT_) {
+        this->turnOff();
+        return;
+    }
+    OutputGuard guard(this->outputMutex);
+    for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
+        this->snapshot[i] = this->pixelManager->getPixelColor(i);
+    }
+    this->pattern = id;
+    this->patternArgs = args;
+    this->mode = Mode::PATTERN;
+    this->ledMask = ALL_LEDS;
+    this->startPlayer(startUs);
+}
+
+void LEDManager::startPlayer(int64_t startUs)
+{
+    int64_t now = esp_timer_get_time();
     this->effectStart = startUs == 0 ? now : startUs;
     this->lastFrameUs = INT64_MIN / 2;                  // first frame is never throttled
     memset(this->frame, 0xFF, sizeof(this->frame));     // differs from every real frame (24 bit colours)
@@ -231,7 +257,12 @@ bool LEDManager::playEffect(const EffectDesc& effect, int64_t startUs, uint32_t 
         esp_timer_stop(this->startTimer);               // not running: error, ignored
         esp_timer_start_once(this->startTimer, (uint64_t)(this->effectStart - now));
     }
-    return true;
+}
+
+uint32_t LEDManager::playingDurationMs() const
+{
+    return this->mode == Mode::PATTERN ? SystemPattern::durationMs(this->pattern, this->patternArgs)
+                                       : this->effect.durationMs;
 }
 
 void LEDManager::onStartTimer(void* arg)
@@ -250,11 +281,29 @@ void LEDManager::serviceEffect()
         return;     // not started yet
     }
     // frame rate limit, except for the end frame (a countdown ends on time)
-    bool ended = this->effect.durationMs != 0 && now - this->effectStart >= (int64_t)this->effect.durationMs * 1000;
+    uint32_t durationMs = this->playingDurationMs();
+    bool ended = durationMs != 0 && now - this->effectStart >= (int64_t)durationMs * 1000;
     if(!ended && now - this->lastFrameUs < MIN_FRAME_US) {
         return;
     }
     this->renderEffect(now);
+}
+
+bool LEDManager::renderPattern(uint32_t elapsedMs, uint32_t* next)
+{
+    SystemPattern::Pixel pixels[SystemPattern::LEDS];
+    bool ended = SystemPattern::render(this->pattern, this->patternArgs, elapsedMs, pixels);
+    for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
+        const SystemPattern::Pixel& p = pixels[i];
+        // gamma 2: levels are perceived brightness, so dim breathing does not jump at the low end
+        uint8_t level = p.level == 0 ? 0 : (uint8_t)(((uint32_t)p.level * p.level + 254) / 255);
+        if(!p.snapshot) {
+            next[i] = this->scaled(p.color, level);
+        } else {
+            next[i] = level != 0 && this->snapshot[i] == 0 ? this->scaled(p.color, level) : this->snapshot[i];
+        }
+    }
+    return ended;
 }
 
 void LEDManager::renderEffect(int64_t nowUs)
@@ -299,7 +348,10 @@ void LEDManager::renderEffect(int64_t nowUs)
     const uint32_t off = this->scaled(c2, e.brightness);
 
     uint32_t next[NEOPIXEL_SIZE];
-    if(finished && (e.flags & Protocol::EFFECT_FLAG_END_OFF) != 0) {
+    if(this->mode == Mode::PATTERN) {
+        still = false;      // the effect fields above belong to the last effect, not to the pattern
+        finished = this->renderPattern(elapsedMs, next);
+    } else if(finished && (e.flags & Protocol::EFFECT_FLAG_END_OFF) != 0) {
         fillAll(next, 0);
     } else {
         switch(e.effect) {

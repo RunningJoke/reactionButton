@@ -50,7 +50,7 @@ namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
     const uint8_t VERSION = 1;          // frame header version, see "Extensions" above
-    const uint8_t REVISION = 4;         // link protocol revision (reported as info.linkRevision)
+    const uint8_t REVISION = 5;        // link protocol revision (reported as info.linkRevision)
     const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
@@ -100,6 +100,7 @@ namespace Protocol {
         const uint8_t ORANGE = 7;
         const uint8_t VIOLET = 8;
         const uint8_t AMBER = 9;        // local only (battery warning on the pod itself, firmware >= 2.13), not sent by programs
+        const uint8_t CREAM = 10;       // identity colour of pod 7 (firmware >= 2.15), never sent by programs
         const uint8_t OFF = 255;
     }
 

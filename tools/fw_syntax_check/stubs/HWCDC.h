@@ -16,4 +16,5 @@ public:
     using Print::write;
     void flush() override {}
     operator bool() const { return true; }
+    static bool isPlugged() { return false; }
 };

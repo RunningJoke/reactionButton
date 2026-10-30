@@ -21,3 +21,4 @@ extern ColorSet* const WHITE;
 extern ColorSet* const ORANGE;
 extern ColorSet* const VIOLET;
 extern ColorSet* const AMBER;
+extern ColorSet* const CREAM;
