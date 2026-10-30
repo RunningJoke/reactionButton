@@ -11,8 +11,8 @@
 /**
  * PERIPHERAL role.
  *
- *   UNCLAIMED  yellow. Broadcasts HELLO every 250 ms until a central of its set (or any
- *              central, if unpaired) claims it. Holding the button 3 s clears the pairing.
+ *   UNCLAIMED  SEARCH pattern (light language, #82). Broadcasts HELLO every 250 ms until a central of
+ *              its set (or any central, if unpaired) claims it. Holding the button 3 s clears the pairing.
  *   READY      off. Sends PING every 200 ms (heartbeat + clock sync).
  *   SCHEDULED  armed with a start time; lights up when the synchronised clock reaches it.
  *   ACTIVE     lit (colorActive, or the ARM's waiting effect), waiting for a press. The
@@ -27,8 +27,9 @@
  * EFFECT frames play an effect on the ring in any claimed state; they do not change the
  * state. Effect start times are converted to the local clock with ClockSync.
  *
- * Identity (LEDManager/Identity.h): a READY pod shows its number for a short time after the claim,
- * and spins it while the central is in the menu, discovery or confirm (PONG_FLAG_IDENTIFY). An EFFECT
+ * Identity (LEDManager/Identity.h, SystemPattern JOINED): a READY pod shows its number (JOINED) for a short
+ * time after the claim, and keeps it while the central is in the menu, discovery or confirm
+ * (PONG_FLAG_IDENTIFY); otherwise it is dark. A low battery replaces it with LOW_BATTERY. An EFFECT
  * (the central's blink) takes the ring for its length; the identity comes back afterwards.
  *
  * Without PONG from the central for 2 s the pod goes back to UNCLAIMED and can be
@@ -53,12 +54,13 @@ class PeripheralRole : public IRole {
 
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };
-        enum class IdentityShow : uint8_t { NONE, FLASH, LOW_BATTERY, SPIN };
+        enum class IdentityShow : uint8_t { NONE, JOINED, LOW_BATTERY };
 
         static const int64_t HELLO_INTERVAL_US = 250000;
         static const int64_t PING_INTERVAL_US = 200000;
         static const int64_t CENTRAL_TIMEOUT_US = 2000000;
         static const int64_t PAIR_RESET_HOLD_US = 3000000;
+        static const int64_t CLAIM_JOINED_US = 1500000;     // JOINED after a claim, then the identify flag decides
 
         void handleFrame(const RxFrame& frame);
         void handleClaim(const RxFrame& frame);
@@ -90,9 +92,8 @@ class PeripheralRole : public IRole {
         bool pairResetDone = false;
 
         // identity display (see the class comment)
-        uint8_t ownMac[6];
         bool identifyWanted = false;                // PONG_FLAG_IDENTIFY of the last PONG
-        int64_t identityFlashUntilUs = 0;           // static number after a claim
+        int64_t claimJoinedUntilUs = 0;             // JOINED after a claim until then
         int64_t identityBlockedUntilUs = 0;         // an EFFECT from the central owns the ring until then
         IdentityShow identityShown = IdentityShow::NONE;
 
