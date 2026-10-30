@@ -10,4 +10,5 @@ BaseType_t xQueueSend(QueueHandle_t queue, const void* item, TickType_t wait);
 BaseType_t xQueueSendToBack(QueueHandle_t queue, const void* item, TickType_t wait);
 BaseType_t xQueueReceive(QueueHandle_t queue, void* buffer, TickType_t wait);
 BaseType_t xQueueReset(QueueHandle_t queue);
+BaseType_t xQueuePeek(QueueHandle_t queue, void* buffer, TickType_t wait);
 UBaseType_t uxQueueMessagesWaiting(QueueHandle_t queue);

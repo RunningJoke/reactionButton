@@ -56,7 +56,7 @@ Program/ProgramCatalog  menu from /programs.json
 Input/Button        debounced, edge counters, µs timestamps
 Results/            Results (records, statistics, RESULT/SUMMARY lines), Reports (log + report buffer)
 VariableManager/    int64 variables, names resolved to ids at load
-LEDManager/         NeoPixel wrapper, patterns, effect player, Identity.h, EffectJson
+LEDManager/         NeoPixel wrapper, effect player, SystemPattern (§7.1), Identity.h, EffectJson
 ColorSet/           RGB + colour constants
 ```
 
@@ -65,7 +65,8 @@ Managers are lazily created singletons (`getManager()`), allocated once, never f
 
 ## 4. Boot
 
-Power on → Serial, SPIFFS, pins → battery gauge 2 s (ring filled to the charge) → button held at the end?
+Power on → Serial, SPIFFS, pins → BOOT pattern 2.6 s (§7.1: battery gauge 1 s, then white fills the ring in
+1.6 s) → button held at the end?
 yes: `CentralRole` (BLE `ReactPod xxxx`), no: `PeripheralRole` (ESP-NOW, HELLO). The role changes only by
 reboot. Wake from deep sleep is a normal boot.
 
@@ -75,8 +76,9 @@ reboot. Wake from deep sleep is a normal boot.
 
 | State | Enter / behaviour |
 |---|---|
-| UNCLAIMED | yellow + a MAC-derived 2-LED segment (fw ≥ 2.13); HELLO every 250 ms; hold the button 3 s → set id cleared (white flash) |
-| READY | CLAIM from a central of its set (or any, if unpaired); PING every 200 ms; identity number for 1.5 s, then spins while the central sets the identify flag (link-protocol §2.4) |
+| UNCLAIMED | SEARCH: amber spot bouncing over LEDs 8–17 (fw ≥ 2.15; 2.13–2.14: yellow + MAC-derived 2-LED segment); HELLO every 250 ms; hold the button 3 s → set id cleared (white flash 0.5 s) |
+| READY | CLAIM from a central of its set (or any, if unpaired); PING every 200 ms; JOINED while the central sets the identify flag: n LEDs (pod n) flash twice, then 30 %; LEDs 8–17 breathe green. A re-claim flashes again (fw ≥ 2.15; 2.13–2.14: number, then spin; link-protocol §2.4) |
+| READY, battery < 15 % | LOW_BATTERY replaces JOINED: LED 9 amber, 200 ms on per second (§7.1) |
 | SCHEDULED | ARM with a start time; → ACTIVE when the synced clock reaches it |
 | ACTIVE | LEDs updated, then `t0` taken; only presses that start after count; reaction = press edge − `t0` (µs) |
 | DONE | press reported (PRESSED); → READY on RESET |
@@ -89,12 +91,13 @@ order. An EFFECT takes the ring until it ends; ARM or RESET gives the ring back 
 
 | State | Enter / behaviour |
 |---|---|
-| MENU | menu from `/programs.json`, current pattern shown at once; the boot hold is ignored until released; short press (< 1 s) = next program, long press (~1.8 s, white group ramps up) = load it; MaxLoop override read now |
+| MENU | menu from `/programs.json`, the program's own pattern shown at once (static); the boot hold is ignored until released; short press (< 1 s) = next program; hold: after 200 ms SELECT (white fills clockwise, full at 1.8 s = load it), released earlier: SELECT_CANCEL (§7.1); MaxLoop override read now |
+| SELECTED | the ring flashes white twice (0.7 s), then DISCOVERY |
 | ERROR | no programs or load error: red blink (1 s on/off), reboot needed. Programs can still be uploaded |
-| DISCOVERY | non-blocking, one claim per HELLO; SOLO (0 peripherals) never starts ESP-NOW |
-| CONFIRM | all required pods claimed (blue progress bar); a press that starts after entering starts the game (LEDs green); earlier events dropped |
+| DISCOVERY | non-blocking, one claim per HELLO; LEDs 0–7 pod markers in the pod colour, SEARCH on 8–17 (§7.1); SOLO (0 peripherals) never starts ESP-NOW |
+| CONFIRM | all required pods claimed: READY (whole ring breathes green); a press that starts after entering starts the game; earlier events dropped. Start refused below 5 % battery: red 1 s |
 | RUN | the game |
-| PAUSED | a pod silent > 1.5 s (all yellow) or phone `pause` (`phonePaused`). Pod loss resumes by itself when all are back; a phone pause only with `resume` (config-api §5). The current block is left and re-entered (re-arms its pods) |
+| PAUSED | PAUSED pattern (whole ring breathes amber) for a pod silent > 1.5 s or phone `pause` (`phonePaused`). Pod loss resumes by itself when all are back; a phone pause only with `resume` (config-api §5). The current block is left and re-entered (re-arms its pods) |
 
 BLE (fw ≥ 2.12, `liveBle`, ADR 0005) stays connected in every state; `PhoneConfig::service()` runs in
 `CentralRole::run()`, responses go out from a sender task (link-protocol §6). Lights with a start time
@@ -170,7 +173,8 @@ Unknown variables read 0.
 ## 7. LEDs (`LEDManager`)
 
 - Colour index on the wire: `0 red, 1 green, 2 blue, 3 yellow, 4 magenta, 5 cyan, 6 white, 7 orange, 8 violet,
-  255 off`; 7 and 8 are identity colours, pods only. Other values ignored.
+  10 cream, 255 off`; 7, 8 and 10 are identity colours, pods only (10 from fw 2.15). 9 amber is local only
+  (battery warning, system patterns), never sent by a central. Other values ignored.
 - Static calls: `setLEDColors(ColorSet*)`, `(colorId)`, `(index, ColorSet*)`, `(LEDPattern*)` (≤ 8 palette
   colours, 3 bits × 18 in a `uint64_t`, optional animation), `setSegment(first, count, colorId, restId)`.
   Every static call stops a running effect.
@@ -183,9 +187,43 @@ Unknown variables read 0.
 - Other pods: `IPodNetwork::effect(pod, desc, startAtUs)`, `ArmCommand::waiting`; check
   `supportsEffects(pod)`, older pods get static colours. `Block/EffectTarget` and `Block/Countdown` build
   `EffectDesc`s from block fields; `LEDManager/EffectJson` parses the `effect` test op.
-- Identity (fw ≥ 2.13): palette and timings in `LEDManager/Identity.h`, drawn by
-  `PeripheralRole::updateIdentity`; the central's own `blink` is white (`CentralRole::opBlink`); the menu
-  flag goes out through `PodNetwork::setIdentify`.
+- `playPattern(SystemPattern::Id, Args, startUs)` (fw ≥ 2.15, #82): plays a system pattern (§7.1) on the same
+  effect player. A pattern is a pure function of the time since its start, like an effect. The ring as it is
+  when a pattern starts is the snapshot that SELECT / SELECT_CANCEL draw over. A pattern ends an effect and
+  the other way round; every static call stops both. `currentPattern()` gives the last one. Patterns are
+  firmware only: not on the link, not in programs. Levels are perceived brightness (gamma 2), shown at 50 % of the game brightness (`SYSTEM_LEVEL`): close range only; games stay at full brightness.
+- Identity (fw ≥ 2.13): palette in `LEDManager/Identity.h` (fw ≥ 2.15: blue, cyan, violet, magenta, yellow,
+  orange, cream), drawn by `PeripheralRole::updateIdentity` (fw ≥ 2.15: JOINED pattern, n LEDs); the
+  central's own `blink` is white (`CentralRole::opBlink`); the menu flag goes out through
+  `PodNetwork::setIdentify`.
+
+### 7.1 Light language (fw ≥ 2.15, #82)
+
+Pattern names as in `SystemPattern.h` (test op `pattern`, config-api §5). Timings in ms. Levels are
+perceived brightness (gamma 2). `Snapshot` = the ring as it was when the pattern started. Light lab values
+for orange, violet and cream are provisional until checked on the real LEDs (bright hall, 1 m and 10 m).
+
+| State | Pattern | Colour | Timing |
+|---|---|---|---|
+| Power-on (every pod) | BOOT | battery gauge blue-cyan (0, 70, 255) at 60 % ( amber below 20 %; full without a reading), then white | gauge fills with ease-out in 500, holds to 1000; white fills the ring over 1600 (timer). Total 2600. Button held at the end → central, else peripheral. Wake from deep sleep too |
+| Peripheral unclaimed | SEARCH | amber spot with a 3-LED tail over LEDs 8–17 | 2000 per way, reverses at the ends; not synced |
+| Peripheral: hold 3 s | (white flash) | white, whole ring | 500; pairing cleared |
+| Peripheral claimed, central in MENU / DISCOVERY / CONFIRM (identify flag) | JOINED | own colour on LEDs 0 … n−1 (pod n): two flashes, then 30 %. LEDs 8–17 green | flash 225 each; green breathes 2200 (floor 15 %). Flag cleared: dark. A re-claim flashes again |
+| Peripheral claimed, battery < 15 %, idle | LOW_BATTERY | amber, LED 9 only (replaces JOINED) | 200 on per 1000; 5 % between |
+| Central MENU | MENU | the program's menu pattern (snapshot) | static; breathes 2200 (floor 15 %) while a phone is connected |
+| Central MENU, button held | SELECT | white fills clockwise over the snapshot | starts after 200; fill 1600 (full at 1800 = selected) |
+| Central MENU, button let go early | SELECT_CANCEL | white drains back to the snapshot | same speed as the fill |
+| Program selected | SELECTED | whole ring white | two flashes, 150 on / 150 off; 700, then discovery |
+| Central DISCOVERY | DISCOVERY | LEDs 0–7: pod i+1 marker in its colour at 25 %, full once claimed; SEARCH on 8–17 | – |
+| Central CONFIRM (all pods here) | READY | whole ring green | breathes 2200 (floor 15 %) |
+| Start refused (pod < 5 %) | – | red, whole ring | 1000, then READY again |
+| Central PAUSED | PAUSED | whole ring amber | breathes 2600 (floor 15 %) |
+| Central ERROR | – | red | blink 1000 on / 1000 off (unchanged) |
+| Auto power-off | SLEEP | white ring drains anticlockwise with ease-out while dimming to dark | drain 1600, dim 2000, then deep sleep (§8.2) |
+| Game | – | owned by the program (effects, colours) | unchanged |
+
+Breathing: raised cosine between the floor and full; it starts at the floor, so dark never means breathing.
+Colours: cyan, green, amber, red, white from `ColorSet`; the pod colour from `Identity::colorOf` (§7).
 
 ## 8. Power (fw ≥ 2.14, #21)
 
@@ -199,8 +237,9 @@ games never wait (timing §1).
 without a phone (`PhoneConfig::connected()`). Not allowed: any claimed peripheral, central with a phone or
 in DISCOVERY / CONFIRM / RUN / PAUSED / ERROR. A press (or held button) and a USB host
 (`HWCDC::isPlugged()`; a plain charger is no host) restart the idle time. `status.powerOff {idleMs,
-limitMs, usbHost}` counts `idleMs` as if no host were connected. After `AUTO_POWER_OFF_MINUTES` (10): white
-drain 1.2 s, `sleep` event, deep sleep with GPIO 3 LOW wake-up → normal boot.
+limitMs, usbHost}` counts `idleMs` as if no host were connected. After `AUTO_POWER_OFF_MINUTES` (10): SLEEP
+pattern (§7.1: white drains anticlockwise with ease-out in 1.6 s while dimming to dark over 2 s), `sleep`
+event, deep sleep with GPIO 3 LOW wake-up → normal boot (BOOT pattern).
 
 Limits: the WS2812s keep drawing ≈ 0.5–1 mA each unless their supply is switched (check the schematic
 for an LED power switch); the power switch cuts everything. A sleeping pod cannot answer HELLO: press

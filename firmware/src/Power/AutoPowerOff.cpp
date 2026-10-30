@@ -10,17 +10,12 @@
 namespace {
     const uint32_t IDLE_LIMIT_MS = AUTO_POWER_OFF_MINUTES * 60UL * 1000UL;
 
-    // goodbye: the ring drains in white over 1.2 s, then the pod sleeps (EffectId::DRAIN, LEDs off at the end)
-    const uint32_t GOODBYE_MS = 1200;
-    const Protocol::EffectDesc GOODBYE = {Protocol::EffectId::DRAIN, Protocol::Color::WHITE, Protocol::Color::OFF,
-                                          255, GOODBYE_MS, 0, 0, 0};
-
     uint32_t lastActivityMs = 0;
     uint32_t lastActivityNoUsbMs = 0;   // the same without the USB rule, for status (tests over USB)
     uint32_t lastPressCount = 0;
 
-    // Shows the goodbye and enters deep sleep. Does not return. The effect is driven here, because the
-    // loop does not run during the sleep sequence.
+    // Shows the goodbye (SystemPattern::SLEEP: white drains, the LEDs dim to off) and enters deep sleep.
+    // Does not return. The pattern is driven here, because the loop does not run during the sleep sequence.
     void sleepNow() {
         JsonDocument event;
         event["event"] = "sleep";
@@ -30,13 +25,13 @@ namespace {
         Console.flush();
 
         LEDManager* leds = LEDManager::getManager();
-        leds->playEffect(GOODBYE);
-        int64_t end = esp_timer_get_time() + (int64_t)GOODBYE_MS * 1000;
+        leds->playPattern(SystemPattern::Id::SLEEP);
+        int64_t end = esp_timer_get_time() + (int64_t)SystemPattern::SLEEP_MS * 1000;
         while(esp_timer_get_time() < end) {
             leds->service();
             delay(1);
         }
-        leds->service();        // the end frame (all LEDs off)
+        leds->service();        // the end frame (dark)
         leds->turnOff();
 
         Diag::step("sleep");

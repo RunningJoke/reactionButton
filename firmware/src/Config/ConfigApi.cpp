@@ -145,12 +145,13 @@ void ConfigApi::opHelp(JsonDocument& response) {
     }
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
-        const char* central[] = {"programs", "select", "start", "press", "effect", "blink", "stop",
+        const char* central[] = {"programs", "select", "start", "press", "effect", "pattern", "blink", "stop",
                                  "reports", "ack", "command", "setVariables", "session", "pause", "resume"};
         for(const char* op : central) ops.add(op);
     } else {
         ops.add("press");
         ops.add("effect");
+        ops.add("pattern");
     }
     response["transport"] = this->transport;
 }
@@ -214,6 +215,7 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("liveBle");
     features.add("identify");
     features.add("battery");
+    features.add("patterns");
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));

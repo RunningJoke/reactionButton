@@ -7,6 +7,7 @@
 #include <freertos/semphr.h>
 #include "ColorSet/ColorSet.h"
 #include "Link/Protocol.h"
+#include "LEDManager/SystemPattern.h"
 #include "_Definitions.h"
 
 #define LED_PIN 7
@@ -61,6 +62,10 @@ struct LEDPattern {
  * All output is scaled by the brightness cap (LED_BRIGHTNESS_CAP in _Definitions.h, #21). Every
  * write to the driver goes through present(), which calls show() only when the buffer differs from
  * the last frame sent. Static calls therefore cost no LED time when nothing changes.
+ *
+ * System patterns (fw >= 2.15, #82): the firmware's own signals (boot, search, joined, ...) are played the
+ * same way with playPattern (SystemPattern.h). They share the effect player: a pattern ends an effect and the
+ * other way round, and every static call stops both. Pattern levels are perceived brightness (gamma 2).
  */
 class LEDManager {
     protected:
@@ -94,6 +99,10 @@ class LEDManager {
         // Returns false (nothing changed) for an unknown effect id.
         bool playEffect(const Protocol::EffectDesc& effect, int64_t startUs = 0, uint32_t ledMask = ALL_LEDS);
 
+        // Plays a system pattern (SystemPattern.h), firmware only. startUs as for playEffect. The ring as it is
+        // now is kept as the snapshot that SELECT / SELECT_CANCEL draw over.
+        void playPattern(SystemPattern::Id id, const SystemPattern::Args& args = SystemPattern::Args(), int64_t startUs = 0);
+
         // Stops the effect; the LEDs keep the last frame
         void stopEffect() { this->effectState = EffectState::IDLE; }
 
@@ -110,7 +119,15 @@ class LEDManager {
         // Id of the last effect played (NONE after a static call or stop). A finished or static
         // effect keeps its id, isAnimating() tells whether it still moves.
         Protocol::EffectId currentEffect() const {
-            return this->effectState == EffectState::IDLE ? Protocol::EffectId::NONE : this->effect.effect;
+            return this->effectState == EffectState::IDLE || this->mode != Mode::EFFECT
+                 ? Protocol::EffectId::NONE : this->effect.effect;
+        }
+
+        // Id of the last system pattern played (NONE after a static call, stop or effect). A finished pattern
+        // keeps its id, isAnimating() tells whether it still moves.
+        SystemPattern::Id currentPattern() const {
+            return this->effectState == EffectState::IDLE || this->mode != Mode::PATTERN
+                 ? SystemPattern::Id::NONE : this->pattern;
         }
 
         // Local start time of the current effect (µs)
@@ -133,18 +150,29 @@ class LEDManager {
 
     private:
         enum class EffectState : uint8_t { IDLE, RUNNING, HOLD };    // HOLD: finished or static, last frame stays
+        enum class Mode : uint8_t { EFFECT, PATTERN };                // what the player plays
 
         uint32_t scaled(const ColorSet& color, uint8_t level) const;
         // show() if the buffer changed since the last show()
         void present();
         void serviceEffect();
         void renderEffect(int64_t nowUs);
+        // pattern frame into next[]; true when the pattern has ended
+        bool renderPattern(uint32_t elapsedMs, uint32_t* next);
+        // length of what plays (ms), 0 = endless or still
+        uint32_t playingDurationMs() const;
+        // starts the player for the current effect / pattern (mutex held)
+        void startPlayer(int64_t startUs);
         static void onStartTimer(void* arg);
 
         SemaphoreHandle_t outputMutex = nullptr;    // recursive: the LEDs are written by the loop and the timer task
         esp_timer_handle_t startTimer = nullptr;    // draws the first frame of an effect at its start time
 
         Protocol::EffectDesc effect = {Protocol::EffectId::NONE, 0, 0, 0, 0, 0, 0, 0};
+        Mode mode = Mode::EFFECT;
+        SystemPattern::Id pattern = SystemPattern::Id::NONE;
+        SystemPattern::Args patternArgs;
+        uint32_t snapshot[NEOPIXEL_SIZE];           // the ring when the pattern started (SELECT draws over it)
         EffectState effectState = EffectState::IDLE;
         int64_t effectStart = 0;
         int64_t lastFrameUs = 0;

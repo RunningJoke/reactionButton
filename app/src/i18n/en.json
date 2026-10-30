@@ -32,7 +32,7 @@
       "blinkFailed": "The pod could not blink."
     },
     "intro": "Connect to a central in the program menu.",
-    "menuHint": "To open the program menu, switch the pod on and hold the button during the blue boot animation.",
+    "menuHint": "To open the program menu, switch the pod on and keep holding the button until the white ring is full.",
     "bleUnsupported": "This browser has no Bluetooth access. Use Chrome or Edge, on iPhone the app later.",
     "serialUnsupported": "USB needs Chrome or Edge on a computer.",
     "connect": {

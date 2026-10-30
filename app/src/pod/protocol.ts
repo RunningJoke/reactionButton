@@ -48,7 +48,7 @@ export type ErrorResponse = ResponseBase & { ok: false; error: ApiErrorCode; mes
 export type InfoResponse = ResponseBase & {
   firmware: string;
   linkProtocol: number;
-  /** link protocol revision (firmware ≥ 2.9; missing = 1). 2 = hold reporting (`charge`, `release` on peripherals) */
+  /** link protocol revision (firmware ≥ 2.9; missing = 1). 2 = hold reporting (`charge`, `release` on peripherals); 5 = firmware 2.15 */
   linkRevision?: number;
   setId: string;
   generation: number;
@@ -78,8 +78,15 @@ export type InfoResponse = ResponseBase & {
  * `liveBle` (firmware ≥ 2.12): the central keeps BLE during the game, file changes answer `busy` from DISCOVERY on.
  * `identify` (firmware ≥ 2.13): the op `blink` (find a pod); `status.pods[]` has `number` and `color`.
  * `battery` (firmware ≥ 2.13): `battery` in `status` and `pods[]` (BatteryLevel).
+ * `patterns` (firmware ≥ 2.15): the op `pattern` (PatternName) plays a system pattern on a pod.
  */
-export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | "identify" | "battery" | (string & {});
+export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | "identify" | "battery" | "patterns" | (string & {});
+
+/** System patterns of the `pattern` op (firmware ≥ 2.15). Endless ones run until the next op. */
+export type PatternName = "boot" | "search" | "joined" | "discovery" | "ready" | "select" | "selectCancel" | "selected" | "paused" | "lowBattery" | "sleep" | "menu";
+
+/** `pattern` (firmware ≥ 2.15, feature `patterns`): durationMs 0 = endless; selectCancel lasts fillMs. */
+export type PatternResponse = ResponseBase & { pattern: PatternName; durationMs: number };
 
 /** Battery of a pod (firmware ≥ 2.13): percent of a single Li-ion cell (3.3 V = 0, 4.2 V = 100) and the cell voltage. */
 export type BatteryLevel = { percent: number; mv: number };

@@ -5,6 +5,7 @@
 #include "Settings/Settings.h"
 #include "Config/ConfigApi.h"
 #include "LEDManager/EffectJson.h"
+#include "LEDManager/SystemPattern.h"
 #include "LEDManager/Identity.h"
 #include "Battery/Battery.h"
 #include <WiFi.h>
@@ -13,9 +14,6 @@ using namespace Protocol;
 
 static const char* TAG = "PERIPHERAL";
 
-// Idle warning (#19): amber blink while claimed and idle (READY) with a low battery
-static const EffectDesc lowBatteryBlink = {EffectId::BLINK, Color::AMBER, Color::OFF, 255, 0, 1000, 0, 0};
-
 PeripheralRole::PeripheralRole() {
     this->setId = Settings::getSetId();
     this->sync.setSetId(this->setId);
@@ -23,7 +21,6 @@ PeripheralRole::PeripheralRole() {
     if(!this->link.begin(ESPNOW_CHANNEL)) {
         ESP_LOGE(TAG, "radio start failed");
     }
-    WiFi.macAddress(this->ownMac);
     this->becomeUnclaimed();
     ESP_LOGI(TAG, "peripheral started, set %08x", this->setId);
 }
@@ -37,11 +34,9 @@ void PeripheralRole::becomeUnclaimed() {
     this->showUnclaimed();
 }
 
-// Yellow (waiting for a central) with a segment in a colour and at a position taken from the MAC
+// Searching for a central: the SEARCH pattern, not synced to anything
 void PeripheralRole::showUnclaimed() {
-    uint8_t first = this->ownMac[5] % NEOPIXEL_SIZE;
-    uint8_t color = Identity::PALETTE[this->ownMac[4] % Identity::COUNT];
-    LEDManager::getManager()->setSegment(first, Identity::UNCLAIMED_SEGMENT, color, Color::YELLOW);
+    LEDManager::getManager()->playPattern(SystemPattern::Id::SEARCH);
 }
 
 void PeripheralRole::run() {
@@ -134,39 +129,36 @@ void PeripheralRole::run() {
     }
 }
 
-// Identity display of a ready pod (see the class comment). Only the pod's own LED changes are made here;
-// an activation or a game takes the ring first (handleArm clears identityShown).
+// Identity display of a ready pod (see the class comment). The pattern is started once per change of the
+// wanted display, not on every pass; an activation or a game takes the ring first (handleArm clears
+// identityShown).
 void PeripheralRole::updateIdentity(int64_t now) {
     if(now < this->identityBlockedUntilUs) {
         return;     // the central's effect (blink) owns the ring
     }
-    IdentityShow wanted = now < this->identityFlashUntilUs ? IdentityShow::FLASH
-                        : Battery::isLow() ? IdentityShow::LOW_BATTERY
-                        : this->identifyWanted ? IdentityShow::SPIN : IdentityShow::NONE;
+    IdentityShow wanted = Battery::isLow() ? IdentityShow::LOW_BATTERY
+                        : now < this->claimJoinedUntilUs || this->identifyWanted ? IdentityShow::JOINED
+                        : IdentityShow::NONE;
     if(wanted == this->identityShown) {
         return;
     }
     this->identityShown = wanted;
 
     LEDManager* leds = LEDManager::getManager();
-    uint8_t color = Identity::colorOf(this->podId);
-    uint8_t number = Identity::numberOf(this->podId);
     switch(wanted) {
         case IdentityShow::NONE:
             leds->turnOff();
             break;
-        case IdentityShow::FLASH:
-            leds->setSegment(0, number, color, Color::OFF);
-            break;
-        case IdentityShow::LOW_BATTERY:
-            leds->playEffect(lowBatteryBlink);     // amber blink (#19)
-            break;
-        case IdentityShow::SPIN:
+        case IdentityShow::JOINED:
         {
-            EffectDesc spin = {EffectId::SPIN, color, Color::OFF, 255, 0, Identity::SPIN_PERIOD_MS, number, 0};
-            leds->playEffect(spin);
+            SystemPattern::Args args;
+            args.podId = this->podId;
+            leds->playPattern(SystemPattern::Id::JOINED, args);
             break;
         }
+        case IdentityShow::LOW_BATTERY:
+            leds->playPattern(SystemPattern::Id::LOW_BATTERY);     // replaces the identity (#19)
+            break;
     }
 }
 
@@ -336,7 +328,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE | LINK_FEATURE_BATTERY;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
-    this->identityFlashUntilUs = esp_timer_get_time() + Identity::FLASH_US;
+    this->claimJoinedUntilUs = esp_timer_get_time() + CLAIM_JOINED_US;
     this->identityBlockedUntilUs = 0;
     this->identityShown = IdentityShow::NONE;
 
@@ -524,6 +516,35 @@ bool PeripheralRole::control(const char* op, JsonObjectConst request, JsonDocume
         LEDManager::getManager()->playEffect(effect, delayMs != 0 ? esp_timer_get_time() + (int64_t)delayMs * 1000 : 0);
         response["ok"] = true;
         response["effect"] = LEDManager::effectName(effect.effect);
+        return true;
+    }
+    if(strcmp(op, "pattern") == 0) {
+        // test op: play a system pattern on this pod's ring
+        if(this->state == State::ACTIVE || this->state == State::HOLDING || this->state == State::SCHEDULED) {
+            ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
+            return true;
+        }
+        const char* name = request["name"].as<const char*>();
+        if(name == nullptr) {
+            ConfigApi::setError(response, "bad_request", "'name' missing");
+            return true;
+        }
+        SystemPattern::Id id = SystemPattern::fromName(name);
+        if(id == SystemPattern::Id::COUNT_) {
+            ConfigApi::setError(response, "bad_request", String("unknown pattern '") + name + "'");
+            return true;
+        }
+        SystemPattern::Args args;
+        args.percent = request["percent"] | 255u;
+        args.podId = request["podId"] | 0u;
+        args.wanted = request["wanted"] | 0u;
+        args.found = request["found"] | 0u;
+        args.fillMs = request["fillMs"] | 0u;
+        args.breathing = request["breathing"] | false;
+        LEDManager::getManager()->playPattern(id, args);
+        response["ok"] = true;
+        response["pattern"] = SystemPattern::name(id);
+        response["durationMs"] = SystemPattern::durationMs(id, args);
         return true;
     }
     return false;
