@@ -254,28 +254,101 @@ With the remembered last common CRC (`SyncState`):
 - **One set at a time.** Sessions (`pod/session.ts`: transport, PodClient, info, status, list, files, log)
   form a list with one active session (`usePodSessions` / `usePodSession`); `connectPod` ends every existing
   session first. The list stays as the structure for several sets later (#46, on hold).
+- **One session model (#87).** Connection state, sync state, training state and the athlete all come from the
+  per-set session. The athlete lives in one place: the results store (`useResults.sets[setId].athleteId`),
+  pushed to the pod with `session`.
 - **Reconnect** (BLE, while the page lives, no chooser): after 1 s, doubling to 30 s; state *Reconnecting*.
-  When up: `info`, `status`, `list`, then **`reports` → store → `ack`** (`results/podLink.ts`); files from the
-  cache. User disconnect = no retry. Serial and demo pod end on a drop. After a reload the set is picked again
-  with one tap; the pod still holds unacknowledged reports.
+  When up: `info`, `status`, `list`, then **`reports` → store → `ack`** (`results/podLink.ts`); `ack` only
+  after the durable write. Files from the cache. User disconnect = no retry. Serial and demo pod end on a
+  drop. After a reload the set is picked again with one tap; the pod still holds unacknowledged reports.
 - **Results** (`results/`, IndexedDB `reactpod-results`): `ReportFeed` stores each `report` event, then
   `ack`s it (no `ack` if storing fails, e.g. IndexedDB blocked → warning). Reports grouped into sessions per
   athlete; *Repeat* marks a report discarded (not in statistics). CSV: `;` (de) / `,` (en).
-- **Training view** (`/training`, from the Pod page, Pod tab stays highlighted), one card: set name, state
-  (`status.state` or connecting / reconnecting / not connected), *Waiting for you* while `communicate` waits;
-  athlete (as on the Pod tab, sent with `session`); last report with link to the session; while waiting
-  **Continue / Repeat / Stop** (`command`) and one number input per `status.waiting.editable` variable
-  (`setVariables`, range checked before sending); **Pause / Resume** in RUN or during a phone pause;
-  Disconnect. `status` is re-read on `state` / `report` events and after each command.
+- **Training view** (`pages/TrainingPage.tsx`, `/training`) is the only screen that controls a game (#87).
+  The Pod tab has no game controls; it links to the Training tab. One card:
+  - set name, state (`status.state` or connecting / reconnecting / not connected), *Waiting for you* while
+    `communicate` waits; athlete (store value); last report with link to the session.
+  - **Start** (#87): in CONFIRM (`status.state` `CONFIRM`, READY on the ring) the program's editable variables from
+    `status.ready.editable` (same shape as `status.waiting.editable`) as steppers, and **Start**. Start sends
+    `setVariables` (only if changed), then `start`. The app never sends `select`: the program is picked on the pod.
+  - **Waiting:** **Continue / Repeat / Stop** (`command`) and one stepper per `status.waiting.editable`
+    variable (`setVariables`, range checked before sending). **Pause / Resume** in RUN or during a phone pause.
+    Disconnect.
+  - **Queue (#87):** Continue / Repeat / Stop pressed while no communicate block waits are held by the app as
+    one pending command (a newer press replaces it). The card shows *Queued: Continue* with *Cancel*. It is
+    sent as soon as `status.waiting` appears (`state` / `report` event or status read). Pause / Resume are
+    sent at once (firmware accepts them in RUN / phone-paused PAUSED).
+  - `status` is re-read on `state` / `report` events and after each command.
+- **Priority and errors (#87):** user commands (`command`, `setVariables`, `start`, `pause`, `resume`,
+  `session`) go ahead of queued report fetches, acks and status reads (`pod/client.ts`: a priority lane, still
+  one request in flight). A timed-out user command is never shown as failed: it may have been applied. The app
+  re-reads `status` and shows the real state. Only a definite error response is shown as an error, with its
+  text from `en.json` / `de.json` (every firmware error code has one).
 - **Feature detection:** no `reports` → the card says the firmware sends no results; no `remote` → no
   commands; no `pause` → no pause button; no `liveBle` → note that Bluetooth goes off during a game.
+  No `startVars` (#87) → no start inputs; *Start* only if the `start` op is available (`remote`), else the
+  text "Press the central to start".
+- **Firmware (#87, fw-request #96):** `setVariables` in CONFIRM limited to variables marked
+  `editable` in the program's communicate blocks; `status.ready.editable`; feature `startVars`; fix of the
+  sticky MaxLoop characteristic. A missing field means the old behaviour.
 - **Wake lock** while the view is open (`navigator.wakeLock`; absent or refused → nothing). Known PWA limit:
   the screen can still lock; a hidden tab or sleeping phone drops BLE; reports wait on the pod.
 - **Demo pod:** each connection gets its own set: `5f3a91c2` (no name), `9b2e7d40` "Halle 2", `c71f0a8e`
   "Halle 3", `3e6d9b15` "Halle 4". "Demo: send a report" emits a sample report; while it waits the game is in
-  RUN; `stop` → MENU.
+  RUN; `stop` → MENU. It implements the #87 firmware (`startVars`, `status.ready.editable`, `setVariables` in
+  CONFIRM) as soon as that is specified in config-api.md.
 
-### 9.6 Platform client (preview, on hold – keep working, do not extend)
+### 9.6 Measurement (#87)
+
+Specified, not built. Config App only: no firmware, program format, validator or schema change. Every field
+below already exists (timers since program format 2, `communicate` since 5, the summary bar since 6;
+`programs.md` §6), so the editor follows the existing `programFormat` gating.
+
+**1. What is recorded (per step)**
+Two behaviours (#88). Specified here once; `editor-ux.md` refers to this section.
+
+| Behaviour | Field | Blocks | Metric name |
+|---|---|---|---|
+| Record reaction | `record: "<metric>"` | button, remotePress, remoteMultiPress, charge, release | the metric (default `reaction`) |
+| Stopwatch | `timerStart` / `timerStop: "<name>"` | all 15 | the timer name |
+
+- Stopwatch, plain path: "start here" and "stop here" on the step. The name is suggested from the
+  program: `cycle`, `lap`, or a new name.
+- Max 16 timer names per program.
+
+**2. Report to phone (`communicate`)**
+- Fields: `metrics` (empty = all), `vars`, `editable` (`{ name: { min, max } }`), `timeoutMs` (0 = none), `color`.
+- When: each time the flow reaches a `communicate` block. Shipped programs: once per cycle
+  (`lib/loop.json`, block `Report`, after `Summary`).
+- Settings "Report to phone", as plain choices:
+  - Results: checkboxes of the metrics the program records. "All" is the default (`metrics: []`).
+  - Settings to include: checkboxes of the program's variables (`vars`).
+  - Coach may change while it waits: checkboxes of variables, each with min and max (`editable`).
+  - Time-out: none, or seconds (`timeoutMs`).
+- Raw lists stay in expert mode.
+
+**3. Athlete's view**
+- On the ring: `summary` with `show`, `targetMs`, `showMs`. Behaviour *Show average bar* (#88).
+- On the phone: the training card (§9.5) gets a large-number view of the last value and the average of
+  the main metric, readable from 2 m, toggled on the card. Main metric: `reaction` by default, else the
+  first recorded metric.
+
+**4. Limits** (checked against the code)
+
+| Limit | Value | Source |
+|---|---|---|
+| Timer names per program | 16 | `MAX_TIMERS` (`BlockManager.h`, `blockTypes.ts`) |
+| `communicate` lists (`metrics`, `vars`, `editable`) | 8 items | `MAX_LIST_ITEMS` (`blockTypes.ts`) |
+| Metric and variable names | 32 characters | `MAX_NAME_CHARS` (`blockTypes.ts`), `Reports.h` `MAX_NAME` |
+| Reports buffered on the pod | 8 | `Reports.h` `MAX_REPORTS` |
+| Values per report period | 48 | `Reports.h` `LOG_SIZE`; further values are counted, not kept |
+| Metric names per report period | 16 | `Reports.h` `MAX_METRICS` |
+
+**5. Open points**
+- Can the user choose the main metric of the phone view? Default `reaction`.
+- Should "Report to phone" add a `communicate` block to a program that has none? Without one the phone gets no report.
+
+### 9.7 Platform client (preview, on hold – keep working, do not extend)
 - Upload (`platform/upload.ts`): reports the platform lacks, per session, `POST /training/upload`, by the
   auto-upload setting or *Upload now*; idempotent by the app's ids.
 - Queued deletions (`PlatformDelete[]`, IndexedDB) run when online and signed in: after sign-in, at app start,

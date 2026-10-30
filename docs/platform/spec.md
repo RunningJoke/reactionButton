@@ -47,7 +47,7 @@ Every resource has one owner organisation; a personal space is an organisation o
   results, an athlete their own claimed profile, viewers none.
 - **Deletion:** deleting an athlete or club deletes sessions, reports, values, invitations and links. The
   claiming user may delete their profile (`DELETE /v1/orgs/{orgId}/me/athletes/{id}`, 404 for everyone else);
-  coaches use `DELETE /v1/orgs/{orgId}/athletes/{id}`. The app queues deletions like uploads (app spec §9.6).
+  coaches use `DELETE /v1/orgs/{orgId}/athletes/{id}`. The app queues deletions like uploads (app spec §9.7).
 
 ## 5. Architecture
 Modular monolith, hexagonal. All rules in use cases; REST `/v1` (OpenAPI 3.1) and MCP `/mcp` (Streamable
