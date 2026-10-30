@@ -17,6 +17,10 @@
 #include "Block/CommunicateBlock/CommunicateBlock.h"
 #include "Battery/Battery.h"
 
+namespace {
+    const int64_t SELECT_DELAY_US = 200000;     // a press shorter than this shows no SELECT (light language, #82)
+}
+
 CentralRole::CentralRole() {
     // the button was held to select CENTRAL at boot; that hold must not count as a menu press
     this->waitForBootRelease = Button::get().isDown();
@@ -123,16 +127,20 @@ void CentralRole::run() {
             if(this->network.podCount() >= this->requiredPeripherals) {
                 this->network.setAcceptNewPods(false, this->requiredPeripherals);
                 Console.printf("Connected to %d peripherals\n", this->network.podCount());
-                LEDManager::getManager()->setLEDColors(GREEN);
+                this->readyPending = true;      // a SOLO program gets here while SELECTED still flashes
                 this->pressCountAtConfirm = Button::get().pressCount();
                 this->setState(State::CONFIRM);
             }
             break;
 
         case State::CONFIRM:
+            if(this->readyPending && !this->selectedFlashing()) {
+                this->readyPending = false;
+                LEDManager::getManager()->playPattern(SystemPattern::Id::READY);
+            }
             if(this->refusedUntilUs != 0 && now >= this->refusedUntilUs) {
                 this->refusedUntilUs = 0;
-                LEDManager::getManager()->setLEDColors(GREEN);
+                LEDManager::getManager()->playPattern(SystemPattern::Id::READY);
             }
             if(Button::get().pressCount() != this->pressCountAtConfirm) {
                 if(this->batteryTooLow()) {
@@ -146,7 +154,7 @@ void CentralRole::run() {
         case State::RUN:
             if(!this->network.allAlive()) {
                 Console.println("Peripheral lost, game paused");
-                LEDManager::getManager()->setLEDColors(YELLOW);
+                LEDManager::getManager()->playPattern(SystemPattern::Id::PAUSED);
                 this->network.setSyncAllowed(true);
                 this->setState(State::PAUSED);
                 break;
@@ -252,19 +260,23 @@ bool CentralRole::startGame() {
     return true;
 }
 
+// DISCOVERY pattern: a marker per required pod, bright once claimed. Restarted only when the count changes.
 void CentralRole::drawProgress() {
     uint8_t connected = this->network.podCount();
-    if(connected == this->drawnPodCount) {
+    if(connected == this->drawnPodCount || this->selectedFlashing()) {
         return;
     }
     this->drawnPodCount = connected;
 
-    LEDManager* led = LEDManager::getManager();
-    led->turnOff();
-    for(uint8_t i = 0; i < this->requiredPeripherals; i++) {
-        led->setLEDColors(2*i, BLUE);
-        led->setLEDColors(2*i+1, i < connected ? BLUE : BLACK);
-    }
+    SystemPattern::Args args;
+    args.wanted = this->requiredPeripherals;
+    args.found = connected;
+    LEDManager::getManager()->playPattern(SystemPattern::Id::DISCOVERY, args);
+}
+
+bool CentralRole::selectedFlashing() const {
+    LEDManager* leds = LEDManager::getManager();
+    return leds->currentPattern() == SystemPattern::Id::SELECTED && leds->isAnimating();
 }
 
 bool CentralRole::runModelSelector() {
@@ -284,25 +296,21 @@ bool CentralRole::runModelSelector() {
             this->modelSelectorPressStart = Button::get().lastPressTime();
             this->modelSelectorCounter++;
         } else {
+            // SELECT: white fills the ring from 200 ms on (once per press), full at the long-press point
+            int64_t now = esp_timer_get_time();
+            if(!this->selectStarted && now - Button::get().lastPressTimeUs() >= SELECT_DELAY_US) {
+                this->selectStarted = true;
+                this->selectStartUs = now;
+                LEDManager::getManager()->playPattern(SystemPattern::Id::SELECT);
+            }
+
             // the counter increases every ~10 ms while the button is held
             if(this->modelSelectorPressStart + this->modelSelectorCounter*10 < millis()) {
                 this->modelSelectorCounter++;
 
-                this->modelSelectorColor.red = this->modelSelectorCounter;
-                this->modelSelectorColor.green = this->modelSelectorCounter;
-                this->modelSelectorColor.blue = this->modelSelectorCounter;
-
-                //increase brightness of selection LED
-                LEDManager* led = LEDManager::getManager();
-                led->setLEDColors(16 , &this->modelSelectorColor);
-                led->setLEDColors(17 , &this->modelSelectorColor);
-                led->setLEDColors(0 , &this->modelSelectorColor);
-                led->setLEDColors(1 , &this->modelSelectorColor);
-                led->setLEDColors(2 , &this->modelSelectorColor);
-
                 if(this->modelSelectorCounter > 180) {
                     // long press (~1.8 s): program selected
-                    led->turnOff();
+                    LEDManager::getManager()->playPattern(SystemPattern::Id::SELECTED);
                     return true;
                 }
             }
@@ -315,12 +323,22 @@ bool CentralRole::runModelSelector() {
             this->selectedModel = (this->selectedModel + 1) % this->catalog.size();
         }
         if(this->modelSelectorCounter > 0) {
-            // redraw after every release, also to remove the brightness ramp of an aborted long press
+            // redraw after every release, also to remove a SELECT that was let go
             this->catalog.showMenu(this->selectedModel, *LEDManager::getManager());
+        }
+        if(this->selectStarted) {
+            // the white drains back over the new menu at the speed it filled (0 ms: nothing to drain)
+            SystemPattern::Args args;
+            args.fillMs = (uint16_t)constrain((esp_timer_get_time() - this->selectStartUs) / 1000,
+                                              (int64_t)0, (int64_t)SystemPattern::SELECT_MS);
+            if(args.fillMs > 0) {
+                LEDManager::getManager()->playPattern(SystemPattern::Id::SELECT_CANCEL, args);
+            }
         }
 
         this->modelSelectorCounter = 0;
         this->modelSelectorPressStart = 0;
+        this->selectStarted = false;
     }
 
     return false;
@@ -402,6 +420,8 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         response["state"] = stateName(this->state);
     } else if(strcmp(op, "effect") == 0) {
         this->opEffect(request, response);
+    } else if(strcmp(op, "pattern") == 0) {
+        this->opPattern(request, response);
     } else if(strcmp(op, "blink") == 0) {
         this->opBlink(request, response);
     } else if(strcmp(op, "reports") == 0) {
@@ -538,6 +558,34 @@ void CentralRole::opEffect(JsonObjectConst request, JsonDocument& response) {
     response["startAtUs"] = startAtUs;
 }
 
+// Test op: plays a system pattern on the central itself (SystemPattern.h). "name" as in SystemPattern::name,
+// the optional "percent", "podId", "wanted", "found" and "fillMs" set its Args (defaults otherwise).
+// Only while no game runs, else busy.
+void CentralRole::opPattern(JsonObjectConst request, JsonDocument& response) {
+    if(this->state == State::RUN || this->state == State::PAUSED) {
+        ConfigApi::setError(response, "busy", String("state is ") + stateName(this->state));
+        return;
+    }
+    const char* name = request["name"] | "";
+    SystemPattern::Id id = SystemPattern::fromName(name);
+    if(id == SystemPattern::Id::COUNT_) {
+        ConfigApi::setError(response, "bad_request", String("unknown pattern '") + name + "'");
+        return;
+    }
+
+    SystemPattern::Args args;
+    args.percent = request["percent"] | args.percent;
+    args.podId = request["podId"] | args.podId;
+    args.wanted = request["wanted"] | args.wanted;
+    args.found = request["found"] | args.found;
+    args.fillMs = request["fillMs"] | args.fillMs;
+    LEDManager::getManager()->playPattern(id, args);
+
+    response["ok"] = true;
+    response["pattern"] = name;
+    response["durationMs"] = SystemPattern::durationMs(id, args);
+}
+
 // Find a pod (firmware >= 2.13, feature identify): blinks one pod ("pod": its id, in its colour) or the
 // central itself (omitted or -1, white) for Identity::BLINK_MS. Only while no game runs, else busy.
 void CentralRole::opBlink(JsonObjectConst request, JsonDocument& response) {
@@ -582,7 +630,7 @@ void CentralRole::endBlink() {
             this->drawnPodCount = -1;       // drawProgress paints the ring again
             break;
         case State::CONFIRM:
-            leds->setLEDColors(GREEN);
+            leds->playPattern(SystemPattern::Id::READY);
             break;
         default:
             break;
@@ -735,7 +783,7 @@ void CentralRole::opPause(JsonDocument& response) {
     }
     Console.println("Paused by phone, game paused");
     this->phonePaused = true;
-    LEDManager::getManager()->setLEDColors(YELLOW);
+    LEDManager::getManager()->playPattern(SystemPattern::Id::PAUSED);
     this->network.setSyncAllowed(true);
     this->setState(State::PAUSED);
     response["ok"] = true;
