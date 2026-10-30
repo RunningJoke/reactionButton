@@ -1,31 +1,34 @@
 /**
- * Step sheet (docs/app/editor-ux.md §4 D): replaces the inspector. Top to bottom: problems in
- * words, the essentials as large controls, feature switches (fields only when on), "More
- * options", actions, and in expert mode today's inspector fields (name, type, raw keys, ports).
+ * Step sheet (docs/app/editor-ux.md §4 D, layout A): replaces the inspector. Top to bottom: the step in words,
+ * problems, the essentials, Sprinkles (optional things as rows, `Sprinkles.tsx`), "More options", actions, and in
+ * expert mode today's inspector fields (name, type, raw keys, ports).
  */
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { AlertTriangle, ArrowDown, ArrowUp, CircleAlert, Copy, Plus, SlidersHorizontal, Trash2, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, CircleAlert, Copy, Plus, Trash2, Wrench } from "lucide-react";
 import { Sheet } from "../components/Sheet";
-import { blockType, fieldLevel, IF_OPS, isObject, type Block, type FieldDef, type Issue, type SwitchId } from "@reactpod/program-model";
-import { Segmented, Stepper, SwitchRow } from "../wizard/controls";
+import { IF_OPS, isObject, type Block, type Issue } from "@reactpod/program-model";
+import { Segmented, SwitchRow } from "../wizard/controls";
 import { BlockExpertFields, PortRow, type InspectorContext } from "./BlockInspector";
-import { EditableField, NameListField, editableValue, nameItems } from "./ListFields";
 import { blockCategory, blockIcon } from "./blockStyle";
-import { COUNTDOWN_FIELDS, COUNTDOWN_STYLES, COUNTDOWN_TARGETS, countdownKind, countdownStyle, hasCountdownTime, setCountdown } from "./countdown";
 import { EFFECTS, effectKind, hasEnd, isPeriodic, isTimed, setEffectKind, setEffectTarget, setEndless, usesColor } from "./effectStep";
-import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, limitFieldOf, releaseMode, setChargeMode, setChargeStyle, setGoRandom, setHoldPod, setReleaseMode } from "./holdStep";
-import { DEFAULT_COOLDOWN_MS, DEFAULT_GAME_MS, MAX_COOLDOWN_MS, TOGGLE_RESULTS, TOGGLE_STARTS, durationIsRandom, setDurationRandom, setTeamColor, setToggleStart, teamColors, toggleStart } from "./toggleStep";
-import { ColorField, LedsField, NumberInput, SuggestField, ValueField } from "./fields";
-import { isValidVariableName, ownBlocks, setBlockField, setProgramField, type ProgramJson } from "./ops";
+import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, releaseMode, setChargeMode, setChargeStyle, setGoRandom, setHoldPod, setReleaseMode } from "./holdStep";
+import { DEFAULT_GAME_MS, TOGGLE_STARTS, durationIsRandom, setDurationRandom, setTeamColor, setToggleStart, teamColors, toggleStart } from "./toggleStep";
+import { ColorField, LedsField, ValueField } from "./fields";
+import { MoreOptions } from "./MoreOptions";
+import { isValidVariableName, setBlockField, setProgramField } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
 import { stepSentence, type SentenceOptions } from "./sentence";
 import { settingLabel } from "./settingLabels";
+import { CountValue, Field, FixedOrRandomTime, fieldWords, TimeValue, type Apply, type FieldProps } from "./sheetParts";
+import { AddSprinklePage, ReportResults, SprinkleSection, type SprinkleContext } from "./Sprinkles";
 import { isCatchEarly, type LoopInfo, type Step } from "./structure";
-import { setSwitch, switchesFor, switchState, timeoutAction, type SwitchOptions } from "./switches";
+import { switchState, setSwitch } from "./switches";
 import inspector from "./Inspector.module.css";
 import styles from "./StepSheet.module.css";
+
+export { fieldWords, secondsText } from "./sheetParts";
 
 export type StepSheetProps = {
   block: Block;
@@ -37,16 +40,6 @@ export type StepSheetProps = {
   ctx: InspectorContext;
 };
 
-type Apply = (doc: ProgramJson, mergeKey?: string) => void;
-
-/** Seconds as text: 1500 → "1.5 s" (en) / "1,5 s" (de). */
-export function secondsText(ms: number, t: TFunction): string {
-  const s = Math.round(ms / 10) / 100;
-  return t("sentence.seconds", { value: String(s).replace(".", t("sentence.decimal")) });
-}
-
-const LIMIT = { min: 0, max: 600_000, step: 500 };
-
 const SELF_DESCRIBING: ReadonlySet<string> = new Set(["rangeReversed"]);
 
 /** Words for an issue, without raw field and setting names. */
@@ -57,10 +50,6 @@ export function issueText(issue: Issue, t: TFunction): string {
   // these texts already say which value is meant
   if (!issue.field || SELF_DESCRIBING.has(issue.code)) return text;
   return `${text} (${fieldWords(issue.field, t)})`;
-}
-
-export function fieldWords(field: string, t: TFunction): string {
-  return t(`editor.step.label.${field}`, { defaultValue: t(`fields.${field}.label`, { defaultValue: field }) });
 }
 
 export function ProblemList({ issues }: { issues: readonly Issue[] }) {
@@ -78,132 +67,86 @@ export function ProblemList({ issues }: { issues: readonly Issue[] }) {
   );
 }
 
-/**
- * A time in seconds: a number edits the step, a setting edits the setting (for the whole program).
- */
-function TimeValue({ label, value, doc, onField, apply, min = LIMIT.min, max = LIMIT.max, step = LIMIT.step }: { label: string; value: unknown; doc: ProgramJson; onField: (ms: number) => void; apply: Apply; min?: number; max?: number; step?: number }) {
-  const { t } = useTranslation();
-  const vars = isObject(doc.variables) ? (doc.variables as Record<string, number>) : {};
-  const fmt = (v: number) => secondsText(v, t);
-  if (typeof value === "string") {
-    const v = vars[value];
-    if (typeof v !== "number") return <p className={styles.hint}>{t("editor.step.fromSetting", { name: settingLabel(value, t).label })}</p>;
-    return (
-      <div className={styles.valueBox}>
-        <Stepper label={label} value={v} {...LIMIT} min={min} max={max} step={step} format={fmt} onChange={(n) => apply(setProgramField(doc, "variables", { ...vars, [value]: n }), `var.${value}`)} />
-        <p className={styles.hint}>{t("editor.step.settingHint", { name: settingLabel(value, t).label })}</p>
-      </div>
-    );
-  }
-  return <Stepper label={label} value={typeof value === "number" ? value : min} {...LIMIT} min={min} max={max} step={step} format={fmt} onChange={onField} />;
+export function StepSheet(props: StepSheetProps) {
+  // a new step starts on the main page with every Sprinkle closed
+  return <StepSheetBody key={props.block.name} {...props} />;
 }
 
-/** A count (rounds, red pods): number or setting, like TimeValue. */
-function CountValue({ label, value, doc, min = 0, max = 999, onField, apply }: { label: string; value: unknown; doc: ProgramJson; min?: number; max?: number; onField: (n: number) => void; apply: Apply }) {
+function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheetProps) {
   const { t } = useTranslation();
-  const vars = isObject(doc.variables) ? (doc.variables as Record<string, number>) : {};
-  if (typeof value === "string") {
-    const v = vars[value];
-    if (typeof v !== "number") return <p className={styles.hint}>{t("editor.step.fromSetting", { name: settingLabel(value, t).label })}</p>;
-    return (
-      <div className={styles.valueBox}>
-        <Stepper label={label} value={v} min={min} max={max} onChange={(n) => apply(setProgramField(doc, "variables", { ...vars, [value]: n }), `var.${value}`)} />
-        <p className={styles.hint}>{t("editor.step.settingHint", { name: settingLabel(value, t).label })}</p>
-      </div>
-    );
-  }
-  return <Stepper label={label} value={typeof value === "number" ? value : min} min={min} max={max} onChange={onField} />;
-}
-
-/** Does the branch at `port` count a miss (a `+1` within its first few blocks)? */
-function branchCountsMiss(doc: ProgramJson, name: string, port: string): boolean {
-  const blocks = new Map(ownBlocks(doc).map((b) => [b.name, b]));
-  let cur = blocks.get(name)?.[port];
-  for (let i = 0; i < 4 && typeof cur === "string"; i++) {
-    const b = blocks.get(cur);
-    if (!b) return false;
-    if (b.type === "setVariable" && (b.op === "+" || b.op === "add") && b.value === 1) return true;
-    cur = b.next;
-  }
-  return false;
-}
-
-export function StepSheet({ block, step, issues, sentence, expert, ctx }: StepSheetProps) {
-  const { t } = useTranslation();
+  const [page, setPage] = useState<"main" | "add">("main");
+  const [open, setOpen] = useState<string | null>(null);
   const doc = ctx.json;
   const name = block.name;
   const Icon = blockIcon(isCatchEarly(block) ? "delay" : block.type);
   const locked = ctx.lockedBy.get(name);
   const apply: Apply = (next, mergeKey) => ctx.apply(next, mergeKey ? { mergeKey } : undefined);
   const set = (field: string, value: unknown, merge = true) => apply(setBlockField(doc, name, field, value), merge ? `${name}.${field}` : undefined);
-  const toggle = (id: SwitchId, on: boolean, options?: SwitchOptions) => apply(setSwitch(doc, name, id, on, options));
-  const switches = switchesFor(block);
   const kind = t(`editor.step.kind.${isCatchEarly(block) ? "delay" : block.type}`, { defaultValue: t("editor.step.kind.unknown") });
   const title = step?.number ? t("editor.step.title", { n: step.number, kind }) : kind;
   const labelOf = (v: string) => settingLabel(v, t).label;
+  const sprinkles: SprinkleContext = { block, doc, set, apply, variables: ctx.variables, metrics: ctx.metrics, inLoop: !!step?.inLoop, format: ctx.programFormat };
 
   return (
     <Sheet title={title} icon={<Icon size={18} aria-hidden />} category={blockCategory(block.type)} sub={step?.inLoop ? t("editor.step.inRound") : undefined} onClose={() => ctx.select(null)}>
       <div className={styles.body}>
-        <p className={styles.story}>{stepSentence(block, t, sentence)}</p>
-        <ProblemList issues={issues} />
-        <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} ctx={ctx} />
-        {switches.map((id) => (
-          <FeatureSwitch key={id} id={id} block={block} doc={doc} set={set} apply={apply} toggle={toggle} inLoop={!!step?.inLoop} />
-        ))}
-        {countdownKind(block) !== null && (ctx.programFormat === undefined || ctx.programFormat >= 3) && <CountdownRow block={block} doc={doc} set={set} apply={apply} />}
-        <MoreOptions block={block} doc={doc} set={set} apply={apply} variables={ctx.variables} metrics={ctx.metrics} />
+        {page === "add" ? (
+          <AddSprinklePage
+            ctx={sprinkles}
+            onBack={() => setPage("main")}
+            onAdded={(id) => {
+              setOpen(id);
+              setPage("main");
+            }}
+          />
+        ) : (
+          <>
+            <p className={styles.story}>{stepSentence(block, t, sentence)}</p>
+            <ProblemList issues={issues} />
+            <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} metrics={ctx.metrics} ctx={ctx} />
+            <SprinkleSection ctx={sprinkles} open={open} setOpen={setOpen} onAdd={() => setPage("add")} />
+            <MoreOptions block={block} doc={doc} set={set} apply={apply} variables={ctx.variables} metrics={ctx.metrics} />
 
-        <div className={inspector.actions}>
-          {blockType(block.type)?.ports.includes("next") || block.type === "button" ? (
-            <button className={inspector.action} onClick={() => ctx.addAfter(name)}>
-              <Plus size={18} aria-hidden /> {t("editor.step.addAfterAction")}
-            </button>
-          ) : null}
-          {ctx.duplicate && (
-            <button className={inspector.action} onClick={() => ctx.duplicate!(name)}>
-              <Copy size={18} aria-hidden /> {t("editor.duplicate")}
-            </button>
-          )}
-          {ctx.step && (
-            <>
-              <button className={inspector.action} disabled={!ctx.step.canUp} onClick={() => ctx.step!.move("up")}>
-                <ArrowUp size={18} aria-hidden /> {t("editor.step.moveUp")}
+            <div className={inspector.actions}>
+              {ctx.step && (
+                <>
+                  <button className={inspector.action} disabled={!ctx.step.canUp} onClick={() => ctx.step!.move("up")}>
+                    <ArrowUp size={18} aria-hidden /> {t("editor.step.moveUp")}
+                  </button>
+                  <button className={inspector.action} disabled={!ctx.step.canDown} onClick={() => ctx.step!.move("down")}>
+                    <ArrowDown size={18} aria-hidden /> {t("editor.step.moveDown")}
+                  </button>
+                </>
+              )}
+              {ctx.duplicate && (
+                <button className={inspector.action} onClick={() => ctx.duplicate!(name)}>
+                  <Copy size={18} aria-hidden /> {t("editor.duplicate")}
+                </button>
+              )}
+              <button className={inspector.action} data-danger disabled={!!locked} onClick={() => ctx.remove?.(name)}>
+                <Trash2 size={18} aria-hidden /> {t("editor.step.deleteStep")}
               </button>
-              <button className={inspector.action} disabled={!ctx.step.canDown} onClick={() => ctx.step!.move("down")}>
-                <ArrowDown size={18} aria-hidden /> {t("editor.step.moveDown")}
-              </button>
-            </>
-          )}
-          <button className={inspector.action} data-danger disabled={!!locked} onClick={() => ctx.remove?.(name)}>
-            <Trash2 size={18} aria-hidden /> {t("editor.step.deleteStep")}
-          </button>
-        </div>
-        {locked && <p className={inspector.muted}>{t("editor.lockedBy", { file: locked })}</p>}
+            </div>
+            {locked && <p className={inspector.muted}>{t("editor.lockedBy", { file: locked })}</p>}
 
-        {expert && (
-          <section className={styles.expert} aria-label={t("editor.step.expert")}>
-            <h4>
-              <Wrench size={14} aria-hidden /> {t("editor.step.expert")}
-            </h4>
-            <BlockExpertFields block={block} ctx={ctx} />
-          </section>
+            {expert && (
+              <section className={styles.expert} aria-label={t("editor.step.expert")}>
+                <h4>
+                  <Wrench size={14} aria-hidden /> {t("editor.step.expert")}
+                </h4>
+                <BlockExpertFields block={block} ctx={ctx} />
+              </section>
+            )}
+          </>
         )}
       </div>
     </Sheet>
   );
 }
 
-type FieldProps = {
-  block: Block;
-  doc: ProgramJson;
-  set: (field: string, value: unknown, merge?: boolean) => void;
-  apply: Apply;
-};
-
 /* ---------------------------------------------------------------- essentials */
 
-function Essentials({ block, doc, set, apply, labelOf, variables, ctx }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; ctx: InspectorContext }) {
+function Essentials({ block, doc, set, apply, labelOf, variables, metrics, ctx }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; metrics: readonly string[]; ctx: InspectorContext }) {
   const { t } = useTranslation();
   switch (block.type) {
     case "led":
@@ -308,9 +251,9 @@ function Essentials({ block, doc, set, apply, labelOf, variables, ctx }: FieldPr
     case "release":
       return <ReleaseFields block={block} doc={doc} set={set} apply={apply} />;
     case "toggle":
-      return <ToggleFields block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} />;
+      return <ToggleFields block={block} doc={doc} set={set} apply={apply} />;
     case "communicate":
-      return <CommunicateFields block={block} doc={doc} set={set} apply={apply} ctx={ctx} />;
+      return <CommunicateFields block={block} doc={doc} set={set} apply={apply} ctx={ctx} metrics={metrics} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -329,50 +272,23 @@ const IF_WORD: Record<string, string> = { "==": "eq", "!=": "ne", ">": "gt", "<"
 
 const namedOff = (c: unknown) => c === "off";
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className={styles.field} role="group" aria-label={label}>
-      <span className={styles.label}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
 /** Fixed | Random and the seconds of a pause (delay, or the catch-early button). */
 function PauseTime({ block, doc, set, apply }: FieldProps) {
   const { t } = useTranslation();
   const early = block.type === "button";
-  const [minF, maxF, fixedF] = early ? ["minTimeoutMs", "maxTimeoutMs", null] : ["minMs", "maxMs", "ms"];
-  const random = switchState(block, "randomPause");
-  const mode = random ? "random" : "fixed";
+  const [minF, maxF, fixedF] = early ? ["minTimeoutMs", "maxTimeoutMs", "minTimeoutMs"] : ["minMs", "maxMs", "ms"];
   return (
-    <>
-      <Segmented
-        label={t("editor.step.howLong")}
-        value={mode}
-        options={[
-          { value: "fixed", label: t("editor.step.fixed") },
-          { value: "random", label: t("editor.step.random") },
-        ]}
-        onChange={(v) => apply(setSwitch(doc, block.name, "randomPause", v === "random"))}
-      />
-      {random ? (
-        <div className={styles.pair}>
-          <TimeValue label={t("editor.step.shortest")} value={block[minF]} doc={doc} apply={apply} onField={(ms) => set(minF, ms)} />
-          <TimeValue label={t("editor.step.longest")} value={block[maxF]} doc={doc} apply={apply} onField={(ms) => set(maxF, ms)} />
-        </div>
-      ) : early ? (
-        <TimeValue
-          label={t("editor.step.seconds")}
-          value={block[minF]}
-          doc={doc}
-          apply={apply}
-          onField={(ms) => apply(setBlockField(setBlockField(doc, block.name, minF, ms), block.name, maxF, ms), `${block.name}.pause`)}
-        />
-      ) : (
-        <TimeValue label={t("editor.step.seconds")} value={block[fixedF!]} doc={doc} apply={apply} onField={(ms) => set(fixedF!, ms)} />
-      )}
-    </>
+    <FixedOrRandomTime
+      label={t("editor.step.howLong")}
+      random={switchState(block, "randomPause")}
+      onRandom={(random) => apply(setSwitch(doc, block.name, "randomPause", random))}
+      // the catch-early pause is fixed when both limits are equal
+      fixed={{ value: block[fixedF], onChange: (ms) => (early ? apply(setBlockField(setBlockField(doc, block.name, minF, ms), block.name, maxF, ms), `${block.name}.pause`) : set(fixedF, ms)) }}
+      min={{ value: block[minF], onChange: (ms) => set(minF, ms) }}
+      max={{ value: block[maxF], onChange: (ms) => set(maxF, ms) }}
+      doc={doc}
+      apply={apply}
+    />
   );
 }
 
@@ -491,101 +407,6 @@ function SetVariableFields({ block, doc, set, apply, labelOf, variables }: Field
   );
 }
 
-/* ---------------------------------------------------------------- switches */
-
-function FeatureSwitch({ id, block, doc, set, apply, toggle, inLoop }: FieldProps & { id: SwitchId; toggle: (id: SwitchId, on: boolean, options?: SwitchOptions) => void; inLoop: boolean }) {
-  const { t } = useTranslation();
-  const on = switchState(block, id);
-  const name = block.name;
-  const s = (key: string, o?: Record<string, unknown>) => t(`editor.switch.${key}`, o);
-  switch (id) {
-    case "randomPause":
-      return null; // the Fixed | Random choice of the pause
-    case "timeLimit": {
-      const avoid = block.mode === "avoid";
-      const action = timeoutAction(doc, name);
-      const choices: { value: string; label: string }[] = [
-        { value: "goOn", label: s("goOn") },
-        { value: "countMiss", label: s("countMiss") },
-        ...(inLoop && block.type !== "remoteMultiPress" ? [{ value: "endRound", label: s("endRound") }] : []),
-        ...(action === "other" ? [{ value: "other", label: s("other") }] : []),
-      ];
-      const limitField = block.type === "release" ? limitFieldOf(block) : "timeoutMs";
-      const time = block[limitField] ?? block.minTimeoutMs;
-      const holdLimit = block.type === "release" && limitField === "maxHoldMs";
-      return (
-        <SwitchRow
-          label={avoid ? s("staysRed") : holdLimit ? s("holdLimit") : s("timeLimit")}
-          hint={on ? s(holdLimit ? "holdLimitOn" : "timeLimitOn", { time: typeof time === "number" ? secondsText(time, t) : settingLabel(String(time), t).label }) : s("timeLimitOff")}
-          checked={on}
-          onChange={(v) => toggle("timeLimit", v)}
-        >
-          {block[limitField] !== undefined || block.minTimeoutMs === undefined ? (
-            <TimeValue label={s("seconds")} value={block[limitField]} doc={doc} apply={apply} onField={(ms) => set(limitField, ms)} />
-          ) : (
-            <div className={styles.pair}>
-              <TimeValue label={t("editor.step.shortest")} value={block.minTimeoutMs} doc={doc} apply={apply} onField={(ms) => set("minTimeoutMs", ms)} />
-              <TimeValue label={t("editor.step.longest")} value={block.maxTimeoutMs} doc={doc} apply={apply} onField={(ms) => set("maxTimeoutMs", ms)} />
-            </div>
-          )}
-          {!avoid && (
-            <Segmented
-              label={s("tooSlow")}
-              value={action}
-              options={choices}
-              onChange={(v) => v !== "other" && toggle("timeLimit", true, { onTimeout: v as SwitchOptions["onTimeout"] })}
-            />
-          )}
-        </SwitchRow>
-      );
-    }
-    case "record":
-      return <SwitchRow label={s("record")} hint={on ? s("recordOn") : s("recordOff")} checked={on} onChange={(v) => toggle("record", v)} />;
-    case "longPress":
-      return (
-        <SwitchRow
-          label={s("longPress")}
-          hint={on ? s("longPressOn", { time: secondsText(typeof block.shortMs === "number" ? block.shortMs : 1000, t) }) : s("longPressOff")}
-          checked={on}
-          onChange={(v) => toggle("longPress", v)}
-        >
-          <TimeValue label={s("holdTime")} value={block.shortMs ?? 1000} doc={doc} apply={apply} onField={(ms) => set("shortMs", ms)} />
-        </SwitchRow>
-      );
-    case "avoid": {
-      if (block.type === "remotePress") {
-        return <SwitchRow label={s("avoidPod")} hint={on ? s("avoidPodOn") : s("avoidPodOff")} checked={on} onChange={(v) => toggle("avoid", v)} />;
-      }
-      const miss = on && branchCountsMiss(doc, name, "avoidHit");
-      const vars = isObject(doc.variables) ? (doc.variables as Record<string, number>) : {};
-      const n = typeof block.avoid === "number" ? block.avoid : vars[String(block.avoid)];
-      const count = typeof n === "number" ? String(n) : settingLabel(String(block.avoid), t).label;
-      return (
-        <SwitchRow label={s("avoidMulti")} hint={on ? s("avoidMultiOn", { count }) : s("avoidMultiOff")} checked={on} onChange={(v) => toggle("avoid", v)}>
-          <CountValue label={s("redPods")} value={block.avoid} doc={doc} min={1} max={31} onField={(n) => set("avoid", n)} apply={apply} />
-          <Field label={s("redColour")}>
-            <ColorField value={block.avoidColor} optional defaultValue="red" label={s("redColour")} onChange={(c) => set("avoidColor", c, false)} />
-          </Field>
-          <SwitchRow label={s("redMiss")} hint={s("missHint")} checked={miss} onChange={(v) => toggle("avoid", true, { onTimeout: v ? "countMiss" : "goOn" })} />
-        </SwitchRow>
-      );
-    }
-    case "falseStart": {
-      const miss = on && branchCountsMiss(doc, name, "pressed");
-      return (
-        <SwitchRow label={s("falseStart")} hint={on ? s("falseStartOn") : s("falseStartOff")} checked={on} onChange={(v) => toggle("falseStart", v)}>
-          <SwitchRow
-            label={s("earlyMiss")}
-            hint={s("missHint")}
-            checked={miss}
-            onChange={(v) => apply(setSwitch(setSwitch(doc, name, "falseStart", false), name, "falseStart", true, { onTimeout: v ? "countMiss" : "goOn" }))}
-          />
-        </SwitchRow>
-      );
-    }
-  }
-}
-
 /* ---------------------------------------------------------------- hold to charge, let go */
 
 /** "Which button": the central's or a pod's. */
@@ -625,6 +446,15 @@ function ChargeFields({ block, doc, set, apply }: FieldProps) {
     <>
       <HoldPodChips block={block} doc={doc} set={set} apply={apply} />
       <TimeValue label={h("fullAfter")} value={block.maxMs ?? 0} doc={doc} apply={apply} min={500} onField={(ms) => set("maxMs", ms)} />
+      <Segmented
+        label={t("editor.step.label.mode")}
+        value={accumulate ? "accumulate" : "release"}
+        options={[
+          { value: "release", label: h("chargeModes.release") },
+          { value: "accumulate", label: h("chargeModes.accumulate") },
+        ]}
+        onChange={(v) => apply(setChargeMode(doc, block.name, v as "release" | "accumulate"))}
+      />
       <p className={styles.hint}>{accumulate ? h("accumulateHint") : h("chargeHint")}</p>
       <Field label={h("style")}>
         <div className={styles.chips}>
@@ -676,23 +506,16 @@ function ReleaseFields({ block, doc, set, apply }: FieldProps) {
           <Field label={h("goColour")}>
             <ColorField value={block.goColor} optional defaultValue="green" label={h("goColour")} onChange={(c) => set("goColor", c, false)} />
           </Field>
-          <Segmented
+          <FixedOrRandomTime
             label={h("signalAfter")}
-            value={random ? "random" : "fixed"}
-            options={[
-              { value: "fixed", label: t("editor.step.fixed") },
-              { value: "random", label: t("editor.step.random") },
-            ]}
-            onChange={(v) => apply(setGoRandom(doc, block.name, v === "random"))}
+            random={random}
+            onRandom={(r) => apply(setGoRandom(doc, block.name, r))}
+            fixed={{ value: block.goMs, onChange: (ms) => set("goMs", ms) }}
+            min={{ value: block.minGoMs, onChange: (ms) => set("minGoMs", ms) }}
+            max={{ value: block.maxGoMs, onChange: (ms) => set("maxGoMs", ms) }}
+            doc={doc}
+            apply={apply}
           />
-          {random ? (
-            <div className={styles.pair}>
-              <TimeValue label={t("editor.step.shortest")} value={block.minGoMs} doc={doc} apply={apply} onField={(ms) => set("minGoMs", ms)} />
-              <TimeValue label={t("editor.step.longest")} value={block.maxGoMs} doc={doc} apply={apply} onField={(ms) => set("maxGoMs", ms)} />
-            </div>
-          ) : (
-            <TimeValue label={t("editor.step.seconds")} value={block.goMs} doc={doc} apply={apply} onField={(ms) => set("goMs", ms)} />
-          )}
         </>
       )}
     </>
@@ -706,21 +529,12 @@ function ReleaseFields({ block, doc, set, apply }: FieldProps) {
  * communicate (programs.md §7.16): the time limit and the ports the client's answers and the button
  * lead to. The lists and the editable variables are under "More options".
  */
-function CommunicateFields({ block, set, ctx }: FieldProps & { ctx: InspectorContext }) {
+function CommunicateFields({ block, doc, set, apply, ctx, metrics }: FieldProps & { ctx: InspectorContext; metrics: readonly string[] }) {
   const { t } = useTranslation();
-  const timeout = typeof block.timeoutMs === "number" ? block.timeoutMs : undefined;
   return (
     <>
       <p className={styles.hint}>{t("editor.step.communicate.hint")}</p>
-      <Field label={t("fields.timeoutMs.label")}>
-        <NumberInput
-          value={timeout}
-          min={0}
-          placeholder={t("editor.step.communicate.noLimit")}
-          label={t("fields.timeoutMs.label")}
-          onChange={(n) => set("timeoutMs", n ? n : undefined, false)}
-        />
-      </Field>
+      <ReportResults block={block} doc={doc} set={set} apply={apply} metrics={metrics} />
       {(["pressed", "timeout", "repeat", "stop"] as const).map((port) => (
         <PortRow key={port} port={port} block={block} ctx={ctx} hasNext />
       ))}
@@ -728,7 +542,7 @@ function CommunicateFields({ block, set, ctx }: FieldProps & { ctx: InspectorCon
   );
 }
 
-function ToggleFields({ block, doc, set, apply, labelOf }: FieldProps & { labelOf: (v: string) => string }) {
+function ToggleFields({ block, doc, set, apply }: FieldProps) {
   const { t } = useTranslation();
   const d = (key: string, o?: Record<string, unknown>) => t(`editor.step.toggle.${key}`, o);
   const [colorA, colorB] = teamColors(block);
@@ -743,23 +557,18 @@ function ToggleFields({ block, doc, set, apply, labelOf }: FieldProps & { labelO
       <Field label={d("teamB")}>
         <ColorField value={colorB} hide={["off", colorA]} label={d("teamB")} onChange={(c) => apply(setTeamColor(doc, block.name, 1, typeof c === "string" ? c : undefined))} />
       </Field>
-      <Segmented
+      <FixedOrRandomTime
         label={d("length")}
-        value={random ? "random" : "fixed"}
-        options={[
-          { value: "fixed", label: t("editor.step.fixed") },
-          { value: "random", label: t("editor.step.random") },
-        ]}
-        onChange={(v) => apply(setDurationRandom(doc, block.name, v === "random"))}
+        fixedLabel={d("duration")}
+        random={random}
+        onRandom={(r) => apply(setDurationRandom(doc, block.name, r))}
+        fixed={{ value: block.durationMs ?? DEFAULT_GAME_MS, onChange: (ms) => set("durationMs", ms) }}
+        min={{ value: block.minDurationMs, onChange: (ms) => set("minDurationMs", ms) }}
+        max={{ value: block.maxDurationMs, onChange: (ms) => set("maxDurationMs", ms) }}
+        doc={doc}
+        apply={apply}
+        minMs={1000}
       />
-      {random ? (
-        <div className={styles.pair}>
-          <TimeValue label={t("editor.step.shortest")} value={block.minDurationMs} doc={doc} apply={apply} min={1000} onField={(ms) => set("minDurationMs", ms)} />
-          <TimeValue label={t("editor.step.longest")} value={block.maxDurationMs} doc={doc} apply={apply} min={1000} onField={(ms) => set("maxDurationMs", ms)} />
-        </div>
-      ) : (
-        <TimeValue label={d("duration")} value={block.durationMs ?? DEFAULT_GAME_MS} doc={doc} apply={apply} min={1000} onField={(ms) => set("durationMs", ms)} />
-      )}
       <Field label={d("start")}>
         <div className={styles.chips}>
           {TOGGLE_STARTS.map((k) => (
@@ -770,20 +579,7 @@ function ToggleFields({ block, doc, set, apply, labelOf }: FieldProps & { labelO
         </div>
       </Field>
       <p className={styles.hint}>{d(`startHint.${start}`)}</p>
-      <TimeValue label={d("cooldown")} value={block.cooldownMs ?? DEFAULT_COOLDOWN_MS} doc={doc} apply={apply} min={0} max={MAX_COOLDOWN_MS} step={100} onField={(ms) => set("cooldownMs", ms)} />
       <p className={styles.hint}>{d("endHint")}</p>
-      <Field label={d("results")}>
-        <p className={styles.hint}>{d("resultsHint")}</p>
-        {TOGGLE_RESULTS.map(([field, variable, key]) => (
-          <SwitchRow
-            key={field}
-            label={d(`result.${key}`)}
-            hint={typeof block[field] === "string" ? t("editor.step.keptIn", { name: labelOf(block[field] as string) }) : undefined}
-            checked={typeof block[field] === "string"}
-            onChange={(on) => set(field, on ? variable : undefined, false)}
-          />
-        ))}
-      </Field>
     </>
   );
 }
@@ -832,6 +628,7 @@ function EffectFields({ block, doc, set, apply }: FieldProps) {
       {isTimed(kind) && <TimeValue label={e("howLong")} value={block.durationMs ?? 0} doc={doc} apply={apply} onField={(ms) => set("durationMs", ms)} />}
       {isPeriodic(kind) && (
         <>
+          <TimeValue label={e("speed")} value={block.periodMs ?? 500} doc={doc} apply={apply} min={100} max={10_000} step={100} onField={(ms) => set("periodMs", ms)} />
           <Segmented
             label={e("howLong")}
             value={hasEnd(block) ? "limited" : "forever"}
@@ -854,155 +651,6 @@ function EffectFields({ block, doc, set, apply }: FieldProps) {
         />
       )}
     </>
-  );
-}
-
-/* ---------------------------------------------------------------- countdown */
-
-/** "Show the time running out": the ring counts down over the step's time (program format 3). */
-function CountdownRow({ block, doc, set, apply }: FieldProps) {
-  const { t } = useTranslation();
-  const c = (key: string, o?: Record<string, unknown>) => t(`editor.switch.countdown.${key}`, o);
-  const style = countdownStyle(block);
-  const available = hasCountdownTime(block);
-  const peripherals = typeof doc.peripherals === "number" ? doc.peripherals : 0;
-  const target = block.countdownTarget === undefined ? "central" : block.countdownTarget;
-  const chip = (key: string, label: string, pressed: boolean, onClick: () => void) => (
-    <button key={key} type="button" className={inspector.chip} aria-pressed={pressed} onClick={onClick}>
-      {label}
-    </button>
-  );
-  return (
-    <SwitchRow
-      label={c("label")}
-      hint={!available ? c("needsLimit") : style ? c("on", { style: c(`styles.${style}`) }) : c("off")}
-      checked={style !== null}
-      disabled={!available}
-      onChange={(on) => apply(setCountdown(doc, block.name, on ? "drain" : null))}
-    >
-      <Field label={c("style")}>
-        <div className={styles.chips}>{COUNTDOWN_STYLES.map((k) => chip(k, c(`styles.${k}`), style === k, () => apply(setCountdown(doc, block.name, k))))}</div>
-      </Field>
-      {style === "colorShift" && (
-        <Field label={c("color")}>
-          <ColorField value={block.countdownColor} optional defaultValue="red" label={c("color")} onChange={(col) => set("countdownColor", col, false)} />
-        </Field>
-      )}
-      {(block.type === "delay" || block.type === "button") && style !== "trafficLight" && (
-        <Field label={c("from")}>
-          <ColorField value={block.countdownFrom} optional defaultValue="green" label={c("from")} onChange={(col) => set("countdownFrom", col, false)} />
-        </Field>
-      )}
-      {block.type === "delay" && peripherals > 0 && (
-        <Field label={c("target")}>
-          <div className={styles.chips}>
-            {COUNTDOWN_TARGETS.map((k) => chip(k, c(`targets.${k}`), target === k, () => set("countdownTarget", k === "central" ? undefined : k, false)))}
-            {Array.from({ length: peripherals }, (_, i) => chip(`pod${i}`, t("editor.step.effect.podN", { n: i + 1 }), target === i, () => set("countdownTarget", i, false)))}
-          </div>
-        </Field>
-      )}
-    </SwitchRow>
-  );
-}
-
-/* ---------------------------------------------------------------- more options */
-
-/** Behaviours that have their own row; the others stay in "More options" until the Sprinkle rows replace it. */
-const SWITCH_ROWS: readonly string[] = ["timeLimit", "record", "longPress", "avoid", "randomPause", "falseStart"];
-const INTERIM_ESSENTIAL: readonly string[] = ["mode", "periodMs"];
-
-function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps & { variables: readonly string[]; metrics: readonly string[] }) {
-  const { t } = useTranslation();
-  // colour shift asks for its second colour above; only blink, spin, fill and drain have a background
-  const mode = block.type === "release" ? releaseMode(block) : block.type === "charge" ? chargeMode(block) : undefined;
-  const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "toggle" ? TOGGLE_RESULTS.map((r) => r[0]) : []), ...(block.type === "charge" ? ["color2"] : []), ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
-  const fields = (blockType(block.type)?.fields ?? []).filter((f) => (fieldLevel(f) === "more" || (fieldLevel(f) === "switch" && !SWITCH_ROWS.includes(f.group!)) || (INTERIM_ESSENTIAL.includes(f.name) && (f.name !== "mode" || block.type === "charge"))) && !own.includes(f.name) && (f.onlyMode === undefined || f.onlyMode === mode));
-  if (fields.length === 0) return null;
-  const used = fields.some((f) => block[f.name] !== undefined);
-  return (
-    <details className={styles.more} open={used || undefined}>
-      <summary>
-        <SlidersHorizontal size={18} aria-hidden /> {t("editor.step.moreOptions")}
-      </summary>
-      <div className={styles.moreBody}>
-        {fields.map((f) => (
-          <MoreField key={f.name} field={f} block={block} doc={doc} set={set} apply={apply} variables={variables} metrics={metrics} />
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function MoreField({ field, block, doc, set, apply, variables, metrics }: FieldProps & { field: FieldDef; variables: readonly string[]; metrics: readonly string[] }) {
-  const { t } = useTranslation();
-  const label = fieldWords(field.name, t);
-  const help = t(`editor.step.help.${field.name}`, { defaultValue: "" });
-  const value = block[field.name];
-  let input: ReactNode;
-  switch (field.kind) {
-    case "value":
-      input = /Ms$/.test(field.name) ? (
-        <TimeValue label={label} value={value ?? field.default ?? 0} doc={doc} apply={apply} onField={(ms) => set(field.name, ms)} />
-      ) : (
-        <ValueField value={value} variables={variables} labelOf={(v) => settingLabel(v, t).label} label={label} placeholder={t("fields.notSet")} onChange={(v) => set(field.name, v)} />
-      );
-      break;
-    case "color":
-    case "remoteColor":
-      input = <ColorField value={value} optional defaultValue={field.default} custom={field.kind === "color"} label={label} onChange={(c) => set(field.name, c, false)} />;
-      break;
-    case "leds":
-      input = <LedsField value={value} color={block.color} label={label} onChange={(v) => set(field.name, v)} />;
-      break;
-    case "bool": {
-      // allowHeld: on for a trigger, off for a signal
-      const dflt = field.name === "allowHeld" ? releaseMode(block) === "trigger" : field.default === true;
-      const checked = typeof value === "boolean" ? value : dflt;
-      return <SwitchRow label={label} hint={help || undefined} checked={checked} onChange={(v) => set(field.name, v === dflt ? undefined : v, false)} />;
-    }
-    case "enum": {
-      const current = typeof value === "string" ? value : String(field.default ?? "");
-      input = (
-        <div className={styles.chips}>
-          {(field.options ?? []).map((o) => (
-            <button
-              key={o}
-              type="button"
-              className={inspector.chip}
-              aria-pressed={current === o}
-              onClick={() => (field.name === "mode" && block.type === "charge" ? apply(setChargeMode(doc, block.name, o as never)) : set(field.name, o === field.default ? undefined : o, false))}
-            >
-              {t(`editor.step.enum.${field.name}.${o}`, { defaultValue: o })}
-            </button>
-          ))}
-        </div>
-      );
-      break;
-    }
-    case "variable":
-      input = <SuggestField value={value} suggestions={variables} placeholder={t("editor.step.notKept")} label={label} onChange={(v) => set(field.name, v)} />;
-      break;
-    case "metric":
-      input = <SuggestField value={value} suggestions={metrics} placeholder={t("fields.notSet")} label={label} onChange={(v) => set(field.name, v)} />;
-      break;
-    case "metricList":
-      input = <NameListField items={nameItems(value)} choices={[]} label={label} placeholder={t("list.metricPlaceholder")} onChange={(v) => set(field.name, v)} />;
-      break;
-    case "variableList":
-      input = <NameListField items={nameItems(value)} choices={variables} label={label} placeholder="" onChange={(v) => set(field.name, v)} />;
-      break;
-    case "editableMap":
-      input = <EditableField value={editableValue(value)} choices={variables} label={label} onChange={(v) => set(field.name, v)} />;
-      break;
-    default:
-      return null;
-  }
-  return (
-    <div className={styles.field}>
-      {!(field.kind === "value" && /Ms$/.test(field.name)) && <span className={styles.label}>{label}</span>}
-      {input}
-      {help && <p className={styles.hint}>{help}</p>}
-    </div>
   );
 }
 

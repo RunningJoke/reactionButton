@@ -227,6 +227,94 @@
       "start": "Startblock",
       "noPresets": "Keine Bibliotheksteile verknüpft. Das Programm ist eigenständig."
     },
+    "sprinkle": {
+      "title": "Streusel",
+      "add": "Streusel hinzufügen",
+      "addTitle": "Streusel hinzufügen",
+      "back": "Zurück",
+      "try": "Probiere",
+      "remove": "Entfernen",
+      "custom": "Eigene Einstellung",
+      "customHint": "So eingerichtet, dass diese Ansicht es nicht ändern kann. Im Expertenmodus lässt es sich bearbeiten.",
+      "none": "Zu diesem Schritt gibt es nichts mehr hinzuzufügen.",
+      "yes": "ja",
+      "needsFormat": "Braucht einen neueren Pod (Programmformat {{n}})",
+      "needsSetting": "Das Programm hat noch keine Einstellungen",
+      "group": {
+        "rules": "Regeln",
+        "measure": "Messen",
+        "flow": "Ablauf"
+      },
+      "timeLimit": {
+        "name": "Zeitlimit",
+        "desc": "Nach einer Weile zu langsam, und was dann passiert"
+      },
+      "avoid": {
+        "name": "Rote Pods",
+        "desc": "Manche Pods dürfen nicht berührt werden",
+        "count": "{{count}} rot"
+      },
+      "longPress": {
+        "name": "Langer Druck",
+        "desc": "Ein langer Druck bewirkt etwas anderes"
+      },
+      "falseStart": {
+        "name": "Zu frühe Drücke erkennen",
+        "desc": "Ein Druck während der Pause ist ein Fehlstart"
+      },
+      "holdFirst": {
+        "name": "Erst halten",
+        "desc": "Der Knopf muss erst gehalten werden, bevor es zählt"
+      },
+      "drains": {
+        "name": "Leert sich mit der Zeit",
+        "desc": "Die Ladung sinkt, solange niemand hält"
+      },
+      "includeCentral": {
+        "name": "Zentrale macht mit",
+        "desc": "Der Knopf der Zentrale zählt wie ein Pod",
+        "remove": "Zentrale setzt aus"
+      },
+      "record": {
+        "name": "Reaktion aufzeichnen",
+        "desc": "Die Zeit von Licht bis Druck messen"
+      },
+      "keepResult": {
+        "name": "Ergebnis merken",
+        "desc": "Zeit oder Punkte in einer Einstellung speichern"
+      },
+      "phoneSettings": {
+        "name": "Handy darf Einstellungen ändern",
+        "desc": "Der Trainer ändert Einstellungen, während der Bericht wartet"
+      },
+      "showBar": {
+        "name": "Durchschnittsbalken zeigen",
+        "desc": "Der Durchschnitt als Balken auf dem Ring",
+        "target": "Zielzeit",
+        "howLong": "Angezeigt für"
+      },
+      "stopwatch": {
+        "name": "Stoppuhr",
+        "desc": "Zeit von diesem Schritt bis zu einem anderen",
+        "none": "nicht gesetzt",
+        "hint": "Start und Stopp mit demselben Namen. „cycle“ und „lap“ werden vorgeschlagen."
+      },
+      "podsOff": {
+        "name": "Pods danach ausschalten",
+        "desc": "Fügt einen Schritt hinzu, der alle Pods ausschaltet"
+      },
+      "countdown": {
+        "name": "Countdown",
+        "desc": "Der Ring zeigt die ablaufende Zeit"
+      },
+      "report": {
+        "results": "Ergebnisse",
+        "allResults": "Alle Ergebnisse",
+        "noResults": "Das Programm zeichnet noch keine Ergebnisse auf.",
+        "include": "Einstellungen mitsenden",
+        "coach": "Trainer darf ändern, während es wartet"
+      }
+    },
     "step": {
       "communicate": {
         "hint": "Sendet einen Bericht der Messungen seit dem letzten, dann wartet der Ablauf auf die App: weiter, wiederholen oder stopp. Ein Druck geht ebenfalls weiter.",
@@ -370,6 +458,7 @@
         "count": "Runden",
         "onsetMs": "Laden beginnt nach",
         "decayMs": "Ladung läuft ab in",
+        "cooldownMs": "Pause zwischen zwei Drücken eines Pods",
         "mode": "Wie es endet",
         "heldColor": "Farbe, sobald gehalten",
         "allowHeld": "Ein Halten von vorher zählt",
@@ -414,6 +503,7 @@
           "off": "Aus"
         },
         "where": "Wo",
+        "speed": "Taktdauer",
         "central": "Zentrale",
         "all": "Alles",
         "peripherals": "Alle Pods",
@@ -429,6 +519,10 @@
         "waitNeedsTime": "Braucht eine Zeit, ein endloser Effekt endet nie"
       },
       "hold": {
+        "chargeModes": {
+          "release": "Loslassen beendet",
+          "accumulate": "Loslassen pausiert"
+        },
         "whichButton": "Welcher Knopf",
         "fullAfter": "Voll nach Halten von",
         "chargeHint": "Loslassen beendet den Schritt mit der erreichten Ladung. Eine volle Ladung beendet ihn sofort und der Ring blinkt.",
