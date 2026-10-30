@@ -907,12 +907,16 @@ function CountdownRow({ block, doc, set, apply }: FieldProps) {
 
 /* ---------------------------------------------------------------- more options */
 
+/** Behaviours that have their own row; the others stay in "More options" until the Sprinkle rows replace it. */
+const SWITCH_ROWS: readonly string[] = ["timeLimit", "record", "longPress", "avoid", "randomPause", "falseStart"];
+const INTERIM_ESSENTIAL: readonly string[] = ["mode", "periodMs"];
+
 function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps & { variables: readonly string[]; metrics: readonly string[] }) {
   const { t } = useTranslation();
   // colour shift asks for its second colour above; only blink, spin, fill and drain have a background
   const mode = block.type === "release" ? releaseMode(block) : block.type === "charge" ? chargeMode(block) : undefined;
   const own: readonly string[] = [...COUNTDOWN_FIELDS, ...(block.type === "toggle" ? TOGGLE_RESULTS.map((r) => r[0]) : []), ...(block.type === "charge" ? ["color2"] : []), ...(block.type === "effect" && !["blink", "spin", "fill", "drain"].includes(String(block.effect)) ? ["color2"] : [])];
-  const fields = (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name) && (f.onlyMode === undefined || f.onlyMode === mode));
+  const fields = (blockType(block.type)?.fields ?? []).filter((f) => (fieldLevel(f) === "more" || (fieldLevel(f) === "switch" && !SWITCH_ROWS.includes(f.group!)) || (INTERIM_ESSENTIAL.includes(f.name) && (f.name !== "mode" || block.type === "charge"))) && !own.includes(f.name) && (f.onlyMode === undefined || f.onlyMode === mode));
   if (fields.length === 0) return null;
   const used = fields.some((f) => block[f.name] !== undefined);
   return (

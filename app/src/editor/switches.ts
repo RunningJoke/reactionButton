@@ -464,3 +464,29 @@ export function setSwitch(doc: ProgramJson, blockName: string, id: SwitchId, on:
   }
   return finish(d);
 }
+
+const DEFAULT_REPORT_LIMIT_MS = 30_000;
+
+/**
+ * The time limit of a `communicate` step (waiting for the phone). Not a `switchesFor` entry: the
+ * Adjust sheet's program-wide switches must not add a limit to a report. Off removes the time-out exit.
+ */
+export function setReportLimit(doc: ProgramJson, blockName: string, on: boolean): ProgramJson {
+  const d = draft(doc);
+  const block = d.blocks.find((b) => b.name === blockName);
+  if (!block || block.type !== "communicate") return doc;
+  if (on) {
+    if (!(typeof block.timeoutMs === "string" || (typeof block.timeoutMs === "number" && block.timeoutMs > 0))) block.timeoutMs = DEFAULT_REPORT_LIMIT_MS;
+    return finish(d);
+  }
+  delete block.timeoutMs;
+  cutBranch(d, blockName, "timeout");
+  return finish(d);
+}
+
+/** Removes the exit `port` of a step and the blocks only that exit led to. */
+export function removeExit(doc: ProgramJson, blockName: string, port: string): ProgramJson {
+  const d = draft(doc);
+  cutBranch(d, blockName, port);
+  return finish(d);
+}

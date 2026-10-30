@@ -38,7 +38,7 @@ describe("program format 3", () => {
     const level = (name: string) => fieldLevel(def.fields.find((f) => f.name === name)!);
     expect(level("effect")).toBe("essential");
     expect(level("wait")).toBe("essential");
-    expect(level("periodMs")).toBe("more");
+    expect(level("periodMs")).toBe("essential");
     expect(portRole({ type: "effect" }, "next")).toBe("then");
     const press = blockType("remotePress")!.fields.find((f) => f.name === "countdown")!;
     expect(fieldLevel(press)).toBe("switch");
@@ -203,7 +203,7 @@ describe("program format 3", () => {
       const level = (name: string) => fieldLevel(def.fields.find((f) => f.name === name)!);
       expect(level("maxMs")).toBe("essential");
       expect(level("style")).toBe("essential");
-      expect(level("onsetMs")).toBe("more");
+      expect(level("onsetMs")).toBe("switch");
       expect(level("timeoutMs")).toBe("switch");
       expect(level("record")).toBe("switch");
       expect(def.fields.find((f) => f.name === "timeoutMs")!.group).toBe("timeLimit");
@@ -294,7 +294,7 @@ describe("program format 3", () => {
       expect(fieldLevel(field("mode"))).toBe("essential");
       expect(fieldLevel(field("holdColor"))).toBe("essential");
       expect(fieldLevel(field("goMs"))).toBe("essential");
-      expect(fieldLevel(field("heldColor"))).toBe("more");
+      expect(fieldLevel(field("heldColor"))).toBe("expert");
       expect(fieldLevel(field("maxHoldMs"))).toBe("switch");
       expect(field("maxHoldMs").group).toBe("timeLimit");
       expect(field("timeoutMs").group).toBe("timeLimit");

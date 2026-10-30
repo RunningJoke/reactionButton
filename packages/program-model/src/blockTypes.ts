@@ -32,7 +32,7 @@ export type FieldDef = {
   /** where the step sheet shows the field (docs/app/editor-ux.md §5); default "essential" */
   level?: FieldLevel;
   /** the feature switch that reveals the field (level "switch") */
-  group?: SwitchId;
+  group?: BehaviourId;
   /** program format revision that introduced the field (programs.md §6); default 1 */
   minFormat?: number;
   /**
@@ -53,8 +53,14 @@ export type FieldDef = {
  */
 export type FieldLevel = "essential" | "switch" | "more" | "expert";
 
-/** Feature switches of the step sheet (editor-ux.md §4 D). */
+/** The six feature switches of the step sheet (editor-ux.md §4 D): the first behaviours. */
 export type SwitchId = "randomPause" | "timeLimit" | "record" | "longPress" | "avoid" | "falseStart";
+
+/**
+ * Behaviours ("Sprinkles", #88): optional things of a step that own fields, maybe one exit and helper
+ * blocks (editor/behaviours.ts). `randomPause` is the Fixed | Random control of a pause, not a behaviour.
+ */
+export type BehaviourId = SwitchId | "keepResult" | "stopwatch" | "includeCentral" | "holdFirst" | "drains" | "showBar" | "phoneSettings" | "podsOff" | "goTo";
 
 /** What a port means, in words (editor-ux.md §5 "Port names"); the app translates `portRoles.<role>`. */
 export type PortRole =
@@ -106,8 +112,8 @@ export type BlockTypeDef = {
  * §7.9). The value is a timer name; `timerStop` records the time as the metric of that name.
  */
 export const TIMER_FIELDS: readonly FieldDef[] = [
-  { name: "timerStart", kind: "metric", level: "more", minFormat: 2 },
-  { name: "timerStop", kind: "metric", level: "more", minFormat: 2 },
+  { name: "timerStart", kind: "metric", level: "switch", group: "stopwatch", minFormat: 2 },
+  { name: "timerStop", kind: "metric", level: "switch", group: "stopwatch", minFormat: 2 },
 ];
 
 /** Different timer names a program (with its includes) may use (BlockManager::MAX_TIMERS). */
@@ -225,7 +231,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "maxTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       ...countdownFields("timeout", true),
       { name: "record", kind: "metric", level: "switch", group: "record" },
-      { name: "storeAs", kind: "variable", level: "more" },
+      { name: "storeAs", kind: "variable", level: "switch", group: "keepResult" },
     ]),
   },
   {
@@ -262,11 +268,11 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "pod", kind: "value", required: true },
       { name: "mode", kind: "enum", options: ["hit", "avoid"], default: "hit", level: "switch", group: "avoid" },
       { name: "color", kind: "remoteColor" },
-      { name: "colorAfter", kind: "remoteColor", default: "off", level: "more" },
+      { name: "colorAfter", kind: "remoteColor", default: "off", level: "expert" },
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       ...countdownFields("timeout"),
       { name: "record", kind: "metric", level: "switch", group: "record" },
-      { name: "storeAs", kind: "variable", level: "more" },
+      { name: "storeAs", kind: "variable", level: "switch", group: "keepResult" },
     ]),
   },
   {
@@ -278,10 +284,10 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
     fields: withTimers([
       { name: "pods", kind: "value" },
       { name: "avoid", kind: "value", default: 0, level: "switch", group: "avoid" },
-      { name: "includeCentral", kind: "bool", default: true, level: "more" },
+      { name: "includeCentral", kind: "bool", default: true, level: "switch", group: "includeCentral" },
       { name: "hitColor", kind: "remoteColor", default: "green" },
       { name: "avoidColor", kind: "remoteColor", default: "red", level: "switch", group: "avoid" },
-      { name: "syncStartMs", kind: "value", default: 20, level: "more" },
+      { name: "syncStartMs", kind: "value", default: 20, level: "expert" },
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       ...countdownFields("timeout"),
       { name: "record", kind: "metric", level: "switch", group: "record" },
@@ -311,11 +317,11 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "storeBest", kind: "variable" },
       { name: "storeWorst", kind: "variable" },
       { name: "storeCount", kind: "variable" },
-      { name: "reset", kind: "bool", default: true, level: "more" },
+      { name: "reset", kind: "bool", default: true, level: "expert" },
       // programFormat 6: the average as a bar on the central's ring, green / amber / red against targetMs
-      { name: "show", kind: "bool", default: false, level: "more", minFormat: 6, rejectedByOlder: true },
-      { name: "targetMs", kind: "value", level: "more", minFormat: 6, rejectedByOlder: true },
-      { name: "showMs", kind: "value", default: 3000, level: "more", minFormat: 6, rejectedByOlder: true },
+      { name: "show", kind: "bool", default: false, level: "switch", group: "showBar", minFormat: 6, rejectedByOlder: true },
+      { name: "targetMs", kind: "value", level: "switch", group: "showBar", minFormat: 6, rejectedByOlder: true },
+      { name: "showMs", kind: "value", default: 3000, level: "switch", group: "showBar", minFormat: 6, rejectedByOlder: true },
     ]),
   },
   {
@@ -327,7 +333,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
     minFormat: 2,
     fields: withTimers([
       { name: "count", kind: "value", required: true },
-      { name: "storeIndex", kind: "variable", level: "more" },
+      { name: "storeIndex", kind: "variable", level: "expert" },
     ]),
   },
   {
@@ -343,10 +349,10 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "color", kind: "remoteColor", default: "white" },
       { name: "color2", kind: "remoteColor", default: "off", level: "more" },
       { name: "durationMs", kind: "value" },
-      { name: "periodMs", kind: "value", default: 500, level: "more" },
+      { name: "periodMs", kind: "value", default: 500 },
       { name: "brightness", kind: "value", default: 255, level: "more" },
       { name: "leds", kind: "leds", level: "more" },
-      { name: "syncStartMs", kind: "value", default: 20, level: "more" },
+      { name: "syncStartMs", kind: "value", default: 20, level: "expert" },
       { name: "wait", kind: "bool", default: false },
     ]),
   },
@@ -365,16 +371,16 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "style", kind: "enum", options: CHARGE_STYLES, default: "fill" },
       { name: "color", kind: "remoteColor", default: "green" },
       { name: "color2", kind: "remoteColor", default: "red", level: "more" }, // colorShift only
-      { name: "onsetMs", kind: "value", default: 0, level: "more" },
-      { name: "mode", kind: "enum", options: CHARGE_MODES, default: "release", level: "more" },
-      { name: "decayMs", kind: "value", default: 0, level: "more", onlyMode: "accumulate" },
+      { name: "onsetMs", kind: "value", default: 0, level: "switch", group: "holdFirst" },
+      { name: "mode", kind: "enum", options: CHARGE_MODES, default: "release" },
+      { name: "decayMs", kind: "value", default: 0, level: "switch", group: "drains", onlyMode: "accumulate" },
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       { name: "minTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       { name: "maxTimeoutMs", kind: "value", level: "switch", group: "timeLimit" },
       ...countdownFields("timeout"),
       { name: "record", kind: "metric", level: "switch", group: "record" },
-      { name: "storeAs", kind: "variable", level: "more" },
-      { name: "storePercent", kind: "variable", level: "more" },
+      { name: "storeAs", kind: "variable", level: "switch", group: "keepResult" },
+      { name: "storePercent", kind: "variable", level: "switch", group: "keepResult" },
     ]),
   },
   {
@@ -391,16 +397,16 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "minDurationMs", kind: "value" },
       { name: "maxDurationMs", kind: "value" },
       { name: "start", kind: "enum", options: TOGGLE_STARTS, default: "alternate" },
-      { name: "cooldownMs", kind: "value", default: 300 },
+      { name: "cooldownMs", kind: "value", default: 300, level: "more" },
       { name: "pods", kind: "value", level: "more" },
-      { name: "includeCentral", kind: "bool", default: true, level: "more" },
-      { name: "syncStartMs", kind: "value", default: 20, level: "more" },
+      { name: "includeCentral", kind: "bool", default: true, level: "switch", group: "includeCentral" },
+      { name: "syncStartMs", kind: "value", default: 20, level: "expert" },
       ...countdownFields("game"),
-      { name: "storeA", kind: "variable", level: "more" },
-      { name: "storeB", kind: "variable", level: "more" },
-      { name: "storeTimeA", kind: "variable", level: "more" },
-      { name: "storeTimeB", kind: "variable", level: "more" },
-      { name: "storeFlips", kind: "variable", level: "more" },
+      { name: "storeA", kind: "variable", level: "switch", group: "keepResult" },
+      { name: "storeB", kind: "variable", level: "switch", group: "keepResult" },
+      { name: "storeTimeA", kind: "variable", level: "switch", group: "keepResult" },
+      { name: "storeTimeB", kind: "variable", level: "switch", group: "keepResult" },
+      { name: "storeFlips", kind: "variable", level: "switch", group: "keepResult" },
     ]),
   },
   {
@@ -421,14 +427,14 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "goMs", kind: "value", onlyMode: "signal" },
       { name: "minGoMs", kind: "value", onlyMode: "signal" },
       { name: "maxGoMs", kind: "value", onlyMode: "signal" },
-      { name: "heldColor", kind: "remoteColor", level: "more" }, // default: holdColor
-      { name: "allowHeld", kind: "bool", level: "more" }, // default: true in trigger mode, false in signal mode
-      { name: "holdTimeoutMs", kind: "value", level: "more" },
+      { name: "heldColor", kind: "remoteColor", level: "expert" }, // default: holdColor
+      { name: "allowHeld", kind: "bool", level: "expert" }, // default: true in trigger mode, false in signal mode
+      { name: "holdTimeoutMs", kind: "value", level: "switch", group: "holdFirst" },
       { name: "maxHoldMs", kind: "value", level: "switch", group: "timeLimit", onlyMode: "trigger" },
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit", onlyMode: "signal" },
       ...countdownFields("timeout"),
       { name: "record", kind: "metric", level: "switch", group: "record", onlyMode: "signal" },
-      { name: "storeAs", kind: "variable", level: "more" },
+      { name: "storeAs", kind: "variable", level: "switch", group: "keepResult" },
     ]),
   },
   {
@@ -441,9 +447,9 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
     minFormat: 5,
     fields: withTimers([
       { name: "timeoutMs", kind: "value", level: "switch", group: "timeLimit" }, // 0 or missing: no timeout
-      { name: "metrics", kind: "metricList", level: "more" }, // missing: all metrics
-      { name: "vars", kind: "variableList", level: "more" },
-      { name: "editable", kind: "editableMap", level: "more" },
+      { name: "metrics", kind: "metricList", level: "expert" }, // missing: all metrics
+      { name: "vars", kind: "variableList", level: "switch", group: "phoneSettings" },
+      { name: "editable", kind: "editableMap", level: "switch", group: "phoneSettings" },
       { name: "color", kind: "color", default: "cyan" },
     ]),
   },
