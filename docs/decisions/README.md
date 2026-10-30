@@ -49,3 +49,14 @@ upload steps or account concepts "for later"). Existing platform code, tests, AP
 platform client (preview under Settings) and all protocols stay and keep working; a change that breaks
 them gets fixed. Platform issues carry `status: on-hold`. Separately: the app follows one set at a time;
 several sets at once (#46) are removed until investigated. Results stay on the phone (history, CSV).
+
+## 0008 NimBLE host instead of Bluedroid – accepted (2026-10-30)
+The phone link uses NimBLE-Arduino 1.4.3 (own host stack) on the IDF controller; `sdkconfig.NewBoard` is
+`BT_CONTROLLER_ONLY`, host limits are build flags in `platformio.ini` (one connection, MTU 517, peripheral
+role only). Reason: RAM and flash (Bluedroid ≈ 64 KB heap, ADR 0005). `firmware.bin` 1 469 568 → 1 093 824 B
+(52 % of the 2 MB slot). GATT UUIDs, indicate-only response, advertisement and MTU are unchanged, so app and
+tools need no change. Differences in `PhoneConfig`: `indicate()` does not wait, so the sender task waits for
+`onStatus` (3 s timeout, line dropped); the server gets no connection-update event, so the interval is polled
+every 500 ms. Hardware test 2026-10-30: connect, upload and reporting work. Still open: the ADR 0005 30-min
+run (`txLost` 0, start spread < 5 ms, min free heap > 40 KB) and a heap measurement against 73 KB. Rejected:
+trimming Bluedroid first (not measured), the IDF's own NimBLE host (more code, same result).

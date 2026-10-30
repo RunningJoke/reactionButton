@@ -11,8 +11,8 @@
 | Battery | GPIO 5, ADC2 (`analogReadMilliVolts`) through a 1:1 divider (2 × 100 k) |
 | Random seed | GPIO 0 ADC read once |
 | Pod link | ESP-NOW, WiFi channel 1, ≤ 7 peripherals (`CentralRole::MAX_PERIPHERALS`); shipped programs use ≤ 4 |
-| Phone | BLE (Bluedroid), central only |
-| Libraries | Adafruit NeoPixel ^1.12.0, ArduinoJson ^7.4.2 |
+| Phone | BLE (NimBLE-Arduino 1.4.3 host on the IDF controller, ADR 0008), peripheral role, one phone, MTU 517; central only |
+| Libraries | Adafruit NeoPixel ^1.12.0, ArduinoJson ^7.4.2, NimBLE-Arduino 1.4.3 |
 
 Sources: `hardware/pcb` (KiCad), `hardware/casing` (FreeCAD).
 
@@ -21,7 +21,7 @@ Sources: `hardware/pcb` (KiCad), `hardware/casing` (FreeCAD).
 | File | Purpose |
 |---|---|
 | `platformio.ini` | single env `NewBoard`, USB-CDC console |
-| `sdkconfig.NewBoard` | WiFi + SW coexistence, Bluedroid, `FREERTOS_HZ=1000`, task WDT off, C++ exceptions off, `-Os`, log level INFO (`CONFIG_LOG_MAXIMUM_LEVEL=3`), assertions on, `CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3`. BLE limits are changed here (`pio run -d firmware -t menuconfig`) |
+| `sdkconfig.NewBoard` | WiFi + SW coexistence, BT controller only (`BT_CONTROLLER_ONLY`; the host stack is NimBLE-Arduino), `FREERTOS_HZ=1000`, task WDT off, C++ exceptions off, `-Os`, log level INFO (`CONFIG_LOG_MAXIMUM_LEVEL=3`), assertions on, `CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3`. Controller limits are changed here (`pio run -d firmware -t menuconfig`); NimBLE host limits are `-DCONFIG_BT_NIMBLE_*` build flags in `platformio.ini` |
 | `partitions.csv` | nvs 20 KB, otadata, **one** app slot `ota_0` 2 MB, SPIFFS 1.9 MB, coredump 64 KB |
 | `CMakeLists.txt`, `src/CMakeLists.txt` | ESP-IDF glue (globs `src/`) |
 
