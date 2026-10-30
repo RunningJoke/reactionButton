@@ -64,6 +64,7 @@ class CentralRole : public IRole {
         void drawProgress();
         // SELECTED is still flashing: DISCOVERY and CONFIRM wait with their ring until it has ended
         bool selectedFlashing() const;
+        void updateMenuRing();
         void fail(const char* message);
 
         void opPrograms(JsonDocument& response);
@@ -94,6 +95,7 @@ class CentralRole : public IRole {
         // program menu
         uint64_t modelSelectorPressStart = 0;
         uint8_t modelSelectorCounter = 0;
+        bool menuBreathing = false;        // MENU pattern breathes (phone connected when it started)
         bool selectStarted = false;        // SELECT plays in this press (from 200 ms on, once per press)
         int64_t selectStartUs = 0;         // when SELECT started (esp_timer µs), for SELECT_CANCEL
         uint8_t selectedModel = 0;

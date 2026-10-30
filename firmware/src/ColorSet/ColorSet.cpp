@@ -11,7 +11,7 @@ static ColorSet whiteValue{255, 255, 255};
 // orange, violet and cream are identity colours only (#82): tuned for the LEDs, see Identity.h
 static ColorSet orangeValue{255, 120, 0};
 static ColorSet violetValue{160, 100, 255};
-static ColorSet amberValue{255, 160, 0};
+static ColorSet amberValue{255, 100, 0};        // redder: 160 green read yellow on the LEDs (#82)
 static ColorSet creamValue{255, 235, 200};
 
 ColorSet* const BLACK = &blackValue;

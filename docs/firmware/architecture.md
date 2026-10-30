@@ -77,7 +77,7 @@ reboot. Wake from deep sleep is a normal boot.
 | State | Enter / behaviour |
 |---|---|
 | UNCLAIMED | SEARCH: amber spot bouncing over LEDs 8–17 (fw ≥ 2.15; 2.13–2.14: yellow + MAC-derived 2-LED segment); HELLO every 250 ms; hold the button 3 s → set id cleared (white flash 0.5 s) |
-| READY | CLAIM from a central of its set (or any, if unpaired); PING every 200 ms; JOINED while the central sets the identify flag: own LED flashes twice, then 30 %; LEDs 8–17 breathe green. A re-claim flashes again (fw ≥ 2.15; 2.13–2.14: number, then spin; link-protocol §2.4) |
+| READY | CLAIM from a central of its set (or any, if unpaired); PING every 200 ms; JOINED while the central sets the identify flag: n LEDs (pod n) flash twice, then 30 %; LEDs 8–17 breathe green. A re-claim flashes again (fw ≥ 2.15; 2.13–2.14: number, then spin; link-protocol §2.4) |
 | READY, battery < 15 % | LOW_BATTERY replaces JOINED: LED 9 amber, 200 ms on per second (§7.1) |
 | SCHEDULED | ARM with a start time; → ACTIVE when the synced clock reaches it |
 | ACTIVE | LEDs updated, then `t0` taken; only presses that start after count; reaction = press edge − `t0` (µs) |
@@ -191,9 +191,9 @@ Unknown variables read 0.
   effect player. A pattern is a pure function of the time since its start, like an effect. The ring as it is
   when a pattern starts is the snapshot that SELECT / SELECT_CANCEL draw over. A pattern ends an effect and
   the other way round; every static call stops both. `currentPattern()` gives the last one. Patterns are
-  firmware only: not on the link, not in programs. Levels are perceived brightness (gamma 2).
+  firmware only: not on the link, not in programs. Levels are perceived brightness (gamma 2), shown at 50 % of the game brightness (`SYSTEM_LEVEL`): close range only; games stay at full brightness.
 - Identity (fw ≥ 2.13): palette in `LEDManager/Identity.h` (fw ≥ 2.15: blue, cyan, violet, magenta, yellow,
-  orange, cream), drawn by `PeripheralRole::updateIdentity` (fw ≥ 2.15: JOINED pattern, one light); the
+  orange, cream), drawn by `PeripheralRole::updateIdentity` (fw ≥ 2.15: JOINED pattern, n LEDs); the
   central's own `blink` is white (`CentralRole::opBlink`); the menu flag goes out through
   `PodNetwork::setIdentify`.
 
@@ -205,12 +205,12 @@ for orange, violet and cream are provisional until checked on the real LEDs (bri
 
 | State | Pattern | Colour | Timing |
 |---|---|---|---|
-| Power-on (every pod) | BOOT | battery gauge cyan (amber below 20 %; full cyan without a reading), then white | gauge fills with ease-out in 500, holds to 1000; white fills the ring over 1600 (timer). Total 2600. Button held at the end → central, else peripheral. Wake from deep sleep too |
+| Power-on (every pod) | BOOT | battery gauge blue-cyan (0, 100, 220; amber below 20 %; full without a reading), then white | gauge fills with ease-out in 500, holds to 1000; white fills the ring over 1600 (timer). Total 2600. Button held at the end → central, else peripheral. Wake from deep sleep too |
 | Peripheral unclaimed | SEARCH | amber spot with a 3-LED tail over LEDs 8–17 | 2000 per way, reverses at the ends; not synced |
 | Peripheral: hold 3 s | (white flash) | white, whole ring | 500; pairing cleared |
-| Peripheral claimed, central in MENU / DISCOVERY / CONFIRM (identify flag) | JOINED | own colour on LED n−1 (pod n): two flashes, then 30 %. LEDs 8–17 green | flash 225 each; green breathes 2200 (floor 15 %). Flag cleared: dark. A re-claim flashes again |
+| Peripheral claimed, central in MENU / DISCOVERY / CONFIRM (identify flag) | JOINED | own colour on LEDs 0 … n−1 (pod n): two flashes, then 30 %. LEDs 8–17 green | flash 225 each; green breathes 2200 (floor 15 %). Flag cleared: dark. A re-claim flashes again |
 | Peripheral claimed, battery < 15 %, idle | LOW_BATTERY | amber, LED 9 only (replaces JOINED) | 200 on per 1000; 5 % between |
-| Central MENU | program's own pattern | program | static, unchanged |
+| Central MENU | MENU | the program's menu pattern (snapshot) | static; breathes 2200 (floor 15 %) while a phone is connected |
 | Central MENU, button held | SELECT | white fills clockwise over the snapshot | starts after 200; fill 1600 (full at 1800 = selected) |
 | Central MENU, button let go early | SELECT_CANCEL | white drains back to the snapshot | same speed as the fill |
 | Program selected | SELECTED | whole ring white | two flashes, 150 on / 150 off; 700, then discovery |

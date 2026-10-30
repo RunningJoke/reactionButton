@@ -10,7 +10,7 @@
  *   number   1 ... 7 (pod id + 1; ids are handed out in claim order)
  *   colour   fixed per pod id. The palette has no red / green (game signals), no amber (attention) and
  *            no white (confirmation); the central has no number
- *   pattern  one light at position n (pod 3 = LED 2), see SystemPattern JOINED: two flashes after a claim,
+ *   pattern  n LEDs from LED 0 (pod 3 = LEDs 0-2), see SystemPattern JOINED: two flashes after a claim,
  *            then dim while the central is in the menu, discovery or confirm (PONG_FLAG_IDENTIFY)
  */
 namespace Identity {
@@ -26,6 +26,6 @@ namespace Identity {
 
     inline uint8_t colorOf(uint8_t podId) { return PALETTE[podId % COUNT]; }
     inline uint8_t numberOf(uint8_t podId) { return podId + 1; }
-    // LED that shows the pod (pod 1 = LED 0)
+    // the pod's marker on the central in DISCOVERY (pod 1 = LED 0)
     inline uint8_t ledOf(uint8_t podId) { return podId % COUNT; }
 }

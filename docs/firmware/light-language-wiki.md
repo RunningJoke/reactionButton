@@ -2,9 +2,10 @@ Source for the wiki manual page "Light language" (firmware 2.15, #82). Paste the
 
 | What the coach sees | What it means | What to do |
 |---|---|---|
-| Ring fills cyan, then white (about 2.6 s) after switching on | Pod is starting. Cyan fill = battery level; amber fill = below 20 % | Hold the button until the white fill ends: this pod becomes the central. Released earlier: it is a peripheral |
+| Ring fills blue, then white (about 2.6 s) after switching on | Pod is starting. Blue fill = battery level; amber fill = below 20 % | Hold the button until the white fill ends: this pod becomes the central. Released earlier: it is a peripheral |
 | Amber light bounces over 10 of the 18 lights | Pod is on but not in a set yet | Start the set's central, the pod joins by itself. To move the pod to another set: hold its button 3 s (white flash) |
-| One light in the pod's colour flashes twice, then stays dim; 10 lights breathe green | Pod is in the set and the central is in menu, discovery or confirm. The lit light is pod n (first light = 1) | Use colour and position to find the pod |
+| A few lights in the pod's colour flash twice, then stay dim; 10 lights breathe green | Pod is in the set and the central is in menu, discovery or confirm. The number of lit lights is the pod number | Use colour and count to find the pod |
+| Central shows its program pattern, slowly breathing | A phone is connected to the central | Nothing |
 | Pod lights go dark | Game has started | Nothing. The game controls the lights |
 | One amber light blinks once a second | Pod battery is below 15 % | Charge the pod soon |
 | Central ring breathes green | All pods are here, game is ready | Press the central's button to start |

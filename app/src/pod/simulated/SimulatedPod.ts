@@ -72,6 +72,7 @@ const PATTERN_DURATIONS: Record<string, number> = {
   paused: 0,
   lowBattery: 0,
   sleep: 2000,
+  menu: 0,
 };
 
 class ApiFailure extends Error {

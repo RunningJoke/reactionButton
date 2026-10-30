@@ -119,7 +119,9 @@ void CentralRole::run() {
             }
             if(this->runModelSelector() && this->startProgram()) {
                 this->setState(State::DISCOVERY);
+                break;
             }
+            this->updateMenuRing();
             break;
 
         case State::DISCOVERY:
@@ -272,6 +274,27 @@ void CentralRole::drawProgress() {
     args.wanted = this->requiredPeripherals;
     args.found = connected;
     LEDManager::getManager()->playPattern(SystemPattern::Id::DISCOVERY, args);
+}
+
+// MENU ring (#82): the menu pattern drawn by showMenu, shown by the MENU pattern at system brightness and
+// breathing while a phone is connected. Waits while the button is held (SELECT) or an effect / SELECT_CANCEL runs.
+void CentralRole::updateMenuRing() {
+    LEDManager* leds = LEDManager::getManager();
+    bool phone = this->phone.connected();
+    bool showing = leds->currentPattern() == SystemPattern::Id::MENU;
+    if(this->modelSelectorCounter > 0 || (showing && phone == this->menuBreathing)) {
+        return;
+    }
+    if(!showing && leds->isAnimating()) {
+        return;
+    }
+    if(showing) {
+        this->catalog.showMenu(this->selectedModel, *leds);    // the snapshot must be the full-brightness menu
+    }
+    this->menuBreathing = phone;
+    SystemPattern::Args args;
+    args.breathing = phone;
+    leds->playPattern(SystemPattern::Id::MENU, args);
 }
 
 bool CentralRole::selectedFlashing() const {
@@ -579,6 +602,7 @@ void CentralRole::opPattern(JsonObjectConst request, JsonDocument& response) {
     args.wanted = request["wanted"] | args.wanted;
     args.found = request["found"] | args.found;
     args.fillMs = request["fillMs"] | args.fillMs;
+    args.breathing = request["breathing"] | args.breathing;
     LEDManager::getManager()->playPattern(id, args);
 
     response["ok"] = true;

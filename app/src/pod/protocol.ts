@@ -83,7 +83,7 @@ export type InfoResponse = ResponseBase & {
 export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | "identify" | "battery" | "patterns" | (string & {});
 
 /** System patterns of the `pattern` op (firmware ≥ 2.15). Endless ones run until the next op. */
-export type PatternName = "boot" | "search" | "joined" | "discovery" | "ready" | "select" | "selectCancel" | "selected" | "paused" | "lowBattery" | "sleep";
+export type PatternName = "boot" | "search" | "joined" | "discovery" | "ready" | "select" | "selectCancel" | "selected" | "paused" | "lowBattery" | "sleep" | "menu";
 
 /** `pattern` (firmware ≥ 2.15, feature `patterns`): durationMs 0 = endless; selectCancel lasts fillMs. */
 export type PatternResponse = ResponseBase & { pattern: PatternName; durationMs: number };

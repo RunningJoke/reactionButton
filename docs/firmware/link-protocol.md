@@ -117,7 +117,7 @@ Number 1…7 (pod id + 1), fixed colour from `Identity::PALETTE`; reported as `s
 (`#rrggbb`).
 - Palette: revision 4 (2.13–2.14) red, green, blue, magenta, cyan, orange, violet. Revision 5 (2.15) blue,
   cyan, violet, magenta, yellow, orange, cream (pods 1 … 7).
-- Shown as one light at LED n−1 (pod 3 = LED 2) from 2.15; revision 4 showed n LEDs.
+- Shown as n LEDs from LED 0 (pod 3 = LEDs 0–2), as in revision 4.
 - PONG flag bit 1 `identify`: set in MENU, DISCOVERY, CONFIRM. While set, a claimed pod plays JOINED
   (architecture §7.1): its LED flashes twice after a claim, then stays at 30 %; LEDs 8–17 breathe green.
   Flag cleared: dark. Revision 4: the number spins (one turn / 3 s). Older pods ignore the bit (no feature bit).
@@ -204,5 +204,5 @@ Version 1 (fw 2.0) is incompatible with fw 1.x. Within version 1, sets may mix f
 
 **Revision** (`Protocol::REVISION`, `info.linkRevision`) counts compatible extensions: 1 = fw 2.0–2.8,
 2 = 2.9 (hold), 3 = 2.10 (toggle), 4 = 2.13 (identity flag, colours 7/8, battery),
-5 = 2.15 (light language: colour 10 cream, identity as one light, JOINED / SEARCH patterns instead of the spin
+5 = 2.15 (light language: colour 10 cream, new identity palette, JOINED / SEARCH patterns instead of the spin
 and the MAC segment; no new frame or field).

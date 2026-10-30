@@ -540,6 +540,7 @@ bool PeripheralRole::control(const char* op, JsonObjectConst request, JsonDocume
         args.wanted = request["wanted"] | 0u;
         args.found = request["found"] | 0u;
         args.fillMs = request["fillMs"] | 0u;
+        args.breathing = request["breathing"] | false;
         LEDManager::getManager()->playPattern(id, args);
         response["ok"] = true;
         response["pattern"] = SystemPattern::name(id);

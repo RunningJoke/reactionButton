@@ -9,7 +9,7 @@ namespace SystemPattern {
 namespace {
     const char* const NAMES[] = {
         "none", "boot", "search", "joined", "discovery", "ready", "select", "selectCancel", "selected", "paused",
-        "lowBattery", "sleep"
+        "lowBattery", "sleep", "menu"
     };
     static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == (size_t)Id::COUNT_, "one name per pattern");
 
@@ -22,6 +22,8 @@ namespace {
     const float JOINED_DIM = 0.3f;
     const float MARKER_DIM = 0.25f;
     const float LOW_BATTERY_DIM = 0.05f;
+    // boot gauge: bluer and darker than the ColorSet cyan, which looked almost white next to the white timer
+    const ColorSet GAUGE = {0, 100, 220};
     const uint32_t LOW_BATTERY_ON_MS = 200;
 
     inline uint8_t toLevel(float k) {
@@ -72,15 +74,15 @@ namespace {
         }
     }
 
-    // white fill of SELECT at `p` LEDs (fractional head blends over the snapshot)
-    void whiteFill(Pixel* out, float p) {
+    // white fill of SELECT at `p` LEDs over the snapshot shown at `rest` (the head lights where the snapshot is dark)
+    void whiteFill(Pixel* out, float p, uint8_t rest) {
         for(uint8_t i = 0; i < LEDS; i++) {
             if(i + 1 <= p) {
                 set(out[i], *WHITE, 1.0f);
             } else {
                 out[i].snapshot = true;
-                out[i].color = *WHITE;
-                out[i].level = i < p ? toLevel(p - i) : 0;
+                out[i].color = i < p ? *WHITE : ColorSet{0, 0, 0};
+                out[i].level = rest;
             }
         }
     }
@@ -111,7 +113,7 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
         {
             bool known = args.percent <= 100;
             float charge = known ? args.percent / 100.0f : 1.0f;
-            const ColorSet& gaugeColor = known && args.percent < LOW_PERCENT_GAUGE ? *AMBER : *CYAN;
+            const ColorSet& gaugeColor = known && args.percent < LOW_PERCENT_GAUGE ? *AMBER : GAUGE;
             if(ended) {
                 fill(out, *WHITE, 1.0f);
                 break;
@@ -140,15 +142,18 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
 
         case Id::JOINED:
         {
-            Pixel& own = out[Identity::ledOf(args.podId)];
-            if(t < 4 * JOINED_FLASH_MS) {
-                set(own, podColor(args.podId), (t / JOINED_FLASH_MS) % 2 == 0 ? 1.0f : 0.0f);
+            // pod n = n LEDs (owner decision, #82)
+            bool flashing = t < 4 * JOINED_FLASH_MS;
+            float k = !flashing ? JOINED_DIM : (t / JOINED_FLASH_MS) % 2 == 0 ? 1.0f : 0.0f;
+            for(uint8_t i = 0; i < Identity::numberOf(args.podId) && i < SEARCH_FIRST; i++) {
+                set(out[i], podColor(args.podId), k);
+            }
+            if(flashing) {
                 break;
             }
-            set(own, podColor(args.podId), JOINED_DIM);
-            float k = breathe(t - 4 * JOINED_FLASH_MS, BREATHE_GREEN_MS);
+            float g = breathe(t - 4 * JOINED_FLASH_MS, BREATHE_GREEN_MS);
             for(uint8_t j = SEARCH_FIRST; j < LEDS; j++) {
-                set(out[j], *GREEN, k);
+                set(out[j], *GREEN, g);
             }
             break;
         }
@@ -168,11 +173,13 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
             break;
 
         case Id::SELECT:
-            whiteFill(out, ended ? LEDS : (float)t * LEDS / SELECT_MS);
+            // the snapshot is the MENU pattern's frame, already at system brightness
+            whiteFill(out, ended ? LEDS : (float)t * LEDS / SELECT_MS, 255);
             break;
 
         case Id::SELECT_CANCEL:
-            whiteFill(out, ended ? 0.0f : (float)(args.fillMs - t) * LEDS / SELECT_MS);
+            // the snapshot is the menu just redrawn at full brightness
+            whiteFill(out, ended ? 0.0f : (float)(args.fillMs - t) * LEDS / SELECT_MS, SNAPSHOT_SYSTEM);
             break;
 
         case Id::SELECTED:
@@ -196,6 +203,16 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
             float k = 1.0f - (float)t / SLEEP_MS;
             for(uint8_t i = 0; i < n; i++) {
                 set(out[i], *WHITE, k);
+            }
+            break;
+        }
+        case Id::MENU:
+        {
+            uint8_t level = args.breathing ? toLevel(breathe(t, BREATHE_GREEN_MS) * SNAPSHOT_SYSTEM / 255.0f)
+                                           : SNAPSHOT_SYSTEM;
+            for(uint8_t i = 0; i < LEDS; i++) {
+                out[i].snapshot = true;
+                out[i].level = level;
             }
             break;
         }

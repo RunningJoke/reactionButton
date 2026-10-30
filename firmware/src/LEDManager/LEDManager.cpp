@@ -296,11 +296,14 @@ bool LEDManager::renderPattern(uint32_t elapsedMs, uint32_t* next)
     for(uint8_t i = 0; i < NEOPIXEL_SIZE; i++) {
         const SystemPattern::Pixel& p = pixels[i];
         // gamma 2: levels are perceived brightness, so dim breathing does not jump at the low end
-        uint8_t level = p.level == 0 ? 0 : (uint8_t)(((uint32_t)p.level * p.level + 254) / 255);
-        if(!p.snapshot) {
-            next[i] = this->scaled(p.color, level);
+        uint32_t level = p.level == 0 ? 0 : ((uint32_t)p.level * p.level + 254) / 255;
+        uint32_t s = this->snapshot[i];
+        if(!p.snapshot || s == 0) {
+            next[i] = this->scaled(p.color, (uint8_t)(level * SystemPattern::SYSTEM_LEVEL / 255));
         } else {
-            next[i] = level != 0 && this->snapshot[i] == 0 ? this->scaled(p.color, level) : this->snapshot[i];
+            next[i] = Adafruit_NeoPixel::Color((uint8_t)(((s >> 16) & 0xFF) * level / 255),
+                                               (uint8_t)(((s >> 8) & 0xFF) * level / 255),
+                                               (uint8_t)((s & 0xFF) * level / 255));
         }
     }
     return ended;
