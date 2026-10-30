@@ -22,8 +22,10 @@ namespace {
     const float JOINED_DIM = 0.3f;
     const float MARKER_DIM = 0.25f;
     const float LOW_BATTERY_DIM = 0.05f;
-    // boot gauge: bluer and darker than the ColorSet cyan, which looked almost white next to the white timer
-    const ColorSet GAUGE = {0, 100, 220};
+    // boot gauge: blue-cyan at 60 % perceived (~36 % duty), so it reads clearly against the full white timer;
+    // SYSTEM_LEVEL halves both, which alone left them looking the same on the LEDs
+    const ColorSet GAUGE = {0, 70, 255};
+    const float GAUGE_LEVEL = 0.6f;
     const uint32_t LOW_BATTERY_ON_MS = 200;
 
     inline uint8_t toLevel(float k) {
@@ -121,7 +123,7 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
             if(t < BOOT_GAUGE_MS) {
                 uint8_t n = (uint8_t)lroundf(LEDS * charge * ease((float)t / BOOT_GAUGE_FILL_MS));
                 for(uint8_t i = 0; i < n && i < LEDS; i++) {
-                    set(out[i], gaugeColor, 1.0f);
+                    set(out[i], gaugeColor, GAUGE_LEVEL);
                 }
                 break;
             }
@@ -131,7 +133,7 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
                 if(i < p) {
                     set(out[i], *WHITE, 1.0f);
                 } else if(i < gauge) {
-                    set(out[i], gaugeColor, 1.0f);
+                    set(out[i], gaugeColor, GAUGE_LEVEL);
                 }
             }
             break;

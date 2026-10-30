@@ -205,7 +205,7 @@ for orange, violet and cream are provisional until checked on the real LEDs (bri
 
 | State | Pattern | Colour | Timing |
 |---|---|---|---|
-| Power-on (every pod) | BOOT | battery gauge blue-cyan (0, 100, 220; amber below 20 %; full without a reading), then white | gauge fills with ease-out in 500, holds to 1000; white fills the ring over 1600 (timer). Total 2600. Button held at the end → central, else peripheral. Wake from deep sleep too |
+| Power-on (every pod) | BOOT | battery gauge blue-cyan (0, 70, 255) at 60 % ( amber below 20 %; full without a reading), then white | gauge fills with ease-out in 500, holds to 1000; white fills the ring over 1600 (timer). Total 2600. Button held at the end → central, else peripheral. Wake from deep sleep too |
 | Peripheral unclaimed | SEARCH | amber spot with a 3-LED tail over LEDs 8–17 | 2000 per way, reverses at the ends; not synced |
 | Peripheral: hold 3 s | (white flash) | white, whole ring | 500; pairing cleared |
 | Peripheral claimed, central in MENU / DISCOVERY / CONFIRM (identify flag) | JOINED | own colour on LEDs 0 … n−1 (pod n): two flashes, then 30 %. LEDs 8–17 green | flash 225 each; green breathes 2200 (floor 15 %). Flag cleared: dark. A re-claim flashes again |
