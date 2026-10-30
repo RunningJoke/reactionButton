@@ -27,7 +27,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.15", the summary bar, identify and battery (2.13), auto power-off and the system patterns (2.15)), and
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.17", the summary bar, identify and battery (2.13), auto power-off, the system patterns (2.15) and start variables (2.17)), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
    * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
@@ -53,6 +53,9 @@ export type SimulatedPodOptions = {
 
 /** Reports the central keeps until they are acknowledged (#41). */
 const REPORT_BUFFER = 8;
+
+/** The demo program's editable variables (its communicate block, and the start card in CONFIRM). */
+const START_EDITABLE = { MAX_LOOPS: { min: 1, max: 50 } };
 
 type Json = Record<string, unknown>;
 
@@ -139,7 +142,7 @@ export class SimulatedPod {
     this.batteryOption = options.battery ?? this.programFormat >= 6;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 6 ? "2.15" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 6 ? "2.17" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -154,6 +157,11 @@ export class SimulatedPod {
   /** firmware ≥ 2.15: system patterns (op `pattern`), feature `patterns`, link revision 5 */
   private get patterns(): boolean {
     return Number(this.firmware.split(".")[1]) >= 15;
+  }
+
+  /** firmware ≥ 2.17: `setVariables` in CONFIRM, `status.ready.editable`, feature `startVars` (config-api.md §3) */
+  get startVars(): boolean {
+    return this.remote && Number(this.firmware.split(".")[1]) >= 17;
   }
 
   /** firmware ≥ 2.11 (program format 5): the reports and the remote ops, features `reports` and `remote` */
@@ -252,7 +260,7 @@ export class SimulatedPod {
             "validate",
             "setName",
             "auth",
-            ...(this.remote ? ["reports", "ack", "session", "command", "setVariables", "pause", "resume"] : []),
+            ...(this.remote ? ["reports", "ack", "session", "command", "setVariables", "pause", "resume", "start"] : []),
             ...(this.role === "central" && this.identifies ? ["blink"] : []),
             ...(this.role === "central" && this.patterns ? ["pattern"] : []),
           ],
@@ -291,6 +299,8 @@ export class SimulatedPod {
       case "resume":
         if (this.remote) return this.remoteOp(op, req);
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
+      case "start":
+        return this.start();
       default:
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
     }
@@ -325,6 +335,7 @@ export class SimulatedPod {
         ...(this.identifies ? ["identify"] : []),
         ...(this.battery ? ["battery"] : []),
         ...(this.patterns ? ["patterns"] : []),
+        ...(this.startVars ? ["startVars"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -370,6 +381,7 @@ export class SimulatedPod {
             phonePaused: this.phonePaused,
             reports: { pending: this.pendingReports.length, dropped: this.droppedReports },
             ...(this.isWaiting() ? { waiting: { block: this.waiting!.block, editable: this.editableView() } } : {}),
+            ...(this.startVars && this.state === "CONFIRM" ? { ready: { editable: this.editableView(START_EDITABLE) } } : {}),
           }
         : {}),
     };
@@ -381,10 +393,15 @@ export class SimulatedPod {
   }
 
   /** `editable` of the waiting block with the current values (config-api.md §5, status.waiting). */
-  private editableView(): Record<string, { min: number; max: number; value: number }> {
-    return Object.fromEntries(
-      Object.entries(this.waiting?.editable ?? {}).map(([name, range]) => [name, { ...range, value: this.variables.get(name) ?? 0 }]),
-    );
+  private editableView(editable: Record<string, { min: number; max: number }> = this.waiting?.editable ?? {}): Record<string, { min: number; max: number; value: number }> {
+    return Object.fromEntries(Object.entries(editable).map(([name, range]) => [name, { ...range, value: this.variables.get(name) ?? 0 }]));
+  }
+
+  /** CONFIRM (firmware ≥ 2.17): `start` runs the first cycle with the values set so far (config-api.md §5). */
+  private start(): Json {
+    if (this.state !== "CONFIRM") throw new ApiFailure("not_ready", `state is ${this.state}, not CONFIRM`);
+    this.state = "RUN";
+    return { state: this.state };
   }
 
   /** firmware ≥ 2.13 (config-api.md §5): blinks a pod of the set, or the central ("pod" -1 or missing) for 2 s. */
@@ -482,8 +499,10 @@ export class SimulatedPod {
         if (typeof req.values !== "object" || req.values === null || Array.isArray(req.values)) {
           throw new ApiFailure("bad_request", "'values' must be an object of variable name → integer");
         }
-        if (!this.isWaiting()) throw new ApiFailure("not_ready", "no communicate block is waiting");
-        const editable = this.waiting!.editable;
+        // in CONFIRM only with startVars (firmware ≥ 2.17): the values are used by the first cycle
+        const inConfirm = this.state === "CONFIRM" && this.startVars;
+        if (!this.isWaiting() && !inConfirm) throw new ApiFailure("not_ready", "no communicate block is waiting");
+        const editable: Record<string, { min: number; max: number }> = inConfirm ? START_EDITABLE : this.waiting!.editable;
         const values = Object.entries(req.values as Json);
         for (const [name, value] of values) {
           // same order of checks as CentralRole::opSetVariables
@@ -508,6 +527,14 @@ export class SimulatedPod {
         return {};
       }
     }
+  }
+
+  /** Demo: the program is ready to start (CONFIRM, the start card of the training view). Only from the menu. */
+  emitReady(): Json {
+    if (!this.startVars) throw new Error("start variables need firmware 2.17");
+    if (this.state !== "MENU") throw new Error(`state is ${this.state}, not MENU`);
+    this.state = "CONFIRM";
+    return { state: this.state };
   }
 
   /**
@@ -564,7 +591,7 @@ export class SimulatedPod {
     }
     // a game runs while the report waits (the training view shows RUN, #46)
     if (this.state === "MENU") this.state = "RUN";
-    this.waiting = { block: "Report", editable: { MAX_LOOPS: { min: 1, max: 50 } } };
+    this.waiting = { block: "Report", editable: START_EDITABLE };
     this.onEvent?.(JSON.stringify(report));
     return report;
   }

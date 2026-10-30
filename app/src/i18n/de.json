@@ -1412,13 +1412,28 @@
       "stop": "Das Programm endet."
     },
     "errors": {
-      "busy": "Die Person lässt sich nur im Programm-Menü oder während der Pod auf die App wartet wechseln.",
-      "not_ready": "Der Pod wartet gerade nicht auf die App.",
+      "busy": "Der Pod ist beschäftigt: ein Spiel läuft oder das Set synchronisiert. Später erneut versuchen.",
+      "not_ready": "Der Pod ist dafür gerade nicht bereit.",
       "timeout": "Der Pod hat nicht geantwortet.",
       "disconnected": "Die Verbindung ist abgebrochen.",
       "not_running": "Das Spiel läuft nicht, es kann also nicht pausiert werden.",
       "not_paused": "Das Spiel ist nicht von der App pausiert.",
-      "out_of_range": "Der Wert liegt außerhalb des erlaubten Bereichs."
+      "out_of_range": "Der Wert liegt außerhalb des erlaubten Bereichs.",
+      "bad_request": "Die App hat eine Anfrage geschickt, die der Pod nicht annimmt. App oder Firmware aktualisieren.",
+      "bad_path": "Der Pod hat den Dateipfad abgelehnt.",
+      "not_found": "Der Pod hat diese Datei nicht.",
+      "bad_offset": "Der Pod erwartete einen anderen Offset. Erneut versuchen.",
+      "too_large": "Die Anfrage oder die Datei ist zu groß für den Pod.",
+      "crc_mismatch": "Die Daten stimmen nicht mit ihrer Prüfsumme überein.",
+      "invalid_json": "Der Pod hat ungültiges JSON gefunden.",
+      "invalid_program": "Das Programm ist auf dem Pod nicht gültig.",
+      "storage": "Der Pod konnte nicht in seinen Speicher schreiben.",
+      "overflow": "Der Pod war mit anderen Daten beschäftigt. Erneut versuchen.",
+      "not_editable": "Dieser Wert kann jetzt nicht geändert werden.",
+      "auth_required": "Der Pod braucht zuerst seine PIN.",
+      "auth_failed": "Die PIN ist falsch. Einige Sekunden warten und erneut versuchen.",
+      "low_battery": "Der Akku eines Pods ist unter 5 %. Vor dem Start laden.",
+      "protocol": "Der Pod hat eine Antwort geschickt, die die App nicht versteht."
     },
     "view": {
       "link": "Trainingsansicht",
@@ -1442,7 +1457,7 @@
       "state": {
         "MENU": "Menü",
         "DISCOVERY": "Suche",
-        "CONFIRM": "Bestätigen",
+        "CONFIRM": "Bereit",
         "RUN": "Läuft",
         "PAUSED": "Pausiert",
         "ERROR": "Fehler",
@@ -1450,8 +1465,19 @@
         "connecting": "Verbindet…",
         "reconnecting": "Verbinde neu…",
         "disconnected": "Nicht verbunden"
-      }
-    }
+      },
+      "queued": "Vorgemerkt: {{command}}",
+      "cancel": "Abbrechen",
+      "start": "Start",
+      "readyTitle": "Werte einstellen, dann starten.",
+      "pressToStart": "Zum Starten die Zentrale drücken.",
+      "bigNumbers": "Große Zahlen",
+      "bigLast": "Letzter",
+      "bigAverage": "Mittelwert",
+      "noValues": "Noch keine Werte.",
+      "ms": "ms"
+    },
+    "demoReady": "Demo: bereit zum Start"
   },
   "platform": {
     "title": "Plattform (Vorschau)",

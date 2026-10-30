@@ -88,7 +88,8 @@
   font-weight: 500;
 }
 
-.waiting {
+/* a panel of the card that asks for the athlete's attention: start card, waiting block */
+.panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -98,10 +99,64 @@
   background: var(--accent-soft);
 }
 
-.waitingTitle {
+.panelTitle {
   margin: 0;
   font-weight: 600;
   color: var(--text);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.queued {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* the athlete's view: figures readable from 2 m */
+.big {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bigMetric {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.bigPair {
+  display: flex;
+  flex-direction: column;
+}
+
+.bigLabel {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.bigValue {
+  font-family: var(--font-display);
+  font-size: clamp(64px, 26vw, 140px);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.bigValue small {
+  font-size: 0.3em;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .variable {

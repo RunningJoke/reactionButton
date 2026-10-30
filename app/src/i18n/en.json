@@ -1412,13 +1412,28 @@
       "stop": "The program stops."
     },
     "errors": {
-      "busy": "The athlete can only change in the program menu or while the pod waits for the app.",
-      "not_ready": "The pod is not waiting for the app right now.",
+      "busy": "The pod is busy: a game runs, or the set is syncing. Try again later.",
+      "not_ready": "The pod is not ready for this right now.",
       "timeout": "The pod did not answer.",
       "disconnected": "The connection was lost.",
       "not_running": "The game is not running, so it cannot be paused.",
       "not_paused": "The game is not paused by the app.",
-      "out_of_range": "That value is outside the allowed range."
+      "out_of_range": "That value is outside the allowed range.",
+      "bad_request": "The app sent a request the pod does not accept. Update the app or the firmware.",
+      "bad_path": "The pod refused the file path.",
+      "not_found": "The pod has no such file.",
+      "bad_offset": "The pod expected another offset. Try again.",
+      "too_large": "The request or the file is too large for the pod.",
+      "crc_mismatch": "The data did not match its checksum.",
+      "invalid_json": "The pod found invalid JSON.",
+      "invalid_program": "The program is not valid on the pod.",
+      "storage": "The pod could not write to its storage.",
+      "overflow": "The pod was busy with other data. Try again.",
+      "not_editable": "That value cannot be changed now.",
+      "auth_required": "The pod needs its PIN first.",
+      "auth_failed": "The PIN is wrong. Wait a few seconds and try again.",
+      "low_battery": "A pod's battery is below 5 %. Charge it before the start.",
+      "protocol": "The pod sent an answer the app does not understand."
     },
     "view": {
       "link": "Training view",
@@ -1442,7 +1457,7 @@
       "state": {
         "MENU": "Menu",
         "DISCOVERY": "Discovery",
-        "CONFIRM": "Confirm",
+        "CONFIRM": "Ready",
         "RUN": "Running",
         "PAUSED": "Paused",
         "ERROR": "Error",
@@ -1450,8 +1465,19 @@
         "connecting": "Connecting…",
         "reconnecting": "Reconnecting…",
         "disconnected": "Not connected"
-      }
-    }
+      },
+      "queued": "Queued: {{command}}",
+      "cancel": "Cancel",
+      "start": "Start",
+      "readyTitle": "Set the values, then start.",
+      "pressToStart": "Press the central to start.",
+      "bigNumbers": "Big numbers",
+      "bigLast": "Last",
+      "bigAverage": "Average",
+      "noValues": "No values yet.",
+      "ms": "ms"
+    },
+    "demoReady": "Demo: ready to start"
   },
   "platform": {
     "title": "Platform (preview)",

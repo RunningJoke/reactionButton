@@ -14,7 +14,6 @@ import type { SyncStatus } from "../pod/sync";
 import { useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
 import { SyncBadge, SyncSection } from "./PodSync";
-import { PodTraining } from "./PodTraining";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
 
@@ -144,7 +143,6 @@ function Connected() {
       </section>
 
       {role === "central" && <PodList />}
-      <PodTraining />
       <SyncSection states={states} readOnly={readOnly} />
       <FileGroups list={list} status={status} />
       <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />

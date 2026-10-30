@@ -84,10 +84,10 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.15 info: program format 6 with the summary bar and the patterns", () => {
+  it("reports the firmware 2.17 info: program format 6 with the summary bar, the patterns and the start variables", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.15", setName: "Halle 2", pinRequired: false, programFormat: 6 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns"]);
+    expect(info).toMatchObject({ firmware: "2.17", setName: "Halle 2", pinRequired: false, programFormat: 6 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns", "startVars"]);
     expect(info.linkRevision).toBe(5);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate", "summary"]));
@@ -431,5 +431,42 @@ describe("SimulatedPod (reports and remote ops, program format 5, firmware 2.11)
     expect(call(pod, { op: "resume" })).toEqual({ op: "resume", ok: true, state: "RUN" });
     expect(call(pod, { op: "status" })).toMatchObject({ state: "RUN", phonePaused: false, waiting: { block: "Report" } });
     expect(call(pod, { op: "resume" })).toMatchObject({ error: "not_paused" });
+  });
+});
+
+describe("SimulatedPod (start variables, firmware 2.17)", () => {
+  const solo = { files: DEFAULT_FILES, role: "central" as const };
+
+  it("offers status.ready.editable only in CONFIRM, with the current values", () => {
+    const pod = new SimulatedPod(solo);
+    expect(call(pod, { op: "status" })).not.toHaveProperty("ready");
+    pod.emitReady();
+    expect(call(pod, { op: "status" })).toMatchObject({ state: "CONFIRM", ready: { editable: { MAX_LOOPS: { min: 1, max: 50, value: 12 } } } });
+  });
+
+  it("sets variables in CONFIRM all or nothing, then start runs the game with them", () => {
+    const pod = new SimulatedPod(solo);
+    pod.emitReady();
+    expect(call(pod, { op: "setVariables", values: { RUNS: 3 } })).toMatchObject({ error: "not_editable" });
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 51 } })).toMatchObject({ error: "out_of_range" });
+    expect(pod.variables.get("MAX_LOOPS")).toBe(12);
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 20 } })).toEqual({ op: "setVariables", ok: true, variables: { MAX_LOOPS: 20 } });
+    expect(call(pod, { op: "status" })).toMatchObject({ ready: { editable: { MAX_LOOPS: { value: 20 } } } });
+    expect(call(pod, { op: "start" })).toMatchObject({ ok: true, state: "RUN" });
+    expect(call(pod, { op: "status" })).not.toHaveProperty("ready");
+    expect(pod.variables.get("MAX_LOOPS")).toBe(20);
+  });
+
+  it("answers start outside CONFIRM with not_ready", () => {
+    const pod = new SimulatedPod(solo);
+    expect(call(pod, { op: "start" })).toMatchObject({ error: "not_ready" });
+  });
+
+  it("has no startVars before firmware 2.17: no feature, no ready, setVariables in CONFIRM is not_ready", () => {
+    const pod = new SimulatedPod({ ...solo, firmware: "2.16" });
+    expect(call(pod, { op: "info" }).features).not.toContain("startVars");
+    pod.state = "CONFIRM";
+    expect(call(pod, { op: "status" })).not.toHaveProperty("ready");
+    expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 20 } })).toMatchObject({ error: "not_ready" });
   });
 });
