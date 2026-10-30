@@ -1,10 +1,5 @@
 #include "PhoneConfig.h"
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
-#include <esp_gap_ble_api.h>
-#include <esp_gatts_api.h>
+#include <NimBLEDevice.h>
 #include "_Definitions.h"
 #include "Settings/Settings.h"
 
@@ -17,8 +12,11 @@ static volatile uint16_t peerMtu = 23;
 static volatile uint32_t connectionCount = 0;
 static volatile bool linkUp = false;                // a phone is connected
 static volatile uint16_t connIntervalUnits = 0;     // 1.25 ms units, 0 = not known yet
-static portMUX_TYPE peerMux = portMUX_INITIALIZER_UNLOCKED;
-static esp_bd_addr_t peerBda = {0};
+static volatile uint16_t connHandle = BLE_HS_CONN_HANDLE_NONE;
+static volatile bool subscribed = false;            // the phone enabled indications
+static volatile bool indicateOk = false;            // result of the last indication
+static SemaphoreHandle_t indicateDone = nullptr;    // given when an indication is confirmed (or the link is gone)
+static NimBLEServer* server = nullptr;
 static PhoneConfig* active = nullptr;               // target of publishEvent
 
 namespace {
@@ -33,51 +31,53 @@ namespace {
     };
     QueueHandle_t outQueue = nullptr;
     const UBaseType_t OUT_QUEUE_LENGTH = 8;
+    const uint32_t INDICATE_TIMEOUT_MS = 3000;      // one confirmation; NimBLE reports no result for a refused indication
 
-    class CommandCallbacks : public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic* characteristic) override {
-            std::string value = characteristic->getValue();
-            if(rxBuffer == nullptr || value.empty()) {
+    class CommandCallbacks : public NimBLECharacteristicCallbacks {
+        void onWrite(NimBLECharacteristic* characteristic) override {
+            NimBLEAttValue value = characteristic->getValue();
+            if(rxBuffer == nullptr || value.length() == 0) {
                 return;
             }
-            if(xStreamBufferSend(rxBuffer, value.data(), value.size(), 0) != value.size()) {
+            if(xStreamBufferSend(rxBuffer, value.data(), value.length(), 0) != value.length()) {
                 rxOverflow = true;
             }
         }
     };
 
-    class ServerCallbacks : public BLEServerCallbacks {
-        void onConnect(BLEServer* server) override {
-            peerMtu = 23;
-            connIntervalUnits = 0;
-            connectionCount++;
-            linkUp = true;
-            BLEDevice::stopAdvertising();   // advertising is back after the disconnect
+    class ResponseCallbacks : public NimBLECharacteristicCallbacks {
+        void onSubscribe(NimBLECharacteristic* characteristic, ble_gap_conn_desc* desc, uint16_t subValue) override {
+            subscribed = subValue != 0;
         }
-        void onDisconnect(BLEServer* server) override {
-            linkUp = false;
-            // let the configuration software reconnect (also during a game)
-            BLEDevice::startAdvertising();
-        }
-        void onMtuChanged(BLEServer* server, esp_ble_gatts_cb_param_t* param) override {
-            peerMtu = param->mtu.mtu;
+        void onStatus(NimBLECharacteristic* characteristic, Status s, int code) override {
+            indicateOk = (s == SUCCESS_INDICATE);
+            xSemaphoreGive(indicateDone);
         }
     };
 
-    // the peer address is needed for the connection parameter update
-    void onGattsEvent(esp_gatts_cb_event_t event, esp_gatt_if_t gattsIf, esp_ble_gatts_cb_param_t* param) {
-        if(event == ESP_GATTS_CONNECT_EVT) {
-            portENTER_CRITICAL(&peerMux);
-            memcpy(peerBda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
-            portEXIT_CRITICAL(&peerMux);
+    class ServerCallbacks : public NimBLEServerCallbacks {
+        void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
+            peerMtu = 23;
+            connIntervalUnits = 0;
+            connHandle = desc->conn_handle;
+            subscribed = false;
+            connectionCount++;
+            linkUp = true;
+            NimBLEDevice::stopAdvertising();   // advertising is back after the disconnect
         }
-    }
-
-    void onGapEvent(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* param) {
-        if(event == ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT && param->update_conn_params.status == ESP_BT_STATUS_SUCCESS) {
-            connIntervalUnits = param->update_conn_params.conn_int;
+        void onDisconnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
+            linkUp = false;
+            subscribed = false;
+            connHandle = BLE_HS_CONN_HANDLE_NONE;
+            indicateOk = false;
+            xSemaphoreGive(indicateDone);       // wakes the sender task if it waits for a confirmation
+            // let the configuration software reconnect (also during a game)
+            NimBLEDevice::startAdvertising();
         }
-    }
+        void onMTUChange(uint16_t mtu, ble_gap_conn_desc* desc) override {
+            peerMtu = mtu;
+        }
+    };
 }
 
 PhoneConfig::PhoneConfig()
@@ -90,35 +90,36 @@ void PhoneConfig::start() {
 
     uint32_t setId = Settings::getOrCreateSetId();
     std::string name = PhoneConfig::advertisedName();
-    BLEDevice::init(name);
-    BLEDevice::setMTU(517);
-    BLEDevice::setCustomGattsHandler(&onGattsEvent);
-    BLEDevice::setCustomGapHandler(&onGapEvent);
-    BLEServer *pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new ServerCallbacks());
-    BLEService *pService = pServer->createService(SERVICE_UUID);
+    indicateDone = xSemaphoreCreateBinary();
+    NimBLEDevice::init(name);
+    NimBLEDevice::setMTU(517);
+    server = NimBLEDevice::createServer();
+    server->setCallbacks(new ServerCallbacks());
+    server->advertiseOnDisconnect(false);   // onDisconnect restarts it
+    NimBLEService *pService = server->createService(SERVICE_UUID);
 
     this->maxLoopCharacteristic = pService->createCharacteristic(
-        CHAR_MAX_LOOP_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ
+        CHAR_MAX_LOOP_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::READ
     );
     this->maxLoopCharacteristic->setValue("-1");
 
     this->commandCharacteristic = pService->createCharacteristic(
-        CHAR_COMMAND_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
+        CHAR_COMMAND_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
     );
     this->commandCharacteristic->setCallbacks(new CommandCallbacks());
 
     // indicate only: with NOTIFY offered too, Web Bluetooth / Android / bleak subscribe for
-    // notifications, and the BLE library then drops every indication sent by sendLine
+    // notifications, and the BLE library then drops every indication sent by sendLine.
+    // NimBLE creates the client characteristic configuration descriptor itself.
     this->responseCharacteristic = pService->createCharacteristic(
-        CHAR_RESPONSE_UUID, BLECharacteristic::PROPERTY_INDICATE
+        CHAR_RESPONSE_UUID, NIMBLE_PROPERTY::INDICATE
     );
-    this->responseCharacteristic->addDescriptor(new BLE2902());
+    this->responseCharacteristic->setCallbacks(new ResponseCallbacks());
 
     pService->start();
 
     this->configureAdvertising(setId, name);
-    BLEDevice::startAdvertising();
+    NimBLEDevice::startAdvertising();
 
     // priority 2: above the Arduino loop task (1, never yields), below the BLE stack tasks.
     // It waits for the confirmation of every indication, so the game loop never does.
@@ -147,9 +148,9 @@ std::string PhoneConfig::advertisedName() {
 
 void PhoneConfig::configureAdvertising(uint32_t setId, const std::string& name) {
     // advertisement (max 31 bytes): flags (3) + service UUID (18) + manufacturer data (8)
-    BLEAdvertisementData adv;
-    adv.setFlags(ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT);
-    adv.setCompleteServices(BLEUUID(SERVICE_UUID));
+    NimBLEAdvertisementData adv;
+    adv.setFlags(BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
+    adv.setCompleteServices(NimBLEUUID(SERVICE_UUID));
     std::string manufacturer;
     manufacturer += (char)0xFF;     // company id 0xFFFF (no company, little endian)
     manufacturer += (char)0xFF;
@@ -159,15 +160,15 @@ void PhoneConfig::configureAdvertising(uint32_t setId, const std::string& name) 
     adv.setManufacturerData(manufacturer);
 
     // scan response: the complete name (max 2 + 25 bytes), the preferred connection interval if it fits
-    BLEAdvertisementData scan;
+    NimBLEAdvertisementData scan;
     scan.setName(name);
     if(name.size() + 2 + 6 <= 31) {
         // 7.5 ms .. 22.5 ms, as setMinPreferred(0x06) / setMaxPreferred(0x12) before (helps iPhones)
-        const char interval[] = {5, ESP_BLE_AD_TYPE_INT_RANGE, 0x06, 0x00, 0x12, 0x00};
+        const char interval[] = {5, BLE_HS_ADV_TYPE_SLAVE_ITVL_RANGE, 0x06, 0x00, 0x12, 0x00};
         scan.addData(std::string(interval, sizeof(interval)));
     }
 
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->setAdvertisementData(adv);
     pAdvertising->setScanResponseData(scan);
     this->advertisedRevision = Settings::setNameRevision();
@@ -177,7 +178,8 @@ bool PhoneConfig::getMaxLoops(int64_t& maxLoops) const {
     if(this->maxLoopCharacteristic == nullptr) {
         return false;
     }
-    std::string value = this->maxLoopCharacteristic->getValue();
+    NimBLEAttValue stored = this->maxLoopCharacteristic->getValue();
+    std::string value((const char*)stored.data(), stored.length());
     char* end = nullptr;
     long long parsed = strtoll(value.c_str(), &end, 10);
     if(end == value.c_str() || *end != '\0' || parsed <= 0) {
@@ -236,27 +238,35 @@ void PhoneConfig::txTask(void* arg) {
 }
 
 // Indicates one line (with '\n') in MTU-sized pieces, waiting for each confirmation. Sender task only.
+// NimBLE's indicate() returns at once and drops a second indication while one is outstanding,
+// so the confirmation (onStatus) is the flow control.
 void PhoneConfig::indicateLine(const std::string& out) {
     size_t chunk = peerMtu > 3 ? peerMtu - 3 : 20;
     for(size_t pos = 0; pos < out.size(); pos += chunk) {
+        if(!linkUp || !subscribed) {
+            return;
+        }
         size_t n = std::min(chunk, out.size() - pos);
-        this->responseCharacteristic->setValue((uint8_t*)out.data() + pos, n);
-        this->responseCharacteristic->indicate();   // waits for the confirmation (flow control)
+        xSemaphoreTake(indicateDone, 0);            // a stale confirmation
+        indicateOk = false;
+        this->responseCharacteristic->indicate((const uint8_t*)out.data() + pos, n);
+        if(xSemaphoreTake(indicateDone, pdMS_TO_TICKS(INDICATE_TIMEOUT_MS)) != pdTRUE) {
+            ESP_LOGW(TAG, "indication not confirmed, line dropped");
+            return;
+        }
+        if(!indicateOk) {
+            return;
+        }
     }
 }
 
 void PhoneConfig::requestGameInterval() {
-    esp_ble_conn_update_params_t params = {};
-    portENTER_CRITICAL(&peerMux);
-    memcpy(params.bda, peerBda, sizeof(esp_bd_addr_t));
-    portEXIT_CRITICAL(&peerMux);
-    params.min_int = GAME_INTERVAL_UNITS;
-    params.max_int = GAME_INTERVAL_UNITS;
-    params.latency = 0;
-    params.timeout = GAME_SUPERVISION_TIMEOUT;
-    esp_err_t err = esp_ble_gap_update_conn_params(&params);
     this->gameIntervalPending = false;
-    ESP_LOGI(TAG, "game connection interval requested: %s", esp_err_to_name(err));
+    if(server == nullptr || connHandle == BLE_HS_CONN_HANDLE_NONE) {
+        return;
+    }
+    server->updateConnParams(connHandle, GAME_INTERVAL_UNITS, GAME_INTERVAL_UNITS, 0, GAME_SUPERVISION_TIMEOUT);
+    ESP_LOGI(TAG, "game connection interval requested");
 }
 
 void PhoneConfig::service() {
@@ -282,10 +292,19 @@ void PhoneConfig::service() {
         this->requestGameInterval();
     }
 
+    // NimBLE reports no connection parameter update to the server: poll the interval
+    static uint32_t lastIntervalPoll = 0;
+    if(linkUp && server != nullptr && millis() - lastIntervalPoll >= 500) {
+        lastIntervalPoll = millis();
+        if(server->getConnectedCount() > 0) {
+            connIntervalUnits = server->getPeerInfo(0).getConnInterval();
+        }
+    }
+
     if(this->advertisedRevision != Settings::setNameRevision()) {
         // setName: used for the next advertisement (after this connection ends)
         std::string name = PhoneConfig::advertisedName();
-        esp_ble_gap_set_device_name(name.c_str());
+        NimBLEDevice::setDeviceName(name);
         this->configureAdvertising(Settings::getSetId(), name);
     }
 

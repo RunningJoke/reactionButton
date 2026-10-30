@@ -10,7 +10,7 @@ python3 tools/fw_syntax_check/check.py firmware/src/Block/LEDBlock/LEDBlock.cpp
 python3 tools/fw_syntax_check/check.py -j 8 -v            # 8 jobs, list OK files too
 ```
 
-- `stubs/`: Arduino core, ESP-IDF 4.4, classic BLE, SPIFFS / FS, Preferences, WiFi, Adafruit NeoPixel.
+- `stubs/`: Arduino core, ESP-IDF 4.4, NimBLE-Arduino (peripheral subset), SPIFFS / FS, Preferences, WiFi, Adafruit NeoPixel.
   `stubs/ArduinoJson.h` is the real 7.4.2 single header (MIT), the version `^7.4.2` resolves to: update it
   with `lib_deps`.
 - A missing name or signature is a stub gap: fix the stub, not the firmware; add only what the firmware uses.

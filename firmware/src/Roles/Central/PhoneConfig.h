@@ -6,7 +6,7 @@
 #include <freertos/stream_buffer.h>
 #include "Config/ConfigApi.h"
 
-class BLECharacteristic;
+class NimBLECharacteristic;
 
 /**
  * BLE transport of the configuration API for a phone / configuration software.
@@ -63,9 +63,9 @@ class PhoneConfig {
         static void txTask(void* arg);
 
         ConfigApi api;
-        BLECharacteristic* maxLoopCharacteristic = nullptr;
-        BLECharacteristic* commandCharacteristic = nullptr;
-        BLECharacteristic* responseCharacteristic = nullptr;
+        NimBLECharacteristic* maxLoopCharacteristic = nullptr;
+        NimBLECharacteristic* commandCharacteristic = nullptr;
+        NimBLECharacteristic* responseCharacteristic = nullptr;
         bool running = false;
         bool gameMode = false;              // a program was selected: the phone stays connected
         bool gameIntervalPending = false;   // ask for the game interval on the current connection
