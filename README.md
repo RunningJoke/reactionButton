@@ -1,42 +1,18 @@
 # ReactPod
 
-ReactPods are reaction buzzers for training: an ESP32-C3 pod with an 18-LED ring and one big
-button. Several pods form a **set**. One pod is the **central** and runs the game program, the
-others are **peripherals**. Programs are JSON block graphs; the **Config App** builds,
-simulates and uploads them.
+Reaction buzzers for training: an ESP32-C3 pod with an 18-LED ring and one big button. Several pods form
+a **set**; one pod is the **central** and runs the game program, the others are **peripherals**. Programs
+are JSON block graphs; the **Config App** builds, simulates and uploads them.
 
-**Config App:** https://runningjoke.github.io/reactionButton/ (PWA, works offline, demo pod built in)
-
-**New here?** Read the [user manual](docs/user/manual.md): the pod, the games and the app, without technical terms. Coaches: [training guide](docs/user/coach-guide.md) (layouts, games per goal, a sample session).
-
-| Part | Folder | Docs |
-|---|---|---|
-| Firmware (PlatformIO, Arduino + ESP-IDF) | [firmware/](firmware/) | [docs/firmware/](docs/firmware/README.md) |
-| Shipped game programs | [firmware/data/](firmware/data/) | [programs.md](docs/firmware/programs.md) |
-| Config App (React + TypeScript PWA) | [app/](app/) | [docs/app/spec.md](docs/app/spec.md) |
-| Reference clients and validator (Python) | [tools/](tools/) | [config-api.md](docs/firmware/config-api.md) |
-| PCB (KiCad) and casing (FreeCAD) | [hardware/](hardware/) | |
-| User manual, game modes | [docs/user/](docs/user/) | [manual.md](docs/user/manual.md) |
-| Community platform (Hono + Postgres): **on hold**, see [ADR 0007](docs/decisions/0007-platform-on-hold.md) | [platform/](platform/) | [docs/platform/spec.md](docs/platform/spec.md) |
-| Decisions | [docs/decisions/](docs/decisions/) | |
-
-## Quick start
+- **Config App:** https://runningjoke.github.io/reactionButton/ (PWA, works offline, demo pod built in)
+- **User manual, coach guide, game modes** (en / de): [wiki](https://github.com/RunningJoke/reactionButton/wiki)
+- **Developing:** [CLAUDE.md](CLAUDE.md) (map, commands, workflow, rules) and the specs in [docs/](docs/)
 
 ```sh
-# firmware (from the repository root)
-pio run -d firmware -e NewBoard -t upload      # flash
+pio run -d firmware -e NewBoard -t upload      # flash (USB; no OTA, ADR 0006)
 pio run -d firmware -e NewBoard -t uploadfs    # flash the programs
 python tools/reactpod_serial.py monitor        # log over USB
-
-# app
 cd app && npm install && npm run dev           # http://localhost:5173
 ```
 
-In VS Code, open [reactpod.code-workspace](reactpod.code-workspace) so PlatformIO finds the
-firmware project.
-
-## Releases
-
-Firmware, app and hardware are versioned separately: tags `fw-v2.7.0`, `app-v1.0.0`,
-`hw-rev1`. Firmware releases carry the binaries (flashed over USB; OTA is not planned, ADR 0006); see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+In VS Code open [reactpod.code-workspace](reactpod.code-workspace) so PlatformIO finds the firmware.

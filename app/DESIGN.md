@@ -1,92 +1,62 @@
 # Config App design guidelines
 
-How the app looks and how to style new things. Theme **Midnight** (dark, the default look) with
-its light companion **Daylight**. The source of truth for the visual design is the design canvas:
+Theme **Midnight** (dark, default) and **Daylight** (light, `prefers-color-scheme`). Source of truth: the
+design canvas https://claude.ai/artifact/EbUJGUthCwaCc33u4b24LZ (themes, components, icons, pod icon, pod as
+button, app icon, splash, phone layouts). A new look is designed on the canvas first, then built with the tokens.
 
-**Design canvas:** https://claude.ai/artifact/EbUJGUthCwaCc33u4b24LZ
-(boards: themes and components, icon set, pod icon, pod as a button, app icon, splash, phone
-layouts for Pod, Programs and Simulate)
-
-When a change needs a new look, design it on the canvas first, then build it with the tokens below.
-
-## Tokens
-
-All colours, spacing and radii are CSS custom properties in `src/app/theme.css`. Never write a
-colour in a component's CSS; use a token, so both themes work. The dark values are Midnight, the
-light values Daylight (`prefers-color-scheme`).
+## Tokens (`src/app/theme.css`)
+Never write a colour in a component's CSS; use a token so both themes work.
 
 | Token | Midnight | Daylight | Use |
 |---|---|---|---|
-| `--bg` | `#0b1426` | `#eef3fb` | page background, header |
+| `--bg` | `#0b1426` | `#eef3fb` | page, header |
 | `--surface` | `#122039` | `#ffffff` | cards, sections, sheets |
-| `--surface-2` | `#1a2c4d` | `#e2eaf6` | inputs, rows inside cards, segmented controls |
+| `--surface-2` | `#1a2c4d` | `#e2eaf6` | inputs, rows in cards, segmented controls |
 | `--border` | `#26395e` | `#c9d5e8` | card and input borders |
-| `--text` | `#e7eefa` | `#0b1630` | text |
-| `--text-muted` | `#93a5c6` | `#4a5c7e` | secondary text, inactive icons |
+| `--text` / `--text-muted` | `#e7eefa` / `#93a5c6` | `#0b1630` / `#4a5c7e` | text / secondary, inactive icons |
 | `--accent` | `#5b9bff` | `#1e5bd8` | the one accent: primary buttons, links, active tab |
-| `--accent-contrast` | `#06122b` | `#ffffff` | text on `--accent` |
-| `--accent-soft` | `#1b3566` | `#dce7fc` | active tab pill, selected states |
+| `--accent-contrast` | `#06122b` | `#ffffff` | text on accent |
+| `--accent-soft` | `#1b3566` | `#dce7fc` | active tab pill, selected |
 | `--ok` / `--warn` / `--error` | `#34d399` / `#fbbf4b` / `#ff6b81` | `#11804a` / `#a85a00` / `#c21e3a` | status |
-| `--floating-*` | | | the floating tab bar (translucent background, border, shadow) |
-| `--pod-*` | same in both | | the pod puck (it is the dark device in both themes) |
-| `--led-*` | same in both | | LED colours of the firmware, only where they mean LED colours |
+| `--floating-*` | | | floating tab bar |
+| `--pod-*` | same in both | | the pod puck (dark device in both themes) |
+| `--led-*` | same in both | | firmware LED colours, only where they mean LEDs |
 
-Contrast: text at least 4.5:1 against its background in both themes. Colours that must be told
-apart also differ in lightness, not only in hue.
+Text contrast ≥ 4.5:1 in both themes; colours that must be told apart also differ in lightness.
 
 ## Type
-
-- `--font-display` (Barlow Semi Condensed 600/700): page titles (26 px), pod names, big numbers
-  such as reaction times.
-- `--font` (Inter 400/500/600): everything else; body 16 px, labels 13–14 px.
-- `--font-mono`: paths, expressions, block ids.
-
-Both fonts are bundled (`@fontsource`, latin subset, imported in `src/main.tsx`) so the app works offline.
+`--font-display` (Barlow Semi Condensed 600/700): page titles 26 px, pod names, big numbers. `--font` (Inter
+400/500/600): everything else, body 16 px, labels 13–14 px. `--font-mono`: paths, expressions, block ids.
+Fonts are bundled (`@fontsource`, latin, imported in `src/main.tsx`) for offline use.
 
 ## Icons
-
-- Lucide icons with one thick stroke: `svg.lucide { stroke-width: var(--icon-stroke) }` (2.5) in
-  `theme.css`, so a plain `<Icon size={20} aria-hidden />` is already right. Don't pass `strokeWidth`.
-- Pick glyphs with few strokes; 20–24 px in lists and buttons, 24 px in the tab bar.
-- **The pod icon is `PodIcon`** (`src/components/PodIcon.tsx`, canvas "C2 · back rim"): a puck
-  whose back rim glows. Use it everywhere a pod, the set or the connection to a pod is meant;
-  never Lucide's `Radio` or similar. The glow colour comes from `--pod-glow` (default green); a
-  container sets `--pod-glow: currentColor` to switch the glow off (inactive tabs do).
+- Lucide with one thick stroke (`--icon-stroke` 2.5 in `theme.css`): plain `<Icon size={20} aria-hidden />`,
+  never pass `strokeWidth`. Few-stroke glyphs, 20–24 px in lists and buttons, 24 px in the tab bar.
+- **`PodIcon`** (`src/components/PodIcon.tsx`, canvas "C2 · back rim") wherever a pod, the set or the
+  connection is meant, never Lucide `Radio` etc. Glow from `--pod-glow` (default green);
+  `--pod-glow: currentColor` switches it off (inactive tabs).
 
 ## The pod
-
-A pod is drawn as a **raised puck** (`LedRing` in `src/components/LedRing.tsx`): one cap with a
-drop edge, the 18 LEDs as light segments on the cap rim. Use it for every pod and every LED
-pattern, never a flat ring.
-
-- Optional text inside the cap: `title` (pod name, or the pod count in lists) and `subtitle`
-  (state, only on big pucks). No labels under the puck.
-- When the pod can be pressed (Simulate), **the whole puck is the button**; `pressed` moves the cap
-  down. Size by pod count: 140 px for 1–2 pods, 116 px for 3–4, 96 px for more.
-- Small pucks (lists): 56–64 px, the pod count inside.
+Always the raised puck `LedRing` (`src/components/LedRing.tsx`): cap with a drop edge, 18 LEDs as segments
+on the rim; never a flat ring. Optional `title` (name or pod count) and `subtitle` (state, big pucks only)
+inside the cap, no labels below. Pressable (Simulate): the whole puck is the button, `pressed` moves the cap
+down; 140 px for 1–2 pods, 116 px for 3–4, 96 px for more. List pucks 56–64 px with the count inside.
 
 ## Layout
-
-- Mobile first: touch targets ≥ 44 px, everything works without drag and drop, nothing cut off at 360 px.
-- Phone: header (page title in the display font, connection chip, settings) and a **floating tab
-  bar** with at most five tabs (Pod, Programs, Editor, Simulate, Results). It floats 12 px above
-  the bottom edge; `.main` keeps room for it. Fixed elements (the + button) sit above it, toasts
-  at the top. The program menu is linked from the Pod page.
-- From 900 px: side rail with all destinations, no tab bar.
-- Cards: `--surface`, 1 px `--border`, radius `--radius-m`–`--radius-l`. No coloured stripes on
-  the left edge; mark a type with an icon tile instead.
-- One primary button per view (filled `--accent`); the rest are outlined or plain.
+- Mobile first: touch targets ≥ 44 px, no drag and drop needed, nothing cut off at 360 px.
+- Phone: header (title in the display font, connection chip, settings) + floating tab bar, ≤ 5 tabs (Pod,
+  Programs, Editor, Simulate, Results), 12 px above the bottom; `.main` keeps room for it; fixed elements
+  (the + button) above it, toasts at the top. Menu is linked from the Pod page.
+- ≥ 900 px: side rail with all destinations, no tab bar.
+- Cards: `--surface`, 1 px `--border`, radius `--radius-m`–`--radius-l`; no coloured left stripes (use an icon tile).
+- One primary (filled `--accent`) button per view; others outlined or plain.
 
 ## App icon and splash
-
-- App icon and favicon: the six-segment ring, 4 blue "ready" segments and 2 green "go" segments,
-  white button in the middle. Generated by `npm run icons` (`scripts/make-icons.mjs` →
-  `public/icons/`); change the script, not the files.
-- Splash: static HTML and CSS in `index.html` (a big puck with "ReactPod" in the cap, the LED
-  segments chasing in the icon's colours, the cap pressing down). React replaces it when it mounts.
-  The animation stops under `prefers-reduced-motion`.
+- Icon / favicon: six-segment ring, 4 blue "ready" + 2 green "go", white button in the middle. Generated by
+  `npm run icons` (`scripts/make-icons.mjs` → `public/icons/`): change the script, not the files.
+- Splash: static HTML/CSS in `index.html` (big puck "ReactPod", segments chasing in the icon colours, cap
+  pressing), replaced when React mounts; no animation under `prefers-reduced-motion`.
 
 ## Checking a UI change
-
-`npm run build`, `npm run preview`, then screenshots with playwright-core
-(`scripts/screenshots.mjs`) at 360 px and 1200 px, in both colour schemes. Look at the screenshots.
+`npm run build`, `npm run preview`, `node scripts/screenshots.mjs <dir>` at 360 px and 1200 px in both
+schemes. Look at the screenshots.

@@ -1,4 +1,4 @@
-/** Seeded random numbers (mulberry32), so a simulator run can be repeated exactly (docs/app/spec.md §8.2). */
+/** Seeded random numbers (mulberry32), so a simulator run can be repeated exactly (docs/app/spec.md §8). */
 export type Random = {
   /** uniform in [0, n − 1]; n ≤ 1 gives 0, like RandomUtil::below */
   below: (n: number) => number;
