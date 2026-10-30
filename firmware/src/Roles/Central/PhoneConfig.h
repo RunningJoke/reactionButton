@@ -42,6 +42,9 @@ class PhoneConfig {
         // Returns true and sets maxLoops if the phone wrote a valid number > 0
         bool getMaxLoops(int64_t& maxLoops) const;
 
+        // Resets the MaxLoop characteristic to "-1" (none): the override applies to one select only
+        void clearMaxLoops();
+
         // "ble" part of the central status: connected, intervalMs (0 = not known yet)
         void describe(JsonObject out) const;
 

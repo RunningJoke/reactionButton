@@ -667,7 +667,7 @@ def main():
     p = sub.add_parser("ack", help="acknowledge a report: it and the older ones leave the buffer"); p.add_argument("id", type=int)
     p = sub.add_parser("command", help="answer a waiting communicate block")
     p.add_argument("name", choices=["continue", "repeat", "stop"])
-    p = sub.add_parser("set-variables", help="change editable variables of a waiting communicate block: NAME=value ...")
+    p = sub.add_parser("set-variables", help="change editable variables (waiting communicate block, or CONFIRM before the first cycle): NAME=value ...")
     p.add_argument("values", nargs="+", metavar="NAME=value")
     p = sub.add_parser("session", help="athlete id copied into the following reports (\"\" = clear it)"); p.add_argument("athlete")
     sub.add_parser("pause", help="pause a running game (firmware >= 2.12); only resume ends it")

@@ -18,8 +18,8 @@
  *
  * enter() builds the report and puts it into the report buffer (Results/Reports) and on the
  * serial console. The client answers with the config API "command" (continue / repeat / stop),
- * "setVariables" changes the editable variables while the block waits, and "ack" removes the
- * report. A pause (Block::resume) does not build a second report.
+ * "setVariables" changes the editable variables while the block waits (or in CONFIRM, before the
+ * first cycle), and "ack" removes the report. A pause (Block::resume) does not build a second report.
  */
 class CommunicateBlock : public Block {
     public:
@@ -35,6 +35,7 @@ class CommunicateBlock : public Block {
             int64_t max;
         };
 
+        CommunicateBlock();
         ~CommunicateBlock() override;
 
         bool configure(JsonObjectConst json, BlockLoadContext& ctx) override;
@@ -49,6 +50,9 @@ class CommunicateBlock : public Block {
         // The communicate block that waits right now (nullptr if none)
         static CommunicateBlock* waiting() { return waitingBlock; }
 
+        // All communicate blocks of the loaded program (start variables in CONFIRM)
+        static const std::vector<CommunicateBlock*>& loaded() { return loadedBlocks; }
+
         // A client command for the waiting block; it is taken on the next pass
         void command(Command next) { this->pendingCommand = next; }
 
@@ -56,6 +60,7 @@ class CommunicateBlock : public Block {
 
     private:
         static CommunicateBlock* waitingBlock;
+        static std::vector<CommunicateBlock*> loadedBlocks;
 
         void sendReport(BlockContext& ctx);
         void startWaiting(BlockContext& ctx);
