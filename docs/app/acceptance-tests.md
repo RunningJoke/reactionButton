@@ -60,12 +60,12 @@ mark "pass" only when the user reported it.
 | AT-R5 | platform preview: test server, mail code, club, link athlete (consent), record offline, go online | reports appear once; *Upload now* again: no duplicates; a later discard updates only its flag |
 | AT-R6 | central without `reports` (fw 2.7) | Pod tab says no results yet; everything else as before |
 
-## L – Training view and reconnect (P9; fw 2.12; L1, L2, L8 on hold with #46)
+## L – Training view and reconnect (P9; fw 2.12; L1, L2, L8 on hold with #46; L3, L13–L17 specified in #87, L3 needs its firmware)
 | ID | Steps | Expected |
 |---|---|---|
 | AT-L1 | *(on hold)* connect set A, then B | two cards |
 | AT-L2 | *(on hold)* both at a *Report* block, *Continue* on B | only B leaves *Waiting for you* |
-| AT-L3 | waiting card: *MAX_LOOPS* = 20, *Set*, *Continue* | next round uses 20; a value outside 1–50 is refused on the card, nothing sent |
+| AT-L3 | pod in CONFIRM (READY), start card: *MAX_LOOPS* = 20, *Start* | card shows the pod's value before *Start*; first round already uses 20; a value outside 1–50 is refused on the card, nothing sent |
 | AT-L4 | *Pause*, 10 s, *Resume* | PAUSED (all yellow), then the same round goes on |
 | AT-L5 | switch the central off 20 s in a game, on again, do not touch the app | *Reconnecting…* → *Connected*; reports from the drop appear, none lost or doubled |
 | AT-L6 | reload with the set in reach | picked again with one tap; kept reports shown |
@@ -75,6 +75,11 @@ mark "pass" only when the user reported it.
 | AT-L10 | central fw 2.11 (no `liveBle`, `pause`) | note that Bluetooth goes off in a game; no Pause; Continue / Repeat / Stop work |
 | AT-L11 | 360 px, light and dark | nothing cut off, no horizontal scroll, buttons ≥ 44 px, readable |
 | AT-L12 | connect another set (or the same again) | the first connection ends; one card |
+| AT-L13 | central without `startVars` (fw before #87), in CONFIRM: start card; then the same without `remote` | no steppers; *Start* sends `start` only (no `setVariables`); without `remote`: text "Press the central to start" |
+| AT-L14 | during a round (no *Waiting for you*) press *Continue*; wait for the next *Waiting for you* | card shows *Queued: Continue*; no `command` sent before the wait; then exactly one `command` (continue); queue empty |
+| AT-L15 | during a round press *Continue*, then *Stop*; then *Continue* again and *Cancel* | *Queued: Stop* (newer press replaces); *Cancel* removes it; at the next wait nothing is sent |
+| AT-L16 | slow link (weak signal or distance); press *Pause* in RUN, then *Resume* in PAUSED | a timed-out command never shows an error for an applied command; card shows the real state after the status read (PAUSED or RUN), no stale error |
+| AT-L17 | Pod tab with a connected central | no Continue / Repeat / Stop / Pause / Start controls; a link opens the Training tab |
 
 ## E – Block builder (P8; demo or no pod, 360 px; "format-1 pod" = fw < 2.8 or demo pod with `programFormat` 1)
 | ID | Steps | Expected |
@@ -111,4 +116,5 @@ mark "pass" only when the user reported it.
 | AT-B1–B7 | 2026-10-26 | 2.9 | pass (2.0 blocked: no indications) |
 | AT-P1–P13, AT-M1–M5 | 2026-10-19 | 2.7 | accepted (P5, P6) |
 | AT-R1–R6, AT-E1–E14, AT-U1–U6 | 2026-10-26 | 2.9 | pass (P7, P8) |
-| AT-L1–L12 | – | 2.12 | open (P9, ready for test) |
+| AT-L1–L12 | – | 2.12 | open (P9, ready for test; L3 changed by #87) |
+| AT-L13–L17 | – | – | open (#87, specified, not built) |
