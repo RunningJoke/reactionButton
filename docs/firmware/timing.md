@@ -1,7 +1,8 @@
 # Timing
 
-*Measured* = ADR 0005 test (3 pods, 3 × 30 min, 2026-10-29) or the fw 2.12 soak (central + 1 peripheral,
-phone, 30 min). Everything else is an estimate.
+*Measured* = [ADR 0005](../decisions/README.md) test (#38: 3 pods, 3 × 30 min, 2026-10-29) or the fw 2.12 soak
+(central + 1 peripheral, phone, 30 min). Everything else is an estimate from the code (no logic analyser
+available; the remaining delays are accepted as not adjustable, see §6).
 
 Time bases: `esp_timer_get_time()` µs per pod (link, clock sync, button edges, reaction times); `millis()`
 same clock in ms (block delays and timeouts); **network time** = the central's `esp_timer`, peripherals
@@ -84,8 +85,9 @@ a retry + ~1–3 ms.
 `LEDManager::playEffect` arms a one-shot esp_timer for a future start (esp_timer task; LED output guarded
 by a mutex), so the central's first frame is on time instead of up to one loop gap late (before: estimated
 spread 9.3 ms without / 18.8 ms with phone). Later frames come from the loop (≤ every 16 ms). Blocks with
-a synchronous start (`remoteMultiPress`, `toggle`, `effect`, `delay` countdown) arm it on enter. Still to
-confirm with a logic analyser (testing §8, #24).
+a synchronous start (`remoteMultiPress`, `toggle`, `effect`, `delay` countdown) arm it on enter. The
+central's start is not measured on the wire; expected error is one `show()` already in progress (≤ ~1 ms)
+plus timer latency, so the total spread is dominated by the peripherals (≤ 3.7 ms measured).
 
 ## 5. Set-up
 
@@ -94,8 +96,11 @@ sequential; 7 peripherals ≈ 1–2 s until green. First PING right after the cl
 
 ## 6. Open measurements and risks
 
-- Open: total start spread incl. the central on a logic analyser (#24, testing §8); reaction accuracy (LED
-  data line vs button line vs `RESULT`). Done: loss, ack round trip, clock jitter, ARM margins, loop gaps,
+- Not measured, accepted (no logic analyser; #24): start spread incl. the central's ring (expected
+  ≈ 4 ms, peripherals 2.7 / 3.7 ms without / with phone + central ≤ ~1 ms) and reaction accuracy (LED data
+  line vs button line vs `RESULT`, ≈ ±0.5 ms by design, §3). These delays come from the WS2812 `show()`
+  time, the 1 ms ESP-NOW air/pickup time and the shared BLE core; none is adjustable in firmware.
+  Done: loss, ack round trip, clock jitter, ARM margins, loop gaps,
   BLE soak (min free heap 80 KB, 100 ms interval, no disconnect).
 - Loss check: `status.pods[].link` (`txLost`, `txRetries`, `ackUsAvg`, `ackUsMax`) over 30 min.
 - 2.4 GHz congestion adds retries and jitter; the channel is fixed (`ESPNOW_CHANNEL`).

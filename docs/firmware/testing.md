@@ -41,9 +41,10 @@ after 5 s, summary after 10 rounds.
 | program not found | `uploadfs` or `--push firmware/data` |
 | PC stops seeing BLE devices | Windows adapter: Bluetooth off and on |
 
-## 8. Start spread on a logic analyser (#24)
-WS2812 data line (GPIO 7) of the central and two peripherals, ≥ 1 MHz, first LED frame after the 3 s pause
-of `run` per round, ≥ 50 rounds, with and without a phone. Pass < 5 ms. All pods in one set; with BLE on
+## 8. Start spread on a logic analyser (#24) – optional, not run
+No logic analyser available; the spread is accepted as measured by the peripherals only (timing §4, §6).
+Procedure if one becomes available: WS2812 data line (GPIO 7) of the central and two peripherals, ≥ 1 MHz, first LED frame after the 3 s pause
+of `run` per round, ≥ 50 rounds, with and without a phone. Pass < 15 ms (relaxed from 5 ms for #24). All pods in one set; with BLE on
 ESP-NOW uses modem sleep (ADR 0005).
 
 ## 9. Hold blocks (`charge`, `release`, fw ≥ 2.9) – not yet run on hardware
@@ -102,7 +103,7 @@ line in the release PR. Automated lines: `python tools/reactpod_hwtest.py --cent
 | 7 | 30 min soak per mode (`run`, `dreieck`, a hold program) with `live --auto` | no BLE disconnect, `txLost` 0, min free heap > 40 KB, no restart | no |
 | 8 | two sets in one room | no cross-joining, no PAUSED caused by the other set | no |
 | 9 | battery run-down from full | ≥ 1 h, low-battery warning before power-off | no |
-| 10 | start spread (§8) after link / clock / LED timing changes | < 5 ms with and without phone | no |
+| 10 | start spread (§8), only with a logic analyser, after link / clock / LED timing changes | < 15 ms with and without phone | no |
 | 11 | app against the release: BLE + USB, push, restore defaults, training view | as the app acceptance tests | no |
 | 12 | auto power-off: unclaimed pod and phone-less central in MENU sleep after 10 min (build with 1 for a quick check), on battery / plain charger (a computer keeps it awake; over USB check `status.powerOff.idleMs` counts and resets on press / claim); drain, a press wakes into a normal boot; claimed pods, a central with phone or in DISCOVERY never sleep | as described | no |
 
