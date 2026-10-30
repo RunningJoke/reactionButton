@@ -12,16 +12,15 @@
 
 uint64_t timestamp = 0;
 
-// Boot gauge (#19): the ring filled to the charge. Green above 50 %, amber 20-50 %, red below 20 %.
-// Without a reading (0 mV) the ring is full in blue.
-static Protocol::EffectDesc batteryGauge() {
-  Protocol::EffectDesc gauge = {Protocol::EffectId::LEVEL, Protocol::Color::BLUE, Protocol::Color::OFF, 255, 0, 0, 100, 0};
+// Boot pattern (#82, SystemPattern::BOOT): the battery gauge fills the ring in cyan, amber below 20 %
+// (full cyan without a reading), then a white timer fills the ring while the role is read. The button
+// is read when the pattern has ended.
+static SystemPattern::Args bootArgs() {
+  SystemPattern::Args args;
   if(Battery::known()) {
-    uint8_t percent = Battery::percent();
-    gauge.color = percent > 50 ? Protocol::Color::GREEN : percent >= 20 ? Protocol::Color::AMBER : Protocol::Color::RED;
-    gauge.param = percent;
+    args.percent = Battery::percent();
   }
-  return gauge;
+  return args;
 }
 
 
@@ -48,14 +47,16 @@ void setup() {
 
   // measured before the LEDs light up: 18 lit LEDs pull the battery voltage down
   Battery::measure();
-  LEDManager::getManager()->playEffect(batteryGauge());
+  LEDManager::getManager()->playPattern(SystemPattern::Id::BOOT, bootArgs());
 
+  // the pattern is drawn by service() (RoleManager::run is not running yet)
   timestamp = millis();
-  while(millis() - timestamp < 2000) {
+  while(millis() - timestamp < SystemPattern::BOOT_MS) {
+    LEDManager::getManager()->service();
     delay(10);
   }
 
- LEDManager::getManager()->turnOff();
+  LEDManager::getManager()->turnOff();
 
   // a role requested via the "reboot" command wins (used once), otherwise the button decides
   uint8_t bootRole = Settings::takeBootRole();
