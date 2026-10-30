@@ -32,8 +32,9 @@ by compatible extensions, §7) · `type` u8 · `seq` u8 (per sender, kept on ret
 | `RELEASED` (12) | P → C | podId, cmdSeq, flags, heldMs, reactionUs, chargeMs | end of a hold (§2.2) |
 
 PodMode: `1 HIT`, `2 AVOID`, `3 CHARGE`, `4 RELEASE`, `5 TOGGLE`. Colour indices: `0 red, 1 green,
-2 blue, 3 yellow, 4 magenta, 5 cyan, 6 white, 255 off`; `7 orange`, `8 violet` = identity colours, never
-sent by a central.
+2 blue, 3 yellow, 4 magenta, 5 cyan, 6 white, 255 off`; `7 orange`, `8 violet`, `10 cream` = identity colours
+(10 from revision 5, fw 2.15), never sent by a central. `9 amber` is local to a pod (its own battery warning),
+never sent by a central.
 
 ### 2.1 Effects (fw ≥ 2.8)
 
@@ -110,16 +111,21 @@ the owner from the newest PRESSED, drops frames whose `flipCount` is not higher,
 The pod stays armed until RESET / next ARM; the central ends the game with a plain HIT ARM in the final
 colour (its PRESSED has another `cmdSeq`).
 
-### 2.4 Pod identity (revision 4, fw ≥ 2.13)
+### 2.4 Pod identity (revision 4, fw ≥ 2.13; revision 5, fw ≥ 2.15)
 
-Number 1…7 (pod id + 1), fixed colour from `Identity::PALETTE` (red, green, blue, magenta, cyan, orange,
-violet), shown as that many LEDs; reported as `status.pods[].number`, `color` (`#rrggbb`).
-- PONG flag bit 1 `identify`: set in MENU, DISCOVERY, CONFIRM; the pod spins its number (one turn / 3 s),
-  dark when cleared. Older pods ignore the bit (no feature bit).
-- After a claim: static 1.5 s, then the flag decides. Never in RUN / PAUSED; ARM always takes the ring.
+Number 1…7 (pod id + 1), fixed colour from `Identity::PALETTE`; reported as `status.pods[].number`, `color`
+(`#rrggbb`).
+- Palette: revision 4 (2.13–2.14) red, green, blue, magenta, cyan, orange, violet. Revision 5 (2.15) blue,
+  cyan, violet, magenta, yellow, orange, cream (pods 1 … 7).
+- Shown as one light at LED n−1 (pod 3 = LED 2) from 2.15; revision 4 showed n LEDs.
+- PONG flag bit 1 `identify`: set in MENU, DISCOVERY, CONFIRM. While set, a claimed pod plays JOINED
+  (architecture §7.1): its LED flashes twice after a claim, then stays at 30 %; LEDs 8–17 breathe green.
+  Flag cleared: dark. Revision 4: the number spins (one turn / 3 s). Older pods ignore the bit (no feature bit).
+- Never in RUN / PAUSED; ARM always takes the ring. Low battery (< 15 %, idle) plays LOW_BATTERY instead.
 - `blink` op: EFFECT `blink` in the pod's colour, 500 ms period, 2 s, end off (pods with `effects`); the
   central blinks white.
-- Unclaimed: yellow with a 2-LED segment, colour and position from the MAC.
+- Unclaimed: revision 5 plays SEARCH (amber spot over LEDs 8–17, not synced). Revision 4: yellow with a
+  2-LED segment, colour and position from the MAC.
 
 ## 3. Transport rules (`EspNowLink`)
 
@@ -149,7 +155,7 @@ violet), shown as that many LEDs; reported as `status.pods[].number`, `color` (`
 | Pod of another set | ignored |
 | Central without set id | random id on the first program start, stored in NVS |
 | Clear pairing | unclaimed peripheral, hold 3 s → white flash, setId 0 |
-| Pod silent > 1.5 s | central PAUSED (all yellow) |
+| Pod silent > 1.5 s | central PAUSED (whole ring amber, §7.1 of architecture) |
 | No PONG > 2 s | peripheral → UNCLAIMED |
 | Pod back | re-claimed with its old id; all back → current block restarted |
 
@@ -197,4 +203,6 @@ Version 1 (fw 2.0) is incompatible with fw 1.x. Within version 1, sets may mix f
 | 3 | `battery` | 2.13 | `batteryMv` in PING (0 = unknown) | level unknown |
 
 **Revision** (`Protocol::REVISION`, `info.linkRevision`) counts compatible extensions: 1 = fw 2.0–2.8,
-2 = 2.9 (hold), 3 = 2.10 (toggle), 4 = 2.13 (identity flag, colours 7/8, battery).
+2 = 2.9 (hold), 3 = 2.10 (toggle), 4 = 2.13 (identity flag, colours 7/8, battery),
+5 = 2.15 (light language: colour 10 cream, identity as one light, JOINED / SEARCH patterns instead of the spin
+and the MAC segment; no new frame or field).

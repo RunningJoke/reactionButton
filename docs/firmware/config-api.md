@@ -10,7 +10,7 @@ Same JSON messages on both transports. Reference clients: `tools/reactpod_config
 
 ## 1. Availability over BLE
 
-- Central = button held during the boot gauge. Advertises `ReactPod <xxxx>` (§2.1). An empty central (no
+- Central = button held when the boot pattern ends (architecture §4, §7.1). Advertises `ReactPod <xxxx>` (§2.1). An empty central (no
   programs) stays in the menu with the red blink, so programs can be uploaded.
 - fw ≥ 2.12 (`liveBle`): the connection stays through DISCOVERY, CONFIRM, RUN, PAUSED (interval and
   advertising: link-protocol §6). From DISCOVERY on `put`, `delete`, `setName` answer `busy`; everything
@@ -58,7 +58,7 @@ the central only (not synced) and advertised after the current connection ends.
 | `storage` | flash write failed |
 | `overflow` | data came faster than processed: resend |
 | `auth_required`, `auth_failed` | PIN (§8) |
-| `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect while armed |
+| `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed |
 | `not_ready` | no block waits / pods missing / pod too old |
 | `low_battery` | `start` with a pod < 5 % (fw ≥ 2.13) |
 | `not_editable`, `out_of_range` | `setVariables` |
@@ -109,6 +109,7 @@ Bluetooth does not expose it). `features` and fields by firmware:
 | 2.12 | `liveBle`, `pause` | BLE stays in the game (§1), `report` over BLE, `status.ble`, `status.heap`, `reports` paging; ops `pause`/`resume`, `phonePaused` |
 | 2.13 | `identify`, `battery` | op `blink`, `pods[].number`/`color`; `status.battery`, `pods[].battery`, `low_battery`; `programFormat` 6 |
 | 2.14 | – | `status.powerOff`, `sleep` event |
+| 2.15 | `patterns` | op `pattern`; system patterns (architecture §7.1); link revision 5 (colour 10, identity as one light) |
 
 **Battery** (`{percent, mv}`, missing = unknown): one Li-ion cell, 3.30 V = 0 %, 4.20 V = 100 %, piecewise
 linear (`Battery.cpp`); 16 samples, refreshed every 3 s; on USB it reads the charge voltage (≈ 100 %).
@@ -164,6 +165,7 @@ store (upload changed includes first), nothing is written, the request must fit 
 | `press` | any | – | simulated short press (not for the menu) |
 | `stop` | central | – | ends the program; the pod restarts as central into the menu (clears reports) |
 | `effect` | any (`effects`) | `effect` name, `color`, `color2`, `brightness`, `durationMs`, `periodMs`, `segment`, `from`/`to` (dim), `value` (level %), `reverse`, `endOff`, `delayMs`; central also `target`: `"self"` (default), pod id, `"pods"`, `"all"` | test op; common start now + `delayMs` (default 50 ms with pods, else 0). → `effect`, central `startAtUs`, `sent[]`, `skipped[]`. `busy` in a game / while armed |
+| `pattern` | any (`patterns`) | `name`: `boot`, `search`, `joined`, `discovery`, `ready`, `select`, `selectCancel`, `selected`, `paused`, `lowBattery`, `sleep`; `percent` (boot, 0–100), `podId` (joined), `wanted`, `found` (discovery), `fillMs` (selectCancel) | plays a system pattern (architecture §7.1) on this pod's ring; central: itself only, peripheral: itself. → `pattern`, `durationMs` (0 = endless). `busy` in a game / while armed |
 | `blink` | central (`identify`) | `pod`: id, or `-1`/missing = central | 2 s in its identity colour (central white), shown within 0.5 s. Only MENU/DISCOVERY/CONFIRM (`busy`); unknown id `bad_request`; pod fw < 2.8 `not_ready`. → `pod`, `durationMs` 2000 |
 | `results` | any | `reset` (bool) | statistics per metric since the last summary |
 | `trace` | any, serial | `on` (bool) | `{"event":"block","name","t"}` on every block entry |
@@ -181,7 +183,7 @@ store (upload changed includes first), nothing is written, the request must fit 
 
 **Reports** are RAM only: `stop` and every reboot clear them, ids restart at 1.
 
-**Two kinds of PAUSED** (both all yellow, both leave and re-enter the current block: timeouts restart,
+**Two kinds of PAUSED** (both whole ring amber, both leave and re-enter the current block: timeouts restart,
 presses during PAUSED are dropped, `communicate` builds no second report; `command` / `setVariables` /
 `session` behave as in PAUSED: `not_ready` / `busy`):
 - pod lost (automatic, 1.5 s silence): continues by itself when all pods are back. `pause` is refused
