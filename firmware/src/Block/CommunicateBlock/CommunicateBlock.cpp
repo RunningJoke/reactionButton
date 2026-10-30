@@ -1,10 +1,12 @@
 #include "CommunicateBlock.h"
+#include <algorithm>
 #include "Block/JsonUtil.h"
 #include "Config/SerialConsole.h"
 #include "Results/Reports.h"
 #include "Roles/Central/PhoneConfig.h"
 
 CommunicateBlock* CommunicateBlock::waitingBlock = nullptr;
+std::vector<CommunicateBlock*> CommunicateBlock::loadedBlocks;
 
 namespace {
     bool validName(const std::string& name) {
@@ -12,10 +14,15 @@ namespace {
     }
 }
 
+CommunicateBlock::CommunicateBlock() {
+    loadedBlocks.push_back(this);
+}
+
 CommunicateBlock::~CommunicateBlock() {
     if(waitingBlock == this) {
         waitingBlock = nullptr;
     }
+    loadedBlocks.erase(std::find(loadedBlocks.begin(), loadedBlocks.end(), this));
 }
 
 const char* CommunicateBlock::portName(uint8_t port) const {

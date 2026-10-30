@@ -195,6 +195,7 @@ bool CentralRole::startProgram() {
         vars->setVariable("MAX_LOOPS", maxLoops);
         Console.printf("MAX_LOOPS set by phone: %lld\n", maxLoops);
     }
+    this->phone.clearMaxLoops();    // the override applies to this select only
 
     int64_t required = vars->getVariable("REQUIRED_PERIPHERALS");
     this->requiredPeripherals = (uint8_t)constrain(required, (int64_t)0, (int64_t)MAX_PERIPHERALS);
@@ -381,6 +382,17 @@ bool CentralRole::engineIdle() const {
     return this->state == State::MENU || this->state == State::ERROR;
 }
 
+// status.waiting.editable and status.ready.editable: name -> {min, max, value}
+static void describeEditable(JsonObject out, const std::vector<CommunicateBlock::Editable>& editable) {
+    VariableManager* vars = VariableManager::getManager();
+    for(const CommunicateBlock::Editable& e : editable) {
+        JsonObject m = out[e.name].to<JsonObject>();
+        m["min"] = e.min;
+        m["max"] = e.max;
+        m["value"] = vars->get(e.var);
+    }
+}
+
 void CentralRole::describe(JsonObject status) {
     status["state"] = stateName(this->state);
     status["phonePaused"] = this->phonePaused;
@@ -405,14 +417,9 @@ void CentralRole::describe(JsonObject status) {
     if(CommunicateBlock* waiting = this->waitingBlock()) {
         JsonObject w = status["waiting"].to<JsonObject>();
         w["block"] = waiting->getName();
-        JsonObject editable = w["editable"].to<JsonObject>();
-        VariableManager* vars = VariableManager::getManager();
-        for(const CommunicateBlock::Editable& e : waiting->editable()) {
-            JsonObject m = editable[e.name].to<JsonObject>();
-            m["min"] = e.min;
-            m["max"] = e.max;
-            m["value"] = vars->get(e.var);
-        }
+        describeEditable(w["editable"].to<JsonObject>(), waiting->editable());
+    } else if(this->state == State::CONFIRM) {
+        describeEditable(status["ready"].to<JsonObject>()["editable"].to<JsonObject>(), this->startEditables());
     }
     this->network.describe(status["pods"].to<JsonArray>());
 
@@ -724,7 +731,7 @@ void CentralRole::opCommand(JsonObjectConst request, JsonDocument& response) {
 // All or nothing: every value is checked before the first one is written
 void CentralRole::opSetVariables(JsonObjectConst request, JsonDocument& response) {
     CommunicateBlock* waiting = this->waitingBlock();
-    if(waiting == nullptr) {
+    if(waiting == nullptr && this->state != State::CONFIRM) {
         ConfigApi::setError(response, "not_ready", "no communicate block waits");
         return;
     }
@@ -734,7 +741,11 @@ void CentralRole::opSetVariables(JsonObjectConst request, JsonDocument& response
         return;
     }
 
-    const std::vector<CommunicateBlock::Editable>& editable = waiting->editable();
+    std::vector<CommunicateBlock::Editable> startList;
+    if(waiting == nullptr) {
+        startList = this->startEditables();     // CONFIRM
+    }
+    const std::vector<CommunicateBlock::Editable>& editable = waiting != nullptr ? waiting->editable() : startList;
     auto findEditable = [&editable](const std::string& name) -> const CommunicateBlock::Editable* {
         for(const CommunicateBlock::Editable& e : editable) {
             if(e.name == name) return &e;
@@ -775,6 +786,26 @@ void CentralRole::opSetVariables(JsonObjectConst request, JsonDocument& response
 
 CommunicateBlock* CentralRole::waitingBlock() const {
     return this->state == State::RUN ? CommunicateBlock::waiting() : nullptr;
+}
+
+// Same name in several blocks: the narrowest range. The blocks of the loaded program only (cleared on load).
+std::vector<CommunicateBlock::Editable> CentralRole::startEditables() const {
+    std::vector<CommunicateBlock::Editable> merged;
+    for(const CommunicateBlock* block : CommunicateBlock::loaded()) {
+        for(const CommunicateBlock::Editable& e : block->editable()) {
+            CommunicateBlock::Editable* same = nullptr;
+            for(CommunicateBlock::Editable& m : merged) {
+                if(m.name == e.name) same = &m;
+            }
+            if(same == nullptr) {
+                merged.push_back(e);
+            } else {
+                if(e.min > same->min) same->min = e.min;
+                if(e.max < same->max) same->max = e.max;
+            }
+        }
+    }
+    return merged;
 }
 
 // Athlete id of the following reports. Allowed before a game and while a communicate block waits.

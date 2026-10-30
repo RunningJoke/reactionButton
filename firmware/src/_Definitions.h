@@ -6,7 +6,7 @@
  * FIRMWARE VERSION (reported in HELLO frames)
 */
 #define FW_VERSION_MAJOR 2
-#define FW_VERSION_MINOR 16
+#define FW_VERSION_MINOR 17
 
 /**
  * LED BRIGHTNESS CAP (0..255, #21)

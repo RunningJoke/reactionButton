@@ -189,6 +189,12 @@ bool PhoneConfig::getMaxLoops(int64_t& maxLoops) const {
     return true;
 }
 
+void PhoneConfig::clearMaxLoops() {
+    if(this->maxLoopCharacteristic != nullptr) {
+        this->maxLoopCharacteristic->setValue("-1");
+    }
+}
+
 bool PhoneConfig::connected() const {
     return linkUp && this->running;
 }

@@ -7,7 +7,7 @@
 #include "Program/ProgramCatalog.h"
 #include "ColorSet/ColorSet.h"
 
-class CommunicateBlock;
+#include "Block/CommunicateBlock/CommunicateBlock.h"
 
 /**
  * CENTRAL role.
@@ -84,6 +84,8 @@ class CentralRole : public IRole {
         void continueRun();
         // the communicate block that waits for the client; none while PAUSED (programs.md §7.16)
         CommunicateBlock* waitingBlock() const;
+        // start variables (CONFIRM): the editable variables of all communicate blocks, narrowest range per name
+        std::vector<CommunicateBlock::Editable> startEditables() const;
 
         State state = State::MENU;
         bool phonePaused = false;          // PAUSED by "pause"; only "resume" ends it
