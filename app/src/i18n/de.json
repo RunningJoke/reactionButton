@@ -32,7 +32,7 @@
       "blinkFailed": "Der Pod konnte nicht blinken."
     },
     "intro": "Mit einer Zentrale im Programmmenü verbinden.",
-    "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf während der blauen Startanimation gedrückt halten.",
+    "menuHint": "Programmmenü öffnen: Pod einschalten und den Knopf gedrückt halten, bis der weiße Ring voll ist.",
     "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",
     "serialUnsupported": "USB braucht Chrome oder Edge auf einem Computer.",
     "connect": {

@@ -27,7 +27,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.14", the summary bar, identify and battery (2.13) and auto power-off), and
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.15", the summary bar, identify and battery (2.13), auto power-off and the system patterns (2.15)), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
    * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
@@ -56,8 +56,23 @@ const REPORT_BUFFER = 8;
 
 type Json = Record<string, unknown>;
 
-/** Identity colours of pods 1 … 7 (firmware LEDManager/Identity.h): red, green, blue, magenta, cyan, orange, violet. */
-const IDENTITY_COLORS = ["#ff0000", "#00ff00", "#0000ff", "#ff00ff", "#00ffff", "#ff8000", "#8000ff"];
+/** Identity colours of pods 1 … 7 (firmware LEDManager/Identity.h, 2.15): blue, cyan, violet, magenta, yellow, orange, cream. */
+const IDENTITY_COLORS = ["#0000ff", "#00ffff", "#a064ff", "#ff00ff", "#ffff00", "#ff7800", "#ffebc8"];
+
+/** System patterns of the `pattern` op (firmware ≥ 2.15) and their duration in ms; 0 = endless (until the next op). */
+const PATTERN_DURATIONS: Record<string, number> = {
+  boot: 2600,
+  search: 0,
+  joined: 0,
+  discovery: 0,
+  ready: 0,
+  select: 1600,
+  selectCancel: 0, // = fillMs, see pattern()
+  selected: 700,
+  paused: 0,
+  lowBattery: 0,
+  sleep: 2000,
+};
 
 class ApiFailure extends Error {
   constructor(
@@ -123,7 +138,7 @@ export class SimulatedPod {
     this.batteryOption = options.battery ?? this.programFormat >= 6;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 6 ? "2.14" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 6 ? "2.15" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -133,6 +148,11 @@ export class SimulatedPod {
   /** firmware ≥ 2.13: identity (number, colour, blink), feature `identify`, link revision 4 */
   private get identifies(): boolean {
     return Number(this.firmware.split(".")[1]) >= 13;
+  }
+
+  /** firmware ≥ 2.15: system patterns (op `pattern`), feature `patterns`, link revision 5 */
+  private get patterns(): boolean {
+    return Number(this.firmware.split(".")[1]) >= 15;
   }
 
   /** firmware ≥ 2.11 (program format 5): the reports and the remote ops, features `reports` and `remote` */
@@ -233,6 +253,7 @@ export class SimulatedPod {
             "auth",
             ...(this.remote ? ["reports", "ack", "session", "command", "setVariables", "pause", "resume"] : []),
             ...(this.role === "central" && this.identifies ? ["blink"] : []),
+            ...(this.role === "central" && this.patterns ? ["pattern"] : []),
           ],
           transport: "simulated",
         };
@@ -256,6 +277,8 @@ export class SimulatedPod {
         return this.storeSetName(req);
       case "blink":
         return this.blink(req);
+      case "pattern":
+        return this.pattern(req);
       case "setPin":
         throw new ApiFailure("bad_request", "the PIN can only be set or cleared over USB serial");
       case "reports":
@@ -277,7 +300,7 @@ export class SimulatedPod {
       firmware: this.firmware,
       linkProtocol: 1,
       // firmware >= 2.9: hold reporting (link protocol revision 2), >= 2.10: toggle (revision 3), config-api.md
-      ...(this.programFormat >= 3 ? { linkRevision: this.identifies || this.battery ? 4 : this.programFormat >= 4 ? 3 : 2 } : {}),
+      ...(this.programFormat >= 3 ? { linkRevision: this.patterns ? 5 : this.identifies || this.battery ? 4 : this.programFormat >= 4 ? 3 : 2 } : {}),
       setId: this.setId,
       setName: this.setName,
       pinRequired: this.pin !== "",
@@ -300,6 +323,7 @@ export class SimulatedPod {
         ...(this.liveBle ? ["liveBle"] : []),
         ...(this.identifies ? ["identify"] : []),
         ...(this.battery ? ["battery"] : []),
+        ...(this.patterns ? ["patterns"] : []),
       ],
       blockTypes: this.blockTypes,
     };
@@ -374,6 +398,32 @@ export class SimulatedPod {
     }
     if (pod >= 0 && this.programFormat < 2) throw new ApiFailure("not_ready", "pod has older firmware (no effects)");
     return { pod, durationMs: 2000 };
+  }
+
+  /**
+   * firmware ≥ 2.15 (config-api.md §5, feature `patterns`): plays a system pattern on the pod itself
+   * ("podId" -1 or missing = the central). Busy like `blink` and `effect`: only in the menu, discovery or confirm.
+   */
+  private pattern(req: Json): Json {
+    if (this.role !== "central" || !this.patterns) throw new ApiFailure("bad_request", "unknown op 'pattern' (try 'help')");
+    if (this.state !== "MENU" && this.state !== "DISCOVERY" && this.state !== "CONFIRM") {
+      throw new ApiFailure("busy", `state is ${this.state}`);
+    }
+    const name = req.name;
+    if (typeof name !== "string" || !Object.prototype.hasOwnProperty.call(PATTERN_DURATIONS, name)) {
+      throw new ApiFailure("bad_request", `'name' must be one of ${Object.keys(PATTERN_DURATIONS).join(", ")}`);
+    }
+    for (const field of ["percent", "podId", "wanted", "found", "fillMs"] as const) {
+      if (req[field] !== undefined && (typeof req[field] !== "number" || !Number.isInteger(req[field]))) {
+        throw new ApiFailure("bad_request", `'${field}' must be an integer`);
+      }
+    }
+    // podId is an argument of the pattern (whose light JOINED shows), not a target: the pod plays it itself
+    for (const field of ["percent", "podId", "wanted", "found", "fillMs"] as const) {
+      if (typeof req[field] === "number" && req[field] < 0) throw new ApiFailure("bad_request", `'${field}' must not be negative`);
+    }
+    const fillMs = typeof req.fillMs === "number" ? req.fillMs : 0;
+    return { pattern: name, durationMs: name === "selectCancel" ? fillMs : PATTERN_DURATIONS[name]! };
   }
 
   private remoteOp(op: string, req: Json): Json {

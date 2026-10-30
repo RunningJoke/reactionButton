@@ -84,11 +84,11 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.13 info: program format 6 with the summary bar", () => {
+  it("reports the firmware 2.15 info: program format 6 with the summary bar and the patterns", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.14", setName: "Halle 2", pinRequired: false, programFormat: 6 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery"]);
-    expect(info.linkRevision).toBe(4);
+    expect(info).toMatchObject({ firmware: "2.15", setName: "Halle 2", pinRequired: false, programFormat: 6 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns"]);
+    expect(info.linkRevision).toBe(5);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate", "summary"]));
   });
@@ -103,14 +103,43 @@ describe("SimulatedPod (config API)", () => {
     const pod = new SimulatedPod({ pods: 2 });
     const status = call(pod, { op: "status" }) as { pods: Json[] };
     expect(status.pods).toEqual([
-      expect.objectContaining({ id: 0, number: 1, color: "#ff0000" }),
-      expect.objectContaining({ id: 1, number: 2, color: "#00ff00" }),
+      expect.objectContaining({ id: 0, number: 1, color: "#0000ff" }),
+      expect.objectContaining({ id: 1, number: 2, color: "#00ffff" }),
     ]);
     expect(call(pod, { op: "blink", pod: 1 })).toMatchObject({ ok: true, pod: 1, durationMs: 2000 });
     expect(call(pod, { op: "blink" })).toMatchObject({ ok: true, pod: -1 });
     expect(call(pod, { op: "blink", pod: 5 })).toMatchObject({ ok: false, error: "bad_request" });
     // older firmware: no identity, no blink
     expect(call(new SimulatedPod({ programFormat: 4 }), { op: "blink" })).toMatchObject({ ok: false, error: "bad_request" });
+  });
+
+  it("uses the 2.15 identity palette: blue, cyan, violet, magenta, yellow, orange, cream", () => {
+    const pod = new SimulatedPod({ pods: 7 });
+    const colors = (call(pod, { op: "status" }) as { pods: Json[] }).pods.map((p) => p.color);
+    expect(colors).toEqual(["#0000ff", "#00ffff", "#a064ff", "#ff00ff", "#ffff00", "#ff7800", "#ffebc8"]);
+  });
+
+  it("plays the system patterns (firmware 2.15): name and duration, busy in a game", () => {
+    const pod = new SimulatedPod({ pods: 2 });
+    expect(call(pod, { op: "pattern", name: "boot" })).toMatchObject({ ok: true, pattern: "boot", durationMs: 2600 });
+    expect(call(pod, { op: "pattern", name: "select" })).toMatchObject({ ok: true, durationMs: 1600 });
+    expect(call(pod, { op: "pattern", name: "selected" })).toMatchObject({ ok: true, durationMs: 700 });
+    expect(call(pod, { op: "pattern", name: "sleep" })).toMatchObject({ ok: true, durationMs: 2000 });
+    expect(call(pod, { op: "pattern", name: "search" })).toMatchObject({ ok: true, durationMs: 0 });
+    expect(call(pod, { op: "pattern", name: "selectCancel", fillMs: 1200 })).toMatchObject({ ok: true, pattern: "selectCancel", durationMs: 1200 });
+    expect(call(pod, { op: "pattern", name: "lowBattery", percent: 12, podId: 1 })).toMatchObject({ ok: true, durationMs: 0 });
+    expect(call(pod, { op: "pattern", name: "blink" })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(call(pod, { op: "pattern", name: "joined", podId: 5 })).toMatchObject({ ok: true, durationMs: 0 });
+    expect(call(pod, { op: "pattern", name: "joined", podId: -1 })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(call(pod, { op: "pattern", name: "discovery", wanted: 1.5 })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(call(pod, { op: "help" }).ops).toContain("pattern");
+    pod.state = "RUN";
+    expect(call(pod, { op: "pattern", name: "boot" })).toMatchObject({ ok: false, error: "busy" });
+    // firmware 2.14: no patterns
+    const older = new SimulatedPod({ firmware: "2.14" });
+    expect(call(older, { op: "pattern", name: "boot" })).toMatchObject({ ok: false, error: "bad_request" });
+    expect(call(older, { op: "info" }).features).not.toContain("patterns");
+    expect(call(older, { op: "info" }).linkRevision).toBe(4);
   });
 
   it("simulates a central with programFormat 4 (firmware 2.10): toggle, no communicate, no reports or remote", () => {
