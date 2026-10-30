@@ -153,4 +153,25 @@ describe("file transfer", () => {
     await expect(writeFile(client, "/prog/a.json", '{"broken": ')).rejects.toMatchObject({ code: "invalid_json" });
     expect(pod.files.get("/prog/a.json")).toBe("{}");
   });
+
+  it("sends user commands before queued report fetches, acks and status reads, one at a time", async () => {
+    const pod = new SimulatedPod({ files: DEFAULT_FILES, programFormat: 6 });
+    const { client, transport } = await connect(pod);
+    const sent: string[] = [];
+    const original = transport.send.bind(transport);
+    vi.spyOn(transport, "send").mockImplementation((line: string) => {
+      sent.push((JSON.parse(line) as { op: string }).op);
+      return original(line);
+    });
+    // info is in flight; the others queue up in the order of the calls, user ops in front of the rest
+    await Promise.allSettled([
+      client.info(),
+      client.request("reports"),
+      client.request("ack", { reportId: 1 }),
+      client.status(),
+      client.request("session", { athlete: "a" }),
+      client.request("command", { name: "stop" }), // not_ready in the menu: the answer still comes in turn
+    ]);
+    expect(sent).toEqual(["info", "session", "command", "reports", "ack", "status"]);
+  });
 });

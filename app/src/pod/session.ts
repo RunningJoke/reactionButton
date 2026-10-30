@@ -13,6 +13,8 @@ import { fileCache } from "../store/fileCache";
 import { PodClient } from "./client";
 import { readFile } from "./files";
 import { linkResults } from "../results/podLink";
+import { sendCommand, type CommandName } from "../results/podReports";
+import { useResults } from "../results/results";
 import { PROGRAM_FORMAT } from "@reactpod/program-model";
 import { PodError, type InfoResponse, type ListResponse, type PodEvent, type PodRole, type StatusResponse } from "./protocol";
 import { SimulatedPod } from "./simulated/SimulatedPod";
@@ -76,6 +78,12 @@ export type PodSession = {
   disconnect: () => Promise<void>;
   refresh: () => Promise<void>;
   refreshStatus: () => Promise<void>;
+  /** Continue / Repeat / Stop pressed while nothing waits: kept, sent when a block waits. A newer one replaces it. */
+  queued: CommandName | null;
+  /** the queued command was refused (a definite error response) */
+  queueError: PodError | null;
+  queueCommand: (name: CommandName) => void;
+  cancelQueued: () => void;
   clearLog: () => void;
   /** Sends the PIN. Rejects with PodError `auth_failed` on a wrong PIN. */
   authenticate: (pin: string) => Promise<void>;
@@ -187,7 +195,7 @@ function createSession(id: string): StoreApi<PodSession> {
       offTransport?.();
       offTransport = null;
       detachClient();
-      set({ state: "disconnected", client: null, info: null, role: null, list: null, status: null, deviceName: null, files: {}, loading: null, authenticated: false });
+      set({ state: "disconnected", client: null, info: null, role: null, list: null, status: null, deviceName: null, files: {}, loading: null, authenticated: false, queued: null });
       registryRemove(self);
     };
 
@@ -226,10 +234,28 @@ function createSession(id: string): StoreApi<PodSession> {
       if (!client) return;
       try {
         const status = await client.status();
-        if (get().client === client) set({ status, role: status.role });
+        if (get().client !== client) return;
+        set({ status, role: status.role });
+        if (status.waiting) void flushQueued(client);
+        // the game ended (menu, confirm): a command still queued for it is dropped
+        else if (status.state && !["RUN", "PAUSED"].includes(status.state)) set({ queued: null });
       } catch {
         // the next event or refresh tries again
       }
+    };
+
+    /** Sends the queued command once a `communicate` block waits (#87). A timed-out one may have been applied: no error, the status shows it. */
+    const flushQueued = async (client: PodClient) => {
+      const name = get().queued;
+      if (!name || get().client !== client) return;
+      set({ queued: null, queueError: null });
+      try {
+        await sendCommand(client, name);
+        if (name === "repeat") await useResults.getState().discardLast(get().info?.setId.toLowerCase() ?? "");
+      } catch (e) {
+        if (e instanceof PodError && e.code !== "timeout") set({ queueError: e });
+      }
+      void refreshStatus();
     };
 
     /** Runs the handshake on a transport (chooser or reconnect): info, status, list, files, reports. */
@@ -342,6 +368,8 @@ function createSession(id: string): StoreApi<PodSession> {
       log: [],
       client: null,
       authenticated: false,
+      queued: null,
+      queueError: null,
 
       connect: (kind) => connectPod(kind),
 
@@ -391,6 +419,16 @@ function createSession(id: string): StoreApi<PodSession> {
       },
 
       refreshStatus,
+
+      queueCommand(name) {
+        set({ queued: name, queueError: null });
+        const client = get().client;
+        if (client && get().status?.waiting) void flushQueued(client);
+      },
+
+      cancelQueued() {
+        set({ queued: null });
+      },
 
       clearLog() {
         set({ log: [] });

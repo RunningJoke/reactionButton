@@ -101,6 +101,11 @@ export function sendVariables(client: PodClient, values: Record<string, number>)
   return client.request("setVariables", { values });
 }
 
+/** Starts the program from CONFIRM (firmware ≥ 2.17 for the values set before it; config-api.md §5). */
+export function sendStart(client: PodClient) {
+  return client.request("start");
+}
+
 /** Pauses a running game from the phone (firmware ≥ 2.12, feature `pause`). */
 export function sendPause(client: PodClient) {
   return client.request("pause");

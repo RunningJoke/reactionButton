@@ -22,6 +22,11 @@ export type PodClientOptions = {
   overflowRetries?: number;
 };
 
+/** Ops the user presses (training view): they go ahead of queued report fetches, acks and status reads. */
+const USER_OPS = new Set(["command", "setVariables", "start", "pause", "resume", "session"]);
+
+type Job = { user: boolean; run: () => void };
+
 type Pending = {
   id: number;
   op: string;
@@ -41,7 +46,9 @@ export class PodClient {
   private readonly overflowRetries: number;
   private nextId = 1;
   private pending: Pending | null = null;
-  private queue: Promise<unknown> = Promise.resolve();
+  /** requests waiting for their turn; user ops go in front of the others */
+  private waiting: Job[] = [];
+  private running = false;
   private readonly events = new Listeners<[PodEvent]>();
   private readonly logs = new Listeners<[string]>();
   private readonly unsubscribe: Unsubscribe[];
@@ -74,10 +81,35 @@ export class PodClient {
 
   /** Sends a request and resolves with the successful response; rejects with PodError. */
   request<T extends ResponseBase>(op: string, fields: Record<string, unknown> = {}): Promise<T> {
-    const run = () => this.send<T>(op, fields);
-    const result = this.queue.then(run, run);
-    this.queue = result.catch(() => undefined);
-    return result;
+    return new Promise<T>((resolve, reject) => {
+      const job: Job = {
+        user: USER_OPS.has(op),
+        run: () =>
+          this.send<T>(op, fields)
+            .then(resolve, reject)
+            .finally(() => {
+              this.running = false;
+              this.next();
+            }),
+      };
+      if (!job.user) {
+        this.waiting.push(job);
+      } else {
+        const at = this.waiting.findIndex((j) => !j.user);
+        if (at < 0) this.waiting.push(job);
+        else this.waiting.splice(at, 0, job);
+      }
+      this.next();
+    });
+  }
+
+  /** Starts the next waiting request; one request is in flight at a time (config-api.md §3). */
+  private next() {
+    if (this.running) return;
+    const job = this.waiting.shift();
+    if (!job) return;
+    this.running = true;
+    job.run();
   }
 
   info() {

@@ -157,6 +157,8 @@ export type StatusResponse = ResponseBase & {
   athlete?: string;
   /** central, firmware ≥ 2.11: while a `communicate` block waits (config-api.md §5) */
   waiting?: { block: string; editable: Record<string, { min: number; max: number; value: number }> };
+  /** central in CONFIRM, firmware ≥ 2.17 (feature `startVars`): the variables `setVariables` may set before `start` */
+  ready?: { editable: Record<string, { min: number; max: number; value: number }> };
   /** central: one entry per peripheral of the set */
   pods?: PodStatus[];
 };
