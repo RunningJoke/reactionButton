@@ -79,7 +79,7 @@ export function ProgramViewPage() {
                 <Lock size={13} aria-hidden /> {t("view.fragment")} ·{" "}
               </>
             )}
-            {t("programs.blocks", { count: resolved.blocks.length })} · {t(`view.source.${sourceId}`)}
+            {t("programs.blocks", { count: resolved.blocks.length })} · <code>{path}</code> · {t(`view.source.${sourceId}`)}
           </span>
         </div>
         {resolved.issues.length > 0 && (

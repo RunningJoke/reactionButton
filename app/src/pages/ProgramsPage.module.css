@@ -127,21 +127,28 @@
   color: var(--text-muted);
 }
 
-.status {
-  display: grid;
-  place-items: center;
-  flex: none;
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
 }
 
-.status[data-level="ok"] {
-  color: var(--ok);
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.status[data-level="warn"] {
+.chip[data-level="warn"] {
   color: var(--warn);
 }
 
-.status[data-level="error"] {
+.chip[data-level="error"] {
   color: var(--error);
 }
 

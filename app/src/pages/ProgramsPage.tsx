@@ -1,14 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, ChevronRight, CircleAlert, CircleCheck, FileUp, FolderHeart, Loader, Package, Plus, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, BookLock, ChevronRight, CircleAlert, FileUp, FolderHeart, Loader, Package, Plus, SlidersHorizontal } from "lucide-react";
 import { PodIcon } from "../components/PodIcon";
 import { LedRing } from "../components/LedRing";
+import { useExpertMode } from "../editor/expertMode";
 import { buildCatalog, type CatalogEntry } from "../programs/catalog";
 import { AdjustSheet, type AdjustTarget } from "../programs/AdjustSheet";
 import { NewProgramModal, useTakenPaths } from "../programs/actions";
+import { olderPodNeeds, podsNeeded, summaryOf } from "../programs/requirements";
 import { SetArchiveButtons } from "../programs/SetArchiveButtons";
-import { editorUrl, useProgramSource, validateOptionsOf, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
+import { editorUrl, podProgramFormat, useProgramSource, validateOptionsOf, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
 import { parseProgramText, useWorkspace } from "../store/workspace";
 import { usePodSession } from "../pod/session";
 import page from "./Page.module.css";
@@ -168,6 +170,8 @@ type ListProps = {
 
 function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: ListProps) {
   const { t } = useTranslation();
+  const [expert] = useExpertMode();
+  const podFormat = usePodSession((s) => (s.state === "connected" ? podProgramFormat(s.info) : undefined));
   if (entries.length === 0) return <p className={page.muted}>{t("programs.none")}</p>;
   return (
     <ul className={styles.list}>
@@ -195,13 +199,16 @@ function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: Lis
                 )}
                 {source === "pod" && !entry.inMenu && entry.kind === "program" && <span className={styles.tag}>{t("programs.notInMenu")}</span>}
               </span>
-              <span className={styles.meta}>
-                <span>{t("programs.blocks", { count: entry.blocks })}</span>
-                <span className={styles.path}>{entry.path}</span>
-              </span>
-              {entry.description && <span className={styles.description}>{entry.description}</span>}
+              {summaryOf(entry.description) && <span className={styles.description}>{summaryOf(entry.description)}</span>}
+              {entry.kind === "program" && <span className={styles.meta}>{podsNeeded(entry.peripherals, t)}</span>}
+              {expert && (
+                <span className={styles.meta}>
+                  <span>{t("programs.blocks", { count: entry.blocks })}</span>
+                  <span className={styles.path}>{entry.path}</span>
+                </span>
+              )}
+              <Problems entry={entry} podFormat={podFormat} />
             </span>
-            <Status entry={entry} />
             {!(onAdjust && entry.kind === "program") && <ChevronRight size={18} aria-hidden className={styles.chevron} />}
           </Link>
           {onAdjust && entry.kind === "program" && (
@@ -216,25 +223,24 @@ function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: Lis
   );
 }
 
-function Status({ entry }: { entry: CatalogEntry }) {
+/** Chips for problems only: the connected pod is too old for the game, or the game has errors. */
+function Problems({ entry, podFormat }: { entry: CatalogEntry; podFormat: number | undefined }) {
   const { t } = useTranslation();
   const errors = entry.issues.filter((i) => i.severity === "error").length;
-  const warnings = entry.issues.length - errors;
-  if (errors > 0)
-    return (
-      <span className={styles.status} data-level="error" title={t("programs.errors", { count: errors })}>
-        <CircleAlert size={18} aria-label={t("programs.errors", { count: errors })} />
-      </span>
-    );
-  if (warnings > 0)
-    return (
-      <span className={styles.status} data-level="warn" title={t("programs.warnings", { count: warnings })}>
-        <AlertTriangle size={18} aria-label={t("programs.warnings", { count: warnings })} />
-      </span>
-    );
+  const firmware = olderPodNeeds(entry, podFormat);
+  if (!firmware && errors === 0) return null;
   return (
-    <span className={styles.status} data-level="ok" title={t("programs.valid")}>
-      <CircleCheck size={18} aria-label={t("programs.valid")} />
+    <span className={styles.chips}>
+      {firmware && (
+        <span className={styles.chip} data-level="warn">
+          <AlertTriangle size={14} aria-hidden /> {t("programs.needsPod", { firmware })}
+        </span>
+      )}
+      {errors > 0 && (
+        <span className={styles.chip} data-level="error">
+          <CircleAlert size={14} aria-hidden /> {t("programs.errors", { count: errors })}
+        </span>
+      )}
     </span>
   );
 }
