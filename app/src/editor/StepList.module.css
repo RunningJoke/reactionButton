@@ -24,7 +24,7 @@
   max-width: 560px;
   margin: 0 auto;
   /* bottom: room for the floating + */
-  padding: var(--space-3) var(--space-3) 96px;
+  padding: var(--space-3) var(--space-3) var(--fab-clear);
 }
 
 .section h3 {

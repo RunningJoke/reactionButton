@@ -24,6 +24,9 @@
   --tabbar-h: 68px;
   /* floating tab bar: gap to the screen edges */
   --tabbar-gap: 12px;
+  /* the + button of a page, above the tab bar; --fab-clear is the bottom room a scrolling page keeps for it */
+  --fab-size: 56px;
+  --fab-clear: calc(var(--fab-size) + 2 * var(--space-4));
   --rail-w: 84px;
   --icon-stroke: 2.5;
 

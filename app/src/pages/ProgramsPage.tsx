@@ -31,7 +31,7 @@ export function ProgramsPage() {
   const library = pod.available && podCatalog.library.length > 0 ? { entries: podCatalog.library, source: "pod" as const } : { entries: shippedCatalog.library, source: "shipped" as const };
 
   return (
-    <div className={`${page.page} ${styles.withFab}`}>
+    <div className={`${page.page} ${page.withFab}`}>
       <section className={page.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.heading}>

@@ -45,7 +45,7 @@ function TrainingLink() {
 function MenuLink() {
   const { t } = useTranslation();
   return (
-    <Link to="/menu" className={styles.menuLink}>
+    <Link to="/menu" className={`${styles.menuLink} ${styles.menuInRail}`}>
       <ListOrdered size={22} aria-hidden />
       <span>{t("nav.menu")}</span>
       <ChevronRight size={20} aria-hidden />

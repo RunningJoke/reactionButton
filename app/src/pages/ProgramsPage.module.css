@@ -250,7 +250,3 @@
     right: var(--space-6);
   }
 }
-
-.withFab {
-  padding-bottom: 96px;
-}

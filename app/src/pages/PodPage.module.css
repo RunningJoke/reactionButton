@@ -112,9 +112,9 @@
   color: var(--text-muted);
 }
 
-/* wide screens have the menu in the side rail */
+/* wide screens have the menu in the side rail (the training view has no rail entry, so it stays) */
 @media (min-width: 900px) {
-  .menuLink {
+  .menuInRail {
     display: none;
   }
 }
