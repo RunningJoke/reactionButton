@@ -81,5 +81,39 @@ await coach.goto(`${base}#/settings`);
 await coach.getByLabel("Server").fill("https://api.example.org");
 await coach.screenshot({ path: `${out}/settings-platform.png`, fullPage: true });
 
+// Step sheet and Sprinkles (#88): 360 / 1200 px, both themes
+for (const [width, height] of [[360, 1300], [1200, 900]]) {
+  for (const colorScheme of ["light", "dark"]) {
+    const tag = `${width}-${colorScheme}`;
+    const ed = await browser.newPage({ viewport: { width, height }, locale: "en-US", colorScheme });
+    const edit = async (path) => {
+      await ed.goto(`${base}#/programs/view?source=shipped&path=${encodeURIComponent(path)}`);
+      await ed.getByRole("button", { name: "Edit", exact: true }).click();
+      await ed.getByText(/^1/).first().waitFor();
+    };
+    const shot = async (name) => {
+      await ed.waitForTimeout(350);
+      await ed.screenshot({ path: `${out}/editor-${tag}-${name}.png` });
+    };
+    await edit("/prog/solo.json");
+    await ed.getByText("Wait for a press on the central").first().click();
+    await shot("press");
+    await ed.getByRole("button", { name: /^\+ Time limit/ }).click();
+    await shot("press-time-limit");
+    await ed.getByRole("button", { name: /Add sprinkle/ }).click();
+    await shot("add-page");
+    await ed.getByRole("button", { name: /Back/ }).click();
+    await ed.getByText(/^Wait 0\.8/).first().click();
+    await shot("pause");
+    await edit("/prog/charge.json");
+    await ed.getByText(/^Hold the central to charge/).first().click();
+    await shot("charge");
+    await edit("/prog/domination.json");
+    await ed.getByText(/^Domination: red against blue/).first().click();
+    await shot("domination");
+    await ed.close();
+  }
+}
+
 await browser.close();
 console.log(`screenshots written to ${out}`);

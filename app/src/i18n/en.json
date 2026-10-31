@@ -227,6 +227,94 @@
       "start": "Start block",
       "noPresets": "No library parts linked. This program is self-contained."
     },
+    "sprinkle": {
+      "title": "Sprinkles",
+      "add": "Add sprinkle",
+      "addTitle": "Add a sprinkle",
+      "back": "Back",
+      "try": "Try",
+      "remove": "Remove",
+      "custom": "Custom",
+      "customHint": "Set up in a way this view cannot change. Use expert mode to edit it.",
+      "none": "Nothing more to add to this step.",
+      "yes": "yes",
+      "needsFormat": "Needs a newer pod (program format {{n}})",
+      "needsSetting": "The program has no settings yet",
+      "group": {
+        "rules": "Rules",
+        "measure": "Measure",
+        "flow": "Flow"
+      },
+      "timeLimit": {
+        "name": "Time limit",
+        "desc": "Too slow after a while, and what happens then"
+      },
+      "avoid": {
+        "name": "Red pods",
+        "desc": "Some pods must not be touched",
+        "count": "{{count}} red"
+      },
+      "longPress": {
+        "name": "Long press",
+        "desc": "A long press does something else"
+      },
+      "falseStart": {
+        "name": "Catch early presses",
+        "desc": "A press during the pause is a false start"
+      },
+      "holdFirst": {
+        "name": "Hold first",
+        "desc": "The button has to be held before it counts"
+      },
+      "drains": {
+        "name": "Drains over time",
+        "desc": "The charge empties while nobody holds"
+      },
+      "includeCentral": {
+        "name": "Central takes part",
+        "desc": "The central's button counts like a pod",
+        "remove": "Central sits out"
+      },
+      "record": {
+        "name": "Record reaction",
+        "desc": "Measure the time from light to press"
+      },
+      "keepResult": {
+        "name": "Keep result",
+        "desc": "Save the time or score in a setting"
+      },
+      "phoneSettings": {
+        "name": "Phone can change settings",
+        "desc": "The coach changes settings while the report waits"
+      },
+      "showBar": {
+        "name": "Show average bar",
+        "desc": "The average as a bar on the ring",
+        "target": "Target time",
+        "howLong": "Shown for"
+      },
+      "stopwatch": {
+        "name": "Stopwatch",
+        "desc": "Time from this step to another",
+        "none": "not set",
+        "hint": "Start and stop with the same name. “cycle” and “lap” are suggested."
+      },
+      "podsOff": {
+        "name": "Turn pods off afterwards",
+        "desc": "Adds a step that switches every pod off"
+      },
+      "countdown": {
+        "name": "Countdown",
+        "desc": "The ring shows the time running out"
+      },
+      "report": {
+        "results": "Results",
+        "allResults": "All results",
+        "noResults": "The program records no results yet.",
+        "include": "Settings to include",
+        "coach": "Coach may change while it waits"
+      }
+    },
     "step": {
       "communicate": {
         "hint": "Sends a report of the measurements since the last one, then waits for the app: continue, repeat or stop. A press goes on as well.",
@@ -370,6 +458,7 @@
         "count": "Rounds",
         "onsetMs": "Charging starts after",
         "decayMs": "Charge drains in",
+        "cooldownMs": "Pause between two presses of a pod",
         "mode": "How it ends",
         "heldColor": "Colour once held",
         "allowHeld": "A hold from before counts",
@@ -414,6 +503,7 @@
           "off": "Off"
         },
         "where": "Where",
+        "speed": "Cycle time",
         "central": "Central",
         "all": "Everything",
         "peripherals": "All pods",
@@ -429,6 +519,10 @@
         "waitNeedsTime": "Needs a time, an endless effect never ends"
       },
       "hold": {
+        "chargeModes": {
+          "release": "Letting go ends it",
+          "accumulate": "Letting go pauses it"
+        },
         "whichButton": "Which button",
         "fullAfter": "Full after holding",
         "chargeHint": "Letting go ends the step with the charge reached. A full charge ends it at once and the ring flashes.",
