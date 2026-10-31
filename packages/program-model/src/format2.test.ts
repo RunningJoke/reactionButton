@@ -59,13 +59,13 @@ describe("program format 2", () => {
     expect(programFormatOf(resolved)).toBe(2);
   });
 
-  it("every block type carries the timer fields, level more, format 2", () => {
+  it("every block type carries the timer fields (Stopwatch behaviour), format 2", () => {
     for (const def of BLOCK_TYPES) {
       for (const timer of TIMER_FIELDS) expect(def.fields, def.type).toContain(timer);
     }
     expect(TIMER_FIELDS.map((f) => [f.name, f.level, f.minFormat])).toEqual([
-      ["timerStart", "more", 2],
-      ["timerStop", "more", 2],
+      ["timerStart", "switch", 2],
+      ["timerStop", "switch", 2],
     ]);
   });
 
@@ -75,7 +75,7 @@ describe("program format 2", () => {
     expect(def.minFormat).toBe(2);
     expect(def.waits).toBe(false);
     expect(def.fields.find((f) => f.name === "count")).toMatchObject({ kind: "value", required: true });
-    expect(def.fields.find((f) => f.name === "storeIndex")).toMatchObject({ kind: "variable", level: "more" });
+    expect(def.fields.find((f) => f.name === "storeIndex")).toMatchObject({ kind: "variable", level: "expert" });
     expect(def.portRoles).toMatchObject({ body: "eachRound", done: "afterLast" });
   });
 
@@ -90,16 +90,16 @@ describe("program format 2", () => {
     expect(level("button", "maxTimeoutMs")).toBe("switch:timeLimit");
     expect(level("button", "record")).toBe("switch:record");
     expect(level("button", "shortMs")).toBe("switch:longPress");
-    expect(level("button", "storeAs")).toBe("more");
+    expect(level("button", "storeAs")).toBe("switch:keepResult");
     expect(level("remotePress", "pod")).toBe("essential");
     expect(level("remotePress", "mode")).toBe("switch:avoid");
-    expect(level("remotePress", "colorAfter")).toBe("more");
+    expect(level("remotePress", "colorAfter")).toBe("expert");
     expect(level("remoteMultiPress", "avoidColor")).toBe("switch:avoid");
-    expect(level("remoteMultiPress", "syncStartMs")).toBe("more");
+    expect(level("remoteMultiPress", "syncStartMs")).toBe("expert");
     expect(level("remoteResetAll", "ledsOff")).toBe("more");
     expect(level("summary", "metric")).toBe("expert");
     expect(level("summary", "storeBest")).toBe("essential");
-    expect(level("summary", "reset")).toBe("more");
+    expect(level("summary", "reset")).toBe("expert");
     expect(level("repeat", "count")).toBe("essential");
     // a switch field always names its switch
     for (const def of BLOCK_TYPES) {
