@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, Download, Eye, EyeOff, Trash2 } from "lucide-react";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
+import { isSignedIn, usePlatformSettings } from "../platform/settings";
 import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/csv";
 import type { StoredReport } from "../results/report";
 import { reportsOfSession, sessionUploadStatus, useResults } from "../results/results";
@@ -21,6 +22,7 @@ export function SessionPage() {
   const { athletes, sessions, reports, loaded, load } = useResults();
   const programName = useProgramName();
   const [deleting, setDeleting] = useState(false);
+  const platformOn = usePlatformSettings(isSignedIn);
   useEffect(() => void load(), [load]);
 
   const session = sessions.find((s) => s.id === params.get("id"));
@@ -68,12 +70,14 @@ export function SessionPage() {
             <dt>{t("pod.setId")}</dt>
             <dd className={styles.mono}>{session.setId}</dd>
           </div>
-          <div>
-            <dt>{t("results.uploadState")}</dt>
-            <dd>
-              <UploadBadge status={sessionUploadStatus(session, athletes, reports)} />
-            </dd>
-          </div>
+          {platformOn && (
+            <div>
+              <dt>{t("results.uploadState")}</dt>
+              <dd>
+                <UploadBadge status={sessionUploadStatus(session, athletes, reports)} />
+              </dd>
+            </div>
+          )}
         </dl>
         <label className={styles.field}>
           {t("results.athlete")}
@@ -92,7 +96,7 @@ export function SessionPage() {
           </select>
         </label>
         {uploaded && <p className={styles.muted}>{t("results.athleteFixed")}</p>}
-        {session.upload.error && <p className={styles.status} data-tone="error">{t("results.uploadError", { code: session.upload.error })}</p>}
+        {platformOn && session.upload.error && <p className={styles.status} data-tone="error">{t("results.uploadError", { code: session.upload.error })}</p>}
         <StatsTable stats={summarizeReports(list)} caption={t("results.statsCaption")} />
         <div className={styles.row}>
           <button className={styles.button} onClick={exportCsv} disabled={list.length === 0}>

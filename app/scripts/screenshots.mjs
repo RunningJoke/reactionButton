@@ -78,6 +78,7 @@ await coach.screenshot({ path: `${out}/results-session.png`, fullPage: true });
 await coach.getByRole("link", { name: "Mia" }).click();
 await coach.screenshot({ path: `${out}/results-athlete.png`, fullPage: true });
 await coach.goto(`${base}#/settings`);
+await coach.getByText("Platform (preview)").click();
 await coach.getByLabel("Server").fill("https://api.example.org");
 await coach.screenshot({ path: `${out}/settings-platform.png`, fullPage: true });
 

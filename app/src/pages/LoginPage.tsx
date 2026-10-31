@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { PlatformError } from "../platform/api";
 import { platformClient, usePlatformSettings } from "../platform/settings";
 import page from "./Page.module.css";
+import styles from "./Results.module.css";
 
-/** Target of the sign-in link in the platform mail (`#/login?token=…`, platform spec §3.1). */
+/** Target of the sign-in link in the platform mail (`#/login?token=…`, platform spec §3.1). The platform is on hold (ADR 0007). */
 export function LoginPage() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -32,9 +33,17 @@ export function LoginPage() {
   return (
     <div className={page.page}>
       <section className={page.section}>
-        <h2>{t("platform.title")}</h2>
-        <p className={page.muted}>{!token ? t("platform.linkInvalid") : !baseUrl ? t("platform.noServer") : (error ?? t("platform.signingIn"))}</p>
-        <Link to="/settings#platform">{t("results.platformSettings")}</Link>
+        <p className={page.muted}>{t("login.unavailable")}</p>
+        {error && (
+          <p className={styles.status} data-tone="error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className={styles.row}>
+          <Link to="/results" className={styles.button}>
+            {t("login.back")}
+          </Link>
+        </div>
       </section>
     </div>
   );

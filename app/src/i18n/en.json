@@ -898,7 +898,7 @@
     "deleteText": "These files are deleted from the pod. This cannot be undone.",
     "holdToDelete": "Hold to delete",
     "expertMode": "Expert mode",
-    "expertModeHint": "The editor shows block names, block types, ports and every field, like before. Remembered on this device."
+    "expertModeHint": "The editor shows block names, block types, ports and every field. Remembered on this device."
   },
   "update": {
     "available": "A new version is available.",
@@ -1483,7 +1483,7 @@
     "deleteAthleteRemoteOwn": "This is your own profile: it is deleted on the platform too, with all results and links, as soon as the app is online and signed in. You can no longer see these results afterwards.",
     "deleteAthleteReports": "Round results for this athlete that are still on a pod are discarded when the pod sends them.",
     "athleteName": "Name or nickname",
-    "athleteNameHint": "Stored on this phone only, until you link the athlete to a platform profile.",
+    "athleteNameHint": "Saved only on this phone. You can delete it at any time.",
     "athleteMissing": "This athlete does not exist (any more).",
     "sessionMissing": "This training session does not exist (any more).",
     "empty": "No athletes yet. Add one, then choose them on the Pod tab before a training.",
@@ -1670,9 +1670,11 @@
     "chooseProfile": "Profiles in {{org}}",
     "createProfile": "New profile “{{name}}”",
     "consent": "The athlete (for minors: the parents) agreed that their results are stored on the platform.",
-    "linkInvalid": "This sign-in link is incomplete.",
-    "noServer": "Enter the server in the platform settings first, then open the link again.",
-    "signingIn": "Signing in…"
+    "devNote": "Development option. Will be removed."
+  },
+  "login": {
+    "unavailable": "Sign-in is not available right now.",
+    "back": "Back to Results"
   },
   "wizard": {
     "numberLocale": "en",

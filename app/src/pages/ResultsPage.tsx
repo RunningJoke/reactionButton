@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ChevronRight, CloudUpload, Trophy, UserPlus, UserRound } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
+import { isSignedIn, usePlatformSettings } from "../platform/settings";
 import { sessionUploadStatus, useResults } from "../results/results";
 import type { Athlete } from "../results/report";
 import { formatDateTime } from "./resultsUi";
@@ -17,6 +18,7 @@ export function ResultsPage() {
   const { t, i18n } = useTranslation();
   const { athletes, sessions, reports, durable, load } = useResults();
   const [adding, setAdding] = useState(false);
+  const platformOn = usePlatformSettings(isSignedIn);
   useEffect(() => void load(), [load]);
 
   const unassigned = sessions.filter((s) => s.athleteId === null && reports.some((r) => r.sessionId === s.id));
@@ -76,7 +78,7 @@ export function ResultsPage() {
         </section>
       )}
 
-      {waiting > 0 && (
+      {waiting > 0 && platformOn && (
         <section className={page.section}>
           <p className={styles.muted}>
             <CloudUpload size={16} aria-hidden /> {t("results.waitingUpload", { count: waiting })}{" "}

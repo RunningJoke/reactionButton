@@ -898,7 +898,7 @@
     "deleteText": "Diese Dateien werden vom Pod gelöscht. Das lässt sich nicht rückgängig machen.",
     "holdToDelete": "Gedrückt halten zum Löschen",
     "expertMode": "Expertenmodus",
-    "expertModeHint": "Der Editor zeigt Blocknamen, Blocktypen, Anschlüsse und alle Felder, wie bisher. Wird auf diesem Gerät gespeichert."
+    "expertModeHint": "Der Editor zeigt Blocknamen, Blocktypen, Anschlüsse und alle Felder. Wird auf diesem Gerät gespeichert."
   },
   "update": {
     "available": "Eine neue Version ist verfügbar.",
@@ -1483,7 +1483,7 @@
     "deleteAthleteRemoteOwn": "Das ist dein eigenes Profil: Es wird auch auf der Plattform gelöscht, mit allen Ergebnissen und Verknüpfungen, sobald die App online und angemeldet ist. Diese Ergebnisse siehst du danach nicht mehr.",
     "deleteAthleteReports": "Rundenergebnisse zu dieser Person, die noch auf einem Pod liegen, werden verworfen, wenn der Pod sie schickt.",
     "athleteName": "Name oder Spitzname",
-    "athleteNameHint": "Nur auf diesem Handy gespeichert, bis du ein Plattform-Profil verknüpfst.",
+    "athleteNameHint": "Nur auf diesem Handy gespeichert. Du kannst es jederzeit löschen.",
     "athleteMissing": "Diese Person gibt es (nicht mehr).",
     "sessionMissing": "Dieses Training gibt es (nicht mehr).",
     "empty": "Noch keine Sportler:innen. Lege eine Person an und wähle sie vor dem Training im Tab Pod aus.",
@@ -1670,9 +1670,11 @@
     "chooseProfile": "Profile in {{org}}",
     "createProfile": "Neues Profil „{{name}}“",
     "consent": "Die Person (bei Minderjährigen: die Eltern) ist einverstanden, dass ihre Ergebnisse auf der Plattform gespeichert werden.",
-    "linkInvalid": "Dieser Anmeldelink ist unvollständig.",
-    "noServer": "Trage zuerst den Server in den Plattform-Einstellungen ein und öffne den Link dann erneut.",
-    "signingIn": "Melde an…"
+    "devNote": "Entwickleroption. Wird entfernt."
+  },
+  "login": {
+    "unavailable": "Anmeldung ist im Moment nicht verfügbar.",
+    "back": "Zurück zu Ergebnissen"
   },
   "wizard": {
     "numberLocale": "de",
@@ -1865,9 +1867,9 @@
     "title": "Anpassen: {{name}}",
     "subLocal": "Änderungen gelten für das ganze Spiel.",
     "subShipped": "Beim Speichern entsteht deine eigene Kopie. Das mitgelieferte Spiel bleibt, wie es ist.",
-    "subPod": "Beim Speichern entsteht eine Kopie auf diesem Telefon. Das Spiel auf dem Pod bleibt, wie es ist, bis du es hochlädst.",
+    "subPod": "Beim Speichern entsteht eine Kopie auf diesem Handy. Das Spiel auf dem Pod bleibt, wie es ist, bis du es hochlädst.",
     "existingCopy": "Du hast schon eine Kopie dieses Spiels. Anpassen ändert deine Kopie.",
-    "readOnly": "Dieser Pod ist nicht die Zentrale und kann keine Spiele annehmen. Deine Kopie bleibt auf diesem Telefon: Probiere sie im Simulator aus oder lade sie auf ein Set hoch, wenn du dessen Zentrale verbindest. Sie kann nicht auf diesen Pod hochgeladen werden.",
+    "readOnly": "Dieser Pod ist nicht die Zentrale und kann keine Spiele annehmen. Deine Kopie bleibt auf diesem Handy: Probiere sie im Simulator aus oder lade sie auf ein Set hoch, wenn du dessen Zentrale verbindest. Sie kann nicht auf diesen Pod hochgeladen werden.",
     "settings": "Einstellungen",
     "wholeProgram": "Für das ganze Spiel",
     "timeLimit": "Zeitlimit",

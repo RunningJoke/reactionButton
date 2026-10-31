@@ -49,8 +49,6 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <PlatformSettings />
-
       <DebugConsole />
 
       <section className={styles.section}>
@@ -72,6 +70,7 @@ function DebugConsole() {
     <section className={styles.section}>
       <h2>{t("settings.advanced")}</h2>
       <SwitchRow label={t("settings.expertMode")} hint={t("settings.expertModeHint")} checked={expert} onChange={setExpert} />
+      <PlatformSettings />
       <details className={styles.details}>
         <summary>{t("settings.console")}</summary>
         <p className={styles.muted}>{t("settings.consoleHint")}</p>

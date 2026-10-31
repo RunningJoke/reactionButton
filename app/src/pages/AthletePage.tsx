@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Download, Link2, Pencil, Trash2, Unlink } fr
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
 import { PlatformError, type PlatformAthlete } from "../platform/api";
-import { canUpload, platformClient, usePlatformSettings } from "../platform/settings";
+import { canUpload, isSignedIn, platformClient, usePlatformSettings } from "../platform/settings";
 import { deleteAthleteEverywhere } from "../results/athleteDeletion";
 import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/csv";
 import type { Athlete } from "../results/report";
@@ -27,6 +27,7 @@ export function AthletePage() {
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const claimedIds = usePlatformSettings((s) => s.claimedAthleteIds) ?? [];
+  const platformOn = usePlatformSettings(isSignedIn);
   useEffect(() => void load(), [load]);
 
   const none = id === "none";
@@ -99,7 +100,7 @@ export function AthletePage() {
                         <span>{formatDateTime(s.startedAt, i18n.language)}</span>
                         <span>{t("results.reportCount", { count: list.length - discarded })}</span>
                         {discarded > 0 && <span>{t("results.discardedCount", { count: discarded })}</span>}
-                        <UploadBadge status={sessionUploadStatus(s, athletes, reports)} />
+                        {platformOn && <UploadBadge status={sessionUploadStatus(s, athletes, reports)} />}
                       </span>
                     </span>
                     <ChevronRight size={20} aria-hidden className={styles.chevron} />
@@ -111,7 +112,7 @@ export function AthletePage() {
         )}
       </section>
 
-      {athlete && <PlatformLink athlete={athlete} />}
+      {athlete && platformOn && <PlatformLink athlete={athlete} />}
 
       {athlete && (
         <>
