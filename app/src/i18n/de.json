@@ -605,24 +605,30 @@
         "length": "Dauer des Spiels",
         "duration": "Spieldauer",
         "start": "Wer startet mit welcher Farbe",
-        "starts": { "alternate": "Abwechselnd", "a": "Alle Team A", "b": "Alle Team B", "random": "Zufällig", "off": "Niemand" },
+        "starts": {
+          "alternate": "Abwechselnd",
+          "a": "Alle Team A",
+          "b": "Alle Team B",
+          "random": "Zufällig",
+          "off": "Niemand"
+        },
         "startHint": {
-            "alternate": "Der erste Pod ist Team A, der zweite Team B und so weiter. Die Zentrale kommt zuletzt.",
-            "a": "Jeder Pod startet in der Farbe von Team A.",
-            "b": "Jeder Pod startet in der Farbe von Team B.",
-            "random": "Jeder Pod bekommt ein zufälliges Team.",
-            "off": "Pods starten dunkel. Der erste Druck macht einen Pod zu Team A."
+          "alternate": "Der erste Pod ist Team A, der zweite Team B und so weiter. Die Zentrale kommt zuletzt.",
+          "a": "Jeder Pod startet in der Farbe von Team A.",
+          "b": "Jeder Pod startet in der Farbe von Team B.",
+          "random": "Jeder Pod bekommt ein zufälliges Team.",
+          "off": "Pods starten dunkel. Der erste Druck macht einen Pod zu Team A."
         },
         "cooldown": "Pause zwischen zwei Drücken eines Pods",
         "endHint": "Das Spiel endet, wenn die Zeit um ist. Es endet früher, wenn ein Team alle Pods hat und dieser Ausgang zu einem Schritt führt.",
         "results": "Ergebnis merken",
         "resultsHint": "Pods und Zeit werden pro Team gezählt. Die Zeit addiert sich über alle Pods.",
         "result": {
-            "podsA": "Pods von Team A",
-            "podsB": "Pods von Team B",
-            "timeA": "Zeit von Team A",
-            "timeB": "Zeit von Team B",
-            "flips": "Anzahl der Wechsel"
+          "podsA": "Pods von Team A",
+          "podsB": "Pods von Team B",
+          "timeA": "Zeit von Team A",
+          "timeB": "Zeit von Team B",
+          "flips": "Anzahl der Wechsel"
         }
       },
       "enum": {
@@ -1293,8 +1299,7 @@
       "help": "Hintergrund oder Endfarbe des Effekts. Standard: aus."
     },
     "durationMs": {
-      "label": "Dauer (ms)",
-      "help": "Länge des Effekts. Blinken, Pulsieren und Drehen laufen ohne Dauer bis zur nächsten Lichtänderung."
+      "label": "Spieldauer (ms)"
     },
     "periodMs": {
       "label": "Ein Durchlauf (ms)",
@@ -1363,9 +1368,6 @@
     },
     "colors": {
       "label": "Teamfarben"
-    },
-    "durationMs": {
-      "label": "Spieldauer (ms)"
     },
     "minDurationMs": {
       "label": "Kürzestes Spiel (ms)"
@@ -1483,8 +1485,8 @@
     "addAthlete": "Person hinzufügen",
     "renameAthlete": "Umbenennen",
     "deleteAthlete": "Person löschen",
-    "deleteAthleteText_one": "{{name}} und {{count}} Training werden von diesem Handy gelöscht.",
-    "deleteAthleteText_other": "{{name}} und {{count}} Trainings werden von diesem Handy gelöscht.",
+    "deleteAthleteText_one": "Damit werden {{name}} und {{count}} Training von diesem Handy gelöscht. Das lässt sich nicht rückgängig machen.",
+    "deleteAthleteText_other": "Damit werden {{name}} und {{count}} Trainings von diesem Handy gelöscht. Das lässt sich nicht rückgängig machen.",
     "deleteAthleteRemote": "Das verknüpfte Profil wird auch auf der Plattform gelöscht, mit allen Ergebnissen und Einladungen, sobald die App online und angemeldet ist.",
     "deleteAthleteRemoteOwn": "Das ist dein eigenes Profil: Es wird auch auf der Plattform gelöscht, mit allen Ergebnissen und Verknüpfungen, sobald die App online und angemeldet ist. Diese Ergebnisse siehst du danach nicht mehr.",
     "deleteAthleteReports": "Rundenergebnisse zu dieser Person, die noch auf einem Pod liegen, werden verworfen, wenn der Pod sie schickt.",
@@ -1492,8 +1494,8 @@
     "athleteNameHint": "Nur auf diesem Handy gespeichert. Du kannst es jederzeit löschen.",
     "athleteMissing": "Diese Person gibt es (nicht mehr).",
     "sessionMissing": "Dieses Training gibt es (nicht mehr).",
-    "empty": "Noch keine Sportler:innen. Lege eine Person an und wähle sie vor dem Training im Tab Pod aus.",
-    "unassigned": "Ohne Person",
+    "empty": "Noch keine Personen.",
+    "unassigned": "Nicht zugeordnet",
     "unassignedHint": "Ergebnisse, bei denen niemand ausgewählt war. Öffne ein Training, um es zuzuordnen.",
     "notDurable": "Dieser Browser erlaubt keinen Speicher. Ergebnisse bleiben nur bis zum Schließen der App, die Pods behalten ihre Rundenergebnisse.",
     "waitingUpload_one": "{{count}} Training wartet auf das Hochladen.",
@@ -1502,39 +1504,28 @@
     "back": "Ergebnisse",
     "sessions": "Trainings",
     "noSessions": "Noch keine Ergebnisse.",
-    "sessionCount_one": "{{count}} Training",
-    "sessionCount_other": "{{count}} Trainings",
     "reportCount_one": "{{count}} Rundenergebnis",
     "reportCount_other": "{{count}} Rundenergebnisse",
-    "discardedCount_one": "{{count}} verworfen",
-    "discardedCount_other": "{{count}} verworfen",
     "valueCount_one": "{{count}} Wert",
     "valueCount_other": "{{count}} Werte",
-    "reports_one": "{{count}} Rundenergebnis",
-    "reports_other": "{{count}} Rundenergebnisse",
-    "noReports": "Keine Rundenergebnisse in diesem Training.",
-    "statsCaption": "Gezählte Rundenergebnisse (verworfene nicht)",
+    "noReports": "Keine Runden in diesem Training.",
+    "statsCaption": "Nur gezählte Runden",
     "noValues": "Keine Werte.",
     "metric": "Messwert",
     "best": "Beste",
     "average": "Schnitt",
     "worst": "Schwächste",
-    "exportCsv": "CSV exportieren",
-    "started": "Beginn",
     "program": "Spiel",
     "athlete": "Person",
     "nobody": "Niemand",
     "athleteFixed": "Hochgeladene Trainings behalten ihre Person.",
-    "uploadState": "Hochladen",
     "uploadError": "Letztes Hochladen fehlgeschlagen: {{code}}",
     "deleteSession": "Training löschen",
-    "deleteSessionText_one": "Das Training mit {{count}} Rundenergebnis wird von diesem Handy gelöscht.",
-    "deleteSessionText_other": "Das Training mit {{count}} Rundenergebnissen wird von diesem Handy gelöscht.",
+    "deleteSessionText_one": "Damit wird dieses Training mit {{count}} Runde von diesem Handy gelöscht. Das lässt sich nicht rückgängig machen.",
+    "deleteSessionText_other": "Damit wird dieses Training mit {{count}} Runden von diesem Handy gelöscht. Das lässt sich nicht rückgängig machen.",
     "deleteSessionRemote": "Auch auf der Plattform wird es gelöscht, sobald die App online und angemeldet ist.",
     "cycle": "Runde {{cycle}}",
-    "reportN": "Rundenergebnis {{n}}",
-    "discarded": "verworfen",
-    "discard": "Verwerfen (nicht zählen)",
+    "discard": "Nicht zählen",
     "countAgain": "Wieder zählen",
     "vars": "Variablen",
     "values": "Einzelwerte",
@@ -1548,7 +1539,48 @@
       "failed": "Hochladen fehlgeschlagen",
       "uploaded": "Hochgeladen",
       "empty": "Leer"
-    }
+    },
+    "steps": "Person anlegen · Im Tab Training auswählen · Ergebnisse erscheinen hier",
+    "lastTrained": "Zuletzt trainiert: {{when}}",
+    "neverTrained": "Noch kein Training",
+    "trainingCount_one": "{{count}} Training",
+    "trainingCount_other": "{{count}} Trainings",
+    "roundCount_one": "{{count}} Runde",
+    "roundCount_other": "{{count}} Runden",
+    "pressCount_one": "{{count}} Tastendruck",
+    "pressCount_other": "{{count}} Tastendrücke",
+    "notCountedCount_one": "{{count}} nicht gezählt",
+    "notCountedCount_other": "{{count}} nicht gezählt",
+    "notCounted": "Nicht gezählt",
+    "sortBy": "Sortieren nach",
+    "sort": {
+      "recent": "Zuletzt trainiert",
+      "name": "A–Z"
+    },
+    "search": "Person suchen",
+    "noMatch": "Keine Person gefunden.",
+    "more": "Mehr",
+    "latestAverage": "Schnitt des letzten Trainings",
+    "personalBest": "Persönliche Bestzeit {{value}} ({{date}})",
+    "faster": "{{diff}} schneller",
+    "slower": "{{diff}} langsamer",
+    "sameAsBefore": "Wie das Training davor",
+    "firstTraining": "Erstes Training",
+    "trendLabel": "Schnitt {{metric}} der letzten {{count}} Trainings, von {{first}} auf {{last}}: {{trend}}.",
+    "trend": {
+      "faster": "wird schneller",
+      "slower": "wird langsamer",
+      "steady": "unverändert"
+    },
+    "averageOf": "Schnitt {{value}}",
+    "allStatistics": "Alle Statistiken",
+    "exportTable": "Tabelle exportieren (CSV)",
+    "exportCaption": "Eine Zeile pro Messwert: Person, Datum, Spiel, Runde, Pod und Zeit in Millisekunden.",
+    "rounds": "Runden",
+    "round": "Runde {{n}}",
+    "details": "Details",
+    "noLongerCounted": "Runde {{n}} wird nicht mehr gezählt",
+    "keepHolding": "Weiter halten…"
   },
   "training": {
     "title": "Training",
@@ -2005,10 +2037,10 @@
     "communicateTimeout": "Antwort innerhalb {{time}}",
     "toggleCooldown": "{{time}} zwischen Drücken",
     "toggleStart": {
-        "a": "alle starten {{a}}",
-        "b": "alle starten {{b}}",
-        "random": "zufälliger Start",
-        "off": "Pods starten dunkel"
+      "a": "alle starten {{a}}",
+      "b": "alle starten {{b}}",
+      "random": "zufälliger Start",
+      "off": "Pods starten dunkel"
     },
     "charge": "{{pod}} halten zum Laden · voll nach {{time}}",
     "chargeAccumulate": "{{pod}} durch Halten laden, Loslassen pausiert · voll nach {{time}}",

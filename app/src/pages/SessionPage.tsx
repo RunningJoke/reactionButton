@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Download, Eye, EyeOff, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, Download, EyeOff, Trash2, Undo2, UserRound } from "lucide-react";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
+import { Named } from "../components/Named";
+import { isMsSetting } from "../editor/settingLabels";
+import { UndoToast } from "../editor/UndoToast";
 import { isSignedIn, usePlatformSettings } from "../platform/settings";
 import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/csv";
 import type { StoredReport } from "../results/report";
 import { reportsOfSession, sessionUploadStatus, useResults } from "../results/results";
-import { Named } from "../components/Named";
-import { isMsSetting } from "../editor/settingLabels";
-import { formatMs, reportDuration, summarizeReports, summarizeValues } from "../results/stats";
+import { formatMs, mainMetric, reportDuration, summarizeReports, summarizeValues } from "../results/stats";
 import { athleteUrl } from "./ResultsPage";
 import { formatDateTime, StatsTable, UploadBadge, useProgramName } from "./resultsUi";
 import page from "./Page.module.css";
 import styles from "./Results.module.css";
 
-/** One training session: athlete, program, its reports with single values (issue #47). */
+/** One training: summary first (best, average), then its rounds; technical facts under "Details" (issue #47). */
 export function SessionPage() {
   const { t, i18n } = useTranslation();
   const [params] = useSearchParams();
@@ -24,6 +25,7 @@ export function SessionPage() {
   const { athletes, sessions, reports, loaded, load } = useResults();
   const programName = useProgramName();
   const [deleting, setDeleting] = useState(false);
+  const [undo, setUndo] = useState<{ id: string; n: number } | null>(null);
   const platformOn = usePlatformSettings(isSignedIn);
   useEffect(() => void load(), [load]);
 
@@ -41,6 +43,10 @@ export function SessionPage() {
   const list = reportsOfSession(reports, session.id);
   const athlete = athletes.find((a) => a.id === session.athleteId);
   const uploaded = Boolean(session.upload.remoteId);
+  const stats = summarizeReports(list);
+  const metric = mainMetric(stats.map((m) => m.metric));
+  const main = stats.find((m) => m.metric === metric);
+  const notCounted = list.filter((r) => r.discarded).length;
 
   const exportCsv = () => {
     const csv = resultsCsv([session], list, athletes, { separator: csvSeparator(i18n.language) });
@@ -54,37 +60,16 @@ export function SessionPage() {
       </Link>
       <section className={page.section}>
         <div className={styles.title}>
-          <h2>{programName(session.programPath)}</h2>
+          <h2 className={styles.display}>{programName(session.programPath)}</h2>
           <button className={styles.iconButton} onClick={() => setDeleting(true)} aria-label={t("results.deleteSession")} title={t("results.deleteSession")}>
             <Trash2 size={20} aria-hidden />
           </button>
         </div>
-        <dl className={styles.facts}>
-          <div>
-            <dt>{t("results.started")}</dt>
-            <dd>{formatDateTime(session.startedAt, i18n.language)}</dd>
-          </div>
-          <div>
-            <dt>{t("results.program")}</dt>
-            <dd className={styles.mono}>{session.programPath}</dd>
-          </div>
-          <div>
-            <dt>{t("pod.setId")}</dt>
-            <dd className={styles.mono}>{session.setId}</dd>
-          </div>
-          {platformOn && (
-            <div>
-              <dt>{t("results.uploadState")}</dt>
-              <dd>
-                <UploadBadge status={sessionUploadStatus(session, athletes, reports)} />
-              </dd>
-            </div>
-          )}
-        </dl>
-        <label className={styles.field}>
-          {t("results.athlete")}
+        <p className={styles.muted}>{formatDateTime(session.startedAt, i18n.language)}</p>
+        <label className={styles.athleteChip}>
+          <UserRound size={16} aria-hidden />
+          <span className={styles.srOnly}>{t("results.athlete")}</span>
           <select
-            className={styles.select}
             value={session.athleteId ?? ""}
             disabled={uploaded}
             onChange={(e) => void useResults.getState().setSessionAthlete(session.id, e.target.value || null)}
@@ -98,27 +83,81 @@ export function SessionPage() {
           </select>
         </label>
         {uploaded && <p className={styles.muted}>{t("results.athleteFixed")}</p>}
+        {platformOn && (
+          <p className={styles.muted}>
+            <UploadBadge status={sessionUploadStatus(session, athletes, reports)} />
+          </p>
+        )}
         {platformOn && session.upload.error && <p className={styles.status} data-tone="error">{t("results.uploadError", { code: session.upload.error })}</p>}
-        <StatsTable stats={summarizeReports(list)} caption={t("results.statsCaption")} />
-        <div className={styles.row}>
-          <button className={styles.button} onClick={exportCsv} disabled={list.length === 0}>
-            <Download size={18} aria-hidden /> {t("results.exportCsv")}
-          </button>
-        </div>
+        {main && (
+          <div className={styles.figures}>
+            <div>
+              <span className={styles.figureLabel}>{t("results.best")}</span>
+              <span className={styles.big}>{formatMs(main.best, i18n.language)}</span>
+            </div>
+            <div>
+              <span className={styles.figureLabel}>{t("results.average")}</span>
+              <span className={styles.big}>{formatMs(main.average, i18n.language)}</span>
+            </div>
+            <span className={`${styles.figureLabel} ${styles.figuresMetric}`}>
+              <Named name={main.metric} />
+            </span>
+          </div>
+        )}
       </section>
 
       <section className={page.section}>
-        <h2>{t("results.reports", { count: list.length })}</h2>
+        <h2>{t("results.rounds")}</h2>
+        {list.length > 0 && (
+          <p className={styles.muted}>
+            {t("results.roundCount", { count: list.length })}
+            {notCounted > 0 && <> · {t("results.notCountedCount", { count: notCounted })}</>}
+          </p>
+        )}
         {list.length === 0 ? (
           <p className={styles.muted}>{t("results.noReports")}</p>
         ) : (
-          <ul className={styles.list}>
+          <ul className={styles.rounds}>
             {list.map((r, i) => (
-              <ReportItem key={r.id} report={r} n={i + 1} />
+              <ReportItem key={r.id} report={r} n={i + 1} onUncounted={(n) => setUndo({ id: r.id, n })} />
             ))}
           </ul>
         )}
       </section>
+
+      <section className={page.section}>
+        <details className={page.details}>
+          <summary>{t("results.details")}</summary>
+          <dl className={styles.facts}>
+            <div>
+              <dt>{t("results.program")}</dt>
+              <dd className={styles.mono}>{session.programPath}</dd>
+            </div>
+            <div>
+              <dt>{t("pod.setId")}</dt>
+              <dd className={styles.mono}>{session.setId}</dd>
+            </div>
+          </dl>
+          <StatsTable stats={stats} caption={t("results.statsCaption")} />
+        </details>
+      </section>
+
+      <section className={page.section}>
+        <button className={styles.button} onClick={exportCsv} disabled={list.length === 0}>
+          <Download size={18} aria-hidden /> {t("results.exportTable")}
+        </button>
+        <p className={styles.muted}>{t("results.exportCaption")}</p>
+      </section>
+
+      {undo && (
+        <div className={styles.toastHost}>
+          <UndoToast
+            text={t("results.noLongerCounted", { n: undo.n })}
+            onUndo={() => void useResults.getState().setDiscarded(undo.id, false)}
+            onClose={() => setUndo(null)}
+          />
+        </div>
+      )}
 
       <Modal
         open={deleting}
@@ -130,6 +169,7 @@ export function SessionPage() {
               {t("common.cancel")}
             </button>
             <HoldButton
+              holdingLabel={t("results.keepHolding")}
               onConfirm={() =>
                 void useResults
                   .getState()
@@ -149,72 +189,78 @@ export function SessionPage() {
   );
 }
 
-function ReportItem({ report, n }: { report: StoredReport; n: number }) {
+function ReportItem({ report, n, onUncounted }: { report: StoredReport; n: number; onUncounted: (n: number) => void }) {
   const { t, i18n } = useTranslation();
   const duration = reportDuration(report);
   const vars = Object.entries(report.vars);
   const first = report.values[0]?.t ?? report.startMs ?? 0;
+  const round = report.cycle ?? n;
+  const toggle = (e: React.MouseEvent) => {
+    e.preventDefault(); // inside <summary>: do not open / close the round
+    void useResults.getState().setDiscarded(report.id, !report.discarded);
+    if (!report.discarded) onUncounted(round);
+  };
   return (
     <li>
-      <details className={styles.report} data-discarded={report.discarded}>
+      <details className={styles.round} data-discarded={report.discarded}>
         <summary>
+          <ChevronDown size={20} aria-hidden className={styles.roundChevron} />
           <span className={styles.reportTitle}>
-            <span>{report.cycle !== undefined ? t("results.cycle", { cycle: report.cycle }) : t("results.reportN", { n })}</span>
+            <span>
+              {t("results.round", { n: round })}
+              {duration !== undefined && <> · {formatMs(duration, i18n.language)}</>} · {t("results.pressCount", { count: report.values.length })}
+            </span>
             <span className={styles.meta}>
               <span>{new Intl.DateTimeFormat(i18n.language, { timeStyle: "medium" }).format(report.recordedAt)}</span>
-              {duration !== undefined && <span>{formatMs(duration, i18n.language)}</span>}
-              <span>{t("results.valueCount", { count: report.values.length })}</span>
-              {report.discarded && <span>{t("results.discarded")}</span>}
+              {report.discarded && <span className={styles.pill}>{t("results.notCounted")}</span>}
             </span>
           </span>
-          <button
-            className={styles.iconButton}
-            onClick={(e) => {
-              e.preventDefault();
-              void useResults.getState().setDiscarded(report.id, !report.discarded);
-            }}
-            aria-label={report.discarded ? t("results.countAgain") : t("results.discard")}
-            title={report.discarded ? t("results.countAgain") : t("results.discard")}
-          >
-            {report.discarded ? <Eye size={20} aria-hidden /> : <EyeOff size={20} aria-hidden />}
+          <button type="button" className={styles.button} onClick={toggle}>
+            {report.discarded ? <Undo2 size={18} aria-hidden /> : <EyeOff size={18} aria-hidden />}
+            {report.discarded ? t("results.countAgain") : t("results.discard")}
           </button>
         </summary>
         <div className={styles.reportBody}>
           <StatsTable stats={summarizeValues(report.values)} />
-          {vars.length > 0 && (
-            <div className={styles.vars} aria-label={t("results.vars")}>
-              {vars.map(([k, v]) => (
-                <span key={k}>
-                  <Named name={k} /> = {isMsSetting(k) && typeof v === "number" ? formatMs(v, i18n.language) : v}
-                </span>
-              ))}
-            </div>
-          )}
-          {report.values.length > 0 && (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <caption>{t("results.values")}</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{t("results.time")}</th>
-                    <th scope="col">{t("results.metric")}</th>
-                    <th scope="col">{t("results.pod")}</th>
-                    <th scope="col">{t("results.value")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.values.map((v, i) => (
-                    <tr key={i}>
-                      <td>{formatMs(Math.max(0, v.t - first), i18n.language)}</td>
-                      <td><Named name={v.metric} /></td>
-                      <td>{v.pod}</td>
-                      <td>{formatMs(v.ms, i18n.language)}</td>
+          <details className={page.details}>
+            <summary>{t("results.details")}</summary>
+            {vars.length > 0 && (
+              <div className={styles.vars} aria-label={t("results.vars")}>
+                {vars.map(([k, v]) => (
+                  <span key={k}>
+                    <Named name={k} /> = {isMsSetting(k) && typeof v === "number" ? formatMs(v, i18n.language) : v}
+                  </span>
+                ))}
+              </div>
+            )}
+            {report.values.length > 0 && (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <caption>{t("results.values")}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">{t("results.time")}</th>
+                      <th scope="col">{t("results.metric")}</th>
+                      <th scope="col">{t("results.pod")}</th>
+                      <th scope="col">{t("results.value")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {report.values.map((v, i) => (
+                      <tr key={i}>
+                        <td>{formatMs(Math.max(0, v.t - first), i18n.language)}</td>
+                        <td>
+                          <Named name={v.metric} />
+                        </td>
+                        <td>{v.pod}</td>
+                        <td>{formatMs(v.ms, i18n.language)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </details>
         </div>
       </details>
     </li>

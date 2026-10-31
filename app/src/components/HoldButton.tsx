@@ -6,11 +6,13 @@ type Props = {
   holdMs?: number;
   onConfirm: () => void;
   disabled?: boolean;
+  /** label while the button is held */
+  holdingLabel?: ReactNode;
   children: ReactNode;
 };
 
 /** A destructive button that only fires after being held (pointer, or Space / Enter held). */
-export function HoldButton({ holdMs = 1500, onConfirm, disabled, children }: Props) {
+export function HoldButton({ holdMs = 1500, onConfirm, disabled, holdingLabel, children }: Props) {
   const [holding, setHolding] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -52,7 +54,7 @@ export function HoldButton({ holdMs = 1500, onConfirm, disabled, children }: Pro
       onBlur={stop}
     >
       <span className={styles.fill} aria-hidden />
-      <span className={styles.label}>{children}</span>
+      <span className={styles.label}>{holding && holdingLabel ? holdingLabel : children}</span>
     </button>
   );
 }

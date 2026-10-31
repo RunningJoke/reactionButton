@@ -5,10 +5,11 @@ import { SimulatedTransport } from "../pod/simulated/SimulatedTransport";
 import { CSV_COLUMNS, csvFilename, csvSeparator, resultsCsv } from "./csv";
 import { linkResults } from "./podLink";
 import { ReportFeed } from "./podReports";
-import { parsePodReport, type PodReport } from "./report";
+import { parsePodReport, type PodReport, type StoredReport, type TrainingSession } from "./report";
 import { MemoryResultStorage } from "./resultStore";
 import { sessionUploadStatus, useResults } from "./results";
-import { formatMs, reportDuration, summarizeReports } from "./stats";
+import { sortAthletes } from "../pages/ResultsPage";
+import { athleteProgress, formatMs, mainMetric, relativeDay, reportDuration, summarizeReports, type Progress } from "./stats";
 
 function reset(durable = true) {
   const storage = new MemoryResultStorage(durable);
@@ -285,5 +286,64 @@ describe("stats", () => {
     expect(formatMs(65_432, "de")).toBe("65,4 s");
     expect(reportDuration({ startMs: 100, endMs: 350 })).toBe(250);
     expect(reportDuration({ startMs: 100 })).toBeUndefined();
+  });
+});
+
+describe("progress", () => {
+  const session = (id: string, startedAt: number, athleteId: string | null = "a"): TrainingSession => ({
+    id, athleteId, setId: "1a2b3c4d", programPath: "/prog/solo.json", startedAt, notes: "", upload: {},
+  });
+  const report = (sessionId: string, ms: number[], extra: Partial<StoredReport> = {}): StoredReport => ({
+    id: `${sessionId}-${ms.join("-")}`, sessionId, podReportId: 1, recordedAt: 0, discarded: false, vars: {}, stats: {},
+    values: ms.map((m, i) => ({ t: i, metric: "reaction", pod: 1, ms: m })), ...extra,
+  });
+
+  it("compares the latest training with the one before (negative = faster) and keeps the personal best", () => {
+    const sessions = [session("b", 2000), session("a", 1000), session("c", 3000)];
+    const reports = [report("a", [500, 600]), report("b", [400, 600]), report("c", [300, 400, 200])];
+    const p = athleteProgress(sessions, reports);
+    expect(p.metric).toBe("reaction");
+    expect(p.trainings).toBe(3);
+    expect(p.lastAt).toBe(3000);
+    expect(p.points.map((x) => x.average)).toEqual([550, 500, 300]);
+    expect(p.change).toBe(-200);
+    expect(p.best).toEqual({ ms: 200, at: 3000 });
+  });
+
+  it("has no change without a previous training and ignores rounds that are not counted", () => {
+    const only = athleteProgress([session("a", 1)], [report("a", [300])]);
+    expect(only.change).toBeUndefined();
+    const p = athleteProgress([session("a", 1), session("b", 2)], [report("a", [300]), report("b", [900], { discarded: true }), report("b", [350])]);
+    expect(p.points.map((x) => x.average)).toEqual([300, 350]);
+    expect(p.change).toBe(50);
+  });
+
+  it("follows the reaction time, else the first metric by name", () => {
+    expect(mainMetric(["lap", "reaction"])).toBe("reaction");
+    expect(mainMetric(["lap", "alpha"])).toBe("alpha");
+    expect(mainMetric([])).toBeUndefined();
+  });
+
+  it("sorts athletes by last training, never-trained last, or A–Z", () => {
+    const row = (name: string, lastAt?: number) => ({ athlete: { id: name, name, createdAt: 0 }, progress: { trainings: 0, points: [], lastAt } as Progress });
+    const rows = [row("Zoe", 10), row("Ben"), row("Amy", 5), row("Cal", 10)];
+    expect(sortAthletes(rows, "recent").map((r) => r.athlete.name)).toEqual(["Cal", "Zoe", "Amy", "Ben"]);
+    expect(sortAthletes(rows, "name").map((r) => r.athlete.name)).toEqual(["Amy", "Ben", "Cal", "Zoe"]);
+  });
+
+  it("says today / 3 days ago, and a date after two weeks", () => {
+    const now = new Date(2026, 9, 20, 15).getTime();
+    expect(relativeDay(new Date(2026, 9, 20, 8).getTime(), "en", now)).toBe("today");
+    expect(relativeDay(new Date(2026, 9, 17, 20).getTime(), "en", now)).toBe("3 days ago");
+    expect(relativeDay(new Date(2026, 9, 17, 20).getTime(), "de", now)).toBe("vor 3 Tagen");
+    expect(relativeDay(new Date(2026, 8, 1).getTime(), "en", now)).toMatch(/Sep/);
+  });
+
+  it("toggles a round between counted and not counted", async () => {
+    const r = await useResults.getState().receiveReport(podReport());
+    await useResults.getState().setDiscarded(r.report!.id, true);
+    expect(summarizeReports(useResults.getState().reports)).toEqual([]);
+    await useResults.getState().setDiscarded(r.report!.id, false);
+    expect(summarizeReports(useResults.getState().reports).map((m) => m.metric)).toEqual(["lap", "reaction"]);
   });
 });
