@@ -85,7 +85,6 @@
   min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--c);
   border-radius: var(--radius-m);
 }
 
@@ -100,11 +99,12 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* one line per step: number, category tile, the sentence, badges */
 .main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
+  grid-template-columns: 22px 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
   width: 100%;
   min-height: 52px;
   padding: 10px;
@@ -117,25 +117,21 @@
 }
 
 .num {
-  display: grid;
-  place-items: center;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  border-radius: 15px;
-  background: color-mix(in srgb, var(--c) 16%, transparent);
-  color: var(--c);
+  color: var(--text-muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  padding-top: 4px;
+.tile {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  color: var(--c);
 }
 
 .text {
@@ -155,6 +151,7 @@
 .meta {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
 }
 
@@ -190,7 +187,7 @@
   display: flex;
   flex-direction: column;
   margin: -4px 0 0;
-  padding: 0 var(--space-2) 4px 50px;
+  padding: 0 var(--space-2) 4px 76px;
   list-style: none;
 }
 

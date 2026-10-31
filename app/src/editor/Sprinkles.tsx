@@ -9,22 +9,20 @@ import type { TFunction } from "i18next";
 import { ChevronDown, ChevronLeft, ChevronRight, Clock, CornerDownRight, Database, Droplets, Hand, Hourglass, PowerOff, Plus, Save, Smartphone, Target, Timer, TriangleAlert, Users, Zap, Ban, Flag, type LucideIcon } from "lucide-react";
 import { isObject, MAX_LIST_ITEMS, type Block } from "@reactpod/program-model";
 import { SwitchRow } from "../wizard/controls";
+import { ExitRow, exitValueText, type ExitEnv } from "./ExitPicker";
 import { BEHAVIOURS, modeOf, suggestTimerNames, timerNames, type Behaviour, type BehaviourGroup, type BehaviourId, type BehaviourState } from "./behaviours";
 import { COUNTDOWN_STYLES, COUNTDOWN_TARGETS, countdownKind, countdownStyle, hasCountdownTime, setCountdown } from "./countdown";
 import { ColorField, NumberInput, SuggestField } from "./fields";
 import { limitFieldOf } from "./holdStep";
 import { editableValue, nameItems } from "./ListFields";
-import { ownBlocks, type ProgramJson } from "./ops";
+import { type ProgramJson } from "./ops";
 import { CountValue, Field, FixedOrRandomTime, fieldWords, secondsText, TimeValue, type FieldProps } from "./sheetParts";
 import { settingLabel } from "./settingLabels";
+import { mainPort } from "./structure";
 import { TOGGLE_RESULTS } from "./toggleStep";
-import { timeoutAction } from "./switches";
-import { Segmented } from "../wizard/controls";
 import inspector from "./Inspector.module.css";
 import styles from "./StepSheet.module.css";
 
-/** Shown in the list and on the add page; the exit picker (separate change) adds "Then go to…". */
-const HIDDEN: ReadonlySet<string> = new Set(["goTo"]);
 const BUILT_IN = ["REQUIRED_PERIPHERALS", "NODE_COUNT"];
 
 const ICONS: Record<string, LucideIcon> = {
@@ -53,9 +51,10 @@ const SUGGEST: readonly BehaviourId[] = ["timeLimit", "record", "keepResult", "s
 export type SprinkleContext = FieldProps & {
   variables: readonly string[];
   metrics: readonly string[];
-  inLoop: boolean;
   /** program format of the connected pod; missing: everything is offered */
   format?: number;
+  /** the exit rows and the picker */
+  exits: ExitEnv;
 };
 
 /** "1.5 s" from the model → "1,5 s" in German. */
@@ -71,7 +70,7 @@ type Item = { id: string; group: BehaviourGroup; behaviour?: Behaviour; state: B
 /** Every behaviour (and the pause countdown) that applies to the step, with its state. */
 function itemsOf(block: Block, doc: ProgramJson): Item[] {
   const mode = modeOf(block);
-  const items: Item[] = BEHAVIOURS.filter((b) => !HIDDEN.has(b.id) && b.appliesTo(block, mode)).map((b) => ({ id: b.id, group: b.group, behaviour: b, state: b.isOn(block, doc) }));
+  const items: Item[] = BEHAVIOURS.filter((b) => b.appliesTo(block, mode)).map((b) => ({ id: b.id, group: b.group, behaviour: b, state: b.isOn(block, doc) }));
   if (ownCountdown(block)) items.push({ id: "countdown", group: "rules", state: countdownStyle(block) ? "on" : "off" });
   return items;
 }
@@ -124,6 +123,8 @@ const declared = (ctx: SprinkleContext) => ctx.variables.filter((v) => !BUILT_IN
 function add(item: Item, ctx: SprinkleContext, setOpen: (id: string | null) => void) {
   const { block, doc, apply } = ctx;
   if (item.id === "countdown") apply(setCountdown(doc, block.name, "drain"));
+  // "Then go to…" has no default: the picker chooses where
+  else if (item.id === "goTo") return ctx.exits.open(mainPort(block) ?? "next");
   else apply(item.behaviour!.turnOn(doc, block.name));
   setOpen(item.id);
 }
@@ -189,6 +190,7 @@ function rowValue(item: Item, ctx: SprinkleContext, t: TFunction): string | unde
     const style = countdownStyle(block);
     return style ? t(`editor.switch.countdown.styles.${style}`) : undefined;
   }
+  if (item.id === "goTo") return exitValueText(ctx.exits, block, mainPort(block) ?? "next", t);
   const text = item.behaviour!.summary(block, doc);
   if (!text) return item.id === "includeCentral" ? t("editor.sprinkle.yes") : undefined;
   if (item.id === "timeLimit" && typeof block.timeoutMs === "number" && block.type !== "remoteMultiPress" && block.type !== "button") return secondsText(block.timeoutMs, t);
@@ -223,6 +225,8 @@ function bodyOf(id: string, ctx: SprinkleContext): ReactNode {
       return <PhoneBody {...ctx} />;
     case "countdown":
       return <CountdownBody {...ctx} />;
+    case "goTo":
+      return <ExitRow env={ctx.exits} block={block} port={mainPort(block) ?? "next"} />;
     default:
       return null;
   }
@@ -240,26 +244,32 @@ function DrainsBody({ block, doc, set, apply }: SprinkleContext) {
 
 function TimeLong(ctx: SprinkleContext) {
   const { t } = useTranslation();
-  return <TimeValue label={t("editor.switch.holdTime")} value={ctx.block.shortMs ?? 1000} doc={ctx.doc} apply={ctx.apply} onField={(ms) => ctx.set("shortMs", ms)} />;
+  return (
+    <>
+      <TimeValue label={t("editor.switch.holdTime")} value={ctx.block.shortMs ?? 1000} doc={ctx.doc} apply={ctx.apply} onField={(ms) => ctx.set("shortMs", ms)} />
+      {(["short", "long"] as const).map((port) => (
+        <ExitRow key={port} env={ctx.exits} block={ctx.block} port={port} />
+      ))}
+    </>
+  );
 }
 
 function TimeLimitBody(ctx: SprinkleContext) {
   const { t } = useTranslation();
-  const { block, doc, set, apply, inLoop, format } = ctx;
+  const { block, doc, set, apply, format, exits } = ctx;
   const s = (key: string) => t(`editor.switch.${key}`);
-  if (block.type === "communicate") return <TimeValue label={s("seconds")} value={block.timeoutMs} doc={doc} apply={apply} min={500} onField={(ms) => set("timeoutMs", ms)} />;
-  const avoid = block.mode === "avoid";
-  const action = timeoutAction(doc, block.name);
-  const choices: { value: string; label: string }[] = [
-    { value: "goOn", label: s("goOn") },
-    { value: "countMiss", label: s("countMiss") },
-    ...(inLoop && block.type !== "remoteMultiPress" ? [{ value: "endRound", label: s("endRound") }] : []),
-    ...(action === "other" ? [{ value: "other", label: s("other") }] : []),
-  ];
+  const exit = <ExitRow env={exits} block={block} port="timeout" />;
+  if (block.type === "communicate") {
+    return (
+      <>
+        <TimeValue label={s("seconds")} value={block.timeoutMs} doc={doc} apply={apply} min={500} onField={(ms) => set("timeoutMs", ms)} />
+        {exit}
+      </>
+    );
+  }
   const limitField = block.type === "release" ? limitFieldOf(block) : "timeoutMs";
   const randomLimit = block[limitField] === undefined && block.minTimeoutMs !== undefined;
-  const label = avoid ? s("staysRed") : block.type === "release" && limitField === "maxHoldMs" ? s("holdLimit") : s("seconds");
-  const behaviour = BEHAVIOURS.find((b) => b.id === "timeLimit")!;
+  const label = block.mode === "avoid" ? s("staysRed") : block.type === "release" && limitField === "maxHoldMs" ? s("holdLimit") : s("seconds");
   return (
     <>
       <FixedOrRandomTime
@@ -272,51 +282,28 @@ function TimeLimitBody(ctx: SprinkleContext) {
         doc={doc}
         apply={apply}
       />
-      {!avoid && <Segmented label={s("tooSlow")} value={action} options={choices} onChange={(v) => v !== "other" && apply(behaviour.turnOn(doc, block.name, { onTimeout: v as "goOn" | "countMiss" | "endRound" }))} />}
+      {exit}
       {countdownKind(block) === "limit" && (format === undefined || format >= 3) && <CountdownRow {...ctx} />}
     </>
   );
 }
 
-/** Does the branch at `port` count a miss (a `+1` within its first few blocks)? */
-function branchCountsMiss(doc: ProgramJson, name: string, port: string): boolean {
-  const blocks = new Map(ownBlocks(doc).map((b) => [b.name, b]));
-  let cur = blocks.get(name)?.[port];
-  for (let i = 0; i < 4 && typeof cur === "string"; i++) {
-    const b = blocks.get(cur);
-    if (!b) return false;
-    if (b.type === "setVariable" && (b.op === "+" || b.op === "add") && b.value === 1) return true;
-    cur = b.next;
-  }
-  return false;
-}
-
-function AvoidBody({ block, doc, set, apply }: SprinkleContext) {
+function AvoidBody({ block, doc, set, apply, exits }: SprinkleContext) {
   const { t } = useTranslation();
   const s = (key: string) => t(`editor.switch.${key}`);
-  const behaviour = BEHAVIOURS.find((b) => b.id === "avoid")!;
   return (
     <>
       <CountValue label={s("redPods")} value={block.avoid} doc={doc} min={1} max={31} onField={(n) => set("avoid", n)} apply={apply} />
       <Field label={s("redColour")}>
         <ColorField value={block.avoidColor} optional defaultValue="red" label={s("redColour")} onChange={(c) => set("avoidColor", c, false)} />
       </Field>
-      <SwitchRow label={s("redMiss")} hint={s("missHint")} checked={branchCountsMiss(doc, block.name, "avoidHit")} onChange={(v) => apply(behaviour.turnOn(doc, block.name, { onTimeout: v ? "countMiss" : "goOn" }))} />
+      <ExitRow env={exits} block={block} port="avoidHit" />
     </>
   );
 }
 
-function EarlyBody({ block, doc, apply }: SprinkleContext) {
-  const { t } = useTranslation();
-  const behaviour = BEHAVIOURS.find((b) => b.id === "falseStart")!;
-  return (
-    <SwitchRow
-      label={t("editor.switch.earlyMiss")}
-      hint={t("editor.switch.missHint")}
-      checked={branchCountsMiss(doc, block.name, "pressed")}
-      onChange={(v) => apply(behaviour.turnOn(behaviour.turnOff(doc, block.name), block.name, { onTimeout: v ? "countMiss" : "goOn" }))}
-    />
-  );
+function EarlyBody({ block, exits }: SprinkleContext) {
+  return <ExitRow env={exits} block={block} port="pressed" />;
 }
 
 function KeepBody({ block, set, variables }: SprinkleContext) {
@@ -360,13 +347,14 @@ function StopwatchBody({ block, doc, set }: SprinkleContext) {
   );
 }
 
-function HoldFirstBody({ block, doc, set, apply }: SprinkleContext) {
+function HoldFirstBody({ block, doc, set, apply, exits }: SprinkleContext) {
   const { t } = useTranslation();
   const field = block.type === "charge" ? "onsetMs" : "holdTimeoutMs";
   return (
     <>
       <TimeValue label={fieldWords(field, t)} value={block[field]} doc={doc} apply={apply} onField={(ms) => set(field, ms)} />
       <p className={styles.hint}>{t(`editor.step.help.${field}`)}</p>
+      {block.type === "release" && <ExitRow env={exits} block={block} port="noHold" />}
     </>
   );
 }

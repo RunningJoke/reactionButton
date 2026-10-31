@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { BookLock, Plus } from "lucide-react";
 import { Sheet } from "../components/Sheet";
-import { BLOCK_TYPES, type BlockCategory } from "@reactpod/program-model";
+import { BLOCK_TYPES } from "@reactpod/program-model";
 import { blockIcon } from "./blockStyle";
+import { groupOfType, INTENT_GROUPS } from "./stepRecipes";
 import styles from "./Inspector.module.css";
 
-const CATEGORIES: BlockCategory[] = ["light", "wait", "input", "logic", "remote", "stats"];
 
 type Props = {
   /** where the block goes: after this block, or connected to this port */
@@ -24,11 +24,11 @@ export function Palette({ context, templates, supportedTypes, onPick, onTemplate
   const { t } = useTranslation();
   return (
     <Sheet title={t("editor.addBlock")} icon={<Plus size={18} aria-hidden />} sub={context ?? t("editor.addAtEnd")} onClose={onClose}>
-      {CATEGORIES.map((category) => (
-        <section key={category} className={styles.paletteGroup} data-category={category}>
-          <h4>{t(`categories.${category}`)}</h4>
+      {INTENT_GROUPS.map(([group]) => (
+        <section key={group} className={styles.paletteGroup} data-category={group}>
+          <h4>{t(`editor.add.group.${group}`)}</h4>
           <div className={styles.paletteGrid}>
-            {BLOCK_TYPES.filter((d) => d.category === category).map((def) => {
+            {BLOCK_TYPES.filter((d) => groupOfType(d.type) === group).map((def) => {
               const Icon = blockIcon(def.type);
               const unsupported = supportedTypes && !supportedTypes.includes(def.type);
               return (

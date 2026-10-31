@@ -450,7 +450,7 @@ export const BLOCK_TYPES: readonly BlockTypeDef[] = [
       { name: "metrics", kind: "metricList", level: "expert" }, // missing: all metrics
       { name: "vars", kind: "variableList", level: "switch", group: "phoneSettings" },
       { name: "editable", kind: "editableMap", level: "switch", group: "phoneSettings" },
-      { name: "color", kind: "color", default: "cyan" },
+      { name: "color", kind: "color", default: "cyan", level: "more" },
     ]),
   },
 ];

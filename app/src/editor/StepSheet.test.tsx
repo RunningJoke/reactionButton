@@ -95,7 +95,9 @@ describe("step sheet", () => {
     addSprinkle(/Time limit/);
     expect(block("Press").timeoutMs).toBe(2000);
     expect(screen.getByText(/max 2 s/)).toBeTruthy(); // the step text follows
-    fireEvent.click(screen.getByRole("radio", { name: "Count a miss" }));
+    // the time-out exit is edited with the picker
+    fireEvent.click(screen.getByRole("button", { name: /^If too slow/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Count a miss, then continue/ }));
     expect(ownBlocks(current).some((b) => b.type === "setVariable" && b.var === "MISSES")).toBe(true);
     remove();
     expect(block("Press").timeoutMs).toBeUndefined();
@@ -126,7 +128,7 @@ describe("step sheet", () => {
     const suggested = screen.getAllByRole("button", { name: /^\+ / });
     expect(suggested.map((b) => b.textContent)).toEqual(["+ Time limit", "+ Record reaction"]);
     fireEvent.click(screen.getByRole("button", { name: /Add sprinkle/ }));
-    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Rules", "Measure"]);
+    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Rules", "Measure", "Flow"]);
     expect(screen.getByRole("button", { name: /Time limit/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Hold first/ })).toBeNull(); // not for a press
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
@@ -346,6 +348,46 @@ describe("step sheet", () => {
     fireEvent.click(coach.getByRole("checkbox", { name: /Rounds/ }));
     expect(block("Report").editable).toEqual({ ROUNDS: { min: 0, max: 10 } });
     expect(screen.getByLabelText("Minimum of ROUNDS")).toBeTruthy();
+  });
+
+  it("exit picker: steps by number and sentence, one list for every exit", () => {
+    render(<Harness name="Game" />);
+    // a block exit shows under the essentials, unconnected team exits mean "the game goes on"
+    fireEvent.click(screen.getByRole("button", { name: /^When everyone is team A/ }));
+    const radios = within(screen.getByRole("radiogroup", { name: /When everyone is team A/ }));
+    expect(radios.getByRole("radio", { name: /Step \d+ · Light the central blue/ })).toBeTruthy();
+    expect(radios.queryByRole("radio", { name: /Count a miss/ })).toBeNull(); // not a failure exit
+    expect(radios.queryByRole("radio", { name: /Next round/ })).toBeNull(); // not inside a Repeat
+    fireEvent.click(radios.getByRole("radio", { name: /Step \d+ · Light the central blue/ }));
+    expect(block("Game").allA).toBe("End");
+    // that is where the game goes on after it: "Next step"
+    expect(screen.getByRole("button", { name: "When everyone is team A: Next step" })).toBeTruthy();
+    // unset: the game goes on until the time is up
+    fireEvent.click(screen.getByRole("button", { name: /^When everyone is team A/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /The game goes on/ }));
+    expect(block("Game").allA).toBeUndefined();
+    expect(screen.getByRole("button", { name: "When everyone is team A: The game goes on" })).toBeTruthy();
+  });
+
+  it("then go to…: the main exit of any step, chosen in the picker", () => {
+    render(<Harness name="Press" />);
+    addSprinkle(/Then go to/);
+    // the add button opens the picker; nothing is written until a step is chosen
+    expect(block("Press").pressed).toBe("Pick");
+    expect(screen.getByRole("radiogroup", { name: "Then" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /Light the central blue/ }));
+    expect(block("Press").pressed).toBe("End");
+  });
+
+  it("loop exits only inside a Repeat: next round and leave the loop", () => {
+    render(<Harness name="Press" />);
+    addSprinkle(/Time limit/);
+    fireEvent.click(screen.getByRole("button", { name: /^If too slow/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Next round/ }));
+    expect(block("Press").timeout).toBe("Rounds");
+    fireEvent.click(screen.getByRole("button", { name: /^If too slow/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Leave the loop/ }));
+    expect(block("Press").timeout).toBe("End");
   });
 
   it("repeat bracket: rounds as a stepper", () => {

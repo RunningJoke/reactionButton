@@ -96,10 +96,16 @@ for (const [width, height] of [[360, 1300], [1200, 900]]) {
       await ed.screenshot({ path: `${out}/editor-${tag}-${name}.png` });
     };
     await edit("/prog/solo.json");
+    await ed.getByRole("button", { name: "Add a step", exact: true }).click();
+    await shot("palette");
+    await ed.getByRole("button", { name: "Close" }).click();
     await ed.getByText("Wait for a press on the central").first().click();
     await shot("press");
     await ed.getByRole("button", { name: /^\+ Time limit/ }).click();
     await shot("press-time-limit");
+    await ed.getByRole("button", { name: /^If too slow/ }).click();
+    await shot("exit-picker");
+    await ed.getByRole("button", { name: /Back/ }).click();
     await ed.getByRole("button", { name: /Add sprinkle/ }).click();
     await shot("add-page");
     await ed.getByRole("button", { name: /Back/ }).click();

@@ -5,6 +5,7 @@ import { Sheet } from "../components/Sheet";
 import { BLOCK_TYPES, blockType, SET_OPS, type FieldDef } from "@reactpod/program-model";
 import type { Block } from "@reactpod/program-model";
 import { blockCategory, blockIcon } from "./blockStyle";
+import type { Step } from "./structure";
 import { teamColors } from "./toggleStep";
 import { ColorField, LedsField, SuggestField, ValueField } from "./fields";
 import { EditableField, NameListField, editableValue, nameItems } from "./ListFields";
@@ -36,6 +37,10 @@ export type InspectorContext = {
   duplicate?: (name: string) => void;
   /** program format of the connected pod (missing: unknown, everything is offered); the effect step and countdown need 3 */
   programFormat?: number;
+  /** step list of the flat program (exit picker); missing: computed from `json` */
+  steps?: readonly Step[];
+  /** every block of the program and its includes, by name (exit picker) */
+  blocks?: ReadonlyMap<string, Block>;
 };
 
 /** Editable block: name, type, parameters, connections, actions. */

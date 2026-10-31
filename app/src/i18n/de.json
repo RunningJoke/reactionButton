@@ -227,6 +227,47 @@
       "start": "Startblock",
       "noPresets": "Keine Bibliotheksteile verknüpft. Das Programm ist eigenständig."
     },
+    "exit": {
+      "title": "Ausgänge",
+      "next": "Nächster Schritt",
+      "countMiss": "Fehlversuch zählen",
+      "countMissThen": "Fehlversuch zählen, dann weiter",
+      "nextRound": "Nächste Runde",
+      "leave": "Schleife verlassen",
+      "aStep": "Ein Schritt…",
+      "newStep": "Ein neuer Schritt hier…",
+      "noAfter": "Nach den Runden folgt nichts",
+      "instant": "Läuft im Kreis ohne zu warten: das Programm würde stoppen",
+      "stepN": "Schritt {{n}}",
+      "rounds": "die Runden",
+      "goesOn": "Das Spiel geht weiter",
+      "ends": "Das Programm endet",
+      "role": {
+        "then": "Danach",
+        "ifTooSlow": "Wenn zu langsam",
+        "ifLeftAlone": "Wenn in Ruhe gelassen",
+        "shortPress": "Nach kurzem Druck",
+        "longPress": "Nach langem Druck",
+        "ifRedHit": "Wenn ein roter Pod getroffen wird",
+        "ifYes": "Wenn ja",
+        "ifNo": "Wenn nein",
+        "eachRound": "Jede Runde",
+        "afterLast": "Nach der letzten Runde",
+        "ifReleasedEarly": "Wenn zu früh losgelassen",
+        "ifFull": "Wenn voll",
+        "ifNoHold": "Wenn niemand hält",
+        "ifFalseStart": "Wenn zu früh losgelassen",
+        "ifAllA": "Wenn alle in Team A sind",
+        "ifAllB": "Wenn alle in Team B sind",
+        "whenTimeOver": "Wenn die Zeit um ist",
+        "ifContinued": "Wenn du weiter wählst",
+        "ifPressed": "Wenn der Knopf gedrückt wurde",
+        "ifTimedOut": "Wenn niemand antwortet",
+        "ifRepeated": "Wenn du wiederholen wählst",
+        "ifStopped": "Wenn du stoppen wählst",
+        "ifPressedEarly": "Wenn zu früh gedrückt"
+      }
+    },
     "sprinkle": {
       "title": "Streusel",
       "add": "Streusel hinzufügen",
@@ -293,6 +334,10 @@
         "target": "Zielzeit",
         "howLong": "Angezeigt für"
       },
+      "goTo": {
+        "name": "Danach weiter bei…",
+        "desc": "Zu einem anderen Schritt springen statt zum nächsten"
+      },
       "stopwatch": {
         "name": "Stoppuhr",
         "desc": "Zeit von diesem Schritt bis zu einem anderen",
@@ -350,6 +395,8 @@
       "notConnected": "nichts (das Programm endet)",
       "goTo": "{{role}}: weiter mit {{target}}",
       "records": "misst die Zeit",
+      "advanced_one": "{{count}} erweiterte Einstellung",
+      "advanced_other": "{{count}} erweiterte Einstellungen",
       "problems_one": "{{count}} Problem",
       "problems_other": "{{count}} Probleme",
       "unsupported": "kann dein Pod nicht",
@@ -580,6 +627,12 @@
       }
     },
     "add": {
+      "group": {
+        "light": "Licht",
+        "wait": "Warten",
+        "think": "Denken",
+        "results": "Ergebnisse"
+      },
       "title": "Schritt hinzufügen",
       "afterStep": "Wird nach Schritt {{n}} eingefügt",
       "endOfRound": "Wird am Ende der Runde angefügt",

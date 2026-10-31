@@ -467,6 +467,8 @@ textarea.input {
 .paletteGroup[data-category="input"] { --cat: var(--cat-input); }
 .paletteGroup[data-category="logic"] { --cat: var(--cat-logic); }
 .paletteGroup[data-category="remote"] { --cat: var(--cat-remote); }
+.paletteGroup[data-category="think"] { --cat: var(--cat-logic); }
+.paletteGroup[data-category="results"] { --cat: var(--cat-stats); }
 .paletteGroup[data-category="stats"] { --cat: var(--cat-stats); }
 
 /* read-only details */

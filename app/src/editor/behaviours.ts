@@ -427,6 +427,22 @@ export function behaviour(id: Behaviour["id"]): Behaviour {
   return BEHAVIOURS.find((x) => x.id === id)!;
 }
 
+/** Behaviours that make a step "advanced": the step list shows a sliders badge counting them (#88 §3). */
+const ADVANCED: readonly BehaviourId[] = ["longPress", "keepResult", "goTo", "showBar"];
+
+/**
+ * How many advanced Sprinkles a step has: long press, keep result, then go to, average bar, and a countdown.
+ * Time limit and Record alone are plain facts of the sentence. `step` (the step list's entry for the block)
+ * answers "then go to" without a second pass over the program.
+ */
+export function advancedCount(block: Block, step?: { branches: readonly { port: string; role: string }[] }): number {
+  const mode = modeOf(block);
+  let n = BEHAVIOURS.filter((b) => ADVANCED.includes(b.id) && b.id !== "goTo" && b.appliesTo(block, mode) && b.isOn(block, {}) !== "off").length;
+  if (step?.branches.some((br) => br.port === (mainPort(block) ?? "next") && br.role === "then")) n++;
+  if (typeof block.countdown === "string" && block.countdown !== "secret") n++;
+  return n;
+}
+
 /** The behaviours a step offers, in the order of the sheet (`format` greys out what the pod cannot run). */
 export function behavioursFor(block: Block, format?: number): Behaviour[] {
   const mode = modeOf(block);
