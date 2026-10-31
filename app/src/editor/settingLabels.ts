@@ -68,7 +68,7 @@ export function settingLabel(name: string, t: TFunction): SettingLabel {
 
 /**
  * The words for a variable or metric name (one lookup for every screen): a label the program brings
- * (`programLabels`, later), else the table above, else the shipped metrics (`labels.metric.*`), else the name.
+ * (`programLabels`, from `labelsOf(doc, lang)`), else the table above, else the shipped metrics (`labels.metric.*`), else the name.
  */
 export function labelOf(name: string, t: TFunction, programLabels?: Readonly<Record<string, string>>): string {
   return programLabels?.[name] ?? (KNOWN[name] ? settingLabel(name, t).label : t(`labels.metric.${name}`, { defaultValue: name }));

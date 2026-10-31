@@ -5,7 +5,10 @@
  */
 import { BLOCK_TYPES, COMMON_FIELDS, MAX_LIST_ITEMS, MAX_NAME_CHARS, TARGET_KEYWORDS, TIMER_FIELDS, type FieldDef } from "./blockTypes";
 import { NAMED_COLORS } from "./colors";
-import { LED_COUNT, MAX_PATH, MAX_PERIPHERALS, PROGRAM_FORMAT, PROGRAM_FORMAT_VERSION } from "./limits";
+import { LED_COUNT, MAX_LABEL_CHARS, MAX_PATH, MAX_PERIPHERALS, MAX_STORY_CHARS, PROGRAM_FORMAT, PROGRAM_FORMAT_VERSION } from "./limits";
+
+/** Plain text: no control characters (so no newlines). maxLength counts code points in JSON Schema. */
+const plainText = (max: number): Schema => ({ type: "string", minLength: 1, maxLength: max, pattern: "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$" });
 
 type Schema = Record<string, unknown>;
 
@@ -41,6 +44,8 @@ const DEFS: Record<string, Schema> = {
     type: "object",
     additionalProperties: { type: "integer" },
   },
+  story: { type: "object", properties: { en: plainText(MAX_STORY_CHARS), de: plainText(MAX_STORY_CHARS) } },
+  label: { type: "object", properties: { en: plainText(MAX_LABEL_CHARS), de: plainText(MAX_LABEL_CHARS) } },
   menuGroup: {
     type: "object",
     required: ["leds", "color"],
@@ -131,7 +136,13 @@ export function buildProgramSchema(): Schema {
     properties: {
       version: { const: PROGRAM_FORMAT_VERSION },
       name: { type: "string", minLength: 1, description: "shown in the menu" },
-      description: { type: "string" },
+      description: { type: "string", description: "developer note, ignored by the firmware" },
+      story: { ...ref("story"), description: "what happens, for coaches, per language; plain text; ignored by the firmware" },
+      labels: {
+        type: "object",
+        additionalProperties: ref("label"),
+        description: "metric or variable name to words for coaches, per language; ignored by the firmware",
+      },
       peripherals: { type: "integer", minimum: 0, maximum: MAX_PERIPHERALS, description: "peripherals the central connects" },
       menu: { type: "array", items: ref("menuGroup"), description: "LED pattern of the program in the menu" },
       variables: ref("variables"),

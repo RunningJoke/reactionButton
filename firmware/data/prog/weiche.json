@@ -1,7 +1,8 @@
 {
   "version": 1,
-  "description": "Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "name": "Weiche",
+  "story": { "en": "The main pod lights green: press it. Then a random other pod lights up: press it. This repeats every round, and your reaction times are recorded.", "de": "Die Zentrale leuchtet grün: drücken. Danach leuchtet ein zufälliger anderer Pod auf: drücken. Das wiederholt sich jede Runde, die Reaktionszeiten werden gemessen." },
+  "labels": { "reaction": { "en": "Reaction time", "de": "Reaktionszeit" }, "cycle": { "en": "Total time", "de": "Gesamtzeit" } },
   "peripherals": 2,
   "menu": [ { "leds": [7, 11], "color": "blue" }, { "leds": [9], "color": "yellow" } ],
   "variables": { "MAX_LOOPS": 255 },

@@ -1,7 +1,8 @@
 {
   "version": 1,
-  "description": "Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "name": "Run",
+  "story": { "en": "All pods light up at once. Press every one as fast as you can. The round time runs from the lights until the last press.", "de": "Alle Pods leuchten gleichzeitig auf. So schnell wie möglich alle drücken. Die Rundenzeit läuft vom Aufleuchten bis zum letzten Druck." },
+  "labels": { "reaction": { "en": "Reaction time", "de": "Reaktionszeit" }, "lap": { "en": "Round time", "de": "Rundenzeit" }, "cycle": { "en": "Total time", "de": "Gesamtzeit" } },
   "peripherals": 2,
   "menu": [ { "leds": [5, 7, 9], "color": "cyan" } ],
   "variables": { "MAX_LOOPS": 12, "AVOID_COUNT": 0 },

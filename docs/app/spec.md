@@ -170,7 +170,7 @@ renamed or deleted. A type change keeps the fields and ports the new type has.
 - LED indices (`led.leds`, `menu[].leds`): 18-LED ring picker with "all" (also in the menu editor).
   LED 0 at the top, clockwise.
 - Metric names: free text with suggestions (default `reaction`).
-- Program header: name, description, peripherals 0–7 (the editor prevents more), variables, start, menu
+- Program header: name, description (developer note), story and labels (texts for coaches, en + de, read only until the editor gets a form), peripherals 0–7 (the editor prevents more), variables, start, menu
   pattern. No tap target needs drag and drop.
 
 ### 7.5 Validation

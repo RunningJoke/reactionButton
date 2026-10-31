@@ -14,11 +14,19 @@ export type Block = {
   [field: string]: unknown;
 };
 
+/** A text per language (`en`, `de`). */
+export type LocalizedText = { en?: string; de?: string };
+
 /** A complete program (listed in /programs.json). */
 export type ProgramFile = {
   version?: number;
   name: string;
+  /** developer note */
   description?: string;
+  /** "What happens" for coaches per language; ignored by the firmware (programs.md 1.2) */
+  story?: LocalizedText;
+  /** metric or variable name to words for coaches; ignored by the firmware */
+  labels?: Record<string, LocalizedText>;
   peripherals?: number;
   menu?: MenuGroup[];
   variables?: Record<string, number>;
@@ -48,6 +56,28 @@ export function isObject(value: unknown): value is Record<string, unknown> {
 /** A file with a `name` is a program, otherwise a fragment. */
 export function isProgramFile(doc: unknown): doc is ProgramFile {
   return isObject(doc) && typeof doc.name === "string";
+}
+
+const textOf = (value: unknown, lang: string): string | undefined => {
+  if (!isObject(value)) return undefined;
+  const text = value[lang] ?? value.en;
+  return typeof text === "string" && text !== "" ? text : undefined;
+};
+
+/** The program's story in `lang` ("de-DE" counts as "de"), else English, else undefined. */
+export function storyOf(doc: unknown, lang: string): string | undefined {
+  return isObject(doc) ? textOf(doc.story, lang.slice(0, 2).toLowerCase()) : undefined;
+}
+
+/** The program's labels in `lang` (English as fallback): metric or variable name to words. */
+export function labelsOf(doc: unknown, lang: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!isObject(doc) || !isObject(doc.labels)) return out;
+  for (const [name, value] of Object.entries(doc.labels)) {
+    const text = textOf(value, lang.slice(0, 2).toLowerCase());
+    if (text !== undefined) out[name] = text;
+  }
+  return out;
 }
 
 export function peripheralsOf(doc: ProgramFile): number {

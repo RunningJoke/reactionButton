@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { ChevronDown, ChevronLeft, ChevronRight, Clock, CornerDownRight, Database, Droplets, Hand, Hourglass, PowerOff, Plus, Save, Smartphone, Target, Timer, TriangleAlert, Users, Zap, Ban, Flag, type LucideIcon } from "lucide-react";
-import { isObject, MAX_LIST_ITEMS, type Block } from "@reactpod/program-model";
+import { isObject, labelsOf, MAX_LIST_ITEMS, type Block } from "@reactpod/program-model";
 import { SwitchRow } from "../wizard/controls";
 import { ExitRow, exitValueText, type ExitEnv } from "./ExitPicker";
 import { BEHAVIOURS, modeOf, suggestTimerNames, timerNames, type Behaviour, type BehaviourGroup, type BehaviourId, type BehaviourState } from "./behaviours";
@@ -17,7 +17,7 @@ import { limitFieldOf } from "./holdStep";
 import { editableValue, nameItems } from "./ListFields";
 import { type ProgramJson } from "./ops";
 import { CountValue, Field, FixedOrRandomTime, fieldWords, secondsText, TimeValue, type FieldProps } from "./sheetParts";
-import { settingLabel } from "./settingLabels";
+import { labelOf as labelOfName, settingLabel } from "./settingLabels";
 import { mainPort } from "./structure";
 import { TOGGLE_RESULTS } from "./toggleStep";
 import inspector from "./Inspector.module.css";
@@ -306,9 +306,9 @@ function EarlyBody({ block, exits }: SprinkleContext) {
   return <ExitRow env={exits} block={block} port="pressed" />;
 }
 
-function KeepBody({ block, set, variables }: SprinkleContext) {
-  const { t } = useTranslation();
-  const labelOf = (v: string) => settingLabel(v, t).label;
+function KeepBody({ block, doc, set, variables }: SprinkleContext) {
+  const { t, i18n } = useTranslation();
+  const labelOf = (v: string) => labelOfName(v, t, labelsOf(doc, i18n.language));
   if (block.type === "toggle") {
     const d = (key: string) => t(`editor.step.toggle.${key}`);
     return (

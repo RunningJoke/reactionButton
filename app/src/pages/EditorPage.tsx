@@ -11,7 +11,7 @@ import { lastOpenedProgram, useEditor } from "../editor/editorStore";
 import { addBlock, deleteBlock, deleteStep, duplicateStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
 import { useExpertMode } from "../editor/expertMode";
 import { sentenceOptions } from "../editor/sentence";
-import { settingLabel } from "../editor/settingLabels";
+import { labelOf } from "../editor/settingLabels";
 import { RoundSheet, StepSheet } from "../editor/StepSheet";
 import { Palette } from "../editor/Palette";
 import { AddStepSheet } from "../editor/AddStepSheet";
@@ -25,7 +25,7 @@ import { blockType } from "@reactpod/program-model";
 import { formatProgram } from "@reactpod/program-model";
 import { buildGraph } from "../model/graph";
 import { isLibraryPath } from "@reactpod/program-model";
-import { BUILTIN_VARIABLES, isObject, type Block } from "@reactpod/program-model";
+import { BUILTIN_VARIABLES, isObject, labelsOf, type Block } from "@reactpod/program-model";
 import { validateProgram } from "@reactpod/program-model";
 import { DeleteProgramModal, downloadProgram, NewProgramModal } from "../programs/actions";
 import { useProgramSource, validateOptionsOf } from "../programs/sources";
@@ -112,7 +112,7 @@ function insertionPoint(steps: readonly Step[], selected: string | null, own: Re
 }
 
 function ProgramEditor({ doc }: { doc: ProgramDoc }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { apply, undo, redo, select, selected, past, future } = useEditor();
   const source = useProgramSource("local");
@@ -153,7 +153,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     const steps = stepList(flat);
     const blockMap = new Map(blocks.map((b) => [b.name, b]));
     const own = new Set(graph.nodes.filter((n) => n.own && !n.external).map((n) => n.id));
-    const sentence = sentenceOptions(blocks, resolved.variables, (n) => settingLabel(n, t).label);
+    const sentence = sentenceOptions(blocks, resolved.variables, (n) => labelOf(n, t, labelsOf(json, i18n.language)));
     return { sentence, resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
   }, [json, doc.path, source, podFiles, t]);
 

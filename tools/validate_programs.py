@@ -14,13 +14,17 @@ PROGRAM_FORMAT with BlockFactory::PROGRAM_FORMAT (changelog: docs/firmware/progr
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "firmware" / "data"
 INDEX = "/programs.json"
 SPIFFS_MAX_PATH = 31  # CONFIG_SPIFFS_OBJ_NAME_LEN = 32 including the terminator
 
-PROGRAM_FORMAT = 6   # revision of the block types below
+TEXT_LANGUAGES = ("en", "de")  # story / labels; no format bump, the firmware ignores them
+MAX_STORY_CHARS = 255
+MAX_LABEL_CHARS = 32
+PROGRAM_FORMAT = 6  # revision of the block types below
 
 NAMED_COLORS = {"off", "black", "red", "green", "blue", "yellow", "magenta", "cyan", "white"}
 
@@ -415,6 +419,32 @@ class Validator:
             if low is not None and high is not None and high < low:
                 self.warning(f"{file} block '{block.get('name')}'", f"'{fields[1]}' is below '{fields[0]}': the pod always uses '{fields[0]}'")
 
+    def check_texts(self, fs_path, doc):
+        """`story` / `labels`: plain text per language, ignored by the firmware (programs.md 1.2)."""
+        def check(value, field, limit):
+            if not isinstance(value, dict):
+                self.error(fs_path, f"'{field}' must be an object with a text per language")
+                return
+            for lang, text in value.items():
+                where = f"{field}.{lang}"
+                if lang not in TEXT_LANGUAGES:
+                    self.warning(fs_path, f"'{where}': language ignored (only {', '.join(TEXT_LANGUAGES)})")
+                elif not isinstance(text, str) or not text.strip():
+                    self.error(fs_path, f"'{where}' must be a non-empty text")
+                elif len(text) > limit:  # code points, like the app
+                    self.error(fs_path, f"'{where}' has {len(text)} characters, at most {limit}")
+                elif any(unicodedata.category(c) == "Cc" or c in "  " for c in text):
+                    self.error(fs_path, f"'{where}' contains a control character (newline, tab, ...)")
+
+        if "story" in doc:
+            check(doc["story"], "story", MAX_STORY_CHARS)
+        labels = doc.get("labels", {})
+        if not isinstance(labels, dict):
+            self.error(fs_path, "'labels' must be an object")
+            return
+        for name, value in labels.items():
+            check(value, f"labels.{name}", MAX_LABEL_CHARS)
+
     def check_program(self, fs_path):
         self.variables = {}
         blocks = []
@@ -445,6 +475,7 @@ class Validator:
         peripherals = doc.get("peripherals", 0)
         if not isinstance(peripherals, int) or not 0 <= peripherals <= 7:
             self.error(fs_path, "'peripherals' must be 0..7")
+        self.check_texts(fs_path, doc)
         print(f"  {fs_path}: '{doc.get('name', '?')}', {len(blocks)} blocks, {peripherals} peripherals")
 
     def run(self):

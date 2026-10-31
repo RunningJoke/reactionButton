@@ -18,7 +18,19 @@
       "description": "shown in the menu"
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "description": "developer note, ignored by the firmware"
+    },
+    "story": {
+      "$ref": "#/$defs/story",
+      "description": "what happens, for coaches, per language; plain text; ignored by the firmware"
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/label"
+      },
+      "description": "metric or variable name to words for coaches, per language; ignored by the firmware"
     },
     "peripherals": {
       "type": "integer",
@@ -146,6 +158,40 @@
       "type": "object",
       "additionalProperties": {
         "type": "integer"
+      }
+    },
+    "story": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$"
+        },
+        "de": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$"
+        }
+      }
+    },
+    "label": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$"
+        },
+        "de": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$"
+        }
       }
     },
     "menuGroup": {

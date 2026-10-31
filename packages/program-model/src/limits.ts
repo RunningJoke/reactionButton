@@ -63,3 +63,7 @@ export function pathForName(name: string, taken: ReadonlySet<string> = new Set()
   }
   return path;
 }
+/** User-facing program texts (`story`, `labels`; programs.md 1.2): languages and limits in code points. */
+export const TEXT_LANGUAGES = ["en", "de"] as const;
+export const MAX_STORY_CHARS = 255;
+export const MAX_LABEL_CHARS = 32;

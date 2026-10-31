@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { AlertTriangle, ArrowDown, ArrowUp, CircleAlert, Copy, Plus, Trash2, Wrench } from "lucide-react";
 import { Sheet } from "../components/Sheet";
-import { IF_OPS, isObject, type Block, type Issue } from "@reactpod/program-model";
+import { IF_OPS, isObject, labelsOf, type Block, type Issue } from "@reactpod/program-model";
 import { Segmented, SwitchRow } from "../wizard/controls";
 import { BlockExpertFields, type InspectorContext } from "./BlockInspector";
 import { blockCategory, blockIcon } from "./blockStyle";
@@ -21,7 +21,7 @@ import { MoreOptions } from "./MoreOptions";
 import { isValidVariableName, ownBlocks, setBlockField, setProgramField } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
 import { stepSentence, type SentenceOptions } from "./sentence";
-import { settingLabel } from "./settingLabels";
+import { labelOf as labelOfName, settingLabel } from "./settingLabels";
 import { CountValue, Field, FixedOrRandomTime, fieldWords, TimeValue, type Apply, type FieldProps } from "./sheetParts";
 import { AddSprinklePage, ReportResults, SprinkleSection, type SprinkleContext } from "./Sprinkles";
 import { isCatchEarly, stepList, type LoopInfo, type Step } from "./structure";
@@ -74,7 +74,7 @@ export function StepSheet(props: StepSheetProps) {
 }
 
 function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [page, setPage] = useState<{ kind: "main" } | { kind: "add" } | { kind: "exit"; port: string }>({ kind: "main" });
   const [open, setOpen] = useState<string | null>(null);
   const doc = ctx.json;
@@ -85,7 +85,8 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
   const set = (field: string, value: unknown, merge = true) => apply(setBlockField(doc, name, field, value), merge ? `${name}.${field}` : undefined);
   const kind = t(`editor.step.kind.${isCatchEarly(block) ? "delay" : block.type}`, { defaultValue: t("editor.step.kind.unknown") });
   const title = step?.number ? t("editor.step.title", { n: step.number, kind }) : kind;
-  const labelOf = (v: string) => settingLabel(v, t).label;
+  const programLabels = labelsOf(doc, i18n.language);
+  const labelOf = (v: string) => labelOfName(v, t, programLabels);
   const exits: ExitEnv = {
     doc,
     steps: ctx.steps ?? stepList(doc),

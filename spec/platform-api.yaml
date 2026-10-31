@@ -164,6 +164,9 @@ paths:
                             - menuInvalid
                             - menuInvalidColor
                             - menuInvalidLed
+                            - textInvalid
+                            - textTooLong
+                            - textControlChars
                             - blockNoNameOrType
                             - duplicateBlock
                             - unknownType
@@ -203,6 +206,7 @@ paths:
                             - summaryNeedsTarget
                             - summaryTargetRange
                             - summaryShowRange
+                            - textLanguageUnknown
                             - noOutgoing
                             - unreachable
                             - unknownVariable
