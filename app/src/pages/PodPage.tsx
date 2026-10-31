@@ -41,13 +41,15 @@ function DisconnectButton() {
   );
 }
 
-/** The training view of all connected sets (#46): no tab either, linked from the pod. */
+/** A running game: a one-line way back to the training surface (the controls live there). */
 function TrainingLink() {
   const { t } = useTranslation();
+  const state = usePodSession((s) => s.status?.state);
+  if (state !== "RUN" && state !== "PAUSED") return null;
   return (
     <Link to="/train" className={styles.menuLink}>
       <Activity size={22} aria-hidden />
-      <span>{t("training.view.link")}</span>
+      <span>{t("pod.trainingRunning")}</span>
       <ChevronRight size={20} aria-hidden />
     </Link>
   );

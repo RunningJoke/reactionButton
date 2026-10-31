@@ -35,6 +35,7 @@
     },
     "intro": "Connect to the main pod of your set.",
     "menuHint": "To connect by Bluetooth: 1. Switch the pod on. 2. Hold the top button while the ring fills white, until it is full. 3. Tap Bluetooth.",
+    "trainingRunning": "Training running · Open",
     "bleUnsupported": "This browser has no Bluetooth access. Use Chrome or Edge, on iPhone the app later.",
     "serialUnsupported": "USB needs Chrome or Edge on a computer.",
     "connect": {
@@ -1583,14 +1584,7 @@
     "keepHolding": "Keep holding…"
   },
   "training": {
-    "title": "Training",
-    "athlete": "Who trains now",
-    "noReports": "This pod sends no results yet: live results need a firmware that sends round results. You can still choose the athlete for later.",
     "noRemote": "This pod cannot be controlled from the app: the game goes on with the button or after the timeout.",
-    "waiting": "Waiting for the next round result…",
-    "lastReport": "Last round result",
-    "bestAverage": "{{metric}}: best {{best}}, average {{average}}",
-    "openSession": "Open session",
     "continue": "Continue",
     "repeat": "Repeat",
     "stop": "Stop",
@@ -1625,11 +1619,6 @@
       "protocol": "The pod sent an answer the app does not understand."
     },
     "view": {
-      "link": "Training view",
-      "title": "Training view",
-      "intro": "Follow the connected set's training here. Keep the app open: the screen stays on while this view is open, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
-      "connect": "Connect a set",
-      "empty": "No set is connected. Connect a set to follow its training here.",
       "connecting": "Connecting…",
       "waiting": "Waiting for you",
       "waitingFor": "The game waits at “{{block}}”: continue, repeat or stop, or change the values for the next round.",
@@ -1639,10 +1628,6 @@
       "resume": "Resume",
       "pausedSent": "The game is paused.",
       "resumedSent": "The game goes on.",
-      "variablesSent": "Values sent.",
-      "setVariable": "Set",
-      "range": "{{min}} to {{max}}",
-      "invalid": "Enter a whole number from {{min}} to {{max}}.",
       "state": {
         "MENU": "Pod menu",
         "DISCOVERY": "Discovery",
@@ -1660,13 +1645,59 @@
       "start": "Start",
       "readyTitle": "Set the values, then start.",
       "pressToStart": "Press the main pod to start.",
-      "bigNumbers": "Big numbers",
-      "bigLast": "Last",
-      "bigAverage": "Average",
-      "noValues": "No values yet.",
-      "seconds": "s"
+      "nowRun": "Round in progress – results appear here",
+      "nowPaused": "The game is paused. Resume when you are ready.",
+      "nowMenu": "No game is running. Pick one in the pod menu.",
+      "nowDiscovery": "The pods are joining the set.",
+      "nowError": "The pod reports an error.",
+      "nowOffline": "The set is not connected right now.",
+      "round": "Round {{n}} of {{max}}",
+      "startWith": "Start with these values"
     },
-    "demoReady": "Demo: ready to start"
+    "demoReady": "Demo: ready to start",
+    "continueWith": "Continue with these values",
+    "cap": {
+      "repeat": "Result is discarded",
+      "repeatLong": "Run this round again – its result is discarded",
+      "pause": "Hold the game",
+      "stop": "End the game"
+    },
+    "who": {
+      "title": "Who is training?",
+      "hint": "Results are only saved for a named athlete.",
+      "more": "More ({{count}})",
+      "fewer": "Fewer"
+    },
+    "last": {
+      "title": "Last round result",
+      "best": "Best",
+      "average": "Average",
+      "faster": "{{diff}} faster than the round before",
+      "slower": "{{diff}} slower than the round before",
+      "same": "Same as the round before",
+      "all": "All rounds today",
+      "none": "No round result yet.",
+      "noValues": "This round has no values."
+    },
+    "vars": {
+      "title": "Values for the next round",
+      "less": "Less: {{name}}",
+      "more": "More: {{name}}",
+      "changedContinue": "Changed – applied with Continue",
+      "changedStart": "Changed – applied with Start"
+    },
+    "guide": {
+      "title": "Connect a set",
+      "intro": "Connect the main pod of your set to train with it.",
+      "step1": "Switch the pod on.",
+      "step2": "Hold the top button while the ring fills white, until it is full.",
+      "step3": "Tap Bluetooth.",
+      "connect": "Connect a set"
+    },
+    "hint": {
+      "keepOpen": "Keep the app open while you train: the screen stays on, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
+      "dismiss": "Got it"
+    }
   },
   "platform": {
     "title": "Platform (preview)",

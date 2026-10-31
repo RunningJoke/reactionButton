@@ -59,20 +59,31 @@ await coach.getByRole("button", { name: "Add athlete" }).click();
 await coach.getByLabel("Name or nickname").fill("Mia");
 await coach.getByRole("button", { name: "Save" }).click();
 await coach.screenshot({ path: `${out}/results-athletes.png` });
-await coach.goto(`${base}#/set`);
-await coach.getByRole("button", { name: "Connect", exact: true }).click();
-await coach.getByRole("button", { name: /Demo pod/ }).click();
-await coach.getByText("/prog/solo.json").first().waitFor();
-await coach.getByLabel("Who trains now").selectOption({ label: "Mia" });
+// the demo pod's round result comes from Settings → Advanced; then back to the training surface
+const demoReport = async (page) => {
+  await page.goto(`${base}#/settings`);
+  await page.getByRole("button", { name: "Demo: send a round result" }).click();
+  await page.goto(`${base}#/train`);
+};
+await coach.goto(`${base}#/train`);
+await coach.screenshot({ path: `${out}/train-not-connected.png`, fullPage: true });
+await coach.getByRole("button", { name: "Connect a set" }).click();
+await coach.getByRole("button", { name: /demo/i }).click();
+await coach.getByRole("button", { name: "Mia" }).waitFor();
+await coach.getByRole("button", { name: "Mia" }).click();
+await coach.screenshot({ path: `${out}/train-idle.png`, fullPage: true });
 for (let i = 0; i < 3; i++) {
-  await coach.getByRole("button", { name: "Demo: send a report" }).click();
+  await demoReport(coach);
+  await coach.getByRole("button", { name: "Repeat" }).waitFor();
   await coach.waitForTimeout(150);
-  if (i === 1) await coach.getByRole("button", { name: "Repeat" }).click();
-  else await coach.getByRole("button", { name: "Continue" }).click();
+  if (i === 1) await coach.getByRole("button", { name: /Repeat/ }).click();
+  else await coach.getByRole("button", { name: "Continue", exact: true }).click();
   await coach.waitForTimeout(150);
 }
-await coach.locator("section", { hasText: "Who trains now" }).screenshot({ path: `${out}/pod-training.png` });
-await coach.getByRole("link", { name: "Open session" }).click();
+await demoReport(coach);
+await coach.getByRole("button", { name: "More: Rounds" }).click();
+await coach.screenshot({ path: `${out}/train-waiting.png`, fullPage: true });
+await coach.getByRole("link", { name: /All rounds today/ }).click();
 await coach.locator("details summary").first().click();
 await coach.screenshot({ path: `${out}/results-session.png`, fullPage: true });
 await coach.getByRole("link", { name: "Mia" }).click();

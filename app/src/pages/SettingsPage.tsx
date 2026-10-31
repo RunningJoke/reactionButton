@@ -5,6 +5,7 @@ import { Modal, modalStyles } from "../components/Modal";
 import { setLanguage, storedLanguage, type Language } from "../i18n";
 import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
+import { SimulatedTransport } from "../pod/simulated/SimulatedTransport";
 import { isReadOnly, needsPin, usePodSession } from "../pod/session";
 import { deleteFiles } from "../pod/syncActions";
 import { useExpertMode } from "../editor/expertMode";
@@ -71,6 +72,7 @@ function DebugConsole() {
       <h2>{t("settings.advanced")}</h2>
       <SwitchRow label={t("settings.expertMode")} hint={t("settings.expertModeHint")} checked={expert} onChange={setExpert} />
       <PlatformSettings />
+      <DemoActions />
       <details className={styles.details}>
         <summary>{t("settings.console")}</summary>
         <p className={styles.muted}>{t("settings.consoleHint")}</p>
@@ -89,6 +91,32 @@ function DebugConsole() {
       </details>
       <DeleteFiles />
     </section>
+  );
+}
+
+/** Demo pod only: make the round results and the start screen appear that a real game would send. */
+function DemoActions() {
+  const { t } = useTranslation();
+  const client = usePodSession((s) => s.client);
+  const state = usePodSession((s) => s.status?.state);
+  const refresh = usePodSession((s) => s.refreshStatus);
+  const pod = client?.transport instanceof SimulatedTransport ? client.transport.pod : null;
+  if (!pod) return null;
+  const run = (action: () => void) => () => {
+    action();
+    void refresh();
+  };
+  return (
+    <div className={styles.actions}>
+      {state === "MENU" && (
+        <button className={styles.bigButton} onClick={run(() => void pod.emitReady())}>
+          {t("training.demoReady")}
+        </button>
+      )}
+      <button className={styles.bigButton} onClick={run(() => void pod.emitSampleReport())}>
+        {t("training.demoReport")}
+      </button>
+    </div>
   );
 }
 

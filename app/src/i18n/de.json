@@ -35,6 +35,7 @@
     },
     "intro": "Mit der Zentrale deines Sets verbinden.",
     "menuHint": "Per Bluetooth verbinden: 1. Pod einschalten. 2. Den oberen Knopf gedrückt halten, während sich der Ring weiß füllt, bis er voll ist. 3. Bluetooth antippen.",
+    "trainingRunning": "Training läuft · Öffnen",
     "bleUnsupported": "Dieser Browser hat keinen Bluetooth-Zugriff. Chrome oder Edge verwenden, auf dem iPhone später die App.",
     "serialUnsupported": "USB braucht Chrome oder Edge auf einem Computer.",
     "connect": {
@@ -1583,14 +1584,7 @@
     "keepHolding": "Weiter halten…"
   },
   "training": {
-    "title": "Training",
-    "athlete": "Wer trainiert gerade",
-    "noReports": "Dieser Pod sendet noch keine Ergebnisse: Live-Ergebnisse brauchen eine Firmware, die Rundenergebnisse sendet. Du kannst die Person trotzdem schon auswählen.",
     "noRemote": "Dieser Pod lässt sich nicht aus der App steuern: das Spiel geht mit dem Taster oder nach der Wartezeit weiter.",
-    "waiting": "Warte auf das nächste Rundenergebnis…",
-    "lastReport": "Letztes Rundenergebnis",
-    "bestAverage": "{{metric}}: beste {{best}}, Schnitt {{average}}",
-    "openSession": "Training öffnen",
     "continue": "Weiter",
     "repeat": "Wiederholen",
     "stop": "Stopp",
@@ -1625,24 +1619,15 @@
       "protocol": "Der Pod hat eine Antwort geschickt, die die App nicht versteht."
     },
     "view": {
-      "link": "Trainingsansicht",
-      "title": "Trainingsansicht",
-      "intro": "Hier verfolgst du das Training des verbundenen Sets. Lass die App offen: Der Bildschirm bleibt an, solange diese Ansicht offen ist. Schläft das Telefon oder ist der Tab im Hintergrund, bricht die Bluetooth-Verbindung ab. Die App verbindet dann selbst neu.",
-      "connect": "Set verbinden",
-      "empty": "Kein Set verbunden. Verbinde ein Set, um sein Training hier zu verfolgen.",
       "connecting": "Verbindet…",
       "waiting": "Wartet auf dich",
       "waitingFor": "Das Spiel wartet bei „{{block}}“: weiter, wiederholen oder stoppen, oder die Werte für die nächste Runde ändern.",
       "oldFirmware": "Die Firmware dieses Pods kann noch keine Ergebnisse senden (ab Firmware 2.11 mit Rundenergebnissen). Die Person lässt sich trotzdem wählen.",
       "noLiveBle": "Vor Firmware 2.12 geht die Bluetooth-Verbindung während eines Spiels aus. Die App verbindet neu, wenn das Set wieder da ist.",
       "pause": "Pause",
-      "resume": "Weiter",
+      "resume": "Fortsetzen",
       "pausedSent": "Das Spiel ist pausiert.",
       "resumedSent": "Das Spiel läuft weiter.",
-      "variablesSent": "Werte gesendet.",
-      "setVariable": "Setzen",
-      "range": "{{min}} bis {{max}}",
-      "invalid": "Gib eine ganze Zahl von {{min}} bis {{max}} ein.",
       "state": {
         "MENU": "Pod-Menü",
         "DISCOVERY": "Suche",
@@ -1660,13 +1645,59 @@
       "start": "Start",
       "readyTitle": "Werte einstellen, dann starten.",
       "pressToStart": "Zum Starten die Zentrale drücken.",
-      "bigNumbers": "Große Zahlen",
-      "bigLast": "Letzter",
-      "bigAverage": "Mittelwert",
-      "noValues": "Noch keine Werte.",
-      "seconds": "s"
+      "nowRun": "Runde läuft – Ergebnisse erscheinen hier",
+      "nowPaused": "Das Spiel ist pausiert. Setze es fort, wenn du bereit bist.",
+      "nowMenu": "Kein Spiel läuft. Wähle eins im Pod-Menü.",
+      "nowDiscovery": "Die Pods verbinden sich mit dem Set.",
+      "nowError": "Der Pod meldet einen Fehler.",
+      "nowOffline": "Das Set ist gerade nicht verbunden.",
+      "round": "Runde {{n}} von {{max}}",
+      "startWith": "Mit diesen Werten starten"
     },
-    "demoReady": "Demo: bereit zum Start"
+    "demoReady": "Demo: bereit zum Start",
+    "continueWith": "Weiter mit diesen Werten",
+    "cap": {
+      "repeat": "Ergebnis wird verworfen",
+      "repeatLong": "Diese Runde noch einmal spielen – ihr Ergebnis wird verworfen",
+      "pause": "Spiel anhalten",
+      "stop": "Spiel beenden"
+    },
+    "who": {
+      "title": "Wer trainiert?",
+      "hint": "Ergebnisse werden nur für eine benannte Person gespeichert.",
+      "more": "Mehr ({{count}})",
+      "fewer": "Weniger"
+    },
+    "last": {
+      "title": "Letztes Rundenergebnis",
+      "best": "Beste",
+      "average": "Schnitt",
+      "faster": "{{diff}} schneller als die Runde davor",
+      "slower": "{{diff}} langsamer als die Runde davor",
+      "same": "Wie die Runde davor",
+      "all": "Alle Runden heute",
+      "none": "Noch kein Rundenergebnis.",
+      "noValues": "Diese Runde hat keine Werte."
+    },
+    "vars": {
+      "title": "Werte für die nächste Runde",
+      "less": "Weniger: {{name}}",
+      "more": "Mehr: {{name}}",
+      "changedContinue": "Geändert – gilt mit Weiter",
+      "changedStart": "Geändert – gilt mit Start"
+    },
+    "guide": {
+      "title": "Set verbinden",
+      "intro": "Verbinde die Zentrale deines Sets, um damit zu trainieren.",
+      "step1": "Pod einschalten.",
+      "step2": "Den oberen Knopf gedrückt halten, während sich der Ring weiß füllt, bis er voll ist.",
+      "step3": "Bluetooth antippen.",
+      "connect": "Set verbinden"
+    },
+    "hint": {
+      "keepOpen": "Lass die App beim Training offen: Der Bildschirm bleibt an, aber ein schlafendes Telefon oder ein Tab im Hintergrund trennt die Bluetooth-Verbindung. Die App verbindet dann selbst neu.",
+      "dismiss": "Verstanden"
+    }
   },
   "platform": {
     "title": "Plattform (Vorschau)",
