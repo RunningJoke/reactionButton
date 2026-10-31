@@ -102,12 +102,12 @@
 /* one line per step: number, category tile, the sentence, badges */
 .main {
   display: grid;
-  grid-template-columns: 22px 28px minmax(0, 1fr) auto;
+  grid-template-columns: 22px 40px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   width: 100%;
   min-height: 52px;
-  padding: 10px;
+  padding: 6px 10px;
   border: 0;
   border-radius: var(--radius-m);
   background: transparent;
@@ -127,9 +127,9 @@
 .tile {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--c) 16%, transparent);
   color: var(--c);
 }
@@ -187,7 +187,7 @@
   display: flex;
   flex-direction: column;
   margin: -4px 0 0;
-  padding: 0 var(--space-2) 4px 76px;
+  padding: 0 var(--space-2) 4px 88px;
   list-style: none;
 }
 

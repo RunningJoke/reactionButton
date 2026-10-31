@@ -210,7 +210,7 @@ const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupp
       <button type="button" className={styles.main} aria-pressed={selected} onClick={() => onSelect(step.block)}>
         <span className={styles.num}>{step.number}</span>
         <span className={styles.tile} aria-hidden>
-          <Icon size={16} />
+          <Icon size={20} />
         </span>
         <span className={styles.text}>
           {text}
