@@ -79,7 +79,7 @@ export function ProgramsPage() {
         </section>
       ) : (
         <p className={styles.connectHint}>
-          <PodIcon size={16} aria-hidden /> <Link to="/pod">{t("programs.connectHint")}</Link>
+          <PodIcon size={16} aria-hidden /> <Link to="/set">{t("programs.connectHint")}</Link>
         </p>
       )}
 

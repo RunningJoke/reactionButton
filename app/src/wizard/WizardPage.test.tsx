@@ -19,7 +19,7 @@ describe("New program chooser and game wizard", () => {
     HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
       this.removeAttribute("open");
     };
-    window.location.hash = "#/programs";
+    window.location.hash = "#/games";
     await i18n.changeLanguage("en");
   });
   afterEach(cleanup);

@@ -25,7 +25,19 @@ export function PodPage() {
       {state === "connected" ? <Connected /> : <NotConnected busy={state === "connecting"} />}
       <MenuLink />
       <TrainingLink />
+      {state === "connected" && <DisconnectButton />}
     </div>
+  );
+}
+
+/** The header chip opens this page when connected, so the disconnect lives here. */
+function DisconnectButton() {
+  const { t } = useTranslation();
+  const disconnect = usePodSession((s) => s.disconnect);
+  return (
+    <button className={page.bigButton} onClick={() => void disconnect()}>
+      <Unplug size={20} aria-hidden /> {t("pod.disconnect")}
+    </button>
   );
 }
 
@@ -33,7 +45,7 @@ export function PodPage() {
 function TrainingLink() {
   const { t } = useTranslation();
   return (
-    <Link to="/training" className={styles.menuLink}>
+    <Link to="/train" className={styles.menuLink}>
       <Activity size={22} aria-hidden />
       <span>{t("training.view.link")}</span>
       <ChevronRight size={20} aria-hidden />
@@ -45,7 +57,7 @@ function TrainingLink() {
 function MenuLink() {
   const { t } = useTranslation();
   return (
-    <Link to="/menu" className={`${styles.menuLink} ${styles.menuInRail}`}>
+    <Link to="/set/menu" className={styles.menuLink}>
       <ListOrdered size={22} aria-hidden />
       <span>{t("nav.menu")}</span>
       <ChevronRight size={20} aria-hidden />

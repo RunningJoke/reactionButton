@@ -72,15 +72,15 @@ export function useLocalMenu(): { menu: string[]; saved: boolean } {
 /** The simulator with a local program (`id`) or a program of a source. */
 export function simulateUrl(target: { id: string } | { source: SourceId; path: string }): string {
   return "id" in target
-    ? `/simulate?id=${encodeURIComponent(target.id)}`
-    : `/simulate?source=${target.source}&path=${encodeURIComponent(target.path)}`;
+    ? `/games/try?id=${encodeURIComponent(target.id)}`
+    : `/games/try?source=${target.source}&path=${encodeURIComponent(target.path)}`;
 }
 
 export function viewUrl(source: SourceId, path: string): string {
-  return `/programs/view?source=${source}&path=${encodeURIComponent(path)}`;
+  return `/games/view?source=${source}&path=${encodeURIComponent(path)}`;
 }
 
 /** The editor with a program open, optionally with a block selected (e.g. from a push error). */
 export function editorUrl(id: string, block?: string): string {
-  return `/editor?id=${encodeURIComponent(id)}${block ? `&block=${encodeURIComponent(block)}` : ""}`;
+  return `/games/edit?id=${encodeURIComponent(id)}${block ? `&block=${encodeURIComponent(block)}` : ""}`;
 }

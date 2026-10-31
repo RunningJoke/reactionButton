@@ -1,20 +1,22 @@
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { Loader, Unplug } from "lucide-react";
 import { usePodSession } from "../pod/session";
 import { TRANSPORT_ICONS } from "./ConnectDialog";
 import { useConnectDialog } from "./connectDialogStore";
 import styles from "./ConnectionChip.module.css";
 
-/** Connection state in the header; opens the connection dialog. */
+/** Connection state in the header; opens "This set" when connected, else the connection dialog. */
 export function ConnectionChip() {
   const { t } = useTranslation();
   const state = usePodSession((s) => s.state);
   const transport = usePodSession((s) => s.kind);
   const show = useConnectDialog((s) => s.show);
+  const navigate = useNavigate();
   const busy = state === "connecting" || state === "reconnecting";
   const Icon = busy ? Loader : state === "disconnected" || !transport ? Unplug : TRANSPORT_ICONS[transport];
   return (
-    <button className={styles.chip} data-state={state} onClick={show} aria-haspopup="dialog">
+    <button className={styles.chip} data-state={state} onClick={state === "connected" ? () => navigate("/set") : show} aria-haspopup={state === "connected" ? undefined : "dialog"}>
       <Icon size={16} aria-hidden className={busy ? styles.spin : undefined} />
       <span aria-live="polite">{t(`connection.${state}`)}</span>
     </button>

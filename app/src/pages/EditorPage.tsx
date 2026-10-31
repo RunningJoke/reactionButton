@@ -82,7 +82,7 @@ function NoProgram() {
           <button className={`${page.bigButton} ${page.primary}`} onClick={() => setCreating(true)}>
             <Plus size={20} aria-hidden /> {t("programs.new")}
           </button>
-          <Link to="/programs" className={page.bigButton}>
+          <Link to="/games" className={page.bigButton}>
             {t("editor.openProgram")}
           </Link>
         </div>
@@ -446,7 +446,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
         onClose={() => setDeleting(null)}
         onDeleted={() => {
           useEditor.getState().close();
-          navigate("/programs");
+          navigate("/games");
         }}
       />
     </div>

@@ -1,6 +1,6 @@
-import { HashRouter, Navigate, Route, Routes } from "react-router";
+import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { Layout } from "./Layout";
-import { DEFAULT_PATH } from "./navigation";
+import { DEFAULT_PATH, REDIRECTS } from "./navigation";
 import { PodPage } from "../pages/PodPage";
 import { EditorPage } from "../pages/EditorPage";
 import { MenuPage } from "../pages/MenuPage";
@@ -16,20 +16,28 @@ import { WizardPage } from "../wizard/WizardPage";
 import { TrainingPage } from "../pages/TrainingPage";
 
 
+function Redirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={to + search} replace />;
+}
+
 // Hash routing: works offline, on any host path and inside the Capacitor webview.
 export function App() {
   return (
     <HashRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/pod" element={<PodPage />} />
-          <Route path="/training" element={<TrainingPage />} />
-          <Route path="/programs" element={<ProgramsPage />} />
-          <Route path="/programs/view" element={<ProgramViewPage />} />
-          <Route path="/programs/new" element={<WizardPage />} />
-          <Route path="/editor" element={<EditorPage />} />
-          <Route path="/simulate" element={<SimulatePage />} />
-          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/train" element={<TrainingPage />} />
+          <Route path="/set" element={<PodPage />} />
+          <Route path="/set/menu" element={<MenuPage />} />
+          <Route path="/games" element={<ProgramsPage />} />
+          <Route path="/games/view" element={<ProgramViewPage />} />
+          <Route path="/games/new" element={<WizardPage />} />
+          <Route path="/games/edit" element={<EditorPage />} />
+          <Route path="/games/try" element={<SimulatePage />} />
+          {Object.entries(REDIRECTS).map(([from, to]) => (
+            <Route key={from} path={from} element={<Redirect to={to} />} />
+          ))}
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/results/athlete" element={<AthletePage />} />
           <Route path="/results/session" element={<SessionPage />} />

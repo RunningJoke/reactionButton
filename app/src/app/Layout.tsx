@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Settings } from "lucide-react";
-import { NAV_ITEMS, tabOfRoute } from "./navigation";
+import { ArrowLeft, Settings } from "lucide-react";
+import { NAV_ITEMS, SUBPAGES } from "./navigation";
 import { ConnectionChip } from "./ConnectionChip";
 import { ConnectDialog } from "./ConnectDialog";
 import { UpdatePrompt } from "./UpdatePrompt";
@@ -15,8 +15,8 @@ import styles from "./Layout.module.css";
 export function Layout() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  // a page that is reached from a tab (the training view, #46) keeps that tab's title and highlight
-  const current = NAV_ITEMS.find((item) => pathname.startsWith(item.path)) ?? NAV_ITEMS.find((item) => item.path === tabOfRoute(pathname));
+  const sub = SUBPAGES[pathname];
+  const titleKey = sub?.titleKey ?? NAV_ITEMS.find((item) => pathname.startsWith(item.path))?.labelKey;
   const load = useWorkspace((s) => s.load);
   useEffect(() => void load(), [load]);
   const loadResults = useResults((s) => s.load);
@@ -36,7 +36,12 @@ export function Layout() {
       </nav>
 
       <header className={styles.header}>
-        <h1 className={styles.title}>{current ? t(current.labelKey) : t("app.title")}</h1>
+        {sub && (
+          <Link to={sub.back} className={styles.backButton} aria-label={t("nav.back")}>
+            <ArrowLeft size={22} aria-hidden />
+          </Link>
+        )}
+        <h1 className={styles.title}>{titleKey ? t(titleKey) : t("app.title")}</h1>
         <ConnectionChip />
         <NavLink to="/settings" className={styles.headerButton} aria-label={t("nav.settings")}>
           <Settings size={22} aria-hidden />

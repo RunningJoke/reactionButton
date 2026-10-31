@@ -3,8 +3,10 @@
     "title": "ReactPod Config"
   },
   "nav": {
-    "pod": "Pod",
-    "programs": "Games",
+    "train": "Train",
+    "set": "This set",
+    "back": "Back",
+    "games": "Games",
     "editor": "Editor",
     "simulate": "Simulate",
     "menu": "Menu",

@@ -46,7 +46,7 @@ Web Bluetooth / Web Serial need HTTPS or `localhost`. Hosted on GitHub Pages
 TypeScript strict · React 19 + Vite · BLE `@capacitor-community/bluetooth-le` (Web Bluetooth in the browser,
 native in the app) · Web Serial (own adapter) · own column view (HTML + SVG arrows) · Zustand · IndexedDB via
 `idb` · `i18next` · `lucide-react` · plain CSS + CSS modules with tokens · `vite-plugin-pwa` · Vitest.
-Routing by URL hash (`#/programs`), so the build runs from any path and in a webview. A new version activates
+Routing by URL hash (`#/games`), so the build runs from any path and in a webview. A new version activates
 only after the user confirms (update prompt), so an edit in progress is never reloaded away.
 
 ## 4. Architecture
@@ -81,23 +81,27 @@ Used for development, tests and demos; it must behave like the firmware.
 
 ## 5. Screens
 
-Phone: header (title, connection chip, settings gear) + floating tab bar with five tabs; from 900 px a side
-rail with all destinations. Icon first, short label.
+Same on phone and desktop: header (title, connection chip, settings gear) + three destinations, **Train**,
+**Games** and **Results** (floating tab bar on phones, side rail from 900 px). Icon first, short label.
+Sub-pages show a back link in the header and keep their tab highlighted. Old links are redirected
+(`/pod` → `/set`, `/training` → `/train`, `/programs*` → `/games*`, `/editor` → `/games/edit`,
+`/simulate` → `/games/try`, `/menu` → `/set/menu`; query strings are kept). Default route: `/train`.
 
-| Tab | Content |
+| Route | Content |
 |---|---|
-| **Pod** | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
-| **Programs** | local, pod and shipped programs + library; new (chooser), duplicate, Adjust, import, export, set export / import |
-| **Editor** | one program (§7, editor-ux.md) |
-| **Simulate** | pods + graph + controls (§8) |
-| **Results** | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
-| Menu (from Pod) | order of `/programs.json`, LED ring picker per program |
-| Settings (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
+| **Train** `/train` | the training view (§ Training view); Connect when no set is connected |
+| **Games** `/games` | local, pod and shipped games + library; new (chooser), duplicate, Adjust, import, export, set export / import |
+| `/games/view`, `/games/new` | game details; wizard |
+| `/games/edit` | one game in the editor (§7, editor-ux.md) |
+| `/games/try` | simulator: pods + graph + controls (§8) |
+| **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
+| **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
+| `/set/menu` | order of `/programs.json`, LED ring picker per game |
+| Settings `/settings` (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
 
 - Touch targets ≥ 44 px, primary action in the thumb zone, every edit works without drag and drop.
 - State = colour + icon + text, never colour alone.
-- The connection chip is always visible; tapping it opens the connection dialog (Bluetooth / USB / demo pod,
-  or the connected pod and Disconnect).
+- The connection chip is always visible; tapping it opens *This set* when connected, else the connection dialog (Bluetooth / USB / demo pod).
 - When BLE fails, explain how to get the central into the menu (hold the button during the boot gauge).
 
 ## 6. Local data
@@ -264,7 +268,7 @@ With the remembered last common CRC (`SyncState`):
 - **Results** (`results/`, IndexedDB `reactpod-results`): `ReportFeed` stores each `report` event, then
   `ack`s it (no `ack` if storing fails, e.g. IndexedDB blocked → warning). Reports grouped into sessions per
   athlete; *Repeat* marks a report discarded (not in statistics). CSV: `;` (de) / `,` (en).
-- **Training view** (`pages/TrainingPage.tsx`, `/training`) is the only screen that controls a game (#87).
+- **Training view** (`pages/TrainingPage.tsx`, `/train`) is the only screen that controls a game (#87).
   The Pod tab has no game controls; it links to the Training tab. One card:
   - set name, state (`status.state` or connecting / reconnecting / not connected), *Waiting for you* while
     `communicate` waits; athlete (store value); last report with link to the session.

@@ -50,7 +50,7 @@ export function ProgramViewPage() {
     return (
       <div className={styles.empty}>
         <p>{source.available ? t("view.notFound", { path }) : t("view.notConnected")}</p>
-        <Link to="/programs">{t("view.back")}</Link>
+        <Link to="/games">{t("view.back")}</Link>
       </div>
     );
   }

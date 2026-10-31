@@ -48,7 +48,7 @@ export const ERROR_CODES = [
 ];
 
 /**
- * Training view (#46, #87): a card for the connected set, on its own tab-less route `/training` (linked from
+ * Training view (#46, #87): a card for the connected set, on its own tab-less route `/train` (linked from
  * the Pod tab). One set at a time (several sets at once are on hold, see connectPod). Each card shows the set's state, athlete, last report and the controls of the game.
  * The screen stays on while the view is open (wake lock, see wakeLock.ts).
  */

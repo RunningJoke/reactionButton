@@ -42,6 +42,16 @@
   color: var(--text-muted);
 }
 
+.backButton {
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  height: var(--touch);
+  margin-left: calc(-1 * var(--space-2));
+  border-radius: var(--radius-m);
+  color: var(--text-muted);
+}
+
 .headerButton:global(.active) {
   color: var(--accent);
 }
