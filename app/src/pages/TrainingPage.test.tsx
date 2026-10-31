@@ -163,14 +163,14 @@ describe("training view", () => {
     await waitFor(() => expect(pod.state).toBe("RUN"));
   });
 
-  it("without remote the start card says to press the central", async () => {
+  it("without remote the start card says to press the main pod", async () => {
     const pod = new SimulatedPod({ files: DEFAULT_FILES, programFormat: 4 });
     await connectPod("simulated", { transport: new SimulatedTransport(pod) });
     pod.state = "CONFIRM";
     await refresh();
     renderPage();
     const card = screen.getByRole("article");
-    expect(within(card).getByText("Press the central to start.")).toBeTruthy();
+    expect(within(card).getByText("Press the main pod to start.")).toBeTruthy();
     expect(within(card).queryByRole("button", { name: "Start" })).toBeNull();
   });
 

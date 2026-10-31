@@ -189,7 +189,7 @@ describe("step sheet", () => {
     addSprinkle(/^Countdown/);
     expect(block("Game").countdown).toBe("drain");
     // the central takes part is on by default: removing it writes false
-    expect(screen.getByText("Central takes part")).toBeTruthy();
+    expect(screen.getByText("Main pod takes part")).toBeTruthy();
   });
 
   it("pod: chips choose the pod", () => {
@@ -212,7 +212,7 @@ describe("step sheet", () => {
 
   it("light effect: effect, colour, where, how long, speed and wait", () => {
     render(<Harness name="Glow" />);
-    expect(screen.getByText(/Pulse the central blue/)).toBeTruthy();
+    expect(screen.getByText(/Pulse the main pod blue/)).toBeTruthy();
     const kinds = within(screen.getByRole("group", { name: "Effect" }));
     // speed of a periodic effect is an essential
     fireEvent.click(screen.getByRole("button", { name: "More: Cycle time" }));
@@ -246,7 +246,7 @@ describe("step sheet", () => {
     expect(sheet.textContent).not.toMatch(/maxMs|onsetMs|storePercent|accumulate\b/);
     fireEvent.click(screen.getByRole("button", { name: "Pod 2" }));
     expect(block("Charge").pod).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Central" }));
+    fireEvent.click(screen.getByRole("button", { name: "Main pod" }));
     expect(block("Charge").pod).toBeUndefined();
     fireEvent.click(screen.getByRole("button", { name: "Change colour" }));
     expect(block("Charge").style).toBe("colorShift");
@@ -355,10 +355,10 @@ describe("step sheet", () => {
     // a block exit shows under the essentials, unconnected team exits mean "the game goes on"
     fireEvent.click(screen.getByRole("button", { name: /^When everyone is team A/ }));
     const radios = within(screen.getByRole("radiogroup", { name: /When everyone is team A/ }));
-    expect(radios.getByRole("radio", { name: /Step \d+ · Light the central blue/ })).toBeTruthy();
+    expect(radios.getByRole("radio", { name: /Step \d+ · Light the main pod blue/ })).toBeTruthy();
     expect(radios.queryByRole("radio", { name: /Count a miss/ })).toBeNull(); // not a failure exit
     expect(radios.queryByRole("radio", { name: /Next round/ })).toBeNull(); // not inside a Repeat
-    fireEvent.click(radios.getByRole("radio", { name: /Step \d+ · Light the central blue/ }));
+    fireEvent.click(radios.getByRole("radio", { name: /Step \d+ · Light the main pod blue/ }));
     expect(block("Game").allA).toBe("End");
     // that is where the game goes on after it: "Next step"
     expect(screen.getByRole("button", { name: "When everyone is team A: Next step" })).toBeTruthy();
@@ -375,7 +375,7 @@ describe("step sheet", () => {
     // the add button opens the picker; nothing is written until a step is chosen
     expect(block("Press").pressed).toBe("Pick");
     expect(screen.getByRole("radiogroup", { name: "Then" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /Light the central blue/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Light the main pod blue/ }));
     expect(block("Press").pressed).toBe("End");
   });
 

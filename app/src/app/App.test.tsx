@@ -23,7 +23,7 @@ describe("App shell", () => {
 
   it("opens the programs tab by default", async () => {
     render(<App />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Programs" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Games" })).toBeTruthy();
   });
 
   it("shows the navigation and the connection state", () => {
@@ -42,6 +42,6 @@ describe("App shell", () => {
   it("switches to German", async () => {
     await i18n.changeLanguage("de");
     render(<App />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Programme" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Spiele" })).toBeTruthy();
   });
 });

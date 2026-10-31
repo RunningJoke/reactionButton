@@ -58,17 +58,17 @@ describe("Adjust sheet", () => {
   it("shows times in seconds and hides counters the program changes itself", () => {
     connectPod("central");
     show({ source: "pod", path: "/prog/drill.json" });
-    expect(screen.getByText(/The program on the pod stays as it is until you push/)).toBeTruthy();
+    expect(screen.getByText(/The game on the pod stays as it is until you send it to the pods/)).toBeTruthy();
     expect(screen.getByRole("group", { name: "Pause" }).textContent).toContain("1 s");
     expect(screen.queryByRole("group", { name: "Round counter" })).toBeNull(); // RUNS from lib/loop
     expect(screen.queryByRole("group", { name: "Selected pod" })).toBeNull();
-    expect(screen.queryByText(/not the central/)).toBeNull();
+    expect(screen.queryByText(/not the main pod/)).toBeNull();
   });
 
   it("says before saving that a copy from a read-only pod stays on this phone", async () => {
     connectPod("peripheral");
     show({ source: "pod", path: "/prog/drill.json" });
-    expect(screen.getByRole("note").textContent).toContain("It cannot be pushed to this pod");
+    expect(screen.getByRole("note").textContent).toContain("It cannot be sent to this pod");
     fireEvent.click(screen.getByRole("button", { name: "Less: Rounds" }));
     fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
     await waitFor(() => expect(useWorkspace.getState().programs).toHaveLength(1));
@@ -83,7 +83,7 @@ describe("Adjust sheet", () => {
     const json = generateProgram({ ...defaultAnswers("star", 3), timeLimit: null }, "repeat");
     await useWorkspace.getState().add(json, "local", { path: "/prog/mine.json" });
     show({ source: "local", path: "/prog/mine.json" });
-    expect(screen.getByText("Changes apply to the whole program.")).toBeTruthy();
+    expect(screen.getByText("Changes apply to the whole game.")).toBeTruthy();
     const results = screen.getByRole("switch", { name: /Show results at the end/ }) as HTMLInputElement;
     expect(results.checked).toBe(true);
     fireEvent.click(results);
@@ -112,7 +112,7 @@ describe("Adjust sheet", () => {
     sheet();
     expect(screen.getByText("Settings you can tweak")).toBeTruthy();
     expect(screen.getByRole("group", { name: "Rounds" })).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Pods besides the central" }).textContent).toContain("4");
+    expect(screen.getByRole("group", { name: "Pods besides the main pod" }).textContent).toContain("4");
     expect(screen.queryByLabelText("Start block")).toBeNull();
     cleanup();
     useExpertModeStore.setState({ on: true });

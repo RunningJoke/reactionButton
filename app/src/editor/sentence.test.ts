@@ -24,10 +24,10 @@ const en_ = (block: Record<string, unknown>, options = {}) => stepSentence(b(blo
 
 describe("step sentences", () => {
   it("lights and turns off the central", () => {
-    expect(en_({ type: "led", color: "green" })).toBe("Light the central green");
-    expect(en_({ type: "led", color: "off" })).toBe("Turn the central's LEDs off");
-    expect(en_({ type: "led", color: "red", leds: [0, 1, 2] })).toBe("Light 3 LEDs of the central red");
-    expect(en_({ type: "led", color: [10, 20, 30] })).toBe("Light the central in a custom colour");
+    expect(en_({ type: "led", color: "green" })).toBe("Light the main pod green");
+    expect(en_({ type: "led", color: "off" })).toBe("Turn the main pod's LEDs off");
+    expect(en_({ type: "led", color: "red", leds: [0, 1, 2] })).toBe("Light 3 LEDs of the main pod red");
+    expect(en_({ type: "led", color: [10, 20, 30] })).toBe("Light the main pod in a custom colour");
   });
 
   it("uses seconds, not ms", () => {
@@ -39,12 +39,12 @@ describe("step sentences", () => {
   });
 
   it("describes presses with their time limit and the false-start pause", () => {
-    expect(en_({ type: "button", pressed: "A" })).toBe("Wait for a press on the central");
-    expect(en_({ type: "button", pressed: "A", timeoutMs: 2000, timeout: "B", record: "reaction" })).toBe("Wait for a press on the central · max 2 s");
+    expect(en_({ type: "button", pressed: "A" })).toBe("Wait for a press on the main pod");
+    expect(en_({ type: "button", pressed: "A", timeoutMs: 2000, timeout: "B", record: "reaction" })).toBe("Wait for a press on the main pod · max 2 s");
     expect(en_({ type: "button", minTimeoutMs: 800, maxTimeoutMs: 5000, pressed: "False", timeout: "Go" })).toBe(
       "Wait 0.8–5 s (random), pressing now is a false start",
     );
-    expect(en_({ type: "button", short: "A", long: "B", shortMs: 1500 })).toBe("Wait for a press on the central · long press from 1.5 s");
+    expect(en_({ type: "button", short: "A", long: "B", shortMs: 1500 })).toBe("Wait for a press on the main pod · long press from 1.5 s");
   });
 
   it("counts pods from 1", () => {
@@ -65,7 +65,7 @@ describe("step sentences", () => {
     expect(en_({ type: "setVariable", var: "MISSES", op: "+", value: 1 })).toBe("Add 1 to MISSES");
     expect(en_({ type: "setVariable", var: "MISSES", value: 0 })).toBe("Set MISSES to 0");
     expect(en_({ type: "setVariable", var: "SEL", op: "random", value: "REQUIRED_PERIPHERALS" })).toBe("Choose a random pod");
-    expect(en_({ type: "setVariable", var: "SEL", op: "randomOther", value: "NODE_COUNT" })).toBe("Choose a random pod or the central, never the same twice");
+    expect(en_({ type: "setVariable", var: "SEL", op: "randomOther", value: "NODE_COUNT" })).toBe("Choose a random pod or the main pod, never the same twice");
     expect(en_({ type: "if", left: "MISSES", op: ">=", right: 3 })).toBe("Check: is MISSES at least 3?");
     expect(en_({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" })).toBe("Check: is SEL equal to the number of pods?");
     expect(en_({ type: "summary", metric: "reaction", storeAverage: "A", storeBest: "B" })).toBe("Show the results: average, best");
@@ -82,8 +82,8 @@ describe("step sentences", () => {
 
   it("asks whether the chosen pod is the central (lib/random.json)", () => {
     const chosenPods = new Set(["SEL"]);
-    expect(en_({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" }, { chosenPods })).toBe("Is the chosen pod the central?");
-    expect(en_({ type: "if", left: "REQUIRED_PERIPHERALS", op: "!=", right: "SEL" }, { chosenPods })).toBe("Is the chosen pod one of the pods, not the central?");
+    expect(en_({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" }, { chosenPods })).toBe("Is the chosen pod the main pod?");
+    expect(en_({ type: "if", left: "REQUIRED_PERIPHERALS", op: "!=", right: "SEL" }, { chosenPods })).toBe("Is the chosen pod one of the pods, not the main pod?");
     expect(stepSentence(b({ type: "if", left: "SEL", op: "==", right: "REQUIRED_PERIPHERALS" }), tDe, { chosenPods })).toBe("Ist der gewählte Pod die Zentrale?");
   });
 
@@ -103,20 +103,20 @@ describe("step sentences", () => {
   });
 
   it("light effects and countdowns (program format 3)", () => {
-    expect(en_({ type: "effect", effect: "pulse", color: "blue" })).toBe("Pulse the central blue");
+    expect(en_({ type: "effect", effect: "pulse", color: "blue" })).toBe("Pulse the main pod blue");
     expect(en_({ type: "effect", effect: "fill", color: "green", target: "all", durationMs: 800, wait: true })).toBe(
-      "Fill the central and all pods with green · for 0.8 s · wait until it is over",
+      "Fill the main pod and all pods with green · for 0.8 s · wait until it is over",
     );
     expect(en_({ type: "effect", effect: "blink", color: "red", target: 1 })).toBe("Blink pod 2 red");
     expect(en_({ type: "effect", effect: "off", target: "peripherals" })).toBe("Turn all pods off");
     expect(stepSentence(b({ type: "effect", effect: "spin", color: "cyan", target: 0, durationMs: 1200 }), tDe)).toBe("Cyan um Pod 1 drehen · für 1,2 s");
     expect(en_({ type: "delay", ms: 2000, countdown: "drain" })).toBe("Wait 2 s · the ring counts down");
-    expect(en_({ type: "button", timeoutMs: 1500, countdown: "fill" })).toBe("Wait for a press on the central · max 1.5 s · the ring counts down");
+    expect(en_({ type: "button", timeoutMs: 1500, countdown: "fill" })).toBe("Wait for a press on the main pod · max 1.5 s · the ring counts down");
     expect(en_({ type: "delay", ms: 2000, countdown: "secret" })).toBe("Wait 2 s");
   });
 
   it("hold to charge and let go (program format 3)", () => {
-    expect(en_({ type: "charge", maxMs: 2000 })).toBe("Hold the central to charge · full after 2 s");
+    expect(en_({ type: "charge", maxMs: 2000 })).toBe("Hold the main pod to charge · full after 2 s");
     expect(en_({ type: "charge", pod: 0, maxMs: 3000, mode: "accumulate", timeoutMs: 8000 })).toBe("Charge pod 1 by holding, letting go pauses · full after 3 s · max 8 s");
     expect(en_({ type: "release", pod: 1, maxHoldMs: 4000 })).toBe("Wait for pod 2 to be held and let go · max 4 s");
     expect(en_({ type: "release", mode: "signal", pod: 0, goColor: "green", minGoMs: 1500, maxGoMs: 3000, timeoutMs: 1000 })).toBe(

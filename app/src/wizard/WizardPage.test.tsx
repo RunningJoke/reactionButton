@@ -26,19 +26,19 @@ describe("New program chooser and game wizard", () => {
 
   it("offers three ways to start, the game first", async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "New program" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New game" }));
     const game = screen.getByRole("button", { name: /Start from a game/ });
     expect(game.textContent).toContain("Recommended");
-    expect(screen.getByRole("button", { name: /Copy one of my programs/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Copy one of my games/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start empty/ }).textContent).toContain("For people who know blocks");
-    fireEvent.click(screen.getByRole("button", { name: /Copy one of my programs/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy one of my games/ }));
     const dialog = screen.getByRole("dialog");
     expect(await within(dialog).findByRole("button", { name: /Solo/ })).toBeTruthy(); // shipped programs to copy
   });
 
   it("walks through the five questions to the Ready screen", async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "New program" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New game" }));
     fireEvent.click(screen.getByRole("button", { name: /Start from a game/ }));
     expect(await screen.findByText("Step 1 of 5")).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /All at once/ }));
@@ -49,7 +49,7 @@ describe("New program chooser and game wizard", () => {
     useWizard.getState().update((a) => ({ ...a, pods: 1 }));
     expect((await screen.findByRole("alert")).textContent).toContain("All at once needs at least 2 pods");
     expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: /More: Pods besides the central/ }));
+    fireEvent.click(screen.getByRole("button", { name: /More: Pods besides the main pod/ }));
     expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
 
