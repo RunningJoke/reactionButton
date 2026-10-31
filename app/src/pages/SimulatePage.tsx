@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Copy, FastForward, Hand, Pause, Pencil, Play, RotateCcw, StepForward } from "lucide-react";
+import { Named } from "../components/Named";
+import { isMsSetting } from "../editor/settingLabels";
+import { formatMs } from "../results/stats";
 import { LedRing } from "../components/LedRing";
 import { useEditor } from "../editor/editorStore";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
@@ -180,7 +183,7 @@ function Pods({ sim }: { sim: SimulationControls }) {
  * repeat, stop) and the editable variables. Behaves like the phone app would.
  */
 function WaitingPanel({ sim, view }: { sim: SimulationControls; view: CommunicateView }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const stats = Object.entries(view.report.stats);
   const vars = Object.entries(view.report.vars);
   const editable = Object.entries(view.editable);
@@ -204,11 +207,11 @@ function WaitingPanel({ sim, view }: { sim: SimulationControls; view: Communicat
           <tbody>
             {stats.map(([metric, s]) => (
               <tr key={metric}>
-                <td>{metric}</td>
+                <td><Named name={metric} /></td>
                 <td>{s.count}</td>
-                <td>{s.average}</td>
-                <td>{s.best}</td>
-                <td>{s.worst}</td>
+                <td>{formatMs(s.average, i18n.language)}</td>
+                <td>{formatMs(s.best, i18n.language)}</td>
+                <td>{formatMs(s.worst, i18n.language)}</td>
               </tr>
             ))}
           </tbody>
@@ -218,8 +221,8 @@ function WaitingPanel({ sim, view }: { sim: SimulationControls; view: Communicat
         <dl className={styles.variables}>
           {vars.map(([name, value]) => (
             <div key={name} className={styles.variable}>
-              <dt>{name}</dt>
-              <dd>{value}</dd>
+              <dt><Named name={name} /></dt>
+              <dd>{isMsSetting(name) ? formatMs(value, i18n.language) : value}</dd>
             </div>
           ))}
         </dl>
@@ -394,7 +397,7 @@ function Controls({ sim }: { sim: SimulationControls }) {
 }
 
 function Panels({ snapshot, trace }: { snapshot: Snapshot; trace: () => string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [copied, setCopied] = useState(false);
   const previous = useRef<Record<string, number>>({});
   const changed = new Set(Object.entries(snapshot.variables).filter(([k, v]) => previous.current[k] !== undefined && previous.current[k] !== v).map(([k]) => k));
@@ -437,11 +440,11 @@ function Panels({ snapshot, trace }: { snapshot: Snapshot; trace: () => string }
             <tbody>
               {snapshot.metrics.map((m) => (
                 <tr key={m.metric}>
-                  <td>{m.metric}</td>
+                  <td><Named name={m.metric} /></td>
                   <td>{m.count}</td>
-                  <td>{m.average}</td>
-                  <td>{m.best}</td>
-                  <td>{m.worst}</td>
+                  <td>{formatMs(m.average, i18n.language)}</td>
+                  <td>{formatMs(m.best, i18n.language)}</td>
+                  <td>{formatMs(m.worst, i18n.language)}</td>
                 </tr>
               ))}
             </tbody>
@@ -452,7 +455,7 @@ function Panels({ snapshot, trace }: { snapshot: Snapshot; trace: () => string }
             {t("simulate.last", {
               values: snapshot.measurements
                 .slice(-5)
-                .map((m) => `${m.ms} ms (${m.pod})`)
+                .map((m) => `${formatMs(m.ms, i18n.language)} (${m.pod})`)
                 .join(", "),
             })}
           </p>

@@ -233,7 +233,7 @@ describe("training view", () => {
     const card = screen.getByRole("article");
     fireEvent.click(await waitFor(() => within(card).getByRole("button", { name: /Big numbers/ })));
     expect(card.textContent).toContain("Average");
-    expect(card.textContent).toContain("350");
+    expect(card.textContent).toContain("0.35 s");
   });
 
   it("has a text for every error code the app can show", () => {

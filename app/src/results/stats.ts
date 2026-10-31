@@ -30,12 +30,12 @@ export function reportDuration(r: Pick<StoredReport, "startMs" | "endMs">): numb
   return r.startMs !== undefined && r.endMs !== undefined && r.endMs >= r.startMs ? r.endMs - r.startMs : undefined;
 }
 
-/** 312 ms, 4.1 s, 1:05.2 min */
+/**
+ * The one unit rule for durations shown to users: seconds, 2 decimals below 10 s ("0.35 s"), 1 decimal
+ * from 10 s ("12.4 s"), locale decimal separator. Raw ms stay in expert mode and the CSV export.
+ */
 export function formatMs(ms: number, locale: string): string {
-  if (ms < 1000) return `${ms} ms`;
-  const nf = (digits: number) => new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  if (ms < 60_000) return `${nf(ms < 10_000 ? 2 : 1).format(ms / 1000)} s`;
-  const min = Math.floor(ms / 60_000);
-  const sec = (ms % 60_000) / 1000;
-  return `${min}:${sec < 10 ? "0" : ""}${nf(1).format(sec)} min`;
+  const digits = ms < 9995 ? 2 : 1;
+  const nf = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${nf.format(ms / 1000)} s`;
 }

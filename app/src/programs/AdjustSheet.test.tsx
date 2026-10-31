@@ -88,7 +88,7 @@ describe("Adjust sheet", () => {
     expect(results.checked).toBe(true);
     fireEvent.click(results);
     fireEvent.click(screen.getByRole("switch", { name: /Time limit/ }));
-    expect(screen.getByRole("group", { name: "Seconds to press" }).textContent).toContain("2 s");
+    expect(screen.getByRole("group", { name: "Seconds to press" }).textContent).toContain("2.00 s");
     fireEvent.click(screen.getByRole("radio", { name: "Count a miss and go on" }));
     fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
     await waitFor(() => expect(useWorkspace.getState().programs[0]!.json).not.toBe(json));

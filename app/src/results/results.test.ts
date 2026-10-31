@@ -273,10 +273,16 @@ describe("csv", () => {
 
 describe("stats", () => {
   it("formats durations and sums up counted values", () => {
-    expect(formatMs(312, "en")).toBe("312 ms");
+    expect(formatMs(0, "en")).toBe("0.00 s");
+    expect(formatMs(312, "en")).toBe("0.31 s");
+    expect(formatMs(350, "de")).toBe("0,35 s");
+    expect(formatMs(999, "en")).toBe("1.00 s");
     expect(formatMs(4100, "en")).toBe("4.10 s");
-    expect(formatMs(44097, "de")).toBe("44,1 s");
-    expect(formatMs(65200, "en")).toBe("1:05.2 min");
+    expect(formatMs(9999, "en")).toBe("10.0 s");
+    expect(formatMs(10_000, "en")).toBe("10.0 s");
+    expect(formatMs(12_400, "de")).toBe("12,4 s");
+    expect(formatMs(65_432, "en")).toBe("65.4 s");
+    expect(formatMs(65_432, "de")).toBe("65,4 s");
     expect(reportDuration({ startMs: 100, endMs: 350 })).toBe(250);
     expect(reportDuration({ startMs: 100 })).toBeUndefined();
   });

@@ -8,6 +8,8 @@ import { isSignedIn, usePlatformSettings } from "../platform/settings";
 import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/csv";
 import type { StoredReport } from "../results/report";
 import { reportsOfSession, sessionUploadStatus, useResults } from "../results/results";
+import { Named } from "../components/Named";
+import { isMsSetting } from "../editor/settingLabels";
 import { formatMs, reportDuration, summarizeReports, summarizeValues } from "../results/stats";
 import { athleteUrl } from "./ResultsPage";
 import { formatDateTime, StatsTable, UploadBadge, useProgramName } from "./resultsUi";
@@ -183,7 +185,7 @@ function ReportItem({ report, n }: { report: StoredReport; n: number }) {
             <div className={styles.vars} aria-label={t("results.vars")}>
               {vars.map(([k, v]) => (
                 <span key={k}>
-                  {k} = {v}
+                  <Named name={k} /> = {isMsSetting(k) && typeof v === "number" ? formatMs(v, i18n.language) : v}
                 </span>
               ))}
             </div>
@@ -204,7 +206,7 @@ function ReportItem({ report, n }: { report: StoredReport; n: number }) {
                   {report.values.map((v, i) => (
                     <tr key={i}>
                       <td>{formatMs(Math.max(0, v.t - first), i18n.language)}</td>
-                      <td>{v.metric}</td>
+                      <td><Named name={v.metric} /></td>
                       <td>{v.pod}</td>
                       <td>{formatMs(v.ms, i18n.language)}</td>
                     </tr>

@@ -1626,7 +1626,7 @@
       "bigLast": "Letzter",
       "bigAverage": "Mittelwert",
       "noValues": "Noch keine Werte.",
-      "ms": "ms"
+      "seconds": "s"
     },
     "demoReady": "Demo: bereit zum Start"
   },
@@ -1841,13 +1841,15 @@
     }
   },
   "settingLabels": {
+    "targetTime": "Zielzeit",
+    "holdTime": "Haltezeit",
     "teamAPods": "Pods von Team A",
     "teamBPods": "Pods von Team B",
     "teamATime": "Zeit von Team A",
     "teamBTime": "Zeit von Team B",
     "flips": "Wechsel",
     "rounds": "Runden",
-    "runs": "Rundenzähler",
+    "runs": "Gespielte Runden",
     "pause": "Pause",
     "pauseMin": "Kürzeste Pause",
     "pauseMax": "Längste Pause",
@@ -1860,6 +1862,14 @@
     "lastReaction": "Letzte Reaktionszeit",
     "requiredPeripherals": "Pods außer der Zentrale",
     "nodeCount": "Pods mit der Zentrale"
+  },
+  "labels": {
+    "metric": {
+      "reaction": "Reaktionszeit",
+      "lap": "Rundenzeit",
+      "cycle": "Spielzeit",
+      "charge": "Ladezeit"
+    }
   },
   "adjust": {
     "action": "Anpassen",

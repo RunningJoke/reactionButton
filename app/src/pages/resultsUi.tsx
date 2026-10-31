@@ -5,6 +5,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { usePodSession } from "../pod/session";
 import type { SessionUploadStatus } from "../results/results";
 import { formatMs, type MetricSummary } from "../results/stats";
+import { Named } from "../components/Named";
 import { useWorkspace } from "../store/workspace";
 import styles from "./Results.module.css";
 
@@ -73,7 +74,7 @@ export function StatsTable({ stats, caption }: { stats: readonly MetricSummary[]
           {stats.map((m) => (
             <tr key={m.metric}>
               <th scope="row">
-                {m.metric}
+                <Named name={m.metric} />
                 <span className={styles.cellSub}>{t("results.valueCount", { count: m.count })}</span>
               </th>
               <td>{formatMs(m.best, i18n.language)}</td>

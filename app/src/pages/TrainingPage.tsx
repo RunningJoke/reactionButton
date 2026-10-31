@@ -13,6 +13,8 @@ import { sendAthlete, sendCommand, sendPause, sendResume, sendStart, sendVariabl
 import { reportsOfSession, useResults } from "../results/results";
 import type { StoredReport } from "../results/report";
 import { formatMs, reportDuration, summarizeValues } from "../results/stats";
+import { Named } from "../components/Named";
+import { isMsSetting, labelOf } from "../editor/settingLabels";
 import { AthleteModal, sessionUrl } from "./ResultsPage";
 import { useProgramName } from "./resultsUi";
 import page from "./Page.module.css";
@@ -230,7 +232,7 @@ function SetCard({ store }: { store: StoreApi<PodSession> }) {
                 .slice(0, 2)
                 .map((m) => (
                   <span key={m.metric}>
-                    {t("training.bestAverage", { metric: m.metric, best: formatMs(m.best, i18n.language), average: formatMs(m.average, i18n.language) })}
+                    {t("training.bestAverage", { metric: labelOf(m.metric, t), best: formatMs(m.best, i18n.language), average: formatMs(m.average, i18n.language) })}
                   </span>
                 ))}
             </span>
@@ -342,24 +344,24 @@ function mainMetric(reports: readonly StoredReport[]): string | undefined {
 
 /** The last value and the average of the main metric, in large figures for the athlete at 2 m (#87). */
 function BigNumbers({ reports }: { reports: readonly StoredReport[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const metric = mainMetric(reports);
   const values = reports.flatMap((r) => r.values.filter((v) => v.metric === metric).map((v) => v.ms));
   if (!metric || values.length === 0) return <p className={styles.muted}>{t("training.view.noValues")}</p>;
   const average = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   return (
     <div className={view.big}>
-      <span className={view.bigMetric}>{metric}</span>
+      <span className={view.bigMetric}>{labelOf(metric, t)}</span>
       <div className={view.bigPair}>
         <span className={view.bigLabel}>{t("training.view.bigLast")}</span>
         <span className={view.bigValue}>
-          {values.at(-1)} <small>{t("training.view.ms")}</small>
+          {formatMs(values.at(-1)!, i18n.language)}
         </span>
       </div>
       <div className={view.bigPair}>
         <span className={view.bigLabel}>{t("training.view.bigAverage")}</span>
         <span className={view.bigValue}>
-          {average} <small>{t("training.view.ms")}</small>
+          {formatMs(average, i18n.language)}
         </span>
       </div>
     </div>
@@ -370,6 +372,13 @@ function BigNumbers({ reports }: { reports: readonly StoredReport[] }) {
 function wholeIn(draft: string, min: number, max: number): number | null {
   const n = Number(draft);
   return draft.trim() !== "" && Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
+
+/** Times (…_MS) are typed in seconds, the pod gets ms. */
+const toDraft = (name: string, value: number) => String(isMsSetting(name) ? value / 1000 : value);
+function fromDraft(name: string, draft: string, min: number, max: number): number | null {
+  if (!isMsSetting(name)) return wholeIn(draft, min, max);
+  return draft.trim() === "" || !Number.isFinite(Number(draft)) ? null : wholeIn(String(Math.round(Number(draft) * 1000)), min, max);
 }
 
 /** The start card in CONFIRM (#87): the editable variables as steppers, then Start (`setVariables` if changed, `start`). */
@@ -386,7 +395,7 @@ function StartCard({
 }) {
   const { t } = useTranslation();
   const names = Object.keys(editable);
-  const [drafts, setDrafts] = useState(() => Object.fromEntries(names.map((n) => [n, String(editable[n]!.value)])));
+  const [drafts, setDrafts] = useState(() => Object.fromEntries(names.map((n) => [n, toDraft(n, editable[n]!.value)])));
   const [invalid, setInvalid] = useState<string[]>([]);
 
   if (!canStart) return <p className={styles.muted}>{t("training.view.pressToStart")}</p>;
@@ -396,7 +405,7 @@ function StartCard({
     const bad: string[] = [];
     for (const name of names) {
       const range = editable[name]!;
-      const n = wholeIn(drafts[name] ?? "", range.min, range.max);
+      const n = fromDraft(name, drafts[name] ?? "", range.min, range.max);
       if (n === null) bad.push(name);
       else if (n !== range.value) changes[name] = n;
     }
@@ -443,19 +452,22 @@ function VariableField({
   onDraft: (draft: string) => void;
 }) {
   const { t } = useTranslation();
+  const secs = isMsSetting(name);
+  const [lo, hi] = secs ? [min / 1000, max / 1000] : [min, max];
+  const unit = secs ? " " + t("training.view.seconds") : "";
   return (
     <>
       <label className={styles.field}>
         <span>
-          {name} <span className={styles.muted}>{t("training.view.range", { min, max })}</span>
+          <Named name={name} /> <span className={styles.muted}>{t("training.view.range", { min: lo + unit, max: hi + unit })}</span>
         </span>
         <input
           className={styles.input}
           type="number"
-          inputMode="numeric"
-          step={1}
-          min={min}
-          max={max}
+          inputMode={secs ? "decimal" : "numeric"}
+          step={secs ? 0.01 : 1}
+          min={lo}
+          max={hi}
           value={draft}
           aria-invalid={invalid || undefined}
           onChange={(e) => onDraft(e.target.value)}
@@ -463,7 +475,7 @@ function VariableField({
       </label>
       {invalid && (
         <p className={view.error} role="alert">
-          {t("training.view.invalid", { min, max })}
+          {t("training.view.invalid", { min: lo + unit, max: hi + unit })}
         </p>
       )}
     </>
@@ -487,12 +499,12 @@ function VariableInput({
   onSet: (n: number) => void;
 }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState(String(value));
+  const [draft, setDraft] = useState(toDraft(name, value));
   const [invalid, setInvalid] = useState(false);
-  useEffect(() => setDraft(String(value)), [value]);
+  useEffect(() => setDraft(toDraft(name, value)), [name, value]);
 
   const submit = () => {
-    const n = wholeIn(draft, min, max);
+    const n = fromDraft(name, draft, min, max);
     setInvalid(n === null);
     if (n !== null) onSet(n);
   };

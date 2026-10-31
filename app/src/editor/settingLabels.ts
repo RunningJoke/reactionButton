@@ -26,6 +26,8 @@ const KNOWN: Record<string, { key: string; unit: SettingUnit }> = {
   PAUSE_MIN_MS: { key: "pauseMin", unit: "s" },
   PAUSE_MAX_MS: { key: "pauseMax", unit: "s" },
   TIME_LIMIT_MS: { key: "timeLimit", unit: "s" },
+  TARGET_MS: { key: "targetTime", unit: "s" },
+  HOLD_MS: { key: "holdTime", unit: "s" },
   RED_PODS: { key: "redPods", unit: "count" },
   AVOID_COUNT: { key: "redPods", unit: "count" },
   MISSES: { key: "misses", unit: "count" },
@@ -62,6 +64,14 @@ export function settingLabel(name: string, t: TFunction): SettingLabel {
     toDisplay: seconds ? msToS : identity,
     fromDisplay: seconds ? sToMs : identity,
   };
+}
+
+/**
+ * The words for a variable or metric name (one lookup for every screen): a label the program brings
+ * (`programLabels`, later), else the table above, else the shipped metrics (`labels.metric.*`), else the name.
+ */
+export function labelOf(name: string, t: TFunction, programLabels?: Readonly<Record<string, string>>): string {
+  return programLabels?.[name] ?? (KNOWN[name] ? settingLabel(name, t).label : t(`labels.metric.${name}`, { defaultValue: name }));
 }
 
 /** Variables a block writes (`setVariable.var`, `storeAs`, `storeIndex`, `summary.store…`). */
