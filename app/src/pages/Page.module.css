@@ -4,6 +4,11 @@
   padding: var(--space-4);
 }
 
+/* a page with the + button: its last control scrolls above the button (Layout keeps the tab bar room) */
+.withFab {
+  padding-bottom: var(--fab-clear);
+}
+
 .empty {
   display: flex;
   flex-direction: column;

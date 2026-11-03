@@ -14,14 +14,15 @@ export function PlatformSettings() {
   const { t } = useTranslation();
   const settings = usePlatformSettings();
   const { hash } = useLocation();
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     if (hash === "#platform") ref.current?.scrollIntoView?.({ block: "start" });
   }, [hash]);
 
   return (
-    <section className={page.section} id="platform" ref={ref}>
-      <h2>{t("platform.title")}</h2>
+    <details className={page.details} id="platform" ref={ref} open={hash === "#platform"}>
+      <summary>{t("platform.title")}</summary>
+      <p className={styles.muted}>{t("platform.devNote")}</p>
       <p className={styles.muted}>{t("platform.intro")}</p>
       <label className={styles.field}>
         {t("platform.server")}
@@ -36,7 +37,7 @@ export function PlatformSettings() {
         />
       </label>
       {settings.baseUrl && (isSignedIn(settings) ? <SignedIn /> : <SignIn />)}
-    </section>
+    </details>
   );
 }
 

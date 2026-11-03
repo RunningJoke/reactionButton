@@ -1,7 +1,8 @@
 {
   "version": 1,
-  "description": "Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
   "name": "Dreieck",
+  "story": { "en": "Each round one random pod lights up, the main pod included, never the same one twice in a row. Press it as fast as you can. Your reaction times are recorded.", "de": "In jeder Runde leuchtet ein zufälliger Pod auf, die Zentrale eingeschlossen, nie zweimal derselbe. So schnell wie möglich drücken. Die Reaktionszeiten werden gemessen." },
+  "labels": { "reaction": { "en": "Reaction time", "de": "Reaktionszeit" }, "cycle": { "en": "Total time", "de": "Gesamtzeit" } },
   "peripherals": 2,
   "menu": [ { "leds": [7, 9, 11], "color": "blue" } ],
   "variables": { "MAX_LOOPS": 12 },

@@ -9,13 +9,15 @@ type Props = {
   onToggle: (index: number) => void;
   size?: number;
   label: string;
+  /** the LED numbers beside the ring (default: shown) */
+  numbers?: boolean;
 };
 
 /**
  * Tappable 18-LED ring (same geometry as LedRing: LED 0 at the top, clockwise). Each LED is a
  * checkbox, so the picker also works with a keyboard and a screen reader.
  */
-export function LedRingPicker({ colors, onToggle, size = 240, label }: Props) {
+export function LedRingPicker({ colors, onToggle, size = 240, label, numbers = true }: Props) {
   const { t } = useTranslation();
   const r = 40;
   return (
@@ -55,9 +57,9 @@ export function LedRingPicker({ colors, onToggle, size = 240, label }: Props) {
               stroke={on ? "var(--text)" : "none"}
               strokeWidth={on ? (dark ? 1.4 : 0.8) : 0}
             />
-            <text x={50 + Math.cos(a) * 31.5} y={50 + Math.sin(a) * 31.5 + 1.4} className="led-picker-index">
+            {numbers && <text x={50 + Math.cos(a) * 31.5} y={50 + Math.sin(a) * 31.5 + 1.4} className="led-picker-index">
               {i}
-            </text>
+            </text>}
           </g>
         );
       })}

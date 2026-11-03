@@ -74,9 +74,15 @@
   color: var(--text);
 }
 
+/* disabled: muted, not faded (keeps 3:1 against the surface) */
 .icon:disabled {
-  opacity: 0.35;
+  color: var(--text-muted);
   cursor: default;
+}
+
+.actions .icon {
+  width: var(--touch);
+  color: var(--text);
 }
 
 .icon[data-level="error"] {
@@ -111,24 +117,53 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  /* nothing of the list may paint over the bar below */
+  overflow: hidden;
 }
 
-/* primary action in the thumb zone */
-.fab {
-  position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
-  z-index: 4;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
+/* bottom bar of my game: undo, redo, add a step, Try (above the tab bar, which the page keeps room for) */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.addStep,
+.tryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-2);
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--radius-m);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+/* the label may wrap (German at 360 px): the button grows, the icon stays beside it */
+.addStep {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--space-1);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.addStep > svg,
+.tryButton > svg {
+  flex: none;
+}
+
+.tryButton {
   background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
-  cursor: pointer;
 }
 
 .locked {

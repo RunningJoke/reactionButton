@@ -2,11 +2,24 @@ import { describe, expect, it } from "vitest";
 import i18next from "i18next";
 import en from "../i18n/en.json";
 import de from "../i18n/de.json";
-import { isMsSetting, settingLabel, settingRange, stepSetting, tweakableSettings } from "./settingLabels";
+import { isMsSetting, labelOf, settingLabel, settingRange, stepSetting, tweakableSettings } from "./settingLabels";
 import { VARS } from "../wizard/generate";
 
 const i18n = i18next.createInstance();
 await i18n.init({ lng: "en", fallbackLng: false, resources: { en: { translation: en }, de: { translation: de } } });
+
+describe("labelOf", () => {
+  it("words for variables and metrics, raw name as fallback, program label wins", () => {
+    const de_ = i18n.getFixedT("de");
+    expect(labelOf("MAX_LOOPS", i18n.t)).toBe("Rounds");
+    expect(labelOf("TARGET_MS", i18n.t)).toBe("Target time");
+    expect(labelOf("RUNS", de_)).toBe("Gespielte Runden");
+    expect(labelOf("reaction", i18n.t)).toBe("Reaction time");
+    expect(labelOf("lap", de_)).toBe("Rundenzeit");
+    expect(labelOf("SOMETHING_ELSE", i18n.t)).toBe("SOMETHING_ELSE");
+    expect(labelOf("MAX_LOOPS", i18n.t, { MAX_LOOPS: "Laps" })).toBe("Laps");
+  });
+});
 
 describe("setting labels", () => {
   it("names rounds and counts", () => {

@@ -1,5 +1,7 @@
 /* Step list (simple view of the editor). Category colours come from editor.css. */
 .scroll {
+  /* border-box: the room for the sheet below is inside the height, not on top of it */
+  box-sizing: border-box;
   height: 100%;
   overflow: auto;
   overscroll-behavior: contain;
@@ -23,8 +25,64 @@
   gap: var(--space-2);
   max-width: 560px;
   margin: 0 auto;
-  /* bottom: room for the floating + */
-  padding: var(--space-3) var(--space-3) 96px;
+  padding: var(--space-3) var(--space-3) var(--space-6);
+}
+
+/* the check result on top of the list: the first problem, Fix and Show all */
+.problem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--error) 10%, var(--surface));
+}
+
+.problem[data-level="warn"] {
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
+}
+
+.problem > svg {
+  flex: none;
+  color: var(--error);
+}
+
+.problem[data-level="warn"] > svg {
+  color: var(--warn);
+}
+
+.problemText {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.problemActions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.problemActions button {
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.problemActions button:hover {
+  background: var(--surface-2);
 }
 
 .section h3 {
@@ -99,15 +157,36 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* a step just added: a short highlight; with reduced motion it stays still */
+.card[data-fresh] {
+  animation: freshFlash 1.6s ease-out 1;
+}
+
+@keyframes freshFlash {
+  from {
+    background: var(--accent-soft);
+  }
+  to {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-fresh] {
+    animation: none;
+    background: var(--accent-soft);
+  }
+}
+
 /* one line per step: number, category tile, the sentence, badges */
 .main {
   display: grid;
-  grid-template-columns: 22px 28px minmax(0, 1fr) auto;
+  grid-template-columns: 22px 40px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   width: 100%;
   min-height: 52px;
-  padding: 10px;
+  padding: 6px 10px;
   border: 0;
   border-radius: var(--radius-m);
   background: transparent;
@@ -127,9 +206,9 @@
 .tile {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--c) 16%, transparent);
   color: var(--c);
 }
@@ -187,7 +266,7 @@
   display: flex;
   flex-direction: column;
   margin: -4px 0 0;
-  padding: 0 var(--space-2) 4px 76px;
+  padding: 0 var(--space-2) 4px 88px;
   list-style: none;
 }
 

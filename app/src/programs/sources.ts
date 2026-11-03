@@ -69,18 +69,21 @@ export function useLocalMenu(): { menu: string[]; saved: boolean } {
   }, [saved, podMenu]);
 }
 
-/** The simulator with a local program (`id`) or a program of a source. */
-export function simulateUrl(target: { id: string } | { source: SourceId; path: string }): string {
-  return "id" in target
-    ? `/simulate?id=${encodeURIComponent(target.id)}`
-    : `/simulate?source=${target.source}&path=${encodeURIComponent(target.path)}`;
+/** A game: one of my games (`id`) or a program of a source. */
+export type GameTarget = { id: string } | { source: SourceId; path: string };
+export type GameMode = "about" | "edit" | "try";
+export const GAME_MODES: readonly GameMode[] = ["about", "edit", "try"];
+
+/** The game page (docs/app/spec.md §3): About, Edit and Try are modes of one game. */
+export function gameUrl(target: GameTarget, mode: GameMode = "about", block?: string): string {
+  const which = "id" in target ? `id=${encodeURIComponent(target.id)}` : `source=${target.source}&path=${encodeURIComponent(target.path)}`;
+  return `/games/game?${which}&mode=${mode}${block ? `&block=${encodeURIComponent(block)}` : ""}`;
 }
 
-export function viewUrl(source: SourceId, path: string): string {
-  return `/programs/view?source=${source}&path=${encodeURIComponent(path)}`;
-}
+/** Try with a local program (`id`) or a program of a source. */
+export const simulateUrl = (target: GameTarget): string => gameUrl(target, "try");
 
-/** The editor with a program open, optionally with a block selected (e.g. from a push error). */
-export function editorUrl(id: string, block?: string): string {
-  return `/editor?id=${encodeURIComponent(id)}${block ? `&block=${encodeURIComponent(block)}` : ""}`;
-}
+export const viewUrl = (source: SourceId, path: string): string => gameUrl({ source, path });
+
+/** Edit, optionally with a block selected (e.g. from a push error). */
+export const editorUrl = (id: string, block?: string): string => gameUrl({ id }, "edit", block);

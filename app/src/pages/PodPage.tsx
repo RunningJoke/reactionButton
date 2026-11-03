@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Activity, AlertTriangle, BatteryFull, BatteryMedium, BatteryWarning, BookLock, ChevronRight, FileJson, Info, KeyRound, Lightbulb, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug } from "lucide-react";
+import { Activity, AlertTriangle, BatteryWarning, BookLock, ChevronDown, ChevronRight, CircleCheck, FileJson, Info, KeyRound, Lightbulb, ListOrdered, Loader, Lock, Pencil, Plug, RefreshCw, Unplug, WifiOff } from "lucide-react";
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
-import { LedRing } from "../components/LedRing";
 import { Modal, modalStyles } from "../components/Modal";
 import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
-import { PodError, type BatteryLevel, type FileEntry, type ListResponse } from "../pod/protocol";
-import { LOW_BATTERY_PERCENT } from "../pod/battery";
+import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
 import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
+import { canFind, podHealth, type PodHealth } from "../pod/setView";
 import type { SyncStatus } from "../pod/sync";
 import { useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
-import { SyncBadge, SyncSection } from "./PodSync";
+import { ResetMenuButton, SyncBadge, UnsentCard } from "./PodSync";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
 
@@ -23,31 +22,34 @@ export function PodPage() {
     <div className={page.page}>
       <ErrorBanner />
       {state === "connected" ? <Connected /> : <NotConnected busy={state === "connecting"} />}
-      <MenuLink />
-      <TrainingLink />
     </div>
   );
 }
 
-/** The training view of all connected sets (#46): no tab either, linked from the pod. */
+/** A running game: a one-line way back to the training surface (the controls live there). */
 function TrainingLink() {
   const { t } = useTranslation();
+  const state = usePodSession((s) => s.status?.state);
+  if (state !== "RUN" && state !== "PAUSED") return null;
   return (
-    <Link to="/training" className={styles.menuLink}>
+    <Link to="/train" className={styles.menuLink}>
       <Activity size={22} aria-hidden />
-      <span>{t("training.view.link")}</span>
+      <span>{t("pod.trainingRunning")}</span>
       <ChevronRight size={20} aria-hidden />
     </Link>
   );
 }
 
-/** The program menu has no tab on phones (five tabs at most); it belongs to the pod, so it is linked here. */
-function MenuLink() {
+/** The pod menu has no tab on phones; it belongs to the pod, so it is linked here. */
+function MenuRow({ count }: { count?: number }) {
   const { t } = useTranslation();
   return (
-    <Link to="/menu" className={styles.menuLink}>
+    <Link to="/set/menu" className={styles.menuLink}>
       <ListOrdered size={22} aria-hidden />
-      <span>{t("nav.menu")}</span>
+      <span>
+        {t("menu.title")}
+        {count !== undefined && <small className={styles.rowSub}>{t("pod.menuRow", { count })}</small>}
+      </span>
       <ChevronRight size={20} aria-hidden />
     </Link>
   );
@@ -57,21 +59,24 @@ function NotConnected({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const show = useConnectDialog((s) => s.show);
   return (
-    <div className={page.empty}>
-      <Unplug size={40} aria-hidden className={page.emptyIcon} />
-      <p>
-        <strong>{t("pod.notConnected")}</strong>
-        <br />
-        {t("pod.intro")}
-      </p>
-      <button className={`${page.bigButton} ${page.primary}`} onClick={show} disabled={busy}>
-        {busy ? <Loader size={20} aria-hidden className={styles.spin} /> : <Plug size={20} aria-hidden />}
-        {busy ? t("connection.connecting") : t("pod.connectButton")}
-      </button>
-      <p className={styles.hint}>
-        <Info size={16} aria-hidden /> {t("pod.menuHint")}
-      </p>
-    </div>
+    <>
+      <div className={page.empty}>
+        <Unplug size={40} aria-hidden className={page.emptyIcon} />
+        <p>
+          <strong>{t("pod.notConnected")}</strong>
+          <br />
+          {t("pod.intro")}
+        </p>
+        <button className={`${page.bigButton} ${page.primary}`} onClick={show} disabled={busy}>
+          {busy ? <Loader size={20} aria-hidden className={styles.spin} /> : <Plug size={20} aria-hidden />}
+          {busy ? t("connection.connecting") : t("pod.connectButton")}
+        </button>
+        <p className={styles.hint}>
+          <Info size={16} aria-hidden /> {t("pod.menuHint")}
+        </p>
+      </div>
+      <MenuRow />
+    </>
   );
 }
 
@@ -83,77 +88,87 @@ function Connected() {
   const session = usePodSession();
   const { info, list, role, kind } = session;
   const [renaming, setRenaming] = useState(false);
+  const [details, setDetails] = useState(false);
   const states = useSyncStates();
   const refreshStatus = usePodSession((s) => s.refreshStatus);
+  const disconnect = usePodSession((s) => s.disconnect);
   useEffect(() => {
     const timer = window.setInterval(() => void refreshStatus(), BATTERY_REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [refreshStatus]);
-  if (!info || !list) return null;
-  const podStatus = session.status;
+  if (!info || !list || !kind) return null;
   const readOnly = isReadOnly(session);
   const status = new Map(states?.map((s) => [s.path, s.status]));
+  const podCount = 1 + (session.status?.pods?.length ?? 0);
 
   return (
     <>
-      <section className={page.section}>
-        <div className={styles.podHeader}>
-          <LedRing size={64} />
-          <div className={styles.podTitle}>
-            <h2 className={styles.podName}>{setLabel(session) ?? t(`pod.kind.${kind}`)}</h2>
-            <span className={styles.badge} data-role={role}>
-              {readOnly && <Lock size={14} aria-hidden />}
-              {t(`pod.role.${role ?? "booting"}`)}
-            </span>
-          </div>
-          <div className={styles.actions}>
-            {!readOnly && (
-              <button className={styles.iconButton} onClick={() => setRenaming(true)} aria-label={t("pod.rename")} title={t("pod.rename")}>
-                <Pencil size={20} aria-hidden />
-              </button>
+      <header className={styles.setHeader}>
+        <div className={styles.podTitle}>
+          <h2 className={styles.podName}>{setLabel(session) ?? t(`pod.kind.${kind}`)}</h2>
+          <p className={styles.sub}>
+            {readOnly ? (
+              <>
+                <Lock size={14} aria-hidden /> {t(`pod.role.${role ?? "booting"}`)}
+              </>
+            ) : (
+              t("pod.summary", { via: t(`pod.via.${kind}`), count: podCount })
             )}
-            <button className={styles.iconButton} onClick={() => void session.refresh()} aria-label={t("pod.refresh")} title={t("pod.refresh")}>
-              <RefreshCw size={20} aria-hidden />
-            </button>
-          </div>
-        </div>
-        <dl className={styles.facts}>
-          <Fact label={t("pod.firmware")} value={info.firmware} warn={!firmwareSupported(info)} />
-          <Fact label={t("pod.setId")} value={info.setId} mono />
-          <Fact label={t("pod.generation")} value={String(list.generation)} />
-          <Fact label={t("pod.free")} value={formatBytes(info.freeBytes, i18n.language)} />
-          {podStatus?.battery && (
-            <Fact
-              label={t("pod.battery")}
-              value={`${podStatus.battery.percent} % · ${formatVolts(podStatus.battery.mv, i18n.language)}`}
-              warn={podStatus.battery.percent < LOW_BATTERY_PERCENT}
-            />
-          )}
-        </dl>
-        {!firmwareSupported(info) && <p className={styles.warn}>{t("pod.firmwareUnsupported", { version: info.firmware })}</p>}
-        {programFormatNewer(info) && (
-          <p className={styles.warn}>{t("pod.programFormatNewer", { pod: info.programFormat, app: PROGRAM_FORMAT })}</p>
-        )}
-        {readOnly && <p className={styles.note}>{t("pod.readOnly")}</p>}
-        {!readOnly && info.pinRequired && (
-          <p className={styles.note}>
-            <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
           </p>
+        </div>
+        {!readOnly && (
+          <button className={styles.textButton} onClick={() => setRenaming(true)}>
+            <Pencil size={18} aria-hidden /> {t("pod.renameButton")}
+          </button>
         )}
-      </section>
-
+      </header>
+      {!firmwareSupported(info) && <p className={styles.warn}>{t("pod.firmwareUnsupported", { version: info.firmware })}</p>}
+      {programFormatNewer(info) && <p className={styles.warn}>{t("pod.programFormatNewer", { pod: info.programFormat, app: PROGRAM_FORMAT })}</p>}
+      {readOnly && <p className={styles.note}>{t("pod.readOnly")}</p>}
+      {!readOnly && info.pinRequired && (
+        <p className={styles.note}>
+          <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
+        </p>
+      )}
+      <TrainingLink />
+      <UnsentCard states={states} readOnly={readOnly} />
       {role === "central" && <PodList />}
-      <SyncSection states={states} readOnly={readOnly} />
-      <FileGroups list={list} status={status} />
+      <MenuRow count={list.menu.length} />
+      <button className={styles.menuLink} aria-expanded={details} onClick={() => setDetails(!details)}>
+        <Info size={22} aria-hidden />
+        <span>{t("pod.details")}</span>
+        {details ? <ChevronDown size={20} aria-hidden /> : <ChevronRight size={20} aria-hidden />}
+      </button>
+      {details && (
+        <>
+          <section className={page.section}>
+            <dl className={styles.facts}>
+              <Fact label={t("pod.firmware")} value={info.firmware} warn={!firmwareSupported(info)} />
+              <Fact label={t("pod.setId")} value={info.setId} mono />
+              <Fact label={t("pod.generation")} value={String(list.generation)} />
+              <Fact label={t("pod.free")} value={formatBytes(info.freeBytes, i18n.language)} />
+            </dl>
+            <button className={styles.textButton} onClick={() => void session.refresh()}>
+              <RefreshCw size={18} aria-hidden /> {t("pod.refresh")}
+            </button>
+          </section>
+          <FileGroups list={list} status={status} />
+        </>
+      )}
+      <div className={styles.bottom}>
+        {!readOnly && <ResetMenuButton states={states} />}
+        <button className={page.bigButton} onClick={() => void disconnect()}>
+          <Unplug size={20} aria-hidden /> {t("pod.disconnect")}
+        </button>
+      </div>
       <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />
     </>
   );
 }
 
 /**
- * The pods of the set (status.pods, central): number and identity colour (firmware ≥ 2.13), and a Blink
- * button per pod to find it (feature `identify`), and the battery (feature `battery`). Older firmware shows
- * the list without the extra fields.
+ * The pods of the set: the main pod and every `status.pods` entry, each with its health in words,
+ * the battery (unknown = nothing shown) and Find (the `blink` op, feature `identify`).
  */
 function PodList() {
   const { t } = useTranslation();
@@ -161,9 +176,10 @@ function PodList() {
   const client = session.client;
   const pods = session.status?.pods ?? [];
   const canBlink = session.info?.features?.includes("identify") ?? false;
+  const findable = canFind(session.status?.state);
   const [blinking, setBlinking] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  if (!client || (pods.length === 0 && !canBlink)) return null;
+  if (!client) return null;
 
   const blink = async (pod: number) => {
     setBlinking(pod);
@@ -171,61 +187,63 @@ function PodList() {
     try {
       await client.blink(pod);
     } catch (e) {
-      setError(e instanceof PodError && e.code === "busy" ? t("pod.podList.blinkBusy") : t("pod.podList.blinkFailed"));
+      setError(e instanceof PodError && e.code === "busy" ? t("pod.podList.findBusy") : t("pod.podList.findFailed"));
     } finally {
       setBlinking(null);
     }
   };
 
-  const blinkButton = (pod: number, label: string, aria: string) =>
-    canBlink && (
-      <button className={styles.blinkButton} onClick={() => void blink(pod)} disabled={blinking !== null} aria-label={aria}>
-        {blinking === pod ? <Loader size={18} aria-hidden className={styles.spin} /> : <Lightbulb size={18} aria-hidden />}
-        {label}
-      </button>
-    );
+  const rows = [
+    { id: -1, name: t("pod.podList.central"), color: "var(--led-white)" as string | undefined, alive: true, battery: session.status?.battery },
+    ...pods.map((p) => ({ id: p.id, name: t("pod.podList.number", { number: p.number ?? p.id + 1 }), color: p.color, alive: p.alive, battery: p.battery })),
+  ];
 
   return (
     <section className={page.section}>
-      <h2>
-        <Lightbulb size={16} aria-hidden /> {t("pod.podList.title")}
-      </h2>
+      <h2>{t("pod.podList.title", { count: rows.length })}</h2>
       <ul className={styles.podList}>
-        {canBlink && (
-          <li className={styles.podRow}>
-            <span className={styles.colorDot} style={{ background: "var(--led-white)" }} aria-hidden />
-            <span className={styles.podLabel}>{t("pod.podList.central")}</span>
-            {blinkButton(-1, t("pod.podList.blink"), t("pod.podList.blinkCentralAria"))}
+        {rows.map((row) => (
+          <li key={row.id} className={styles.podRow}>
+            {row.color && <span className={styles.colorDot} style={{ background: row.color }} aria-hidden />}
+            <span className={styles.podText}>
+              <span className={styles.podLabel}>{row.name}</span>
+              <PodStatusText health={podHealth(row.alive, row.battery)} percent={row.battery?.percent} />
+            </span>
+            {canBlink && (
+              <button
+                className={styles.blinkButton}
+                onClick={() => void blink(row.id)}
+                disabled={blinking !== null || !findable || !row.alive}
+                aria-label={t("pod.podList.findAria", { name: row.name })}
+              >
+                {blinking === row.id ? <Loader size={18} aria-hidden className={styles.spin} /> : <Lightbulb size={18} aria-hidden />}
+                {t("pod.podList.find")}
+              </button>
+            )}
           </li>
-        )}
-        {pods.map((pod) => {
-          const number = pod.number ?? pod.id + 1;
-          return (
-            <li key={pod.id} className={styles.podRow}>
-              {pod.color && <span className={styles.colorDot} style={{ background: pod.color }} aria-hidden />}
-              <span className={styles.podLabel}>
-                {t("pod.podList.number", { number })}
-                {!pod.alive && <span className={styles.offline}> {t("pod.podList.offline")}</span>}
-              </span>
-              {pod.battery && <BatteryBadge battery={pod.battery} />}
-              {blinkButton(pod.id, t("pod.podList.blink"), t("pod.podList.blinkAria", { number }))}
-            </li>
-          );
-        })}
+        ))}
       </ul>
-      {canBlink && <p className={styles.note}>{t("pod.podList.blinkHint")}</p>}
+      {canBlink && !findable && <p className={styles.note}>{t("pod.podList.notWhileRunning")}</p>}
       {error && <p className={styles.warn}>{error}</p>}
     </section>
   );
 }
 
-/** Percent with an icon and a colour: low (below 15 %), mid (below 50 %), ok. */
-function BatteryBadge({ battery }: { battery: BatteryLevel }) {
-  const level = battery.percent < LOW_BATTERY_PERCENT ? "low" : battery.percent < 50 ? "mid" : "ok";
-  const Icon = level === "low" ? BatteryWarning : level === "mid" ? BatteryMedium : BatteryFull;
+/** Health in words and an icon, not by colour alone; an unknown battery shows nothing. */
+export function PodStatusText({ health, percent }: { health: PodHealth; percent?: number }) {
+  const { t } = useTranslation();
+  const Icon = health === "offline" ? WifiOff : health === "low" ? BatteryWarning : CircleCheck;
+  const text =
+    health === "offline"
+      ? t("pod.health.offline")
+      : health === "low"
+        ? t("pod.health.low", { percent })
+        : percent === undefined
+          ? t("pod.health.online")
+          : `${t("pod.health.online")} · ${t("pod.battery", { percent })}`;
   return (
-    <span className={styles.battery} data-level={level}>
-      <Icon size={18} aria-hidden /> {battery.percent} %
+    <span className={styles.podStatus} data-health={health}>
+      <Icon size={14} aria-hidden /> {text}
     </span>
   );
 }
@@ -240,7 +258,8 @@ function RenameSetModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [busy, setBusy] = useState(false);
   const askPin = needsPin(session);
   const value = name ?? session.info?.setName ?? "";
-  const tooLong = byteLength(value.trim()) > MAX_SET_NAME;
+  const used = byteLength(value.trim());
+  const tooLong = used > MAX_SET_NAME;
 
   const close = () => {
     setName(null);
@@ -295,8 +314,9 @@ function RenameSetModal({ open, onClose }: { open: boolean; onClose: () => void 
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && void save()}
       />
-      {tooLong && <p className={modalStyles.error}>{t("pod.nameTooLong", { max: MAX_SET_NAME })}</p>}
-      <p className={styles.note}>{t("pod.renameHint")}</p>
+      <p className={tooLong ? modalStyles.error : styles.note} aria-live="polite">
+        <span className={styles.counter}>{used}/{MAX_SET_NAME}</span> {t("pod.renameHint", { max: MAX_SET_NAME })}
+      </p>
       {askPin && (
         <>
           <label htmlFor="set-pin">{t("pod.pin")}</label>
@@ -313,7 +333,6 @@ function RenameSetModal({ open, onClose }: { open: boolean; onClose: () => void 
         </>
       )}
       {error && <p className={modalStyles.error}>{error}</p>}
-      <p className={styles.note}>{t("pod.renameLater")}</p>
     </Modal>
   );
 }
@@ -377,10 +396,6 @@ function FileGroups({ list, status }: { list: ListResponse; status: ReadonlyMap<
       </section>
     </>
   );
-}
-
-function formatVolts(mv: number, language: string): string {
-  return `${new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(mv / 1000)} V`;
 }
 
 function FileRow({ path, file, status }: { path: string; file?: FileEntry; status?: SyncStatus }) {

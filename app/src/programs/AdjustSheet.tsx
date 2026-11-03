@@ -13,6 +13,7 @@ import { PodsField, TweakSettings } from "../editor/ProgramSettings";
 import { setProgramField, type ProgramJson } from "../editor/ops";
 import { isReadOnly, usePodSession } from "../pod/session";
 import { useWorkspace } from "../store/workspace";
+import { formatMs } from "../results/stats";
 import { saveAdjusted } from "./actions";
 import { editorUrl, simulateUrl, useProgramSource, type SourceId } from "./sources";
 import { OptionList, Stepper, SwitchRow } from "../wizard/controls";
@@ -153,7 +154,7 @@ export function AdjustSheet({ target, onClose }: { target: AdjustTarget; onClose
 function ProgramSwitches({ json, apply }: { json: ProgramJson; apply: (json: ProgramJson) => void }) {
   const { t } = useTranslation();
   const locale = t("wizard.numberLocale");
-  const sec = (ms: number) => `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ms / 1000)} s`;
+  const sec = (ms: number) => formatMs(ms, locale);
   const applies = (["timeLimit", "record", "results"] as const).filter((id) => programSwitchApplies(json, id));
   if (applies.length === 0) return <p className={styles.muted}>{t("adjust.noSwitches")}</p>;
 

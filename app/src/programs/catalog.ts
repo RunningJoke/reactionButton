@@ -1,5 +1,5 @@
 /** Overview of the programs and library fragments in a set of files (pod or shipped). */
-import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
+import { INDEX_PATH, isLibraryPath, programFormatOf } from "@reactpod/program-model";
 import { isObject, isProgramFile, type MenuGroup } from "@reactpod/program-model";
 import { resolveProgram, validateProgram, type FileSource, type Issue, type ValidateOptions } from "@reactpod/program-model";
 import { byteLength } from "../pod/utf8";
@@ -12,6 +12,8 @@ export type CatalogEntry = {
   peripherals: number;
   menu: MenuGroup[];
   blocks: number;
+  /** program format the pod needs to run it (programs.md §6) */
+  format: number;
   size: number;
   inMenu: boolean;
   issues: Issue[];
@@ -61,6 +63,7 @@ export function buildCatalog(paths: Iterable<string>, source: FileSource, option
         peripherals: typeof doc.peripherals === "number" ? doc.peripherals : 0,
         menu: Array.isArray(doc.menu) ? doc.menu : [],
         blocks: resolved.blocks.length,
+        format: programFormatOf(resolved),
         issues: resolved.issues,
       });
     } else if (isObject(doc)) {
@@ -73,10 +76,11 @@ export function buildCatalog(paths: Iterable<string>, source: FileSource, option
         peripherals: 0,
         menu: [],
         blocks: Array.isArray(doc.blocks) ? doc.blocks.length : 0,
+        format: programFormatOf(resolved),
         issues: resolved.issues,
       });
     } else {
-      entries.set(path, { ...base, kind: "broken", name: fileName(path), peripherals: 0, menu: [], blocks: 0, issues: resolveProgram(path, source).issues });
+      entries.set(path, { ...base, kind: "broken", name: fileName(path), peripherals: 0, menu: [], blocks: 0, format: 1, issues: resolveProgram(path, source).issues });
     }
   }
 

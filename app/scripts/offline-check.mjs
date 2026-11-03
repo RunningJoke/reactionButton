@@ -8,7 +8,7 @@ const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({ locale: "en-US" });
 const page = await context.newPage();
 
-await page.goto(`${base}#/programs`);
+await page.goto(`${base}#/games`);
 // the service worker installs on the first visit and controls the page from the next load on
 await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
 await page.reload();

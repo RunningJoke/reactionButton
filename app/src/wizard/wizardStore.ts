@@ -12,7 +12,7 @@ export const READY_STEP = WIZARD_STEPS.length;
 export const DEFAULT_PODS = 3;
 
 /** Route of the wizard (inside Programs). */
-export const WIZARD_PATH = "/programs/new";
+export const WIZARD_PATH = "/games/new";
 
 type WizardState = {
   answers: WizardAnswers;

@@ -10,7 +10,7 @@ import { LED_COUNT, MAX_FILE_SIZE, byteLength, formatProgram } from "@reactpod/p
 import { LedRingPicker } from "../components/LedRingPicker";
 import { usePodSession } from "../pod/session";
 import { useTakenPaths } from "../programs/actions";
-import { editorUrl, simulateUrl, useLocalMenu } from "../programs/sources";
+import { editorUrl, gameUrl, simulateUrl, useLocalMenu } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import {
   GAMES,
@@ -48,7 +48,7 @@ export function WizardPage() {
   return (
     <div className={styles.page}>
       <div className={styles.top}>
-        <button type="button" className={styles.iconButton} aria-label={t("wizard.cancel")} title={t("wizard.cancel")} onClick={() => navigate("/programs")}>
+        <button type="button" className={styles.iconButton} aria-label={t("wizard.cancel")} title={t("wizard.cancel")} onClick={() => navigate("/games")}>
           <X size={22} aria-hidden />
         </button>
         <div className={styles.topText}>
@@ -76,7 +76,7 @@ export function WizardPage() {
       </div>
 
       <div className={styles.bar}>
-        <button type="button" className={styles.button} onClick={() => (step === 0 ? navigate("/programs") : setStep(step - 1))}>
+        <button type="button" className={styles.button} onClick={() => (step === 0 ? navigate("/games") : setStep(step - 1))}>
           <ArrowLeft size={18} aria-hidden /> {t("wizard.back")}
         </button>
         <button type="button" className={`${styles.button} ${styles.primary}`} disabled={blocking.length > 0} onClick={() => setStep(step + 1)}>
@@ -474,7 +474,7 @@ function ReadyScreen() {
                 const doc = await persist();
                 if (!menu.includes(doc.path)) await setMenu([...menu, doc.path]);
                 useWizard.getState().start();
-                navigate("/menu");
+                navigate(gameUrl({ id: doc.id }));
               })}
             >
               <ListPlus size={18} aria-hidden /> {t("wizard.ready.saveToMenu")}

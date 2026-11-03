@@ -1,7 +1,9 @@
 {
   "version": 1,
   "name": "Release",
-  "description": "Demo of the release block (programFormat 3, firmware 2.9). Per round: 1) trigger: hold pod 0 (yellow, blue once held) and let go - the hold time is stored in HOLD_MS. 2) signal: hold pod 0 again; after a random 1.5-3 s the ring turns green and the pod must be released within 1 s (the ring drains) - the start reaction is recorded as 'reaction'. Releasing before green is a false start (red), too late is yellow. 3) trigger on the central: hold its button and let go to end the round (max 4 s). No hold within 8 s ends the round. Needs one peripheral with firmware 2.9 (link feature 'hold'), else its steps are skipped. Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
+  "description": "Demo of the release block (programFormat 3, firmware 2.9). Per round: 1) trigger: hold pod 0 (yellow, blue once held) and let go - the hold time is stored in HOLD_MS. 2) signal: hold pod 0 again; after a random 1.5-3 s the ring turns green and the pod must be released within 1 s (the ring drains) - the start reaction is recorded as 'reaction'. Releasing before green is a false start (red), too late is yellow. 3) trigger on the central: hold its button and let go to end the round (max 4 s). No hold within 8 s ends the round. Needs one peripheral with firmware 2.9 (link feature 'hold'), else its steps are skipped.",
+  "story": { "en": "Hold the pod and let go to start. Hold it again and let go as soon as the ring turns green. Letting go early is a false start. Finally hold the main pod and let go to end the round.", "de": "Pod halten und loslassen zum Start. Erneut halten und loslassen, sobald der Ring grün wird. Zu früh loslassen ist ein Fehlstart. Zum Schluss die Zentrale halten und loslassen, um die Runde zu beenden." },
+  "labels": { "reaction": { "en": "Release reaction", "de": "Reaktion beim Loslassen" }, "HOLD_MS": { "en": "Hold time", "de": "Haltezeit" }, "cycle": { "en": "Total time", "de": "Gesamtzeit" } },
   "peripherals": 1,
   "menu": [ { "leds": [4, 13], "color": "green" } ],
   "variables": { "MAX_LOOPS": 3 },

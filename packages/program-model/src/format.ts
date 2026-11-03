@@ -5,7 +5,7 @@
 import { blockType } from "./blockTypes";
 import { isObject } from "./program";
 
-const PROGRAM_KEYS = ["version", "name", "description", "peripherals", "menu", "variables", "include", "start", "blocks"];
+const PROGRAM_KEYS = ["version", "name", "description", "story", "labels", "peripherals", "menu", "variables", "include", "start", "blocks"];
 
 /** Block keys in a stable order: name, type, parameters, ports, then anything unknown. */
 export function orderBlock(block: Record<string, unknown>): Record<string, unknown> {

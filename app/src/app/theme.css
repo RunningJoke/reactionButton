@@ -24,6 +24,9 @@
   --tabbar-h: 68px;
   /* floating tab bar: gap to the screen edges */
   --tabbar-gap: 12px;
+  /* the + button of a page, above the tab bar; --fab-clear is the bottom room a scrolling page keeps for it */
+  --fab-size: 56px;
+  --fab-clear: calc(var(--fab-size) + 2 * var(--space-4));
   --rail-w: 84px;
   --icon-stroke: 2.5;
 
@@ -32,6 +35,7 @@
   --surface: #ffffff;
   --surface-2: #e2eaf6;
   --border: #c9d5e8;
+  --border-strong: #6f86ad;
   --text: #0b1630;
   --text-muted: #4a5c7e;
   --accent: #1e5bd8;
@@ -72,6 +76,7 @@
     --surface: #122039;
     --surface-2: #1a2c4d;
     --border: #26395e;
+    --border-strong: #4f6a9e;
     --text: #e7eefa;
     --text-muted: #93a5c6;
     --accent: #5b9bff;

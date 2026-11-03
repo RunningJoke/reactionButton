@@ -52,11 +52,6 @@
   font-weight: 600;
 }
 
-.offline {
-  font-weight: 400;
-  color: var(--warn);
-}
-
 .blinkButton {
   flex: none;
   display: inline-flex;
@@ -79,17 +74,9 @@
   cursor: default;
 }
 
-.podHeader {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.podHeader > :global(.led-ring) {
-  flex: none;
-}
-
 .menuLink {
+  box-sizing: border-box;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -100,8 +87,11 @@
   border-radius: var(--radius-l);
   background: var(--surface);
   color: var(--text);
+  font: inherit;
   font-weight: 600;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .menuLink span {
@@ -112,19 +102,8 @@
   color: var(--text-muted);
 }
 
-/* wide screens have the menu in the side rail */
-@media (min-width: 900px) {
-  .menuLink {
-    display: none;
-  }
-}
-
 .podTitle {
   flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -135,45 +114,6 @@
   text-transform: none !important;
   letter-spacing: 0 !important;
   color: var(--text) !important;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.badge:not([data-role="central"]) {
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
-
-.actions {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.iconButton {
-  display: grid;
-  place-items: center;
-  width: var(--touch);
-  height: var(--touch);
-  border: 0;
-  border-radius: var(--radius-m);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.iconButton:hover {
-  background: var(--surface-2);
-  color: var(--text);
 }
 
 .facts {
@@ -199,24 +139,6 @@
 
 .mono {
   font-family: var(--font-mono);
-}
-
-.battery {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--ok);
-}
-
-.battery[data-level="mid"] {
-  color: var(--warn);
-}
-
-.battery[data-level="low"] {
-  color: var(--error);
 }
 
 .warn,
@@ -299,4 +221,93 @@ ol.files .file::before {
   margin-right: var(--space-2);
   font-family: var(--font);
   font-weight: 600;
+}
+
+.setHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rowSub {
+  display: block;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.podText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.podText .podLabel {
+  flex: none;
+}
+
+.podStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.podStatus[data-health="online"] svg {
+  color: var(--ok);
+}
+
+.podStatus[data-health="low"] {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.podStatus[data-health="offline"] {
+  color: var(--error);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Reset menu and Disconnect: apart from the everyday actions above */
+.bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.bottom > * {
+  justify-content: center;
 }

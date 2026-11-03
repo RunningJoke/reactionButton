@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Download, Link2, Pencil, Trash2, Unlink } from "lucide-react";
+import { ChevronRight, Download, Ellipsis, Link2, Pencil, Trash2, Unlink } from "lucide-react";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
 import { PlatformError, type PlatformAthlete } from "../platform/api";
-import { canUpload, platformClient, usePlatformSettings } from "../platform/settings";
+import { canUpload, isSignedIn, platformClient, usePlatformSettings } from "../platform/settings";
 import { deleteAthleteEverywhere } from "../results/athleteDeletion";
 import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/csv";
 import type { Athlete } from "../results/report";
 import { sessionUploadStatus, useResults } from "../results/results";
-import { summarizeReports } from "../results/stats";
+import { athleteProgress, formatMs, relativeDay, summarizeReports } from "../results/stats";
+import { Named } from "../components/Named";
 import { AthleteModal, sessionUrl } from "./ResultsPage";
-import { formatDateTime, StatsTable, UploadBadge, useProgramName } from "./resultsUi";
+import { ChangeChip, StatsTable, TrendBars, UploadBadge, useProgramName } from "./resultsUi";
 import page from "./Page.module.css";
 import styles from "./Results.module.css";
 
@@ -24,9 +25,11 @@ export function AthletePage() {
   const id = params.get("id");
   const { athletes, sessions, reports, loaded, load } = useResults();
   const programName = useProgramName();
+  const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const claimedIds = usePlatformSettings((s) => s.claimedAthleteIds) ?? [];
+  const platformOn = usePlatformSettings(isSignedIn);
   useEffect(() => void load(), [load]);
 
   const none = id === "none";
@@ -36,7 +39,7 @@ export function AthletePage() {
     return (
       <div className={page.page}>
         <p className={page.muted}>
-          {t("results.athleteMissing")} <Link to="/results">{t("results.back")}</Link>
+          {t("results.athleteMissing")}
         </p>
       </div>
     );
@@ -44,7 +47,10 @@ export function AthletePage() {
   const own = sessions.filter((s) => (none ? s.athleteId === null : s.athleteId === id)).filter((s) => reports.some((r) => r.sessionId === s.id));
   const ownReports = reports.filter((r) => own.some((s) => s.id === r.sessionId));
   const stats = summarizeReports(ownReports);
+  const progress = athleteProgress(own, reports);
+  const latest = progress.points.at(-1);
   const name = athlete?.name ?? t("results.unassigned");
+  const cap = (text: string) => text.charAt(0).toLocaleUpperCase(i18n.language) + text.slice(1);
 
   const exportCsv = () => {
     const csv = resultsCsv(own, ownReports, athletes, { separator: csvSeparator(i18n.language) });
@@ -53,32 +59,36 @@ export function AthletePage() {
 
   return (
     <div className={page.page}>
-      <Link to="/results" className={styles.back}>
-        <ChevronLeft size={20} aria-hidden /> {t("results.back")}
-      </Link>
       <section className={page.section}>
         <div className={styles.title}>
-          <h2>{name}</h2>
+          <h2 className={styles.display}>{name}</h2>
           {athlete && (
-            <>
-              <button className={styles.iconButton} onClick={() => setRenaming(true)} aria-label={t("results.renameAthlete")} title={t("results.renameAthlete")}>
-                <Pencil size={20} aria-hidden />
-              </button>
-              <button className={styles.iconButton} onClick={() => setDeleting(true)} aria-label={t("results.deleteAthlete")} title={t("results.deleteAthlete")}>
-                <Trash2 size={20} aria-hidden />
-              </button>
-            </>
+            <button className={styles.iconButton} onClick={() => setMenu(true)} aria-label={t("results.more")} title={t("results.more")}>
+              <Ellipsis size={22} aria-hidden />
+            </button>
           )}
         </div>
         <p className={styles.muted}>
-          {t("results.sessionCount", { count: own.length })} · {t("results.reportCount", { count: ownReports.filter((r) => !r.discarded).length })}
+          {progress.lastAt !== undefined && <>{t("results.lastTrained", { when: relativeDay(progress.lastAt, i18n.language) })} · </>}
+          {t("results.trainingCount", { count: own.length })}
         </p>
-        <StatsTable stats={stats} caption={t("results.statsCaption")} />
-        <div className={styles.row}>
-          <button className={styles.button} onClick={exportCsv} disabled={ownReports.length === 0}>
-            <Download size={18} aria-hidden /> {t("results.exportCsv")}
-          </button>
-        </div>
+        {latest && progress.metric ? (
+          <div className={styles.progress}>
+            <span className={styles.figureLabel}>
+              <Named name={progress.metric} /> · {t("results.latestAverage")}
+            </span>
+            <span className={styles.big}>{formatMs(latest.average, i18n.language)}</span>
+            <ChangeChip change={progress.change} />
+            <TrendBars progress={progress} />
+            {progress.best && (
+              <span className={styles.figureLabel}>
+                {t("results.personalBest", { value: formatMs(progress.best.ms, i18n.language), date: new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(progress.best.at) })}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className={styles.muted}>{t("results.noValues")}</p>
+        )}
       </section>
 
       <section className={page.section}>
@@ -90,16 +100,19 @@ export function AthletePage() {
             {[...own].reverse().map((s) => {
               const list = reports.filter((r) => r.sessionId === s.id);
               const discarded = list.filter((r) => r.discarded).length;
+              const average = summarizeReports(list).find((m) => m.metric === progress.metric)?.average;
               return (
                 <li key={s.id}>
                   <Link to={sessionUrl(s.id)} className={styles.entry}>
                     <span className={styles.text}>
-                      <span className={styles.name}>{programName(s.programPath)}</span>
+                      <span className={styles.name}>
+                        {cap(relativeDay(s.startedAt, i18n.language))} · {programName(s.programPath)}
+                      </span>
                       <span className={styles.meta}>
-                        <span>{formatDateTime(s.startedAt, i18n.language)}</span>
-                        <span>{t("results.reportCount", { count: list.length - discarded })}</span>
-                        {discarded > 0 && <span>{t("results.discardedCount", { count: discarded })}</span>}
-                        <UploadBadge status={sessionUploadStatus(s, athletes, reports)} />
+                        <span>{t("results.roundCount", { count: list.length - discarded })}</span>
+                        {average !== undefined && <span>{t("results.averageOf", { value: formatMs(average, i18n.language) })}</span>}
+                        {discarded > 0 && <span>{t("results.notCountedCount", { count: discarded })}</span>}
+                        {platformOn && <UploadBadge status={sessionUploadStatus(s, athletes, reports)} />}
                       </span>
                     </span>
                     <ChevronRight size={20} aria-hidden className={styles.chevron} />
@@ -111,10 +124,34 @@ export function AthletePage() {
         )}
       </section>
 
-      {athlete && <PlatformLink athlete={athlete} />}
+      {stats.length > 0 && (
+        <section className={page.section}>
+          <details className={page.details}>
+            <summary>{t("results.allStatistics")}</summary>
+            <StatsTable stats={stats} caption={t("results.statsCaption")} />
+          </details>
+        </section>
+      )}
+
+      <section className={page.section}>
+        <button className={styles.button} onClick={exportCsv} disabled={ownReports.length === 0}>
+          <Download size={18} aria-hidden /> {t("results.exportTable")}
+        </button>
+        <p className={styles.muted}>{t("results.exportCaption")}</p>
+      </section>
+
+      {athlete && platformOn && <PlatformLink athlete={athlete} />}
 
       {athlete && (
         <>
+          <Modal open={menu} title={athlete.name} onClose={() => setMenu(false)} actions={<button className={modalStyles.button} onClick={() => setMenu(false)}>{t("common.cancel")}</button>}>
+            <button className={styles.button} onClick={() => { setMenu(false); setRenaming(true); }}>
+              <Pencil size={18} aria-hidden /> {t("results.renameAthlete")}
+            </button>
+            <button className={`${styles.button} ${styles.danger}`} onClick={() => { setMenu(false); setDeleting(true); }}>
+              <Trash2 size={18} aria-hidden /> {t("results.deleteAthlete")}
+            </button>
+          </Modal>
           <AthleteModal open={renaming} onClose={() => setRenaming(false)} athlete={athlete} />
           <Modal
             open={deleting}
@@ -125,7 +162,7 @@ export function AthletePage() {
                 <button className={modalStyles.button} onClick={() => setDeleting(false)}>
                   {t("common.cancel")}
                 </button>
-                <HoldButton onConfirm={() => void deleteAthleteEverywhere(athlete.id).then(() => navigate("/results"))}>{t("settings.holdToDelete")}</HoldButton>
+                <HoldButton holdingLabel={t("results.keepHolding")} onConfirm={() => void deleteAthleteEverywhere(athlete.id).then(() => navigate("/results"))}>{t("settings.holdToDelete")}</HoldButton>
               </>
             }
           >

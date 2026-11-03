@@ -3,10 +3,10 @@
     "title": "ReactPod Config"
   },
   "nav": {
-    "pod": "Pod",
-    "programs": "Programs",
-    "editor": "Editor",
-    "simulate": "Simulate",
+    "train": "Train",
+    "set": "This set",
+    "back": "Back",
+    "games": "Games",
     "menu": "Menu",
     "settings": "Settings",
     "main": "Main navigation",
@@ -16,40 +16,40 @@
     "disconnected": "Not connected",
     "connecting": "Connecting…",
     "connected": "Connected",
-    "reconnecting": "Reconnecting…"
+    "reconnecting": "Reconnecting…",
+    "unsent": "Changes not on the pods yet"
   },
   "pod": {
     "podList": {
-      "title": "Pods of this set",
-      "central": "This pod (central)",
+      "title": "Pods ({{count}})",
+      "central": "Main pod",
       "number": "Pod {{number}}",
-      "offline": "not answering",
-      "blink": "Blink",
-      "blinkAria": "Blink pod {{number}}",
-      "blinkCentralAria": "Blink this pod",
-      "blinkHint": "Blink makes a pod flash for two seconds, so you can find it. Only before the game starts.",
-      "blinkBusy": "A pod can only blink before the game starts.",
-      "blinkFailed": "The pod could not blink."
+      "find": "Find",
+      "findAria": "Find {{name}}",
+      "findBusy": "A pod can only be found before the game starts.",
+      "findFailed": "That did not work. Try again.",
+      "notWhileRunning": "Not while a game runs"
     },
-    "intro": "Connect to a central in the program menu.",
-    "menuHint": "To open the program menu, switch the pod on and keep holding the button until the white ring is full.",
+    "intro": "Connect to the main pod of your set.",
+    "menuHint": "To connect by Bluetooth: 1. Switch the pod on. 2. Hold the top button while the ring fills white, until it is full. 3. Tap Bluetooth.",
+    "trainingRunning": "Training running · Open",
     "bleUnsupported": "This browser has no Bluetooth access. Use Chrome or Edge, on iPhone the app later.",
     "serialUnsupported": "USB needs Chrome or Edge on a computer.",
     "connect": {
       "ble": "Bluetooth",
-      "bleHint": "Phone or computer, central in the program menu",
+      "bleHint": "Phone or computer, main pod only",
       "serial": "USB cable",
       "serialHint": "Computer with Chrome or Edge, any pod",
-      "simulated": "Demo pod",
-      "simulatedHint": "Try the app without a pod"
+      "simulated": "Try without a pod (demo)",
+      "simulatedHint": "Explore the app with a simulated set"
     },
     "chooseDevice": "Choose the pod in the browser dialog.",
     "errors": {
-      "timeout": "The pod did not answer. Is it in the program menu? Bluetooth needs firmware 2.1 or newer.",
+      "timeout": "The pod did not answer. Did you start it as the main pod? Bluetooth needs firmware 2.1 or newer.",
       "disconnected": "The connection was lost.",
-      "openFailed": "The port could not be opened. Is another program (e.g. a serial monitor) using it?",
+      "openFailed": "The port could not be opened. Is another app (e.g. a serial monitor) using it?",
       "notAllowed": "The browser did not allow access.",
-      "busy": "The pod is busy (game or sync running). Return to the program menu.",
+      "busy": "The pod is busy (game or sync running). Wait until it is back in the pod menu.",
       "overflow": "The pod could not keep up. Please try again.",
       "unknown": "Something went wrong.",
       "auth_required": "This pod is protected with a PIN. Enter it to make changes.",
@@ -62,21 +62,21 @@
       "simulated": "Demo pod"
     },
     "role": {
-      "central": "Central",
-      "peripheral": "Peripheral · read only",
+      "central": "Main pod",
+      "peripheral": "Pod · read only",
       "booting": "Starting · read only"
     },
     "refresh": "Refresh",
     "disconnect": "Disconnect",
-    "firmware": "Firmware",
+    "firmware": "Pod software",
     "setId": "Set",
     "generation": "Store version",
     "free": "Free space",
     "firmwareUnsupported": "This app is made for firmware 2.x. The pod runs {{version}}; some things may not work.",
-    "readOnly": "Programs can only be changed on a central. This pod is shown read only.",
+    "readOnly": "Games can only be changed on the main pod. This pod is shown read only.",
     "groups": {
       "menu": "Menu ({{count}})",
-      "other": "Other programs ({{count}})",
+      "other": "Other games ({{count}})",
       "library": "Library ({{count}})"
     },
     "emptyMenu": "The menu is empty.",
@@ -85,41 +85,53 @@
       "title": "Pod connection",
       "close": "Close"
     },
-    "battery": "Battery",
-    "batteryUnknown": "no reading",
-    "pods": {
-      "title": "Pods ({{count}})",
-      "pod": "Pod {{id}}",
-      "offline": "offline"
-    },
+    "battery": "Battery {{percent}} %",
     "notConnected": "No pod connected",
     "connectButton": "Connect",
     "setName": "Set name",
     "rename": "Rename set",
-    "renameHint": "Shown in the Bluetooth list as “ReactPod <name>”. Leave empty to use the last 4 digits of the set id.",
-    "renameLater": "The new name is shown after this connection ends.",
-    "nameTooLong": "At most {{max}} bytes (umlauts count as 2).",
+    "renameHint": "Up to {{max}} characters (ä, ö, ü count double). Pods show this name in the Bluetooth list; it takes effect the next time you connect.",
     "save": "Save",
     "pin": "PIN",
     "pinProtected": "PIN protected",
     "pinHint": "This pod is protected with a PIN. The owner can change or clear it over USB.",
-    "programFormatNewer": "The pod knows newer block fields (format {{pod}}, app {{app}}). Update the app before you change programs."
+    "programFormatNewer": "The pod knows newer block fields (format {{pod}}, app {{app}}). Update the app before you change games.",
+    "health": {
+      "online": "Online",
+      "low": "Battery low · {{percent}} %, charge soon",
+      "offline": "Not found"
+    },
+    "summary_one": "Connected by {{via}} · {{count}} pod",
+    "summary_other": "Connected by {{via}} · {{count}} pods",
+    "via": {
+      "ble": "Bluetooth",
+      "serial": "USB",
+      "simulated": "Demo"
+    },
+    "renameButton": "Rename",
+    "details": "Details",
+    "menuRow_one": "{{count}} game · order and lights",
+    "menuRow_other": "{{count}} games · order and lights"
   },
   "programs": {
     "onPod": "On the pod",
-    "shipped": "Shipped programs",
+    "shipped": "Shipped games",
     "library": "Library",
-    "libraryHint": "Read-only parts that programs include (presets) or copy (templates).",
-    "connectHint": "Connect a pod to see its programs",
+    "libraryHint": "Read-only parts that games include (presets) or copy (templates).",
+    "connectHint": "Connect a pod to see its games",
     "reading": "Reading files from the pod… {{done}} of {{total}}",
     "missingInMenu": "{{path}} is in the menu but missing on the pod",
-    "none": "No programs.",
+    "none": "No games.",
     "menuPattern": "Menu pattern",
     "unchanged": "shipped",
     "notInMenu": "not in menu",
+    "mainOnly": "Main pod only",
+    "mainPlus_one": "Main pod + {{count}} pod",
+    "mainPlus_other": "Main pod + {{count}} pods",
+    "needsPod": "Needs pod software {{firmware}} or newer",
     "pods_one": "{{count}} pod",
     "pods_other": "{{count}} pods",
-    "podsTitle": "Pods needed (central + peripherals)",
+    "podsTitle": "Pods needed (main pod + pods)",
     "blocks_one": "{{count}} block",
     "blocks_other": "{{count}} blocks",
     "errors_one": "{{count}} error",
@@ -127,60 +139,57 @@
     "warnings_one": "{{count}} warning",
     "warnings_other": "{{count}} warnings",
     "valid": "Valid",
-    "mine": "My programs",
-    "mineEmpty": "No programs of your own yet. Create one with + or open a program and tap Edit.",
+    "mine": "My games",
+    "mineEmpty": "No games of your own yet. Create one with + or open a game and tap Edit.",
     "fromPod": "copy from pod",
     "fromShipped": "copy of shipped",
     "import": "Import",
-    "importFailed": "{{file}} is not a program file.",
-    "new": "New program",
-    "newTitle": "New program",
-    "duplicateTitle": "Duplicate program",
+    "importFailed": "{{file}} is not a game file.",
+    "new": "New game",
+    "newTitle": "New game",
+    "duplicateTitle": "Duplicate game",
     "duplicate": "Duplicate",
     "create": "Create",
     "copyOf": "Copy of {{name}}",
     "namePlaceholder": "e.g. Sprint 4 pods",
-    "deleteTitle": "Delete program?",
-    "deleteText": "“{{name}}” ({{path}}) is deleted from this device. Programs on the pod are not changed.",
-    "delete": "Delete program",
+    "deleteTitle": "Delete game?",
+    "deleteText": "“{{name}}” ({{path}}) is deleted from this device. Games on the pod are not changed.",
+    "delete": "Delete game",
     "export": "Export file",
     "exportSet": "Export set",
     "importSet": "Import set",
     "importSetTitle": "Import set",
-    "importSetText_one": "{{file}} contains {{count}} program:",
-    "importSetText_other": "{{file}} contains {{count}} programs:",
+    "importSetText_one": "{{file}} contains {{count}} game:",
+    "importSetText_other": "{{file}} contains {{count}} games:",
     "importSetMenu": "The menu ({{count}} entries) replaces the menu in this app.",
-    "importSetReplaces_one": "{{count}} of your programs with the same path is replaced.",
-    "importSetReplaces_other": "{{count}} of your programs with the same path are replaced.",
-    "importSetIgnored": "Not imported (library or not a program): {{files}}",
-    "importSetDone_one": "Imported {{count}} program.",
-    "importSetDone_other": "Imported {{count}} programs.",
-    "importSetFailed": "{{file}} is not a program set (.zip with programs.json and prog/…)."
+    "importSetReplaces_one": "{{count}} of your games with the same path is replaced.",
+    "importSetReplaces_other": "{{count}} of your games with the same path are replaced.",
+    "importSetIgnored": "Not imported (library or not a game): {{files}}",
+    "importSetDone_one": "Imported {{count}} game.",
+    "importSetDone_other": "Imported {{count}} games.",
+    "importSetFailed": "{{file}} is not a game set (.zip with programs.json and prog/…)."
   },
   "editor": {
     "title": "Editor",
-    "intro": "Build programs block by block.",
-    "noProgram": "No program open",
-    "noProgramHint": "Create a new program, or open one in Programs and tap Edit.",
-    "openProgram": "Open from Programs",
-    "untitled": "Untitled program",
+    "intro": "Build games block by block.",
+    "untitled": "Untitled game",
     "undo": "Undo",
     "redo": "Redo",
     "more": "More",
-    "settings": "Program settings",
-    "emptyProgram": "This program has no blocks yet. Add the first one with +.",
+    "settings": "Game settings",
+    "emptyProgram": "This game has no blocks yet. Add the first one below.",
     "check": "Check",
     "size": "{{size}} of {{max}} bytes",
     "noIssues": "No problems found.",
     "error": "Error",
     "warning": "Warning",
-    "presetBlock": "From {{file}} (read only). To change it, use “Convert to editable copy” in the program settings.",
+    "presetBlock": "This step comes from a shared game piece. Make all steps editable to change it.",
     "addBlock": "Add block",
     "addAtEnd": "added at the end, not connected",
     "addAfter": "inserted after {{name}}",
     "unsupported": "pod cannot run it",
     "templates": "Library as copy",
-    "templatesHelp": "Copies the blocks of a library part into this program, where you can change them.",
+    "templatesHelp": "Copies the blocks of a shared game piece into this game, where you can change them.",
     "type": "Block type",
     "blockName": "Block name",
     "nameInvalid": "Letters, digits, _ and -, starting with a letter (max. 32).",
@@ -189,7 +198,7 @@
     "connections": "Continue with",
     "goTo": "{{port}}: go to",
     "portFallback": "— continues at “next”",
-    "portEnd": "— program ends",
+    "portEnd": "— game ends",
     "portNone": "— not used",
     "newBlock": "+ New block…",
     "setStart": "Start here",
@@ -198,34 +207,34 @@
     "lockedBy": "{{file}} continues at this block, so it cannot be renamed or deleted.",
     "programName": "Name",
     "description": "Description",
-    "peripherals": "Peripherals (pods besides the central)",
+    "peripherals": "Pods besides the main pod",
     "fewerPods": "One pod less",
     "morePods": "One pod more",
     "startFirst": "— first block",
-    "variablesHelp": "Whole numbers, reset at program start. Built in: {{builtins}}.",
+    "variablesHelp": "Whole numbers, reset at game start. Built in: {{builtins}}.",
     "addVariable": "Variable",
     "variableName": "Variable name",
     "variableValue": "Start value of {{name}}",
     "deleteVariable": "Delete {{name}}",
-    "menuPatternHelp": "How the program shows in the pod's program menu.",
+    "menuPatternHelp": "How the game shows in the pod menu.",
     "presets": "Library presets",
-    "presetsHelp": "Included library parts stay read only and are shared with other programs.",
+    "presetsHelp": "Included shared game pieces stay read only and are shared with other games.",
     "removePreset": "Remove {{path}}",
-    "addPreset": "Include a library part…",
-    "flatten": "Convert to editable copy",
+    "addPreset": "Include a shared game piece…",
+    "flatten": "Make all steps editable",
     "addAfterAction": "Add block after",
     "programSheet": {
-      "title": "Program",
+      "title": "Game",
       "sub": "Name, pods and the settings you change most",
-      "pods": "Pods besides the central",
+      "pods": "Pods besides the main pod",
       "podsTotal_one": "{{count}} pod in the set",
       "podsTotal_other": "{{count}} pods in the set",
-      "menu": "In the pod's menu",
+      "menu": "In the pod menu",
       "tweak": "Settings you can tweak",
-      "tweakNone": "This program has no settings to tweak. Change its steps in the editor.",
+      "tweakNone": "This game has no settings to tweak. Change its steps in the editor.",
       "expert": "Expert",
       "start": "Start block",
-      "noPresets": "No library parts linked. This program is self-contained."
+      "noPresets": "No shared game pieces linked. This game is self-contained."
     },
     "exit": {
       "title": "Exits",
@@ -237,11 +246,11 @@
       "aStep": "A step…",
       "newStep": "A new step here…",
       "noAfter": "Nothing follows the rounds",
-      "instant": "Goes round without waiting: the program would stop",
+      "instant": "Goes round without waiting: the game would stop",
       "stepN": "Step {{n}}",
       "rounds": "the rounds",
       "goesOn": "The game goes on",
-      "ends": "The program ends",
+      "ends": "The game ends",
       "role": {
         "then": "Then",
         "ifTooSlow": "If too slow",
@@ -279,8 +288,8 @@
       "customHint": "Set up in a way this view cannot change. Use expert mode to edit it.",
       "none": "Nothing more to add to this step.",
       "yes": "yes",
-      "needsFormat": "Needs a newer pod (program format {{n}})",
-      "needsSetting": "The program has no settings yet",
+      "needsFormat": "Needs a newer pod (game format {{n}})",
+      "needsSetting": "The game has no settings yet",
       "group": {
         "rules": "Rules",
         "measure": "Measure",
@@ -312,9 +321,9 @@
         "desc": "The charge empties while nobody holds"
       },
       "includeCentral": {
-        "name": "Central takes part",
-        "desc": "The central's button counts like a pod",
-        "remove": "Central sits out"
+        "name": "Main pod takes part",
+        "desc": "The main pod's button counts like a pod",
+        "remove": "Main pod sits out"
       },
       "record": {
         "name": "Record reaction",
@@ -326,7 +335,7 @@
       },
       "phoneSettings": {
         "name": "Phone can change settings",
-        "desc": "The coach changes settings while the report waits"
+        "desc": "The coach changes settings while the round result waits"
       },
       "showBar": {
         "name": "Show average bar",
@@ -355,16 +364,12 @@
       "report": {
         "results": "Results",
         "allResults": "All results",
-        "noResults": "The program records no results yet.",
+        "noResults": "The game records no results yet.",
         "include": "Settings to include",
         "coach": "Coach may change while it waits"
       }
     },
     "step": {
-      "communicate": {
-        "hint": "Sends a report of the measurements since the last one, then waits for the app: continue, repeat or stop. A press goes on as well.",
-        "noLimit": "No limit"
-      },
       "viewSteps": "Steps",
       "viewBlocks": "Blocks",
       "view": "View",
@@ -392,7 +397,7 @@
       "nextRound": "next round",
       "startOver": "start again",
       "toRounds": "the rounds",
-      "notConnected": "nothing (the program ends)",
+      "notConnected": "nothing (the game ends)",
       "goTo": "{{role}}: go to {{target}}",
       "records": "records time",
       "advanced_one": "{{count}} advanced setting",
@@ -400,27 +405,29 @@
       "problems_one": "{{count}} problem",
       "problems_other": "{{count}} problems",
       "unsupported": "not supported by your pod",
-      "locked": "from a library part",
-      "ends": "the program ends here",
+      "locked": "from a shared game piece",
+      "ends": "the game ends here",
       "afterLast": "After the last round",
       "unreachable": "Not connected",
-      "unreachableHelp": "The program never gets to these steps.",
+      "unreachableHelp": "The game never gets to these steps.",
       "moveUp": "Move up",
       "moveDown": "Move down",
       "deleteStep": "Delete step",
       "deleted": "Step deleted",
+      "deletedN": "Step {{n}} deleted",
       "undo": "Undo",
-      "addToRound": "Add a step",
+      "add": "Add step",
       "addEndOfRound": "added at the end of the round",
       "addEnd": "added at the end",
       "addAfter": "added after step {{n}}",
-      "empty": "This program has no steps yet. Add the first one with +.",
+      "empty": "This game has no steps yet. Add the first one below.",
+      "loopBack": "Then start the next round",
       "count_one": "{{count}} step",
       "count_other": "{{count}} steps",
       "title": "Step {{n}}: {{kind}}",
       "inRound": "In each round",
       "kind": {
-        "led": "Light up the central",
+        "led": "Light up the main pod",
         "delay": "Pause",
         "button": "Wait for a press",
         "remotePress": "Light a pod",
@@ -435,7 +442,7 @@
         "charge": "Hold to charge",
         "release": "Let go",
         "toggle": "Domination",
-        "communicate": "Report and answer"
+        "communicate": "Round result and answer"
       },
       "colour": "Colour",
       "leds": "Which LEDs",
@@ -455,7 +462,7 @@
       "allPods": "All pods",
       "somePods": "Some of them",
       "podCount": "Pods",
-      "pressHint": "Waits until someone presses the central's button.",
+      "pressHint": "Waits until someone presses the main pod's button.",
       "resetHint": "Turns off every pod's LEDs and stops waiting for them.",
       "setting": "Setting",
       "newSetting": "New setting…",
@@ -480,19 +487,19 @@
         "count": "Number of presses"
       },
       "keptIn": "Kept in “{{name}}”",
-      "settingHint": "Setting “{{name}}”: changes it for the whole program",
+      "settingHint": "Setting “{{name}}”: changes it for the whole game",
       "fromSetting": "Comes from the setting “{{name}}”",
       "notKept": "not kept",
       "moreOptions": "More options",
       "label": {
         "storeAs": "Keep the time in a setting",
         "colorAfter": "Colour after the press",
-        "includeCentral": "The central takes part",
+        "includeCentral": "The main pod takes part",
         "syncStartMs": "Light up together after",
         "timerStart": "Start a stopwatch",
         "timerStop": "Stop a stopwatch",
         "pods": "Number of pods",
-        "ledsOff": "Turn the central off too",
+        "ledsOff": "Turn the main pod off too",
         "reset": "Clear the times afterwards",
         "storeIndex": "Keep the round number in",
         "ms": "Time",
@@ -533,7 +540,7 @@
       "roundSub": "The steps in the bracket",
       "rounds": "Rounds",
       "roundHint": "The steps inside the bracket run this many times, then the steps after the last round follow.",
-      "roundLocked": "{{count}} rounds, set in a library part",
+      "roundLocked": "{{count}} rounds, set in a shared game piece",
       "addToEachRound": "Add a step to each round",
       "effect": {
         "label": "Effect",
@@ -551,7 +558,7 @@
         },
         "where": "Where",
         "speed": "Cycle time",
-        "central": "Central",
+        "central": "Main pod",
         "all": "Everything",
         "peripherals": "All pods",
         "podN": "Pod {{n}}",
@@ -599,24 +606,30 @@
         "length": "Length of the game",
         "duration": "Game length",
         "start": "Who starts with which colour",
-        "starts": { "alternate": "Take turns", "a": "All team A", "b": "All team B", "random": "Random", "off": "Nobody" },
+        "starts": {
+          "alternate": "Take turns",
+          "a": "All team A",
+          "b": "All team B",
+          "random": "Random",
+          "off": "Nobody"
+        },
         "startHint": {
-            "alternate": "The first pod is team A, the second team B, and so on. The central comes last.",
-            "a": "Every pod starts in the colour of team A.",
-            "b": "Every pod starts in the colour of team B.",
-            "random": "Every pod gets a random team.",
-            "off": "Pods start dark. The first press makes a pod team A."
+          "alternate": "The first pod is team A, the second team B, and so on. The main pod comes last.",
+          "a": "Every pod starts in the colour of team A.",
+          "b": "Every pod starts in the colour of team B.",
+          "random": "Every pod gets a random team.",
+          "off": "Pods start dark. The first press makes a pod team A."
         },
         "cooldown": "Pause between two presses of a pod",
         "endHint": "The game ends when the time is up. It ends earlier when one team holds every pod, if that outcome leads to a step.",
         "results": "Keep the result",
         "resultsHint": "Pods and time are counted per team. Time adds up over all pods.",
         "result": {
-            "podsA": "Pods of team A",
-            "podsB": "Pods of team B",
-            "timeA": "Time of team A",
-            "timeB": "Time of team B",
-            "flips": "Number of flips"
+          "podsA": "Pods of team A",
+          "podsB": "Pods of team B",
+          "timeA": "Time of team A",
+          "timeB": "Time of team B",
+          "flips": "Number of flips"
         }
       },
       "enum": {
@@ -624,7 +637,49 @@
           "release": "Letting go ends it",
           "accumulate": "Charge adds up"
         }
-      }
+      },
+      "pick": {
+        "label": "Pick a pod at random",
+        "any": "Any pod",
+        "never": "Never the same twice in a row",
+        "notMain": "Not the main pod",
+        "anyHint": "Every pod can be picked, the main pod too.",
+        "neverHint": "The pod picked last time is left out.",
+        "notMainHint": "Only the pods around the main pod are picked."
+      },
+      "advanced": {
+        "badge": "Advanced step",
+        "hint": "This step has no plain version yet.",
+        "show": "Show details",
+        "hide": "Hide details"
+      },
+      "report": {
+        "hint": "Sends the round result to the app and waits for its answer.",
+        "happens": "What happens",
+        "onContinue": "When you choose continue in the app: {{target}}",
+        "onPress": "When the main pod’s button is pressed: {{target}}",
+        "onTimeout": "When nobody answers in time: {{target}}"
+      },
+      "summary": {
+        "which": "Which result",
+        "show": "Show on the pod",
+        "showHint": "The average as a bar on the main pod’s ring.",
+        "target": "Target time"
+      },
+      "ledPreset": {
+        "label": "How many lights",
+        "all": "All lights",
+        "half": "Half",
+        "quarter": "Quarter"
+      },
+      "done": "Done",
+      "moreActions": "More actions"
+    },
+    "problem": {
+      "summary_one": "{{count}} problem: {{text}}",
+      "summary_other": "{{count}} problems: {{text}}",
+      "fix": "Fix",
+      "showAll": "Show all"
     },
     "add": {
       "group": {
@@ -637,14 +692,14 @@
       "afterStep": "Inserted after step {{n}}",
       "endOfRound": "Added at the end of the round",
       "end": "Added at the end",
-      "first": "The first step of the program",
+      "first": "The first step of the game",
       "recipes": "Recipes",
       "steps": "Single steps",
-      "library": "Library parts",
-      "libraryHint": "Inserted as a copy. To link a part as a preset, use the program settings.",
+      "library": "Shared game pieces",
+      "libraryHint": "Inserted as a copy. To link a part as a preset, use the game settings.",
       "intent": {
         "light": {
-          "name": "Light up the central",
+          "name": "Light up the main pod",
           "hint": "Colour and which LEDs"
         },
         "pause": {
@@ -653,7 +708,7 @@
         },
         "press": {
           "name": "Wait for a press",
-          "hint": "On the central, with optional time limit"
+          "hint": "On the main pod, with optional time limit"
         },
         "pod": {
           "name": "Light a pod",
@@ -700,7 +755,7 @@
           "hint": "Two teams flip pods by pressing them"
         },
         "report": {
-          "name": "Report to the app",
+          "name": "Round result to the app",
           "hint": "Send the results, wait for continue, repeat or stop"
         }
       },
@@ -719,7 +774,7 @@
         }
       },
       "reason": {
-        "noPods": "The program uses no pods. Set the number of pods in the program settings.",
+        "noPods": "The game uses no pods. Set the number of pods in the game settings.",
         "noMetric": "Nothing records a time yet. Turn on “Record reaction time” on a press first.",
         "needsFormat": "Your pod needs newer firmware for this step.",
         "unsupported": "Your pod cannot run this step.",
@@ -756,7 +811,7 @@
       "redMiss": "Count a red hit as a miss",
       "missHint": "Adds 1 to Misses",
       "falseStart": "Catch early presses",
-      "falseStartOn": "Pressing the central now is a false start: it flashes red, the round ends",
+      "falseStartOn": "Pressing the main pod now is a false start: it flashes red, the round ends",
       "falseStartOff": "Presses during the pause are ignored",
       "earlyMiss": "Count it as a miss",
       "countdown": {
@@ -775,7 +830,7 @@
           "trafficLight": "Traffic light"
         },
         "targets": {
-          "central": "Central",
+          "central": "Main pod",
           "all": "Everything",
           "peripherals": "All pods"
         },
@@ -798,17 +853,14 @@
   },
   "simulate": {
     "title": "Simulate",
-    "open": "Simulate",
-    "program": "Program",
-    "noProgram": "Choose a program to simulate, or create one in the editor.",
-    "hasErrors": "This program has errors and cannot be simulated. Fix them in the editor first.",
+    "noProgram": "Choose a game to simulate, or create one in the editor.",
+    "hasErrors": "This game has errors and cannot be simulated. Fix them in the editor first.",
     "openEditor": "Open in the editor",
     "graph": "Block graph",
     "breakpointHint": "Tap a block to set or remove a breakpoint.",
     "pods": "Pods",
-    "podsHint": "Tap a pod's button to press it. Press and hold for a long press, or switch on \"Hold\" to keep the button down.",
-    "hold": "Hold",
-    "central": "Central · {{id}}",
+    "podsHint": "Tap a pod to press it; hold to long-press. Times are your taps, not pod measurements.",
+    "central": "Main pod",
     "peripheral": "Pod {{id}}",
     "press": "Press {{pod}}",
     "pressNow": "press now",
@@ -818,18 +870,11 @@
     "run": "Run",
     "pause": "Pause",
     "step": "Step",
-    "skipWait": "Skip wait",
-    "reset": "Reset",
+    "skipWait": "Skip pause",
+    "reset": "Start over",
     "speed": "Speed",
-    "seed": "Seed",
+    "seed": "Random pattern",
     "time": "{{seconds}} s",
-    "status": {
-      "ready": "Ready",
-      "running": "Running",
-      "paused": "Paused",
-      "waiting": "Waiting for a press (or skip wait)",
-      "ended": "Program ended"
-    },
     "variables": "Variables",
     "metrics": "Measurements",
     "noMetrics": "No measurements yet.",
@@ -839,22 +884,41 @@
     "best": "Best",
     "worst": "Worst",
     "last": "Last: {{values}}",
-    "metricsHint": "Times are your clicks, not measurements of a pod.",
     "log": "Log",
     "copyTrace": "Copy trace",
     "copied": "Copied",
     "report": {
-      "title": "Waiting for the app",
-      "number": "Report {{id}} · cycle {{cycle}}",
-      "continue": "Continue",
-      "repeat": "Repeat",
-      "stop": "Stop",
+      "title": "Round result",
+      "continue": "Next round",
+      "repeat": "Play again",
+      "stop": "Finish",
       "range": "{{min}} to {{max}}"
+    },
+    "tooEarly": "Too early",
+    "holdKey": "Shift+Enter keeps the button held",
+    "newSeed": "New",
+    "details": "Details",
+    "soFar": "So far",
+    "falseStarts": "False starts",
+    "now": {
+      "step": "Step {{n}} of {{total}}: {{text}}",
+      "ready": "Press Run to start the game, or tap a pod.",
+      "app": "The round is over. Choose how it goes on.",
+      "ended": "The game is over. Press Start over to play it again.",
+      "branch": "Step {{n}}: {{text}}"
+    },
+    "state": {
+      "ready": "Ready",
+      "running": "Running",
+      "paused": "Paused",
+      "waitingPress": "Waiting for a press",
+      "app": "Waiting for the app",
+      "ended": "Game over"
     }
   },
   "menu": {
-    "title": "Menu",
-    "intro": "Order of the programs in the pod's program menu and their LED pattern. Kept on this device and sent with push.",
+    "title": "Pod menu",
+    "intro": "Order of the games in the pod menu and their LED pattern. Kept on this device and sent with Send to pods.",
     "fromPod": "Starting from the menu of the connected pod.",
     "fromShipped": "Starting from the shipped menu.",
     "editPattern": "Menu pattern of {{name}}",
@@ -869,9 +933,9 @@
     "up": "Move {{name}} up",
     "down": "Move {{name}} down",
     "remove": "Remove {{name}} from the menu",
-    "add": "Add program",
-    "nothingToAdd": "All programs are in the menu.",
-    "copyNote": "Changing the pattern makes a local copy of this program (same path)."
+    "add": "Add game",
+    "nothingToAdd": "All games are in the menu.",
+    "copyNote": "Changing the pattern makes a local copy of this game (same path)."
   },
   "settings": {
     "title": "Settings",
@@ -885,8 +949,8 @@
     "consoleEmpty": "No output yet.",
     "clear": "Clear",
     "deleteFiles": "Delete files on the pod",
-    "deleteNotConnected": "Connect a central to delete files.",
-    "deleteHint": "Library parts and the menu cannot be deleted. Remove a program from the menu first.",
+    "deleteNotConnected": "Connect the main pod to delete files.",
+    "deleteHint": "Shared game pieces and the menu cannot be deleted. Remove a game from the menu first.",
     "inMenu": "in the menu",
     "deleteSelected_one": "Delete {{count}} file…",
     "deleteSelected_other": "Delete {{count}} files…",
@@ -894,7 +958,7 @@
     "deleteText": "These files are deleted from the pod. This cannot be undone.",
     "holdToDelete": "Hold to delete",
     "expertMode": "Expert mode",
-    "expertModeHint": "The editor shows block names, block types, ports and every field, like before. Remembered on this device."
+    "expertModeHint": "The editor shows block names, block types, ports and every field. Remembered on this device."
   },
   "update": {
     "available": "A new version is available.",
@@ -911,15 +975,18 @@
     "fileTooLarge": "File has {{size}} bytes, the pod accepts {{max}}",
     "includeTooDeep": "Includes nested deeper than {{max}} levels ({{path}})",
     "includeInvalid": "'include' must be a list of paths",
-    "nameMissing": "The program needs a name",
+    "nameMissing": "The game needs a name",
     "versionUnsupported": "Unknown format version {{version}}",
-    "peripheralsRange": "Number of peripherals must be 0 to {{max}}",
+    "peripheralsRange": "Number of pods besides the main pod must be 0 to {{max}}",
     "variableNotInteger": "Variable {{name}} must be a whole number",
     "startNotFound": "Start block {{start}} does not exist",
-    "noBlocks": "The program has no blocks",
+    "noBlocks": "The game has no blocks",
     "menuInvalid": "Menu pattern is invalid",
     "menuInvalidColor": "Menu pattern has an invalid colour",
     "menuInvalidLed": "Menu pattern uses an LED outside 0 to {{max}}",
+    "textInvalid": "{{field}} must be a plain text per language (en, de)",
+    "textTooLong": "{{field}} has {{length}} characters, at most {{max}} are allowed",
+    "textControlChars": "{{field}} must not contain line breaks or other control characters",
     "blockNoNameOrType": "Every block needs a name and a type",
     "duplicateBlock": "Block name {{name}} is used twice (also in {{other}})",
     "unknownType": "Unknown block type {{type}}",
@@ -929,7 +996,7 @@
     "notText": "Must be a name",
     "notBool": "Must be on or off",
     "invalidColor": "Invalid colour",
-    "notNamedColor": "Peripherals only show the 8 named colours",
+    "notNamedColor": "Pods only show the 8 named colours",
     "delayNeedsMs": "Needs a duration or a minimum and maximum",
     "randomTimeoutPair": "Random timeout needs both minimum and maximum",
     "unknownOption": "{{value}} is not allowed (possible: {{options}})",
@@ -937,20 +1004,21 @@
     "ledOutOfRange": "LED {{led}} does not exist (0 to {{max}})",
     "portNotText": "Connection must name a block",
     "portUnknownTarget": "Output {{port}} leads to the missing block {{target}}",
-    "noOutgoing": "Nothing follows this block: the program ends here",
+    "noOutgoing": "Nothing follows this block: the game ends here",
     "unreachable": "This block is never reached",
     "unknownVariable": "Variable {{name}} is never set (starts at 0)",
+    "textLanguageUnknown": "{{field}}: language {{lang}} is ignored (only {{languages}})",
     "unknownField": "Unknown setting {{field}} is ignored by the pod",
     "indexInvalid": "The menu file is invalid",
     "indexDuplicate": "{{path}} is in the menu twice",
-    "indexNotProgram": "{{path}} is a library part, not a program",
+    "indexNotProgram": "{{path}} is a shared game piece, not a game",
     "tooManyTimers": "{{count}} different stopwatches, the pod allows {{max}}",
-    "fieldNeedsFormat": "The connected pod ignores {{field}} (needs program format {{format}}, firmware update needed)",
+    "fieldNeedsFormat": "The connected pod ignores {{field}} (needs game format {{format}}, firmware update needed)",
     "timerNeverStopped": "Stopwatch {{name}} is started but never stopped",
     "timerNeverStarted": "Stopwatch {{name}} is stopped but never started",
     "repeatNoLoop": "No step of the round leads back to this repeat",
     "rangeReversed": "The shortest time is longer than the longest: the pod always uses the shortest",
-    "fieldFormatTooOld": "The connected pod rejects {{field}} (needs program format {{format}}, firmware update needed)",
+    "fieldFormatTooOld": "The connected pod rejects {{field}} (needs game format {{format}}, firmware update needed)",
     "effectWaitEndless": "Waiting for an endless {{effect}} never ends: set a duration",
     "countdownNeedsTimeLimit": "A countdown ({{countdown}}) needs a time limit ({{limit}})",
     "fieldWrongMode": "{{field}} only works in the \"{{needs}}\" mode, this step is in the \"{{mode}}\" mode",
@@ -965,7 +1033,7 @@
     "toggleDurationBothForms": "Use either one fixed game length or a shortest and a longest length, not both",
     "namesInvalid": "Metric and variable names need 1 to {{max}} characters",
     "namesTooMany": "At most {{max}} metrics, variables or editable variables",
-    "variableNotDeclared": "{{name}} is not a variable of this program: declare it under \"variables\"",
+    "variableNotDeclared": "{{name}} is not a variable of this game: declare it under \"variables\"",
     "editableInvalid": "Each editable variable needs whole numbers as minimum and maximum, the minimum not above the maximum",
     "timeoutNegative": "The time limit cannot be negative",
     "summaryNeedsTarget": "The bar needs a target time (targetMs)",
@@ -997,30 +1065,50 @@
     "ifStopped": "If stopped"
   },
   "view": {
-    "back": "Back",
-    "details": "Details",
     "close": "Close",
     "notFound": "{{path}} was not found.",
     "notConnected": "The pod is not connected.",
-    "fragment": "Library part",
-    "source": {
-      "pod": "on the pod",
-      "shipped": "shipped"
-    },
-    "issues_one": "{{count}} note",
-    "issues_other": "{{count}} notes",
+    "fragment": "Shared game piece",
     "variables": "Variables",
-    "includes": "Includes",
     "start": "Start",
     "fallbackToNext": "continues at “next”",
     "edit": "Edit",
     "openCopy": "Open my copy"
   },
+  "game": {
+    "mode": {
+      "about": "About",
+      "edit": "Edit",
+      "try": "Try"
+    },
+    "modes": "Game view",
+    "more": "More actions",
+    "makeCopy": "Make my copy",
+    "readOnly": "This game comes with the app and cannot be changed. Make your own copy to edit it.",
+    "settings": "Game settings",
+    "settingsTitle": "Game settings",
+    "story": "What happens",
+    "pods": "Pods",
+    "notes": "Notes",
+    "try": "Try",
+    "edit": "Edit",
+    "blocks": "Blocks",
+    "origin": {
+      "mine": "My game",
+      "pod": "on the pod",
+      "shipped": "comes with the app"
+    },
+    "status": {
+      "inMenu": "In the pod menu at place {{place}} · on the pods",
+      "notOnPods": "Not on the pods yet",
+      "onPodsNotInMenu": "On the pods, not in the pod menu"
+    }
+  },
   "graph": {
     "start": "Start block",
     "locked": "From the library (read only)",
     "external": "in another file",
-    "ends": "Program ends here",
+    "ends": "Game ends here",
     "fallback": "{{ports}} → next",
     "breakpoint": "Breakpoint"
   },
@@ -1029,7 +1117,7 @@
     "leds_other": "{{count}} LEDs",
     "allLeds": "all LEDs",
     "waitPress": "wait for press",
-    "report": "report",
+    "report": "round result",
     "pod": "pod",
     "pods": "pods",
     "allPods": "all pods",
@@ -1055,7 +1143,7 @@
   "blocks": {
     "led": {
       "name": "LED",
-      "help": "Sets the central's LEDs to a colour, all or selected ones. Continues at once."
+      "help": "Sets the main pod's LEDs to a colour, all or selected ones. Continues at once."
     },
     "delay": {
       "name": "Wait",
@@ -1063,7 +1151,7 @@
     },
     "button": {
       "name": "Button",
-      "help": "Waits for a press of the central's button. Only presses that start after the block began count."
+      "help": "Waits for a press of the main pod's button. Only presses that start after the block began count."
     },
     "if": {
       "name": "If",
@@ -1075,7 +1163,7 @@
     },
     "remotePress": {
       "name": "Light pod",
-      "help": "Lights one peripheral and waits for its press. The reaction time is measured on the pod."
+      "help": "Lights one pod and waits for its press. The reaction time is measured on the pod."
     },
     "remoteMultiPress": {
       "name": "Light several pods",
@@ -1083,7 +1171,7 @@
     },
     "remoteResetAll": {
       "name": "Pods off",
-      "help": "Switches the peripherals (and the central) off."
+      "help": "Switches the pods (and the main pod) off."
     },
     "summary": {
       "name": "Summary",
@@ -1095,7 +1183,7 @@
     },
     "effect": {
       "name": "Light effect",
-      "help": "Plays an effect on the ring of the central, one pod or all pods. Continues at once, or waits until the effect is over. A later light on the same ring replaces it."
+      "help": "Plays an effect on the ring of the main pod, one pod or all pods. Continues at once, or waits until the effect is over. A later light on the same ring replaces it."
     },
     "charge": {
       "name": "Hold to charge",
@@ -1111,7 +1199,7 @@
     },
     "communicate": {
       "name": "Report and answer",
-      "help": "Sends the measurements since the last report to the app, then waits for continue, repeat or stop, a press or the time limit. Needs firmware 2.11 on the central."
+      "help": "Sends the round result (the measurements since the last one) to the app, then waits for continue, repeat or stop, a press or the time limit. Needs firmware 2.11 on the main pod."
     }
   },
   "common": {
@@ -1149,12 +1237,12 @@
       "help": "Shorter presses leave at “short”, longer ones at “long”."
     },
     "metrics": {
-      "label": "Measurements in the report",
-      "help": "Which measurements the report lists (none = all)."
+      "label": "Measurements in the round result",
+      "help": "Which measurements the round result lists (none = all)."
     },
     "vars": {
-      "label": "Variables in the report",
-      "help": "Their values when the report is made."
+      "label": "Variables in the round result",
+      "help": "Their values when the round result is made."
     },
     "editable": {
       "label": "Editable from the app",
@@ -1194,7 +1282,7 @@
     },
     "pod": {
       "label": "Pod",
-      "help": "Number of the peripheral, from 0."
+      "help": "Number of the pod, from 0."
     },
     "mode": {
       "label": "Mode",
@@ -1205,13 +1293,13 @@
     },
     "pods": {
       "label": "Number of pods",
-      "help": "Empty: all pods of the program."
+      "help": "Empty: all pods of the game."
     },
     "avoid": {
       "label": "Of which to avoid"
     },
     "includeCentral": {
-      "label": "Central takes part"
+      "label": "Main pod takes part"
     },
     "hitColor": {
       "label": "Hit colour"
@@ -1245,7 +1333,7 @@
     },
     "show": {
       "label": "Show a bar on the ring",
-      "help": "The average as a bar on the central's ring for a few seconds: green = better than the target, amber = up to 1.5 times, red = slower. Needs pod firmware 2.13."
+      "help": "The average as a bar on the main pod's ring for a few seconds: green = better than the target, amber = up to 1.5 times, red = slower. Needs pod firmware 2.13."
     },
     "targetMs": {
       "label": "Target (ms)",
@@ -1253,7 +1341,7 @@
     },
     "showMs": {
       "label": "Show for (ms)",
-      "help": "How long the bar stays. 0 = until the next light changes, and the program does not wait."
+      "help": "How long the bar stays. 0 = until the next light changes, and the game does not wait."
     },
     "count": {
       "label": "Rounds",
@@ -1283,8 +1371,7 @@
       "help": "Background or end colour of the effect. Default: off."
     },
     "durationMs": {
-      "label": "Duration (ms)",
-      "help": "Length of the effect. Blink, pulse and spin run until the next light change without it."
+      "label": "Game length (ms)"
     },
     "periodMs": {
       "label": "One cycle (ms)",
@@ -1296,7 +1383,7 @@
     },
     "wait": {
       "label": "Wait until it is over",
-      "help": "Off: the program goes on at once."
+      "help": "Off: the game goes on at once."
     },
     "countdown": {
       "label": "Countdown",
@@ -1353,9 +1440,6 @@
     },
     "colors": {
       "label": "Team colours"
-    },
-    "durationMs": {
-      "label": "Game length (ms)"
     },
     "minDurationMs": {
       "label": "Shortest game (ms)"
@@ -1418,10 +1502,8 @@
     "stats": "Statistics"
   },
   "sync": {
-    "title": "Sync",
     "loading": "Reading the pod…",
-    "clean": "The pod has everything from this app.",
-    "menu": "Menu",
+    "clean": "Everything is on the pods",
     "status": {
       "inSync": "in sync",
       "localNewer": "changed here",
@@ -1434,38 +1516,48 @@
     "takeOver": "Take over",
     "keepPod": "Keep pod",
     "keepMine": "Keep mine",
-    "push": "Push to pod",
-    "restore": "Restore defaults",
-    "pushTitle": "Push to the pod",
-    "restoreTitle": "Restore defaults",
-    "restoreText": "The shipped programs, the library and the default menu are written to the pod. Your programs on the pod stay, but are no longer in the menu. The menu in this app then follows the pod again.",
-    "choose": "Files to push",
-    "nothing": "Nothing to upload.",
-    "planCount_one": "{{count}} file will be uploaded",
-    "planCount_other": "{{count}} files will be uploaded",
-    "reason": {
-      "program": "your program",
-      "menu": "menu",
-      "preset": "library part",
-      "shipped": "shipped program"
-    },
-    "skipped_one": "{{count}} file is not pushed (conflict or changed on the pod).",
-    "skipped_other": "{{count}} files are not pushed (conflict or changed on the pod).",
+    "push": "Send to pods",
+    "restore": "Reset menu…",
+    "pushTitle": "Send changes",
+    "restoreTitle": "Reset menu",
+    "restoreText": "The shipped games and the library are written to the pods again. Your own games stay on the pods but are no longer in the menu. The menu in this app then follows the pods again.",
+    "choose": "Files to send",
+    "nothing": "Nothing to send.",
+    "skipped_one": "{{count}} file is not sent (conflict or changed on the pod).",
+    "skipped_other": "{{count}} files are not sent (conflict or changed on the pod).",
     "errorsTitle": "Fix these errors first",
-    "start": "Push",
-    "restoreStart": "Restore",
+    "start": "Send",
+    "restoreStart": "Reset menu",
     "starting": "Starting…",
-    "uploading": "Uploading {{path}} ({{done}} of {{total}})",
-    "checking": "Checking {{path}} on the pod",
-    "done_one": "{{count}} file uploaded.",
-    "done_other": "{{count}} files uploaded.",
+    "uploading": "Sending {{done}} of {{total}}",
+    "checking": "Checking on the pods… ({{done}} of {{total}})",
     "stopped": "Nothing was changed: the pod's check found errors.",
     "podIssuesTitle": "The pod reports errors",
-    "spreadHint": "Start any program once with all pods switched on, so the whole set gets the new programs.",
-    "failed": "The push stopped.",
-    "partial_one": "{{count}} file was uploaded before. Push again to finish.",
-    "partial_other": "{{count}} files were uploaded before. Push again to finish.",
-    "close": "Close"
+    "failed": "Sending stopped.",
+    "partial_one": "{{count}} file was sent before. Send again to finish.",
+    "partial_other": "{{count}} files were sent before. Send again to finish.",
+    "close": "Close",
+    "change": {
+      "menu": "Pod menu: new order",
+      "game": "Game: {{name}}"
+    },
+    "unsent_one": "{{count}} change is not on the pods yet",
+    "unsent_other": "{{count}} changes are not on the pods yet",
+    "review": "Review changes",
+    "restoreLead": "This replaces the pod menu with the default menu.",
+    "planTitle": "This changes on the pods:",
+    "planExtra_one": "{{count}} shared game piece or shipped game these games need",
+    "planExtra_other": "{{count}} shared game pieces or shipped games these games need",
+    "progress": "Progress",
+    "keepOn": "Do not switch off the pods.",
+    "doneTitle": "Sent to the pods",
+    "resetDone": "Menu reset",
+    "resetDoneText": "The pods have the default menu, the shipped games and the library again. Your own games are still on the pods, but not in the menu.",
+    "nextTitle": "Next",
+    "nextOn": "Switch on all pods.",
+    "nextStart": "Then start any game once, so every pod gets the new games.",
+    "barText": "Changes are not on the pods yet",
+    "connectToSend": "Connect to send"
   },
   "results": {
     "athletes_one": "{{count}} athlete",
@@ -1473,58 +1565,46 @@
     "addAthlete": "Add athlete",
     "renameAthlete": "Rename athlete",
     "deleteAthlete": "Delete athlete",
-    "deleteAthleteText_one": "{{name}} and {{count}} training session are deleted from this phone.",
-    "deleteAthleteText_other": "{{name}} and {{count}} training sessions are deleted from this phone.",
+    "deleteAthleteText_one": "This will delete {{name}} and {{count}} training from this phone. This cannot be undone.",
+    "deleteAthleteText_other": "This will delete {{name}} and {{count}} trainings from this phone. This cannot be undone.",
     "deleteAthleteRemote": "The linked profile is also deleted on the platform, with all its results and invitations, as soon as the app is online and signed in.",
     "deleteAthleteRemoteOwn": "This is your own profile: it is deleted on the platform too, with all results and links, as soon as the app is online and signed in. You can no longer see these results afterwards.",
-    "deleteAthleteReports": "Reports for this athlete that are still on a pod are discarded when the pod sends them.",
+    "deleteAthleteReports": "Round results for this athlete that are still on a pod are discarded when the pod sends them.",
     "athleteName": "Name or nickname",
-    "athleteNameHint": "Stored on this phone only, until you link the athlete to a platform profile.",
+    "athleteNameHint": "Saved only on this phone. You can delete it at any time.",
     "athleteMissing": "This athlete does not exist (any more).",
-    "sessionMissing": "This training session does not exist (any more).",
-    "empty": "No athletes yet. Add one, then choose them on the Pod tab before a training.",
-    "unassigned": "Without athlete",
+    "sessionMissing": "This training does not exist (any more).",
+    "empty": "No athletes yet.",
+    "unassigned": "Unassigned",
     "unassignedHint": "Results recorded while no athlete was chosen. Open a session to assign it.",
-    "notDurable": "This browser does not allow storage. Results are kept until the app is closed, and the pods keep their reports.",
+    "notDurable": "This browser does not allow storage. Results are kept until the app is closed, and the pods keep their round results.",
     "waitingUpload_one": "{{count}} session waits for upload.",
     "waitingUpload_other": "{{count}} sessions wait for upload.",
     "platformSettings": "Platform settings",
-    "back": "Results",
-    "sessions": "Training sessions",
+    "sessions": "Trainings",
     "noSessions": "No results yet.",
-    "sessionCount_one": "{{count}} session",
-    "sessionCount_other": "{{count}} sessions",
-    "reportCount_one": "{{count}} report",
-    "reportCount_other": "{{count}} reports",
-    "discardedCount_one": "{{count}} discarded",
-    "discardedCount_other": "{{count}} discarded",
+    "reportCount_one": "{{count}} round result",
+    "reportCount_other": "{{count}} round results",
     "valueCount_one": "{{count}} value",
     "valueCount_other": "{{count}} values",
-    "reports_one": "{{count}} report",
-    "reports_other": "{{count}} reports",
-    "noReports": "No reports in this session.",
-    "statsCaption": "Counted reports (discarded ones left out)",
+    "noReports": "No rounds in this training.",
+    "statsCaption": "Counted rounds only",
     "noValues": "No values.",
     "metric": "Metric",
     "best": "Best",
     "average": "Average",
     "worst": "Worst",
-    "exportCsv": "Export CSV",
-    "started": "Started",
-    "program": "Program",
+    "program": "Game",
     "athlete": "Athlete",
     "nobody": "Nobody",
     "athleteFixed": "Uploaded sessions keep their athlete.",
-    "uploadState": "Upload",
     "uploadError": "Last upload failed: {{code}}",
-    "deleteSession": "Delete session",
-    "deleteSessionText_one": "The session with {{count}} report is deleted from this phone.",
-    "deleteSessionText_other": "The session with {{count}} reports is deleted from this phone.",
+    "deleteSession": "Delete training",
+    "deleteSessionText_one": "This will delete this training with {{count}} round from this phone. This cannot be undone.",
+    "deleteSessionText_other": "This will delete this training with {{count}} rounds from this phone. This cannot be undone.",
     "deleteSessionRemote": "It is also deleted on the platform, as soon as the app is online and signed in.",
-    "cycle": "Cycle {{cycle}}",
-    "reportN": "Report {{n}}",
-    "discarded": "discarded",
-    "discard": "Discard (not counted)",
+    "cycle": "Round {{cycle}}",
+    "discard": "Don't count",
     "countAgain": "Count again",
     "vars": "Variables",
     "values": "Single values",
@@ -1538,25 +1618,59 @@
       "failed": "Upload failed",
       "uploaded": "Uploaded",
       "empty": "Empty"
-    }
+    },
+    "steps": "Add an athlete · Pick them on Train · Results appear here",
+    "lastTrained": "Last trained: {{when}}",
+    "neverTrained": "No training yet",
+    "trainingCount_one": "{{count}} training",
+    "trainingCount_other": "{{count}} trainings",
+    "roundCount_one": "{{count}} round",
+    "roundCount_other": "{{count}} rounds",
+    "pressCount_one": "{{count}} press",
+    "pressCount_other": "{{count}} presses",
+    "notCountedCount_one": "{{count}} not counted",
+    "notCountedCount_other": "{{count}} not counted",
+    "notCounted": "Not counted",
+    "sortBy": "Sort by",
+    "sort": {
+      "recent": "Last trained",
+      "name": "A–Z"
+    },
+    "search": "Search athletes",
+    "noMatch": "No athlete matches.",
+    "more": "More",
+    "latestAverage": "average of the latest training",
+    "personalBest": "Personal best {{value}} ({{date}})",
+    "faster": "{{diff}} faster",
+    "slower": "{{diff}} slower",
+    "sameAsBefore": "Same as the training before",
+    "firstTraining": "First training",
+    "trendLabel": "Average {{metric}} of the last {{count}} trainings, from {{first}} to {{last}}: {{trend}}.",
+    "trend": {
+      "faster": "getting faster",
+      "slower": "getting slower",
+      "steady": "unchanged"
+    },
+    "averageOf": "average {{value}}",
+    "allStatistics": "All statistics",
+    "exportTable": "Export table (CSV)",
+    "exportCaption": "One row per measurement: person, date, game, round, pod and time in milliseconds.",
+    "rounds": "Rounds",
+    "round": "Round {{n}}",
+    "details": "Details",
+    "noLongerCounted": "Round {{n}} no longer counted",
+    "keepHolding": "Keep holding…"
   },
   "training": {
-    "title": "Training",
-    "athlete": "Who trains now",
-    "noReports": "This pod sends no results yet: live results need a firmware with reports. You can still choose the athlete for later.",
-    "noRemote": "This pod cannot be controlled from the app: the program goes on with the button or after the timeout.",
-    "waiting": "Waiting for the next report…",
-    "lastReport": "Last report",
-    "bestAverage": "{{metric}}: best {{best}}, average {{average}}",
-    "openSession": "Open session",
+    "noRemote": "This pod cannot be controlled from the app: the game goes on with the button or after the timeout.",
     "continue": "Continue",
     "repeat": "Repeat",
     "stop": "Stop",
-    "demoReport": "Demo: send a report",
+    "demoReport": "Demo: send a round result",
     "sent": {
       "continue": "The pod continues.",
-      "repeat": "The pod repeats; the last report is discarded.",
-      "stop": "The program stops."
+      "repeat": "The pod repeats; the last round result is discarded.",
+      "stop": "The game stops."
     },
     "errors": {
       "busy": "The pod is busy: a game runs, or the set is syncing. Try again later.",
@@ -1573,7 +1687,7 @@
       "too_large": "The request or the file is too large for the pod.",
       "crc_mismatch": "The data did not match its checksum.",
       "invalid_json": "The pod found invalid JSON.",
-      "invalid_program": "The program is not valid on the pod.",
+      "invalid_program": "The game is not valid on the pod.",
       "storage": "The pod could not write to its storage.",
       "overflow": "The pod was busy with other data. Try again.",
       "not_editable": "That value cannot be changed now.",
@@ -1583,26 +1697,17 @@
       "protocol": "The pod sent an answer the app does not understand."
     },
     "view": {
-      "link": "Training view",
-      "title": "Training view",
-      "intro": "Follow the connected set's training here. Keep the app open: the screen stays on while this view is open, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
-      "connect": "Connect a set",
-      "empty": "No set is connected. Connect a set to follow its training here.",
       "connecting": "Connecting…",
       "waiting": "Waiting for you",
-      "waitingFor": "The program waits at “{{block}}”: continue, repeat or stop, or change the values for the next round.",
-      "oldFirmware": "This pod's firmware cannot send results yet (it needs reports, firmware 2.11 or newer). You can still choose who trains.",
+      "waitingFor": "The game waits at “{{block}}”: continue, repeat or stop, or change the values for the next round.",
+      "oldFirmware": "This pod's firmware cannot send results yet (it needs round results, firmware 2.11 or newer). You can still choose who trains.",
       "noLiveBle": "Before firmware 2.12 the Bluetooth link goes off during a game. The app reconnects when the set is back.",
       "pause": "Pause",
       "resume": "Resume",
       "pausedSent": "The game is paused.",
       "resumedSent": "The game goes on.",
-      "variablesSent": "Values sent.",
-      "setVariable": "Set",
-      "range": "{{min}} to {{max}}",
-      "invalid": "Enter a whole number from {{min}} to {{max}}.",
       "state": {
-        "MENU": "Menu",
+        "MENU": "Pod menu",
         "DISCOVERY": "Discovery",
         "CONFIRM": "Ready",
         "RUN": "Running",
@@ -1617,14 +1722,60 @@
       "cancel": "Cancel",
       "start": "Start",
       "readyTitle": "Set the values, then start.",
-      "pressToStart": "Press the central to start.",
-      "bigNumbers": "Big numbers",
-      "bigLast": "Last",
-      "bigAverage": "Average",
-      "noValues": "No values yet.",
-      "ms": "ms"
+      "pressToStart": "Press the main pod to start.",
+      "nowRun": "Round in progress – results appear here",
+      "nowPaused": "The game is paused. Resume when you are ready.",
+      "nowMenu": "No game is running. Pick one in the pod menu.",
+      "nowDiscovery": "The pods are joining the set.",
+      "nowError": "The pod reports an error.",
+      "nowOffline": "The set is not connected right now.",
+      "round": "Round {{n}} of {{max}}",
+      "startWith": "Start with these values"
     },
-    "demoReady": "Demo: ready to start"
+    "demoReady": "Demo: ready to start",
+    "continueWith": "Continue with these values",
+    "cap": {
+      "repeat": "Result is discarded",
+      "repeatLong": "Run this round again – its result is discarded",
+      "pause": "Hold the game",
+      "stop": "End the game"
+    },
+    "who": {
+      "title": "Who is training?",
+      "hint": "Results are only saved for a named athlete.",
+      "more": "More ({{count}})",
+      "fewer": "Fewer"
+    },
+    "last": {
+      "title": "Last round result",
+      "best": "Best",
+      "average": "Average",
+      "faster": "{{diff}} faster than the round before",
+      "slower": "{{diff}} slower than the round before",
+      "same": "Same as the round before",
+      "all": "All rounds today",
+      "none": "No round result yet.",
+      "noValues": "This round has no values."
+    },
+    "vars": {
+      "title": "Values for the next round",
+      "less": "Less: {{name}}",
+      "more": "More: {{name}}",
+      "changedContinue": "Changed – applied with Continue",
+      "changedStart": "Changed – applied with Start"
+    },
+    "guide": {
+      "title": "Connect a set",
+      "intro": "Connect the main pod of your set to train with it.",
+      "step1": "Switch the pod on.",
+      "step2": "Hold the top button while the ring fills white, until it is full.",
+      "step3": "Tap Bluetooth.",
+      "connect": "Connect a set"
+    },
+    "hint": {
+      "keepOpen": "Keep the app open while you train: the screen stays on, but a phone that sleeps or a hidden tab drops the Bluetooth link. The app then reconnects by itself.",
+      "dismiss": "Got it"
+    }
   },
   "platform": {
     "title": "Platform (preview)",
@@ -1666,9 +1817,10 @@
     "chooseProfile": "Profiles in {{org}}",
     "createProfile": "New profile “{{name}}”",
     "consent": "The athlete (for minors: the parents) agreed that their results are stored on the platform.",
-    "linkInvalid": "This sign-in link is incomplete.",
-    "noServer": "Enter the server in the platform settings first, then open the link again.",
-    "signingIn": "Signing in…"
+    "devNote": "Development option. Will be removed."
+  },
+  "login": {
+    "unavailable": "Sign-in is not available right now."
   },
   "wizard": {
     "numberLocale": "en",
@@ -1689,15 +1841,15 @@
     "games": {
       "solo": {
         "name": "Solo reaction",
-        "line": "Only the central. Blue = get ready, then press as soon as it lights up."
+        "line": "Only the main pod. Blue = get ready, then press as soon as it lights up."
       },
       "star": {
         "name": "Star",
-        "line": "The central and a random pod take turns."
+        "line": "The main pod and a random pod take turns."
       },
       "random": {
         "name": "Random pod",
-        "line": "One random pod lights up, the central too, never the same twice."
+        "line": "One random pod lights up, the main pod too, never the same twice."
       },
       "multi": {
         "name": "All at once",
@@ -1710,24 +1862,24 @@
     },
     "game": {
       "question": "What do you want to play?",
-      "centralOnly": "central only",
-      "needs_one": "central + at least {{count}} pod",
-      "needs_other": "central + at least {{count}} pods"
+      "centralOnly": "main pod only",
+      "needs_one": "main pod + at least {{count}} pod",
+      "needs_other": "main pod + at least {{count}} pods"
     },
     "problems": {
-      "notEnoughPods_one": "{{game}} needs at least {{count}} pod besides the central. Add a pod or go back and pick another game.",
-      "notEnoughPods_other": "{{game}} needs at least {{count}} pods besides the central. Add pods or go back and pick another game.",
+      "notEnoughPods_one": "{{game}} needs at least {{count}} pod besides the main pod. Add a pod or go back and pick another game.",
+      "notEnoughPods_other": "{{game}} needs at least {{count}} pods besides the main pod. Add pods or go back and pick another game.",
       "pauseOrder": "The shortest pause must be shorter than the longest.",
       "redTarget": "Red is taken by the “don't touch” pods. Pick another colour for the light to hit."
     },
     "pods": {
       "question": "How many pods do you have?",
-      "hint": "Count the pods besides the central (the pod the app connects to).",
-      "label": "Pods besides the central",
-      "total_one": "Central + {{count}} pod",
-      "total_other": "Central + {{count}} pods",
-      "soloUses": "Solo uses only the central. Other pods stay off.",
-      "duoUses": "Duo uses the central and one pod. Other pods stay off."
+      "hint": "Count the pods besides the main pod (the pod the app connects to).",
+      "label": "Pods besides the main pod",
+      "total_one": "Main pod + {{count}} pod",
+      "total_other": "Main pod + {{count}} pods",
+      "soloUses": "Solo uses only the main pod. Other pods stay off.",
+      "duoUses": "Duo uses the main pod and one pod. Other pods stay off."
     },
     "timing": {
       "rounds": "Rounds",
@@ -1755,7 +1907,7 @@
       "redPodsOn_other": "{{count}} red pods per round",
       "redPodsOff": "All pods light up in the target colour",
       "redCount": "Red pods per round",
-      "hint": "Pods besides the central can show 8 colours. You can change the colours of single steps later.",
+      "hint": "Pods besides the main pod can show 8 colours. You can change the colours of single steps later.",
       "preview": "Preview of the set"
     },
     "measure": {
@@ -1779,41 +1931,41 @@
       "title": "Your game is ready",
       "name": "Name",
       "menu": "Menu pattern",
-      "menuHint": "This is how it shows in the pod's program menu. Tap LEDs to change it.",
-      "size": "Uses {{percent}} % of the space for one program.",
+      "menuHint": "This is how it shows in the pod menu. Tap LEDs to change it.",
+      "size": "Uses {{percent}} % of the space for one game.",
       "story": "What happens",
       "try": "Try it in the simulator",
       "change": "Change steps",
       "saveToMenu": "Save and add to menu",
-      "saved": "Saved in My programs. Changes here update it.",
-      "centralOnly": "Central only."
+      "saved": "Saved in My games. Changes here update it.",
+      "centralOnly": "Main pod only."
     },
     "chooser": {
       "question": "How do you want to start?",
       "game": "Start from a game",
-      "gameLine": "Answer five questions. The app builds the program, you can try it right away.",
+      "gameLine": "Answer five questions. The app builds the game, you can try it right away.",
       "recommended": "Recommended",
-      "copy": "Copy one of my programs",
-      "copyLine": "Take one of your programs or a shipped one and change it.",
+      "copy": "Copy one of my games",
+      "copyLine": "Take one of your games or a shipped one and change it.",
       "empty": "Start empty",
       "emptyLine": "Build it block by block.",
       "expert": "For people who know blocks",
-      "copyTitle": "Copy a program",
-      "noneMine": "No programs of your own yet."
+      "copyTitle": "Copy a game",
+      "noneMine": "No games of your own yet."
     },
     "story": {
       "rounds_one": "{{count}} round:",
       "rounds_other": "{{count}} rounds, each one:",
-      "ready": "The central lights blue: get ready",
+      "ready": "The main pod lights blue: get ready",
       "pauseFixed": "Pause {{s}} s",
       "pauseRandom": "Pause {{min}}–{{max}} s, at random",
       "falseStart": "{{pause}}; pressing now is a false start: red, the round is over",
       "andMiss": ", and it counts as a miss",
-      "lightCentral": "Light the central {{color}}",
-      "pressCentral": "Wait for the press on the central",
+      "lightCentral": "Light the main pod {{color}}",
+      "pressCentral": "Wait for the press on the main pod",
       "limit": " (max {{s}} s)",
       "podRandom": "Light a random pod {{color}} and wait for its press",
-      "podRandomOther": "Light a random pod {{color}}, the central too, never the same twice, and wait for its press",
+      "podRandomOther": "Light a random pod {{color}}, the main pod too, never the same twice, and wait for its press",
       "podDuo": "Light the pod {{color}} and wait for its press",
       "allAtOnce_one": "Light both pods at once",
       "allAtOnce_other": "Light all {{count}} pods at once",
@@ -1831,17 +1983,19 @@
       "record": "Every reaction time is recorded.",
       "misses": "Misses are counted in the setting “Misses”.",
       "endResults": "At the end: the average and best time are shown, then the game starts again.",
-      "endPlain": "At the end: the central lights blue for 3 s, then the game starts again."
+      "endPlain": "At the end: the main pod lights blue for 3 s, then the game starts again."
     }
   },
   "settingLabels": {
+    "targetTime": "Target time",
+    "holdTime": "Hold time",
     "teamAPods": "Pods of team A",
     "teamBPods": "Pods of team B",
     "teamATime": "Time of team A",
     "teamBTime": "Time of team B",
     "flips": "Flips",
     "rounds": "Rounds",
-    "runs": "Round counter",
+    "runs": "Rounds played",
     "pause": "Pause",
     "pauseMin": "Shortest pause",
     "pauseMax": "Longest pause",
@@ -1852,20 +2006,28 @@
     "avgReaction": "Average reaction time",
     "bestReaction": "Best reaction time",
     "lastReaction": "Last reaction time",
-    "requiredPeripherals": "Pods besides the central",
-    "nodeCount": "Pods including the central"
+    "requiredPeripherals": "Pods besides the main pod",
+    "nodeCount": "Pods including the main pod"
+  },
+  "labels": {
+    "metric": {
+      "reaction": "Reaction time",
+      "lap": "Round time",
+      "cycle": "Game time",
+      "charge": "Charge time"
+    }
   },
   "adjust": {
     "action": "Adjust",
     "actionFor": "Adjust {{name}}",
     "title": "Adjust: {{name}}",
-    "subLocal": "Changes apply to the whole program.",
-    "subShipped": "Saving makes your own copy. The shipped program stays as it is.",
-    "subPod": "Saving makes a copy on this phone. The program on the pod stays as it is until you push.",
-    "existingCopy": "You already have a copy of this program. Adjust changes your copy.",
-    "readOnly": "This pod is not the central, so it cannot take programs. Your copy stays on this phone: try it in the simulator or push it to a set when you connect its central. It cannot be pushed to this pod.",
+    "subLocal": "Changes apply to the whole game.",
+    "subShipped": "Saving makes your own copy. The shipped game stays as it is.",
+    "subPod": "Saving makes a copy on this phone. The game on the pod stays as it is until you send it to the pods.",
+    "existingCopy": "You already have a copy of this game. Adjust changes your copy.",
+    "readOnly": "This pod is not the main pod, so it cannot take games. Your copy stays on this phone: try it in the simulator or send it to a set when you connect its main pod. It cannot be sent to this pod.",
     "settings": "Settings",
-    "wholeProgram": "For the whole program",
+    "wholeProgram": "For the whole game",
     "timeLimit": "Time limit",
     "timeLimitOn": "Too slow after {{s}}",
     "timeLimitOff": "Wait as long as it takes",
@@ -1876,13 +2038,13 @@
     "results": "Show results at the end",
     "resultsHint": "Average, best and number of presses",
     "timeLimitSetting": "The seconds are a setting above",
-    "noSwitches": "This program is built from library parts, so these switches cannot change it. Change the steps to make an editable copy first.",
+    "noSwitches": "This game is built from shared game pieces, so these switches cannot change it. Change the steps to make an editable copy first.",
     "try": "Try it",
     "saveAndTry": "Save and try",
     "save": "Save",
     "steps": "Change the steps instead",
     "saved": "Saved.",
-    "notFound": "The program was not found."
+    "notFound": "The game was not found."
   },
   "sentence": {
     "decimal": ".",
@@ -1890,16 +2052,16 @@
     "secondsRange": "{{min}}–{{max}} s",
     "range": "{{min}} to {{max}}",
     "customColor": "in a custom colour",
-    "ledAll": "Light the central {{color}}",
-    "ledSome_one": "Light {{count}} LED of the central {{color}}",
-    "ledSome_other": "Light {{count}} LEDs of the central {{color}}",
-    "ledOff": "Turn the central's LEDs off",
-    "ledSomeOff_one": "Turn {{count}} LED of the central off",
-    "ledSomeOff_other": "Turn {{count}} LEDs of the central off",
+    "ledAll": "Light the main pod {{color}}",
+    "ledSome_one": "Light {{count}} LED of the main pod {{color}}",
+    "ledSome_other": "Light {{count}} LEDs of the main pod {{color}}",
+    "ledOff": "Turn the main pod's LEDs off",
+    "ledSomeOff_one": "Turn {{count}} LED of the main pod off",
+    "ledSomeOff_other": "Turn {{count}} LEDs of the main pod off",
     "wait": "Wait {{time}}",
     "waitRandom": "Wait {{time}} (random)",
     "noWait": "Go on right away",
-    "press": "Wait for a press on the central",
+    "press": "Wait for a press on the main pod",
     "catchEarly": "Wait {{time}} (random), pressing now is a false start",
     "max": "max {{time}}",
     "maxRandom": "max {{time}} (random)",
@@ -1915,17 +2077,17 @@
     "multiSome_other": "Light {{count}} pods {{color}} at once, wait until each one is pressed",
     "multiVar": "Light {{value}} pods {{color}} at once, wait until each one is pressed",
     "multiAvoid": "{{value}} of them {{color}}: don't touch",
-    "withoutCentral": "without the central",
+    "withoutCentral": "without the main pod",
     "resetAll": "Turn all pods off",
     "resetSome": "Turn {{value}} pods off",
-    "centralStays": "the central stays as it is",
+    "centralStays": "the main pod stays as it is",
     "add": "Add {{value}} to {{var}}",
     "subtract": "Subtract {{value}} from {{var}}",
     "set": "Set {{var}} to {{value}}",
     "randomPod": "Choose a random pod",
     "randomPodOther": "Choose a random pod, never the same twice",
-    "randomNode": "Choose a random pod or the central",
-    "randomNodeOther": "Choose a random pod or the central, never the same twice",
+    "randomNode": "Choose a random pod or the main pod",
+    "randomNodeOther": "Choose a random pod or the main pod, never the same twice",
     "randomNumber": "Set {{var}} to a random number below {{value}}",
     "randomNumberOther": "Set {{var}} to a new random number below {{value}}",
     "if": "Check: is {{left}} {{op}} {{right}}?",
@@ -1952,10 +2114,10 @@
     "unknown": "Step of type {{type}}",
     "var": {
       "peripherals": "the number of pods",
-      "nodes": "the number of pods and the central"
+      "nodes": "the number of pods and the main pod"
     },
-    "isCentral": "Is the chosen pod the central?",
-    "isNotCentral": "Is the chosen pod one of the pods, not the central?",
+    "isCentral": "Is the chosen pod the main pod?",
+    "isNotCentral": "Is the chosen pod one of the pods, not the main pod?",
     "catchEarlyFixed": "Wait {{time}}, pressing now is a false start",
     "effect": {
       "solid": "Light {{where}} {{color}}",
@@ -1970,23 +2132,23 @@
       "off": "Turn {{where}} off",
       "wait": "wait until it is over",
       "for": "for {{time}}",
-      "central": "the central",
-      "all": "the central and all pods",
+      "central": "the main pod",
+      "all": "the main pod and all pods",
       "peripherals": "all pods",
       "pod": "pod {{n}}",
       "chosenPod": "the chosen pod"
     },
     "withCountdown": "the ring counts down",
     "toggle": "Domination: {{a}} against {{b}} for {{time}}",
-    "communicate": "Send a report, then wait for the app",
+    "communicate": "Send the round result, then wait for the app",
     "communicateMetrics": "measurements {{names}}",
     "communicateTimeout": "answer within {{time}}",
     "toggleCooldown": "{{time}} between presses",
     "toggleStart": {
-        "a": "everyone starts {{a}}",
-        "b": "everyone starts {{b}}",
-        "random": "random start",
-        "off": "pods start dark"
+      "a": "everyone starts {{a}}",
+      "b": "everyone starts {{b}}",
+      "random": "random start",
+      "off": "pods start dark"
     },
     "charge": "Hold {{pod}} to charge · full after {{time}}",
     "chargeAccumulate": "Charge {{pod}} by holding, letting go pauses · full after {{time}}",

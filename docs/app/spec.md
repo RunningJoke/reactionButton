@@ -46,7 +46,7 @@ Web Bluetooth / Web Serial need HTTPS or `localhost`. Hosted on GitHub Pages
 TypeScript strict · React 19 + Vite · BLE `@capacitor-community/bluetooth-le` (Web Bluetooth in the browser,
 native in the app) · Web Serial (own adapter) · own column view (HTML + SVG arrows) · Zustand · IndexedDB via
 `idb` · `i18next` · `lucide-react` · plain CSS + CSS modules with tokens · `vite-plugin-pwa` · Vitest.
-Routing by URL hash (`#/programs`), so the build runs from any path and in a webview. A new version activates
+Routing by URL hash (`#/games`), so the build runs from any path and in a webview. A new version activates
 only after the user confirms (update prompt), so an edit in progress is never reloaded away.
 
 ## 4. Architecture
@@ -81,23 +81,26 @@ Used for development, tests and demos; it must behave like the firmware.
 
 ## 5. Screens
 
-Phone: header (title, connection chip, settings gear) + floating tab bar with five tabs; from 900 px a side
-rail with all destinations. Icon first, short label.
+Same on phone and desktop: header (title, connection chip, settings gear) + three destinations, **Train**,
+**Games** and **Results** (floating tab bar on phones, side rail from 900 px). Icon first, short label.
+Sub-pages show a back arrow in the header (to an explicit parent computed per route: session → its athlete, game → Games, menu → This set; never history -1) and keep their tab highlighted; on phones the connection chip is icon-only there. Old links are redirected
+(`/pod` → `/set`, `/training` → `/train`, `/programs*` → `/games*`, `/editor`, `/games/edit` → `/games/game?mode=edit`,
+`/simulate`, `/games/try` → `...mode=try`, `/games/view` → `...mode=about`, `/menu` → `/set/menu`; query strings are kept). Default route: `/train`.
 
-| Tab | Content |
+| Route | Content |
 |---|---|
-| **Pod** | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
-| **Programs** | local, pod and shipped programs + library; new (chooser), duplicate, Adjust, import, export, set export / import |
-| **Editor** | one program (§7, editor-ux.md) |
-| **Simulate** | pods + graph + controls (§8) |
-| **Results** | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
-| Menu (from Pod) | order of `/programs.json`, LED ring picker per program |
-| Settings (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
+| **Train** `/train` | the training view (§ Training view); Connect when no set is connected |
+| **Games** `/games` | local, pod and shipped games + library; new (chooser), duplicate, Adjust, import, export, set export / import |
+| `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary (Adjust), pod status, Try / Edit or Make my copy, Blocks (expert). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
+| `/games/new` | wizard |
+| **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
+| **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
+| `/set/menu` | order of `/programs.json`, LED ring picker per game |
+| Settings `/settings` (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
 
 - Touch targets ≥ 44 px, primary action in the thumb zone, every edit works without drag and drop.
 - State = colour + icon + text, never colour alone.
-- The connection chip is always visible; tapping it opens the connection dialog (Bluetooth / USB / demo pod,
-  or the connected pod and Disconnect).
+- The connection chip is always visible; tapping it opens *This set* when connected, else the connection dialog (Bluetooth / USB / demo pod).
 - When BLE fails, explain how to get the central into the menu (hold the button during the boot gauge).
 
 ## 6. Local data
@@ -166,7 +169,7 @@ renamed or deleted. A type change keeps the fields and ports the new type has.
 - LED indices (`led.leds`, `menu[].leds`): 18-LED ring picker with "all" (also in the menu editor).
   LED 0 at the top, clockwise.
 - Metric names: free text with suggestions (default `reaction`).
-- Program header: name, description, peripherals 0–7 (the editor prevents more), variables, start, menu
+- Program header: name, description (developer note), story and labels (texts for coaches, en + de, read only until the editor gets a form), peripherals 0–7 (the editor prevents more), variables, start, menu
   pattern. No tap target needs drag and drop.
 
 ### 7.5 Validation
@@ -264,7 +267,7 @@ With the remembered last common CRC (`SyncState`):
 - **Results** (`results/`, IndexedDB `reactpod-results`): `ReportFeed` stores each `report` event, then
   `ack`s it (no `ack` if storing fails, e.g. IndexedDB blocked → warning). Reports grouped into sessions per
   athlete; *Repeat* marks a report discarded (not in statistics). CSV: `;` (de) / `,` (en).
-- **Training view** (`pages/TrainingPage.tsx`, `/training`) is the only screen that controls a game (#87).
+- **Training view** (`pages/TrainingPage.tsx`, `/train`) is the only screen that controls a game (#87).
   The Pod tab has no game controls; it links to the Training tab. One card:
   - set name, state (`status.state` or connecting / reconnecting / not connected), *Waiting for you* while
     `communicate` waits; athlete (store value); last report with link to the session.
@@ -404,6 +407,7 @@ The user approves each phase; acceptance tests: [acceptance-tests.md](acceptance
 | P7 | athletes, results, platform upload (#47, #48) | done (AT-R* 2026-10-26) |
 | P8 | block builder for first-timers (editor-ux.md) | done (AT-E* 2026-10-26) |
 | P9 | training view, reconnect, wake lock (#46); several sets on hold | ready for test (AT-L*) |
+| P10 | design review rework (#106): Train · Games · Results, game page About · Edit · Try, This set, results progress, game texts per program, plain copy (en/de) | in progress (desktop: #107) |
 
 ## 14. Commands
 `npm run dev` · `npm test` · `npm run build` · `npm run preview` · `npm run icons` (redraws `public/icons/`

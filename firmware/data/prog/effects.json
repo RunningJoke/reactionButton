@@ -1,7 +1,9 @@
 {
   "version": 1,
   "name": "Effects",
-  "description": "Demo of the effect block and the countdown option (programFormat 3). Per round: all pods pulse blue and wait, the central spins while the program goes on, a random 2-4 s wait with a traffic light on all rings, then the pod must be pressed within 2 s (its ring drains), then the central within 2 s (green turns red). Success: all rings fill green and fade out. A miss: the central blinks red. Needs one peripheral. Needs programFormat 5 (firmware 2.11) through lib/loop.json: the cycle report.",
+  "description": "Demo of the effect block and the countdown option (programFormat 3). Per round: all pods pulse blue and wait, the central spins while the program goes on, a random 2-4 s wait with a traffic light on all rings, then the pod must be pressed within 2 s (its ring drains), then the central within 2 s (green turns red). Success: all rings fill green and fade out. A miss: the central blinks red. Needs one peripheral.",
+  "story": { "en": "A light-effects demo. The pods pulse blue, a traffic light counts down, then press the pod within 2 seconds, then the main pod within 2 seconds. A miss makes the main pod blink red.", "de": "Eine Lichteffekt-Demo. Die Pods pulsieren blau, eine Ampel zählt herunter, dann innerhalb von 2 Sekunden den Pod drücken, danach die Zentrale. Bei einem Fehler blinkt die Zentrale rot." },
+  "labels": { "reaction": { "en": "Reaction time", "de": "Reaktionszeit" }, "cycle": { "en": "Total time", "de": "Gesamtzeit" } },
   "peripherals": 1,
   "menu": [ { "leds": [6, 12], "color": "magenta" }, { "leds": [9], "color": "yellow" } ],
   "variables": { "MAX_LOOPS": 5 },

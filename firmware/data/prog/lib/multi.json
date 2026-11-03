@@ -1,5 +1,5 @@
 {
-  "description": "Run: all pods light at once, AVOID_COUNT of them red. Press all green pods; pressing a red one fails the round (1 s red). The lap (metric 'lap') is the time from the lights to the last press or the red press. Needs lib/loop.json (programFormat 5, firmware 2.11).",
+  "description": "Run: all pods light at once, AVOID_COUNT of them red. Press all green pods; pressing a red one fails the round (1 s red). The lap (metric 'lap') is the time from the lights to the last press or the red press. Needs lib/loop.json.",
   "variables": {
     "AVOID_COUNT": 0
   },

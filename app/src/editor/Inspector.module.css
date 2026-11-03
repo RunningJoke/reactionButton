@@ -445,7 +445,6 @@ textarea.input {
   min-height: 52px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--cat, var(--border));
   border-radius: var(--radius-s);
   background: var(--surface);
   text-align: left;
@@ -453,8 +452,15 @@ textarea.input {
   cursor: pointer;
 }
 
-.paletteItem svg {
+/* the category's icon tile, as in the step list */
+.paletteTile {
+  display: grid;
   flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--cat, var(--text-muted)) 16%, transparent);
   color: var(--cat, var(--text-muted));
 }
 

@@ -1,10 +1,12 @@
 /** Small pieces shared by the results pages (athletes, sessions, reports). */
 import { useTranslation } from "react-i18next";
-import { CircleDashed, CloudAlert, CloudCheck, CloudUpload, Link2Off, UserRound } from "lucide-react";
+import { CircleDashed, CloudAlert, CloudCheck, CloudUpload, Link2Off, Minus, TrendingDown, TrendingUp, UserRound } from "lucide-react";
 import { DEFAULT_FILES } from "../defaults";
 import { usePodSession } from "../pod/session";
 import type { SessionUploadStatus } from "../results/results";
-import { formatMs, type MetricSummary } from "../results/stats";
+import { formatMs, type MetricSummary, type Progress } from "../results/stats";
+import { Named } from "../components/Named";
+import { labelOf } from "../editor/settingLabels";
 import { useWorkspace } from "../store/workspace";
 import styles from "./Results.module.css";
 
@@ -73,7 +75,7 @@ export function StatsTable({ stats, caption }: { stats: readonly MetricSummary[]
           {stats.map((m) => (
             <tr key={m.metric}>
               <th scope="row">
-                {m.metric}
+                <Named name={m.metric} />
                 <span className={styles.cellSub}>{t("results.valueCount", { count: m.count })}</span>
               </th>
               <td>{formatMs(m.best, i18n.language)}</td>
@@ -83,6 +85,45 @@ export function StatsTable({ stats, caption }: { stats: readonly MetricSummary[]
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** "0.04 s faster" / "0.04 s slower" than the training before; neutral without one. Times: lower is better. */
+export function ChangeChip({ change }: { change: number | undefined }) {
+  const { t, i18n } = useTranslation();
+  const tone = change === undefined || change === 0 ? "neutral" : change < 0 ? "better" : "worse";
+  const text =
+    change === undefined ? t("results.firstTraining") : change === 0 ? t("results.sameAsBefore") : t(change < 0 ? "results.faster" : "results.slower", { diff: formatMs(Math.abs(change), i18n.language) });
+  const Icon = tone === "better" ? TrendingDown : tone === "worse" ? TrendingUp : Minus;
+  return (
+    <span className={styles.chip} data-tone={tone}>
+      <Icon size={16} aria-hidden /> {text}
+    </span>
+  );
+}
+
+/** Bars for the last up to 8 trainings (average of the main metric); the latest in the accent. */
+export function TrendBars({ progress }: { progress: Progress }) {
+  const { t, i18n } = useTranslation();
+  const points = progress.points.slice(-8);
+  if (points.length < 2 || !progress.metric) return null;
+  const max = Math.max(...points.map((p) => p.average));
+  const first = points[0]!.average;
+  const last = points.at(-1)!.average;
+  const trend = last < first ? "faster" : last > first ? "slower" : "steady";
+  const label = t("results.trendLabel", {
+    count: points.length,
+    metric: labelOf(progress.metric, t),
+    first: formatMs(first, i18n.language),
+    last: formatMs(last, i18n.language),
+    trend: t(`results.trend.${trend}`),
+  });
+  return (
+    <div className={styles.bars} role="img" aria-label={label}>
+      {points.map((p, i) => (
+        <div key={p.sessionId} className={styles.bar} data-latest={i === points.length - 1 || undefined} style={{ height: `${Math.max(12, (p.average / max) * 100)}%` }} />
+      ))}
     </div>
   );
 }

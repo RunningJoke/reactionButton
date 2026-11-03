@@ -248,7 +248,9 @@ const BlockCard = memo(function BlockCard({ node, arrows, joinedPort, selected, 
       }}
     >
       <span className="rp-card-header" data-entry={node.id}>
-        <Icon size={16} aria-hidden />
+        <span className="rp-tile" aria-hidden>
+          <Icon size={16} />
+        </span>
         <span className="rp-card-name">{node.id}</span>
         {breakpoint && <span className="rp-breakpoint" role="img" aria-label={t("graph.breakpoint")} />}
         {node.start && <Flag size={14} aria-label={t("graph.start")} className="rp-flag" />}

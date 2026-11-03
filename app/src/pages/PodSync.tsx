@@ -1,14 +1,16 @@
 /** Sync on the Pod tab (docs/app/spec.md §9): state per file, take over / keep, push and restore defaults. */
 import { useMemo, useState } from "react";
+import type { TFunction } from "i18next";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowDownToLine, CircleAlert, CircleCheck, Loader, RotateCcw, Upload } from "lucide-react";
+import { useConnectDialog } from "../app/connectDialogStore";
 import { Modal, modalStyles } from "../components/Modal";
 import { INDEX_PATH } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
-import { needsPin, usePodSession } from "../pod/session";
-import { planPush, planRestore, type FileSync, type PodIssue, type PushPlan, type PushResult, type PushStep, type SyncStatus } from "../pod/sync";
-import { keepMine, keepPod, runPush } from "../pod/syncActions";
+import { isReadOnly, needsPin, usePodSession } from "../pod/session";
+import { planPush, planRestore, unsentChanges, type FileSync, type PodIssue, type PushPlan, type PushResult, type PushStep, type SyncStatus } from "../pod/sync";
+import { keepMine, keepPod, runPush, useSyncStates } from "../pod/syncActions";
 import { editorUrl, podProgramFormat, viewUrl } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import page from "./Page.module.css";
@@ -27,16 +29,24 @@ export function SyncBadge({ status }: { status: SyncStatus }) {
   );
 }
 
-/** Summary, changed files with their actions, push and restore. `states` is null while loading. */
-export function SyncSection({ states, readOnly }: { states: FileSync[] | null; readOnly: boolean }) {
-  const { t } = useTranslation();
-  const [dialog, setDialog] = useState<"push" | "restore" | null>(null);
-  const changed = (states ?? []).filter((s) => ATTENTION.includes(s.status));
-  const toPush = changed.filter((s) => s.status === "new" || s.status === "localNewer").length;
+/** The human name of a change: "Pod menu: new order", "Game: Mia's warm-up" – never a file path. */
+export function changeLabel(t: TFunction, path: string, name?: unknown): string {
+  if (path === INDEX_PATH) return t("sync.change.menu");
+  return t("sync.change.game", { name: typeof name === "string" ? name : path.split("/").pop()!.replace(/.json$/, "") });
+}
 
+/**
+ * Not on the pods yet: the changes in words and one "Send to pods"; in sync only a quiet line.
+ * `states` is null while loading.
+ */
+export function UnsentCard({ states, readOnly }: { states: FileSync[] | null; readOnly: boolean }) {
+  const { t } = useTranslation();
+  // the dialog keeps the states of the moment it opened: the card goes away when the last change is sent
+  const [snapshot, setSnapshot] = useState<FileSync[] | null>(null);
+  const changed = (states ?? []).filter((s) => ATTENTION.includes(s.status));
+  const unsent = unsentChanges(states).length;
   return (
-    <section className={page.section}>
-      <h2>{t("sync.title")}</h2>
+    <>
       {states === null ? (
         <p className={page.muted}>
           <Loader size={14} aria-hidden className={styles.spin} /> {t("sync.loading")}
@@ -46,31 +56,67 @@ export function SyncSection({ states, readOnly }: { states: FileSync[] | null; r
           <CircleCheck size={16} aria-hidden /> {t("sync.clean")}
         </p>
       ) : (
-        <ul className={styles.changes}>
-          {changed.map((state) => (
-            <ChangeRow key={state.path} state={state} readOnly={readOnly} />
-          ))}
-        </ul>
+        <section className={styles.unsent} aria-labelledby="unsent-title">
+          <h2 id="unsent-title">{unsent > 0 ? t("sync.unsent", { count: unsent }) : t("sync.review")}</h2>
+          <ul className={styles.changes}>
+            {changed.map((state) => (
+              <ChangeRow key={state.path} state={state} readOnly={readOnly} />
+            ))}
+          </ul>
+          {!readOnly && unsent > 0 && (
+            <button className={`${page.bigButton} ${page.primary}`} onClick={() => setSnapshot(states)}>
+              <Upload size={20} aria-hidden /> {t("sync.push")}
+            </button>
+          )}
+        </section>
       )}
-      {!readOnly && (
-        <div className={page.actions}>
-          <button className={`${page.bigButton} ${page.primary}`} disabled={!states || toPush === 0} onClick={() => setDialog("push")}>
-            <Upload size={20} aria-hidden /> {t("sync.push")}
-          </button>
-          <button className={page.bigButton} disabled={!states} onClick={() => setDialog("restore")}>
-            <RotateCcw size={20} aria-hidden /> {t("sync.restore")}
+      {snapshot && <PushDialog mode="push" states={snapshot} onClose={() => setSnapshot(null)} />}
+    </>
+  );
+}
+
+/** Sticky bar on the menu page: changes are not on the pods yet, send them (or connect first). `local`: the menu was changed here. */
+export function UnsentBar({ local }: { local: boolean }) {
+  const { t } = useTranslation();
+  const states = useSyncStates();
+  const connected = usePodSession((s) => s.state === "connected");
+  const readOnly = usePodSession((s) => isReadOnly(s));
+  const show = useConnectDialog((s) => s.show);
+  const [snapshot, setSnapshot] = useState<FileSync[] | null>(null);
+  const pending = connected ? !readOnly && unsentChanges(states).length > 0 : local;
+  return (
+    <>
+      {pending && (
+        <div className={styles.bar2} role="status">
+          <span>{t("sync.barText")}</span>
+          <button className={styles.barButton} onClick={connected ? () => states && setSnapshot(states) : show}>
+            {connected ? t("sync.push") : t("sync.connectToSend")}
           </button>
         </div>
       )}
-      {states && dialog && <PushDialog mode={dialog} states={states} onClose={() => setDialog(null)} />}
-    </section>
+      {snapshot && <PushDialog mode="push" states={snapshot} onClose={() => setSnapshot(null)} />}
+    </>
+  );
+}
+
+/** "Reset menu…" in danger style: opens the confirmation. */
+export function ResetMenuButton({ states }: { states: FileSync[] | null }) {
+  const { t } = useTranslation();
+  const [snapshot, setSnapshot] = useState<FileSync[] | null>(null);
+  return (
+    <>
+      <button className={styles.danger} disabled={!states} onClick={() => setSnapshot(states)}>
+        <RotateCcw size={18} aria-hidden /> {t("sync.restore")}
+      </button>
+      {snapshot && <PushDialog mode="restore" states={snapshot} onClose={() => setSnapshot(null)} />}
+    </>
   );
 }
 
 function ChangeRow({ state, readOnly }: { state: FileSync; readOnly: boolean }) {
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
-  const name = state.path === INDEX_PATH ? t("sync.menu") : typeof state.doc?.json.name === "string" ? state.doc.json.name : state.path;
+  const name = changeLabel(t, state.path, state.doc?.json.name);
   const run = (action: (s: FileSync) => Promise<void>) => () => {
     setError(null);
     action(state).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
@@ -78,8 +124,7 @@ function ChangeRow({ state, readOnly }: { state: FileSync; readOnly: boolean }) 
   return (
     <li className={styles.change}>
       <div className={styles.changeText}>
-        <span className={styles.changeName}>{state.doc ? <Link to={editorUrl(state.doc.id)}>{name}</Link> : name}</span>
-        <span className={styles.changePath}>{state.path}</span>
+        <span className={styles.changeName}>{state.doc ? <Link to={editorUrl(state.doc.id)}>{name}</Link> : state.path === INDEX_PATH ? <Link to="/set/menu">{name}</Link> : name}</span>
         {state.status === "conflict" && <span className={styles.note}>{t("sync.conflictHint")}</span>}
         {error && <span className={modalStyles.error}>{error}</span>}
       </div>
@@ -106,7 +151,7 @@ function ChangeRow({ state, readOnly }: { state: FileSync; readOnly: boolean }) 
 type Phase = { kind: "plan" } | { kind: "running"; step: PushStep | null } | { kind: "done"; result: PushResult } | { kind: "failed"; code: string; message: string; uploaded: number };
 
 /** Push (docs/app/spec.md §9.3) or restore defaults (§9.4): plan → progress → result. */
-function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; states: FileSync[]; onClose: () => void }) {
+export function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; states: FileSync[]; onClose: () => void }) {
   const { t } = useTranslation();
   const session = usePodSession();
   const setMenu = useWorkspace((s) => s.setMenu);
@@ -157,7 +202,7 @@ function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; state
             <button className={modalStyles.button} onClick={close}>
               {t("common.cancel")}
             </button>
-            <button className={`${modalStyles.button} ${modalStyles.primary}`} disabled={blocked} onClick={() => void start()}>
+            <button className={`${modalStyles.button} ${mode === "push" ? modalStyles.primary : modalStyles.danger}`} disabled={blocked} onClick={() => void start()}>
               {mode === "push" ? t("sync.start") : t("sync.restoreStart")}
             </button>
           </>
@@ -170,7 +215,11 @@ function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; state
     >
       {phase.kind === "plan" && plan && (
         <>
-          {mode === "restore" && <p>{t("sync.restoreText")}</p>}
+          {mode === "restore" && (
+            <p>
+              <strong>{t("sync.restoreLead")}</strong> {t("sync.restoreText")}
+            </p>
+          )}
           {mode === "push" && candidates.length > 1 && (
             <fieldset className={styles.selection}>
               <legend>{t("sync.choose")}</legend>
@@ -186,21 +235,18 @@ function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; state
                       setDeselected(next);
                     }}
                   />
-                  {s.path === INDEX_PATH ? t("sync.menu") : s.path}
+                  {changeLabel(t, s.path, s.doc?.json.name)}
                 </label>
               ))}
             </fieldset>
           )}
-          <p>
-            <strong>{plan.uploads.length === 0 ? t("sync.nothing") : t("sync.planCount", { count: plan.uploads.length })}</strong>
-          </p>
-          <ul className={styles.plan}>
-            {plan.uploads.map((u) => (
-              <li key={u.path}>
-                <span className={styles.changePath}>{u.path}</span> <span className={styles.reason}>{t(`sync.reason.${u.reason}`)}</span>
-              </li>
-            ))}
-          </ul>
+          {plan.uploads.length === 0 ? (
+            <p>
+              <strong>{t("sync.nothing")}</strong>
+            </p>
+          ) : (
+            mode === "push" && <PlanInWords uploads={plan.uploads} />
+          )}
           {plan.skipped.length > 0 && <p className={styles.note}>{t("sync.skipped", { count: plan.skipped.length })}</p>}
           {plan.errors.size > 0 && <LocalErrors errors={plan.errors} />}
           {askPin && plan.uploads.length > 0 && (
@@ -221,14 +267,17 @@ function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"; state
         </>
       )}
       {phase.kind === "running" && (
-        <p className={styles.progress} aria-live="polite">
-          <Loader size={18} aria-hidden className={styles.spin} />
-          {phase.step
-            ? t(phase.step.phase === "upload" ? "sync.uploading" : "sync.checking", { path: phase.step.path, done: phase.step.done + 1, total: phase.step.total })
-            : t("sync.starting")}
-        </p>
+        <div aria-live="polite">
+          <progress className={styles.bar} max={phase.step?.total ?? 1} value={phase.step?.done ?? 0} aria-label={t("sync.progress")} />
+          <p className={styles.progress}>
+            {phase.step ? t(phase.step.phase === "upload" ? "sync.uploading" : "sync.checking", { done: phase.step.done + 1, total: phase.step.total }) : t("sync.starting")}
+          </p>
+          <p className={styles.warnText}>
+            <strong>{t("sync.keepOn")}</strong>
+          </p>
+        </div>
       )}
-      {phase.kind === "done" && <PushDone result={phase.result} />}
+      {phase.kind === "done" && <PushDone result={phase.result} mode={mode} />}
       {phase.kind === "failed" && (
         <div role="alert">
           <p className={modalStyles.error}>
@@ -267,19 +316,49 @@ function LocalErrors({ errors }: { errors: Map<string, { code: string; block?: s
   );
 }
 
-function PushDone({ result }: { result: PushResult }) {
+/** What the plan changes, in words: your games and the menu by name, the rest as a count. */
+function PlanInWords({ uploads }: { uploads: PushPlan["uploads"] }) {
+  const { t } = useTranslation();
+  const programs = useWorkspace((s) => s.programs);
+  const named = uploads.filter((u) => u.reason === "program" || u.reason === "menu");
+  const extra = uploads.length - named.length;
+  return (
+    <>
+      <p>
+        <strong>{t("sync.planTitle")}</strong>
+      </p>
+      <ul className={styles.plan}>
+        {named.map((u) => (
+          <li key={u.path}>{changeLabel(t, u.path, programs.find((p) => p.path === u.path)?.json.name)}</li>
+        ))}
+        {extra > 0 && <li>{t("sync.planExtra", { count: extra })}</li>}
+      </ul>
+    </>
+  );
+}
+
+export function PushDone({ result, mode }: { result: PushResult; mode: "push" | "restore" }) {
   const { t } = useTranslation();
   return (
     <>
       {result.stopped ? (
         <p className={modalStyles.error}>{t("sync.stopped")}</p>
       ) : (
-        <p className={styles.clean}>
-          <CircleCheck size={16} aria-hidden /> {t("sync.done", { count: result.uploaded.length })}
-        </p>
+        <>
+          <p className={styles.success}>
+            <CircleCheck size={20} aria-hidden /> <strong>{t(mode === "push" ? "sync.doneTitle" : "sync.resetDone")}</strong>
+          </p>
+          {mode === "restore" && <p>{t("sync.resetDoneText")}</p>}
+          <p className={styles.next}>
+            <strong>{t("sync.nextTitle")}</strong>
+          </p>
+          <ol className={styles.checklist}>
+            <li>{t("sync.nextOn")}</li>
+            <li>{t("sync.nextStart")}</li>
+          </ol>
+        </>
       )}
       {result.podIssues.length > 0 && <PodIssues issues={result.podIssues} />}
-      {!result.stopped && <p className={styles.note}>{t("sync.spreadHint")}</p>}
     </>
   );
 }

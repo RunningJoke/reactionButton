@@ -57,41 +57,67 @@ describe("training view", () => {
     expect(screen.queryByRole("button", { name: /add a set/i })).toBeNull();
   });
 
-  it("offers Continue, Repeat, Stop and the editable values while a communicate block waits", async () => {
+  it("offers Continue, Repeat, Stop and Pause, and applies changed values together with Continue", async () => {
     await connectPod("simulated");
     const pod = podOf(0);
     pod.emitSampleReport(() => 0.5); // the game waits at the report block
     renderPage();
     const card = screen.getByRole("article");
     await waitFor(() => expect(within(card).getByText("Waiting for you")).toBeTruthy());
-    expect(within(card).getByRole("button", { name: /Continue/ })).toBeTruthy();
+    expect(within(card).getByRole("button", { name: "Continue" })).toBeTruthy();
     expect(within(card).getByRole("button", { name: /Repeat/ })).toBeTruthy();
+    expect(within(card).getByRole("button", { name: /Pause/ })).toBeTruthy();
     expect(within(card).getByRole("button", { name: /Stop/ })).toBeTruthy();
+    expect(within(card).queryByRole("button", { name: /Disconnect/ })).toBeNull();
 
-    const input = within(card).getByRole("spinbutton") as HTMLInputElement;
-    expect(input.value).toBe("12");
-    fireEvent.change(input, { target: { value: "20" } });
-    fireEvent.click(within(card).getByRole("button", { name: "Set" }));
-    await waitFor(() => expect(pod.variables.get("MAX_LOOPS")).toBe(20));
+    // the stepper changes the draft only; nothing is sent yet
+    expect(within(card).getByText("12", { selector: "output" })).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "More: Rounds" }));
+    fireEvent.click(within(card).getByRole("button", { name: "More: Rounds" }));
+    expect(within(card).getByText("14", { selector: "output" })).toBeTruthy();
+    expect(within(card).getByText("Changed – applied with Continue")).toBeTruthy();
+    expect(pod.variables.get("MAX_LOOPS")).toBe(12);
 
-    // the buttons are disabled while the last request runs
-    const cont = within(card).getByRole("button", { name: /Continue/ }) as HTMLButtonElement;
-    await waitFor(() => expect(cont.disabled).toBe(false));
-    fireEvent.click(cont);
+    fireEvent.click(within(card).getByRole("button", { name: "Continue with these values" }));
+    await waitFor(() => expect(pod.variables.get("MAX_LOOPS")).toBe(14));
     await waitFor(() => expect(within(card).queryByText("Waiting for you")).toBeNull());
   });
 
-  it("refuses a value outside the range without sending it", async () => {
+  it("stops the stepper at the range", async () => {
     await connectPod("simulated");
     const pod = podOf(0);
     pod.emitSampleReport(() => 0.5);
     renderPage();
     const card = screen.getByRole("article");
-    const input = await waitFor(() => within(card).getByRole("spinbutton") as HTMLInputElement);
-    fireEvent.change(input, { target: { value: "99" } });
-    fireEvent.click(within(card).getByRole("button", { name: "Set" }));
-    expect(within(card).getByRole("alert").textContent).toContain("1 to 50");
+    const more = await waitFor(() => within(card).getByRole("button", { name: "More: Rounds" }) as HTMLButtonElement);
+    for (let i = 0; i < 60; i++) if (!more.disabled) fireEvent.click(more);
+    expect(within(card).getByText("50", { selector: "output" })).toBeTruthy();
+    expect(more.disabled).toBe(true);
     expect(pod.variables.get("MAX_LOOPS")).toBe(12);
+  });
+
+  it("changes the controls with the state: nothing in the menu, Start when ready, Resume when paused", async () => {
+    await connectPod("simulated");
+    const pod = podOf(0);
+    renderPage();
+    const card = screen.getByRole("article");
+    expect(within(card).queryByRole("button", { name: /Continue|Start|Resume|Stop/ })).toBeNull();
+    expect(within(card).getByText("No game is running. Pick one in the pod menu.")).toBeTruthy();
+
+    pod.emitReady();
+    await refresh();
+    await waitFor(() => expect(within(card).getByRole("button", { name: "Start" })).toBeTruthy());
+    expect(within(card).queryByRole("button", { name: /Repeat|Stop/ })).toBeNull();
+
+    pod.state = "RUN";
+    await refresh();
+    await waitFor(() => expect(within(card).getByText("Round in progress – results appear here")).toBeTruthy());
+    expect(within(card).getByRole("button", { name: "Continue" })).toBeTruthy();
+    expect(within(card).getByRole("button", { name: /Stop/ })).toBeTruthy();
+
+    fireEvent.click(within(card).getByRole("button", { name: /Pause/ }));
+    await waitFor(() => expect(within(card).getByRole("button", { name: "Resume" })).toBeTruthy());
+    expect(within(card).queryByRole("button", { name: /Repeat|Stop|Pause/ })).toBeNull();
   });
 
   it("pauses and resumes a running game with the pause feature", async () => {
@@ -113,6 +139,7 @@ describe("training view", () => {
     expect(screen.getAllByRole("article")).toHaveLength(1);
     await disconnectPod(id);
     await waitFor(() => expect(screen.queryAllByRole("article")).toHaveLength(0));
+    expect(screen.getByRole("button", { name: "Connect a set" })).toBeTruthy();
   });
 
   it("explains an old firmware without the reports feature", async () => {
@@ -130,25 +157,23 @@ describe("training view", () => {
     await refresh();
     renderPage();
     const card = screen.getByRole("article");
-    const input = (await waitFor(() => within(card).getByRole("spinbutton"))) as HTMLInputElement;
-    expect(input.value).toBe("12");
-    fireEvent.change(input, { target: { value: "20" } });
-    fireEvent.click(within(card).getByRole("button", { name: "Start" }));
+    fireEvent.click(await waitFor(() => within(card).getByRole("button", { name: "More: Rounds" })));
+    expect(within(card).getByText("Changed – applied with Start")).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Start with these values" }));
     await waitFor(() => expect(pod.state).toBe("RUN"));
-    expect(pod.variables.get("MAX_LOOPS")).toBe(20);
+    expect(pod.variables.get("MAX_LOOPS")).toBe(13);
   });
 
-  it("refuses a start value outside the range and sends nothing", async () => {
+  it("starts with the pod's values when nothing was changed", async () => {
     await connectPod("simulated");
     const pod = podOf(0);
     pod.emitReady();
     await refresh();
     renderPage();
     const card = screen.getByRole("article");
-    fireEvent.change(await waitFor(() => within(card).getByRole("spinbutton")), { target: { value: "99" } });
-    fireEvent.click(within(card).getByRole("button", { name: "Start" }));
-    expect(within(card).getByRole("alert").textContent).toContain("1 to 50");
-    expect(pod.state).toBe("CONFIRM");
+    fireEvent.click(await waitFor(() => within(card).getByRole("button", { name: "Start" })));
+    await waitFor(() => expect(pod.state).toBe("RUN"));
+    expect(pod.variables.get("MAX_LOOPS")).toBe(12);
   });
 
   it("without startVars (firmware before 2.17) there are no steppers and Start sends only start", async () => {
@@ -158,19 +183,19 @@ describe("training view", () => {
     await refresh();
     renderPage();
     const card = screen.getByRole("article");
-    expect(within(card).queryByRole("spinbutton")).toBeNull();
+    expect(within(card).queryByRole("button", { name: /Rounds/ })).toBeNull();
     fireEvent.click(await waitFor(() => within(card).getByRole("button", { name: "Start" })));
     await waitFor(() => expect(pod.state).toBe("RUN"));
   });
 
-  it("without remote the start card says to press the central", async () => {
+  it("without remote the start card says to press the main pod", async () => {
     const pod = new SimulatedPod({ files: DEFAULT_FILES, programFormat: 4 });
     await connectPod("simulated", { transport: new SimulatedTransport(pod) });
     pod.state = "CONFIRM";
     await refresh();
     renderPage();
     const card = screen.getByRole("article");
-    expect(within(card).getByText("Press the central to start.")).toBeTruthy();
+    expect(within(card).getByText("Press the main pod to start.")).toBeTruthy();
     expect(within(card).queryByRole("button", { name: "Start" })).toBeNull();
   });
 
@@ -226,14 +251,59 @@ describe("training view", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows the last and the average value of the main metric in large figures", async () => {
+  it("shows best and average of the last round in large figures, with the change to the round before", async () => {
     await connectPod("simulated");
-    podOf(0).emitSampleReport(() => 0.5); // all reactions 350 ms
+    const pod = podOf(0);
+    pod.emitSampleReport(() => 0.5); // all reactions 350 ms
     renderPage();
     const card = screen.getByRole("article");
-    fireEvent.click(await waitFor(() => within(card).getByRole("button", { name: /Big numbers/ })));
+    await waitFor(() => expect(card.textContent).toContain("Best"));
     expect(card.textContent).toContain("Average");
-    expect(card.textContent).toContain("350");
+    expect(card.textContent).toContain("0.35 s");
+    expect(within(card).getByRole("link", { name: /All rounds today/ })).toBeTruthy();
+    pod.emitSampleReport(() => 0.9); // all reactions 438 ms
+    await waitFor(() => expect(card.textContent).toContain("0.09 s slower than the round before"));
+  });
+
+  it("asks for an athlete until one is chosen; the chips pick and release", async () => {
+    await connectPod("simulated");
+    const mia = await useResults.getState().addAthlete("Mia");
+    renderPage();
+    const card = screen.getByRole("article");
+    expect(within(card).getByText("Results are only saved for a named athlete.")).toBeTruthy();
+    const chip = await waitFor(() => within(card).getByRole("button", { name: "Mia" }));
+    expect(within(card).getByRole("button", { name: /Add athlete/ })).toBeTruthy();
+    fireEvent.click(chip);
+    await waitFor(() => expect(within(card).queryByText("Results are only saved for a named athlete.")).toBeNull());
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+    expect(podOf(0).athlete).toBe(mia.id);
+    fireEvent.click(chip);
+    await waitFor(() => expect(within(card).getByText("Results are only saved for a named athlete.")).toBeTruthy());
+  });
+
+  it("shows four athletes and the rest behind More", async () => {
+    await connectPod("simulated");
+    for (const name of ["A", "B", "C", "D", "E", "F"]) await useResults.getState().addAthlete(name);
+    renderPage();
+    const card = screen.getByRole("article");
+    await waitFor(() => expect(within(card).getByRole("button", { name: "More (2)" })).toBeTruthy());
+    expect(within(card).getAllByRole("button").filter((b) => /^[A-F]$/.test(b.textContent ?? ""))).toHaveLength(4);
+    fireEvent.click(within(card).getByRole("button", { name: "More (2)" }));
+    expect(within(card).getAllByRole("button").filter((b) => /^[A-F]$/.test(b.textContent ?? ""))).toHaveLength(6);
+  });
+
+  it("without a set it guides the connection in three steps and keeps the hint until dismissed", async () => {
+    localStorage.removeItem("reactpod.hint.keepOpen");
+    renderPage();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Connect a set" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(localStorage.getItem("reactpod.hint.keepOpen")).toBe("1");
+    cleanup();
+    renderPage();
+    expect(screen.queryByRole("note")).toBeNull();
+    localStorage.removeItem("reactpod.hint.keepOpen");
   });
 
   it("has a text for every error code the app can show", () => {

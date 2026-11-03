@@ -24,7 +24,7 @@
   transform: scaleX(0);
   transform-origin: left;
   background: var(--error);
-  opacity: 0.25;
+  opacity: 0.4;
 }
 
 .button[data-holding] .fill {
@@ -34,4 +34,8 @@
 
 .label {
   position: relative;
+}
+
+.button[data-holding] .label {
+  color: var(--text);
 }

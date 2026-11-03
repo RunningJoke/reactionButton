@@ -24,7 +24,7 @@ describe("Add a step sheet", () => {
     // solo.json uses no pods and already catches early presses
     expect((screen.getByRole("button", { name: /Light a pod/ }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /Flash red on a false start/ }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: /Light up the central/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Light up the main pod/ }));
     const [doc, focus] = onAdd.mock.calls[0]!;
     expect(focus).toBe("Led1");
     expect((doc as ProgramJson).blocks).toContainEqual({ name: "Led1", type: "led", color: "green", next: "HitLED" });

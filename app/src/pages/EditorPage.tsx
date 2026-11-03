@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CircleCheck, Copy, Download, Lock, MoreVertical, Play, Plus, Redo2, Settings2, Trash2, Undo2, Users, Workflow, Wrench } from "lucide-react";
+import { AlertTriangle, ChevronRight, CircleAlert, CircleCheck, Lock, MoreVertical, Plus, Redo2, Settings2, Undo2, Wrench } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
 import { Sheet } from "../components/Sheet";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
 import type { InspectorContext } from "../editor/BlockInspector";
 import { columnLayout } from "../editor/columnLayout";
-import { lastOpenedProgram, useEditor } from "../editor/editorStore";
+import { useEditor } from "../editor/editorStore";
 import { addBlock, deleteBlock, deleteStep, duplicateStep, flattenIncludes, insertTemplate, moveStep, namesUsedByIncludes, setBlockField, type ProgramJson } from "../editor/ops";
 import { useExpertMode } from "../editor/expertMode";
 import { sentenceOptions } from "../editor/sentence";
-import { settingLabel } from "../editor/settingLabels";
+import { labelOf } from "../editor/settingLabels";
 import { RoundSheet, StepSheet } from "../editor/StepSheet";
 import { Palette } from "../editor/Palette";
 import { AddStepSheet } from "../editor/AddStepSheet";
@@ -25,25 +25,23 @@ import { blockType } from "@reactpod/program-model";
 import { formatProgram } from "@reactpod/program-model";
 import { buildGraph } from "../model/graph";
 import { isLibraryPath } from "@reactpod/program-model";
-import { BUILTIN_VARIABLES, isObject, type Block } from "@reactpod/program-model";
+import { BUILTIN_VARIABLES, isObject, labelsOf, type Block } from "@reactpod/program-model";
 import { validateProgram } from "@reactpod/program-model";
-import { DeleteProgramModal, downloadProgram, NewProgramModal } from "../programs/actions";
 import { useProgramSource, validateOptionsOf } from "../programs/sources";
 import { usePodSession } from "../pod/session";
 import type { ProgramDoc } from "../store/programStore";
 import { useWorkspace } from "../store/workspace";
-import { simulateUrl } from "../programs/sources";
 import page from "./Page.module.css";
 import styles from "./EditorPage.module.css";
 
-export function EditorPage() {
+/** The editor of one of my games (the Edit mode of the game page, `id` = local program id). */
+export function EditorPage({ id }: { id: string }) {
   const [params] = useSearchParams();
   const loaded = useWorkspace((s) => s.loaded);
   const programs = useWorkspace((s) => s.programs);
   const open = useEditor((s) => s.open);
   const select = useEditor((s) => s.select);
   const current = useEditor((s) => s.doc);
-  const id = params.get("id") ?? current?.id ?? lastOpenedProgram();
   const block = params.get("block");
   const stored = programs.find((p) => p.id === id);
   const selectedFromUrl = useRef<string | null>(null);
@@ -61,35 +59,8 @@ export function EditorPage() {
   }, [block, id, current?.id, select]);
 
   if (!loaded) return null;
-  if (!stored) return <NoProgram />;
-  if (current?.id !== stored.id) return null;
+  if (!stored || current?.id !== stored.id) return null;
   return <ProgramEditor doc={current} />;
-}
-
-function NoProgram() {
-  const { t } = useTranslation();
-  const [creating, setCreating] = useState(false);
-  return (
-    <div className={page.page}>
-      <div className={page.empty}>
-        <Workflow size={40} aria-hidden className={page.emptyIcon} />
-        <p>
-          <strong>{t("editor.noProgram")}</strong>
-          <br />
-          {t("editor.noProgramHint")}
-        </p>
-        <div className={page.actions}>
-          <button className={`${page.bigButton} ${page.primary}`} onClick={() => setCreating(true)}>
-            <Plus size={20} aria-hidden /> {t("programs.new")}
-          </button>
-          <Link to="/programs" className={page.bigButton}>
-            {t("editor.openProgram")}
-          </Link>
-        </div>
-      </div>
-      <NewProgramModal open={creating} onClose={() => setCreating(false)} />
-    </div>
-  );
 }
 
 type Panel = "palette" | "settings" | "issues" | null;
@@ -112,19 +83,19 @@ function insertionPoint(steps: readonly Step[], selected: string | null, own: Re
 }
 
 function ProgramEditor({ doc }: { doc: ProgramDoc }) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const [params, setParams] = useSearchParams();
   const { apply, undo, redo, select, selected, past, future } = useEditor();
   const source = useProgramSource("local");
   const podFiles = usePodSession((s) => (s.state === "connected" ? s.files : null));
-  const [panel, setPanel] = useState<Panel>(null);
+  // `&panel=settings` (the game menu's "Game settings") opens the settings sheet
+  const [panel, setPanel] = useState<Panel>(params.get("panel") === "settings" ? "settings" : null);
   const [pending, setPending] = useState<{ from: string; port: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
-  const [deleting, setDeleting] = useState<ProgramDoc | null>(null);
   const [expert, setExpert] = useExpertMode();
   const view: View = expert ? "blocks" : "steps";
   const [toast, setToast] = useState<{ text: string; at: number } | null>(null);
+  const [fresh, setFresh] = useState<{ block: string; at: number } | null>(null);
   const json = doc.json;
 
   const model = useMemo(() => {
@@ -153,7 +124,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     const steps = stepList(flat);
     const blockMap = new Map(blocks.map((b) => [b.name, b]));
     const own = new Set(graph.nodes.filter((n) => n.own && !n.external).map((n) => n.id));
-    const sentence = sentenceOptions(blocks, resolved.variables, (n) => settingLabel(n, t).label);
+    const sentence = sentenceOptions(blocks, resolved.variables, (n) => labelOf(n, t, labelsOf(json, i18n.language)));
     return { sentence, resolved, graph, names, variables, metrics: [...metrics], lockedBy: namesUsedByIncludes(resolved), size: new Blob([text]).size, library, read, flat, steps, blockMap, own };
   }, [json, doc.path, source, podFiles, t]);
 
@@ -166,8 +137,10 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const remove = (name: string) => {
     const next = view === "steps" ? deleteStep(json, name, model.flat) : deleteBlock(json, name);
     if (next === json) return;
+    const number = model.steps.find((s) => s.block === name && !s.loop)?.number;
     apply(next, { select: null });
-    setToast({ text: t("editor.step.deleted"), at: useEditor.getState().past.length });
+    const text = view === "steps" && number ? t("editor.step.deletedN", { n: number }) : t("editor.step.deleted");
+    setToast({ text, at: useEditor.getState().past.length });
   };
   const move = (name: string, direction: "up" | "down") => moveStep(json, name, direction, model.flat);
 
@@ -225,7 +198,16 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     if (!text) return;
     const { doc: next, names } = insertTemplate(json, JSON.parse(text) as ProgramJson, taken);
     apply(next, { select: names[0] ?? null });
+    if (names[0]) setFresh({ block: names[0], at: Date.now() });
     setPanel(null);
+  };
+
+  /** the game page's Try mode (the bar's "Try ›") */
+  const tryGame = () => {
+    const query = new URLSearchParams(params);
+    query.set("mode", "try");
+    query.delete("panel");
+    setParams(query, { replace: true });
   };
 
   // desktop shortcuts: undo / redo, Delete removes the selected block
@@ -257,10 +239,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   return (
     <div className={styles.editor}>
       <div className={styles.bar}>
-        <button className={styles.title} onClick={() => setPanel(panel === "settings" ? null : "settings")} aria-label={t("editor.settings")}>
-          <h2>{name}</h2>
+        <div className={styles.title}>
           <span className={styles.sub}>
-            <Users size={13} aria-hidden /> {t("programs.pods", { count: Number(json.peripherals ?? 0) + 1 })} ·{" "}
             {view === "steps" ? (
               t("editor.step.count", { count: model.steps.filter((s) => !s.loop).length })
             ) : (
@@ -269,16 +249,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
               </>
             )}
           </span>
-        </button>
-        <button className={styles.icon} onClick={undo} disabled={past.length === 0} aria-label={t("editor.undo")} title={t("editor.undo")}>
-          <Undo2 size={20} aria-hidden />
-        </button>
-        <button className={styles.icon} onClick={redo} disabled={future.length === 0} aria-label={t("editor.redo")} title={t("editor.redo")}>
-          <Redo2 size={20} aria-hidden />
-        </button>
-        <Link className={styles.icon} to={simulateUrl({ id: doc.id })} aria-label={t("simulate.open")} title={t("simulate.open")}>
-          <Play size={20} aria-hidden />
-        </Link>
+        </div>
         <button
           className={styles.icon}
           data-level={errors ? "error" : warnings ? "warn" : "ok"}
@@ -310,22 +281,12 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             values={resolved.variables}
             selected={panel ? null : selected}
             onSelect={ctx.select}
+            onShowAll={() => setPanel("issues")}
+            fresh={fresh}
           />
         ) : (
           <ProgramColumnView graph={graph} selected={panel ? null : selected} onSelect={ctx.select} />
         )}
-
-        <button
-          className={styles.fab}
-          onClick={() => {
-            setPending(null);
-            setPanel("palette");
-          }}
-          aria-label={view === "steps" ? t("editor.step.addToRound") : t("editor.addBlock")}
-          title={view === "steps" ? t("editor.step.addToRound") : t("editor.addBlock")}
-        >
-          <Plus size={26} aria-hidden />
-        </button>
 
         {/* a step added from an exit ("a new step here…") is connected to that exit */}
         {panel === "palette" && (!pending || view === "steps") && (
@@ -339,6 +300,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             library={{ paths: model.library, read: model.read }}
             onAdd={(next, focus) => {
               apply(next, { select: focus });
+              setFresh({ block: focus, at: Date.now() });
               setPending(null);
               setPanel(null);
             }}
@@ -404,9 +366,8 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             ctx={ctx}
           />
         )}
-        {toast && past.length === toast.at && <UndoToast text={toast.text} onUndo={undo} onClose={() => setToast(null)} />}
         {!panel && selectedNode && !ownBlock && !bracket && (
-          <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select}>
+          <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select} onFlatten={() => apply(flattenIncludes(json, resolved))}>
             {!selectedNode.external && (
               <p className={styles.locked}>
                 <Lock size={14} aria-hidden /> {t("editor.presetBlock", { file: selectedNode.file })}
@@ -414,6 +375,30 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             )}
           </BlockDetailsSheet>
         )}
+        {toast && past.length === toast.at && <UndoToast text={toast.text} onUndo={undo} onClose={() => setToast(null)} top={panel !== null || selected !== null} />}
+      </div>
+
+      {/* undo, redo, add, try: the editing actions, above the tab bar */}
+      <div className={styles.actions}>
+        <button type="button" className={styles.icon} onClick={undo} disabled={past.length === 0} aria-label={t("editor.undo")} title={t("editor.undo")}>
+          <Undo2 size={22} aria-hidden />
+        </button>
+        <button type="button" className={styles.icon} onClick={redo} disabled={future.length === 0} aria-label={t("editor.redo")} title={t("editor.redo")}>
+          <Redo2 size={22} aria-hidden />
+        </button>
+        <button
+          type="button"
+          className={styles.addStep}
+          onClick={() => {
+            setPending(null);
+            setPanel("palette");
+          }}
+        >
+          <Plus size={20} aria-hidden /> {view === "steps" ? t("editor.step.add") : t("editor.addBlock")}
+        </button>
+        <button type="button" className={styles.tryButton} onClick={tryGame}>
+          {t("game.mode.try")} <ChevronRight size={20} aria-hidden />
+        </button>
       </div>
 
       <Modal open={menuOpen} title={name} onClose={() => setMenuOpen(false)}>
@@ -424,15 +409,6 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           <button onClick={() => (setMenuOpen(false), setPanel("settings"))}>
             <Settings2 size={18} aria-hidden /> {t("editor.settings")}
           </button>
-          <button onClick={() => (setMenuOpen(false), setDuplicating(true))}>
-            <Copy size={18} aria-hidden /> {t("programs.duplicate")}
-          </button>
-          <button onClick={() => (setMenuOpen(false), downloadProgram(doc))}>
-            <Download size={18} aria-hidden /> {t("programs.export")}
-          </button>
-          <button data-danger onClick={() => (setMenuOpen(false), setDeleting(doc))}>
-            <Trash2 size={18} aria-hidden /> {t("programs.delete")}
-          </button>
         </div>
         <div className={modalStyles.actions}>
           <button className={modalStyles.button} onClick={() => setMenuOpen(false)}>
@@ -440,15 +416,6 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           </button>
         </div>
       </Modal>
-      <NewProgramModal open={duplicating} from={doc} onClose={() => setDuplicating(false)} />
-      <DeleteProgramModal
-        doc={deleting}
-        onClose={() => setDeleting(null)}
-        onDeleted={() => {
-          useEditor.getState().close();
-          navigate("/programs");
-        }}
-      />
     </div>
   );
 }

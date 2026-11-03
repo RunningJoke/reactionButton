@@ -23,8 +23,11 @@ import {
   MAX_FILE_SIZE,
   MAX_INCLUDE_DEPTH,
   MAX_PATH,
+  MAX_LABEL_CHARS,
   MAX_PERIPHERALS,
+  MAX_STORY_CHARS,
   PROGRAM_FORMAT_VERSION,
+  TEXT_LANGUAGES,
 } from "./limits";
 import { BUILTIN_VARIABLES, isObject, type Block } from "./program";
 import { byteLength } from "./utf8";
@@ -49,6 +52,9 @@ export const ISSUE_CODES = [
   "menuInvalid",
   "menuInvalidColor",
   "menuInvalidLed",
+  "textInvalid", // story / labels: not an object of non-empty strings per language
+  "textTooLong", // story over 255 or a label over 32 characters
+  "textControlChars", // story / label contains a control character (newline, tab, ...)
   // blocks
   "blockNoNameOrType",
   "duplicateBlock",
@@ -90,6 +96,7 @@ export const ISSUE_CODES = [
   "summaryTargetRange", // summary: targetMs outside 1 … 60000
   "summaryShowRange", // summary: showMs outside 0 … 60000
   // warnings
+  "textLanguageUnknown", // story / labels: a language other than en, de (ignored)
   "noOutgoing",
   "unreachable",
   "unknownVariable",
@@ -239,6 +246,7 @@ export function validateProgram(path: string, source: FileSource, options: Valid
     out.error("peripheralsRange", path, { field: "peripherals", params: { max: MAX_PERIPHERALS } });
   }
   checkMenu(doc.menu, path, out);
+  checkTexts(doc, path, out);
 
   // block names
   const names = new Map<string, string>();
@@ -268,6 +276,31 @@ export function validateProgram(path: string, source: FileSource, options: Valid
   checkRepeats(resolved, path, out);
   checkRanges(resolved, out);
   return resolved;
+}
+
+// control characters (no newlines), DEL, C1 and the Unicode line / paragraph separators
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u{2028}\u{2029}]/u;
+
+/** `story` and `labels`: one plain text per language; the firmware ignores both. */
+function checkTexts(doc: Record<string, unknown>, path: string, out: Collector) {
+  const check = (value: unknown, field: string, max: number) => {
+    if (!isObject(value)) return out.error("textInvalid", path, { field, params: { field } });
+    for (const [lang, text] of Object.entries(value)) {
+      if (!(TEXT_LANGUAGES as readonly string[]).includes(lang)) {
+        out.warn("textLanguageUnknown", path, { field, params: { field, lang, languages: TEXT_LANGUAGES.join(", ") } });
+      } else if (typeof text !== "string" || text.trim() === "") {
+        out.error("textInvalid", path, { field, params: { field: `${field}.${lang}` } });
+      } else if ([...text].length > max) {
+        out.error("textTooLong", path, { field, params: { field: `${field}.${lang}`, max, length: [...text].length } });
+      } else if (CONTROL_CHARS.test(text)) {
+        out.error("textControlChars", path, { field, params: { field: `${field}.${lang}` } });
+      }
+    }
+  };
+  if (doc.story !== undefined) check(doc.story, "story", MAX_STORY_CHARS);
+  if (doc.labels === undefined) return;
+  if (!isObject(doc.labels)) return out.error("textInvalid", path, { field: "labels", params: { field: "labels" } });
+  for (const [name, value] of Object.entries(doc.labels)) check(value, `labels.${name}`, MAX_LABEL_CHARS);
 }
 
 function checkMenu(menu: unknown, path: string, out: Collector) {

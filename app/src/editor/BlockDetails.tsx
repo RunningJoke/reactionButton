@@ -8,7 +8,7 @@ import { blockCategory, blockIcon } from "./blockStyle";
 import styles from "./Inspector.module.css";
 
 /** Read-only details of a block (program view, and preset blocks in the editor). */
-export function BlockDetailsSheet({ node, known, onSelect, children }: { node: GraphNode; known: ReadonlySet<string>; onSelect: (id: string | null) => void; children?: React.ReactNode }) {
+export function BlockDetailsSheet({ node, known, onSelect, onFlatten, children }: { node: GraphNode; known: ReadonlySet<string>; onSelect: (id: string | null) => void; /** a step of a shared game piece: makes all steps editable */ onFlatten?: () => void; children?: React.ReactNode }) {
   const { t } = useTranslation();
   const Icon = blockIcon(node.block?.type);
   const def = blockType(node.block?.type);
@@ -34,20 +34,28 @@ export function BlockDetailsSheet({ node, known, onSelect, children }: { node: G
       }
     >
       {children}
+      {onFlatten && !node.own && !node.external && (
+        <button type="button" className={styles.action} onClick={onFlatten}>
+          {t("editor.flatten")}
+        </button>
+      )}
       {!node.external && (
         <>
           {def && <p className={styles.help}>{t(`blocks.${def.type}.help`)}</p>}
           {fields.length > 0 && (
-            <dl className={styles.details}>
-              {fields.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>
-                    <code>{JSON.stringify(v)}</code>
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <details>
+              <summary>{t("editor.step.advanced.show")}</summary>
+              <dl className={styles.details}>
+                {fields.map(([k, v]) => (
+                  <div key={k}>
+                    <dt>{k}</dt>
+                    <dd>
+                      <code>{JSON.stringify(v)}</code>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
           )}
           <ul className={styles.portList}>
             {(def?.ports ?? []).map((port) => {

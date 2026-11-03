@@ -21,7 +21,9 @@ Paths ≤ 31 characters incl. the leading `/`.
 
 ### 1.2 Program file
 ```json
-{ "version": 1, "name": "Dreieck", "description": "ignored by the firmware", "peripherals": 2,
+{ "version": 1, "name": "Dreieck", "description": "ignored by the firmware",
+  "story": { "en": "One random pod lights up each round …", "de": "In jeder Runde leuchtet … " },
+  "labels": { "lap": { "en": "Round time", "de": "Rundenzeit" } }, "peripherals": 2,
   "menu": [ { "leds": [7, 9, 11], "color": "blue" } ], "variables": { "MAX_LOOPS": 12 },
   "include": ["/prog/lib/loop.json", "/prog/lib/random.json"], "start": "StartCycle", "blocks": [ ] }
 ```
@@ -29,11 +31,30 @@ Paths ≤ 31 characters incl. the leading `/`.
 | Field | Meaning |
 |---|---|
 | `version` | file layout (1), not the program format (§6) |
+| `description` | developer note (English, technical); not shown to coaches |
+| `story` | "What happens" for coaches: `{ "en": "…", "de": "…" }`, see below |
+| `labels` | words for metrics and variables: `{ "<name>": { "en": "…", "de": "…" } }`, see below |
 | `peripherals` | pods the central claims before the game; sets `REQUIRED_PERIPHERALS` and `NODE_COUNT` (+1) |
 | `menu` | LED groups in the menu: `leds` (0–17), `color` |
 | `variables` | integer start values; override those of includes |
 | `include` | fragments with more `variables` / `blocks`, loaded first in order, depth ≤ 3 |
 | `start` | first block (default: the first block) |
+
+**Texts (`story`, `labels`)** are for the app only. The firmware ignores them (`BlockManager` reads the keys
+it knows; the menu parse filters to `name`, `peripherals`, `menu`), so they need **no format revision**: older
+firmware loads such a file unchanged. They are never stored or rendered by the firmware; only the program
+file's own fields count (those of includes are not read).
+- Plain text per language, languages `en` and `de`; the app falls back to `en`. Other languages are a
+  validator warning (`textLanguageUnknown`) and ignored.
+- `story` at most 255 characters per language, a `labels` entry at most 32; counted in Unicode code points
+  (an emoji is 1, an umlaut is 1). No control characters (no newlines, tabs; also U+0080–U+009F, U+2028/2029),
+  not empty. Markup is not interpreted: the app shows the text as it is.
+- Limit that matters on the pod: the whole file stays within `maxFileSize` (16384 **bytes**, UTF-8, escapes
+  counted). Worst case two 255-character stories of 4-byte characters are about 2 KB; real texts ~0.6 KB. The
+  loader parses the whole file into heap (ArduinoJson), the texts add about their size once during load.
+- `labels` keys are metric names (`reaction`, `lap`, `cycle`, …) or variable names; unused keys are harmless.
+- Validator codes: `textInvalid`, `textTooLong`, `textControlChars`, `textLanguageUnknown` (warning);
+  same rules in `tools/validate_programs.py`.
 
 Block names are unique over the program and its includes; a fragment may link to blocks it does not
 define (`lib/star.json` ends in `EndLoop` from `lib/loop.json`).
@@ -223,7 +244,8 @@ fields, ports or semantics, or a detail of §7 changes.
 | 5 | 2.11 | `communicate` (§7.16), report buffer and its ops |
 | 6 | 2.13 | `summary` `show`, `targetMs`, `showMs` (§7.7) |
 
-Older programs run unchanged on newer firmware.
+Older programs run unchanged on newer firmware. Top-level fields only the app reads (`story`, `labels`,
+§1.2) are no revision: every firmware ignores unknown top-level keys.
 
 ## 7. Engine semantics
 

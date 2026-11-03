@@ -33,7 +33,9 @@ export function Palette({ context, templates, supportedTypes, onPick, onTemplate
               const unsupported = supportedTypes && !supportedTypes.includes(def.type);
               return (
                 <button key={def.type} type="button" className={styles.paletteItem} onClick={() => onPick(def.type)}>
-                  <Icon size={20} aria-hidden />
+                  <span className={styles.paletteTile} aria-hidden>
+                    <Icon size={20} />
+                  </span>
                   <span>
                     <strong>{t(`blocks.${def.type}.name`)}</strong>
                     {unsupported && <span className={styles.warnText}> · {t("editor.unsupported")}</span>}
@@ -60,7 +62,9 @@ export function LibraryParts({ paths, title, help, onPick }: { paths: readonly s
       <div className={styles.paletteGrid}>
         {paths.map((path) => (
           <button key={path} type="button" className={styles.paletteItem} onClick={() => onPick(path)}>
-            <BookLock size={20} aria-hidden />
+            <span className={styles.paletteTile} aria-hidden>
+              <BookLock size={20} />
+            </span>
             <span>
               <strong>{path.split("/").pop()!.replace(/\.json$/, "")}</strong>
             </span>
