@@ -104,6 +104,29 @@ mark "pass" only when the user reported it.
 | AT-E18 | Report: results as checkboxes, time limit, "Phone can change settings" (include / coach may change with min and max) | `metrics`, `timeoutMs`, `vars`, `editable` change; limit 8 per list; raw lists only in expert mode |
 | AT-E19 | Add a step: tiles | grouped Light / Wait / Think / Results; a format-1 pod greys out the Sprinkles it cannot run |
 
+## D – Design review rework (#106, PR #110; phone first; all "open" until the user reports them)
+| ID | Steps | Expected |
+|---|---|---|
+| AT-D1 | tap each tab; type `#/programs`, `#/editor`, `#/simulate`, `#/training`, `#/pod`, `#/menu` in the address bar | tab bar shows **Train · Games · Results** only, Settings from the header gear; old links open Games, the game page in Edit or Try, Train, This set, the menu; query strings kept; `#/editor` with no game opens the Games list |
+| AT-D2 | desktop ≥ 900 px: open a session from an athlete, Back; open a game, Back; open the menu, Back | side rail with Train, Games, Results, Settings, no tab bar; Back goes to the athlete, to Games and to This set (never a history jump); the parent tab stays highlighted |
+| AT-D3 | connected: tap the connection chip; disconnect; tap the chip again | connected: opens **This set**; not connected: opens the connection dialog |
+| AT-D4 | connected: change a step in a game (Edit), do not send, look at the chip; open This set; send; look again | chip has a dot and "Changes not on the pods yet"; This set names the changes in words with one **Send to pods**; after sending, dot and text are gone |
+| AT-D5 | not connected: open Train; dismiss the keep-open hint, reload | puck, "Connect a set", three numbered steps, one primary button; the hint appears once and stays dismissed |
+| AT-D6 | connected set (fw 2.12, main pod READY): open Train | state header in the pod-light colour with the state in words; athlete chips (4, then "More (n)") and "Add athlete"; no athlete chosen: "Results are only saved for a named athlete." |
+| AT-D7 | after round results arrive | "Last round result" with big Best and Average figures, "faster / slower / same than the round before", "All rounds today"; a round without values says "This round has no values." |
+| AT-D8 | in CONFIRM: press + and − on a value up to its limit; press Start | the stepper changes the value; at min / max its button is disabled; label "Changed – applied with Start"; Start applies the values, then starts (see AT-L3, AT-L13) |
+| AT-D9 | during a round, at *Waiting for you*: tap Continue, Repeat, Pause, Stop (fw ≥ 2.11) | the four controls sit together at the bottom, Stop in the danger style; each sends its command once; Pause missing on fw < 2.12 is noted in words (AT-L10) |
+| AT-D10 | open Games | each row: name, description, "Main pod + n pods" or "Main pod only"; a normal row has no chip; a problem ("not in menu", "Needs pod software …") is a chip with words |
+| AT-D11 | open a shipped game: About, then Edit, then **Make my copy** | About: story, settings summary, pod status, Try / Edit actions; Edit: "This game comes with the app and cannot be changed." with **Make my copy**; the copy opens in Edit; the shipped game is unchanged |
+| AT-D12 | open a game (pod or demo), **Try**, tap a pod | pods are tappable; current step as a sentence ("Step n of m: …"); results in seconds; details collapsed; bottom bar Pause, Skip pause, Start over |
+| AT-D13 | open a random-pod step, a round-result step, a results step, a locked step, and the LED colour choice | plain words, no block or port names (outside expert mode); a locked step says why; colours by name, with presets; sheet footer **Done** |
+| AT-D14 | two athletes with trainings: Results, then an athlete, then a training | athletes sorted by last training; athlete: trend, change, personal best with date; training: summary (best, average) above the rounds |
+| AT-D15 | training with 3 rounds: tap **Discard** on one; then Undo in the notice | round marked "Not counted", summary and average recount, round count changes; Undo restores the round and the numbers |
+| AT-D16 | switch de ↔ en on Train, Games, This set, a game page, Results | de: Spiele, Zentrale, "Auf die Pods hochladen", Runde; en: game, main pod, Send to pods, round; durations in seconds in both; variables and metrics with human labels; no missing keys |
+| AT-D17 | visit every page without a platform sign-in; then Settings → Advanced | platform only as "Platform (preview)" under Advanced; nothing about the platform on Train, Games, This set or Results |
+| AT-D18 | open online once; go offline; reload; later, online again | "Ready to work offline." as a bottom toast above the tab bar, gone by itself, not shown again in this browser; a new version shows a top toast "A new version is available." and waits for *Update* |
+| AT-D19 | 360 px, light and dark, every page of AT-D1–D18 (1200 px and desktop: spot check, #107) | nothing cut off, no horizontal scroll, touch targets ≥ 44 px, + button and toasts clear of the tab bar; screenshots looked at |
+
 ## U – Usability
 | ID | Steps | Expected |
 |---|---|---|
@@ -124,3 +147,4 @@ mark "pass" only when the user reported it.
 | AT-E2, E3, E5, E15–E19 | – | – | open (#88, step sheet and step list rebuilt, ready for test) |
 | AT-L1–L12 | – | 2.12 | open (P9, ready for test; L3 changed by #87) |
 | AT-L13–L17 | – | – | open (#87, specified, not built) |
+| AT-D1–D19 | – | – | open (#106, PR #110 merged; for the user to test) |

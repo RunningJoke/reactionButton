@@ -39,15 +39,45 @@ Fonts are bundled (`@fontsource`, latin, imported in `src/main.tsx`) for offline
 ## The pod
 Always the raised puck `LedRing` (`src/components/LedRing.tsx`): cap with a drop edge, 18 LEDs as segments
 on the rim; never a flat ring. Optional `title` (name or pod count) and `subtitle` (state, big pucks only)
-inside the cap, no labels below. Pressable (Simulate): the whole puck is the button, `pressed` moves the cap
-down; 140 px for 1–2 pods, 116 px for 3–4, 96 px for more. List pucks 56–64 px with the count inside.
+inside the cap, no labels below. Pressable (Try, game page): the whole puck is the button, `pressed` moves the
+cap down; 140 px for 1–2 pods, 116 px for 3–4, 96 px for more. List pucks 56–64 px with the count inside.
 
-## Layout
+## Navigation
+- Three destinations by task: **Train** (`/train`), **Games** (`/games`), **Results** (`/results`). Settings
+  from the header gear. The connection chip opens **This set** (`/set`, no tab) when connected, else the
+  connection dialog. The menu (`/set/menu`) is linked from This set.
+- Sub-pages: back arrow to an explicit parent (never history); the parent tab stays highlighted.
+- Phone: header (title in the display font, connection chip, settings) + floating tab bar, 12 px above the
+  bottom; `.main` keeps room for it; fixed elements (the + button) above it. Toasts at the top, except the
+  "ready offline" notice, which sits at the bottom above the tab bar.
+- ≥ 900 px: side rail with all destinations (Settings included), no tab bar.
+
+## Screens
+- **Train:** one live surface for the connected set. State header in the pod-light colours with the state in
+  words, athlete chips, last round result in big figures, value steppers (applied with Continue or Start),
+  Continue / Repeat / Pause / Stop in thumb reach. Not connected: the puck and a numbered connect guide.
+- **Games:** rows with name, description and pods needed. Chips only for problems, in words.
+- **Game page** (`/games/game`): header (name, pods needed, origin, ··· menu) and a segmented control
+  **About · Edit · Try**. Shipped games are read only: **Make my copy** instead of Edit. Edit has a bottom
+  bar (Undo, Redo, Add step, Try) and shows problems as a banner. Try: tappable pods, the current step as a
+  sentence, results in seconds, details collapsed, bottom bar Pause / Skip pause / Start over.
+- **Step sheets:** plain words and LED colour names with presets; locked steps say why; the footer has Done.
+  Block names and ports only in expert mode.
+- **This set:** unsent changes in words with one **Send to pods**, battery per pod, Find, details collapsed,
+  **Reset menu** as a danger action. The connection chip carries a dot while changes are unsent.
+- **Results:** athletes by last training; athlete page with trend, change and personal best; a training shows
+  its summary first, then the rounds. A round left out is marked, with undo.
+- **Settings:** language, expert mode, debug console, file deletion, and the platform preview under Advanced
+  only (a development option).
+
+## Copy
+- Short sentences, one term per thing, in both languages: game (Spiel), main pod (Zentrale), send (Send to
+  pods / Auf die Pods hochladen), round (Runde). Durations in seconds everywhere.
+- Variables and metrics get human labels; internal names only in expert mode.
+- Every UI text in `en.json` and `de.json`; a test checks the keys.
+
+## Layout rules
 - Mobile first: touch targets ≥ 44 px, no drag and drop needed, nothing cut off at 360 px.
-- Phone: header (title in the display font, connection chip, settings) + floating tab bar, ≤ 5 tabs (Pod,
-  Programs, Editor, Simulate, Results), 12 px above the bottom; `.main` keeps room for it; fixed elements
-  (the + button) above it, toasts at the top. Menu is linked from the Pod page.
-- ≥ 900 px: side rail with all destinations, no tab bar.
 - Cards: `--surface`, 1 px `--border`, radius `--radius-m`–`--radius-l`; no coloured left stripes (use an icon tile).
 - One primary (filled `--accent`) button per view; others outlined or plain.
 

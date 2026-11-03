@@ -1,7 +1,7 @@
 # Config App – specification
 
 PWA for coaches (not developers), phone in one hand in a sports hall: connect to a set, show and build
-programs, simulate them, keep them on the phone, push them to the pods, run training sessions and keep
+programs, try them out, keep them on the phone, send them to the pods, run training sessions and keep
 results. Pod contract: [config-api.md](../firmware/config-api.md); program format and engine:
 [programs.md](../firmware/programs.md); styling: [app/DESIGN.md](../../app/DESIGN.md); editor:
 [editor-ux.md](editor-ux.md). The platform client is a preview and on hold (ADR 0007).
@@ -94,7 +94,7 @@ Sub-pages show a back arrow in the header (to an explicit parent computed per ro
 | `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary (Adjust), pod status, Try / Edit or Make my copy, Blocks (expert). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
 | `/games/new` | wizard |
 | **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
-| **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
+| **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; send, Reset menu; *Train* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
 | `/set/menu` | order of `/programs.json`, LED ring picker per game |
 | Settings `/settings` (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
 
@@ -114,7 +114,7 @@ type SyncState  = { setId: string; files: Record<string /*path*/, { crc: string;
 - No layout on the pod: the column order is computed when a program opens (`model/graph.ts`).
 - Path from the name: slug ≤ 20 characters, so `/prog/<slug>.json` ≤ 31; must not collide with a local,
   pod or shipped path.
-- Local programs are editable; shipped and pod programs are read-only. **Edit** (and Adjust) makes a local
+- Local programs are editable; shipped and pod programs are read-only. **Make my copy** (and Adjust) makes a local
   copy with the **same path** that replaces the pod file at push; an existing copy opens instead.
   **Duplicate** = new name and path. Library files are never local.
 - **One local menu** = the set being built; until changed it shows the pod's menu, else the shipped one.
@@ -197,7 +197,7 @@ Errors block the push; warnings ("program ends here", unreachable, `rangeReverse
   release · Reset · Seed · breakpoint on a block · **Copy trace** in the pod's `trace on` format (AT-M5).
 - While paused a press or release is handled at once (one step).
 - Logic only, no radio timing; reaction times are click times.
-- Entry points: Simulate tab (picker: own programs and the menu), play in the editor and the program view.
+- Entry points: **Try** on the game page (any game in Games), and Try in the editor's bar.
   Programs with errors are not simulated.
 
 ## 9. Pod connection, sync, training
@@ -238,7 +238,7 @@ With the remembered last common CRC (`SyncState`):
    5. Map pod errors to the block. 6. Save the sync state **after each file** (an interrupted push shows the
    right states; pushing again finishes it). 7. Tell the user to start any program once with all pods on.
 
-- `pinRequired` → the push dialog asks for the PIN (`auth`) before the first write.
+- `pinRequired` → the send dialog asks for the PIN (`auth`) before the first write.
 - Last common CRC is set after every upload, on "take over" / "keep pod", on "keep mine" (the pod's current
   CRC, so the local file wins), when a local copy is made from a pod program; an untouched copy of a
   shipped program uses the shipped file.
@@ -250,7 +250,7 @@ With the remembered last common CRC (`SyncState`):
 - Removing a program from the menu leaves the file.
 - Deleting files: only Settings → Advanced: select, then a dialog naming the files with a "hold to delete"
   button. Library and `/programs.json` cannot be deleted.
-- Restore defaults (Pod tab, confirmation): uploads the shipped programs, library and default menu; user
+- Reset menu (restore defaults; This set, confirmation): uploads the shipped programs, library and default menu; user
   programs stay, only leave the menu.
 
 ### 9.5 Training, results and reconnect (P7, P9)
@@ -268,7 +268,7 @@ With the remembered last common CRC (`SyncState`):
   `ack`s it (no `ack` if storing fails, e.g. IndexedDB blocked → warning). Reports grouped into sessions per
   athlete; *Repeat* marks a report discarded (not in statistics). CSV: `;` (de) / `,` (en).
 - **Training view** (`pages/TrainingPage.tsx`, `/train`) is the only screen that controls a game (#87).
-  The Pod tab has no game controls; it links to the Training tab. One card:
+  This set has no game controls; it links to Train. One card:
   - set name, state (`status.state` or connecting / reconnecting / not connected), *Waiting for you* while
     `communicate` waits; athlete (store value); last report with link to the session.
   - **Start** (#87): in CONFIRM (`status.state` `CONFIRM`, READY on the ring) the program's editable variables from
@@ -407,7 +407,7 @@ The user approves each phase; acceptance tests: [acceptance-tests.md](acceptance
 | P7 | athletes, results, platform upload (#47, #48) | done (AT-R* 2026-10-26) |
 | P8 | block builder for first-timers (editor-ux.md) | done (AT-E* 2026-10-26) |
 | P9 | training view, reconnect, wake lock (#46); several sets on hold | ready for test (AT-L*) |
-| P10 | design review rework (#106): Train · Games · Results, game page About · Edit · Try, This set, results progress, game texts per program, plain copy (en/de) | in progress (desktop: #107) |
+| P10 | design review rework (#106): Train · Games · Results, game page About · Edit · Try, This set, results progress, game texts per program, plain copy (en/de); acceptance tests AT-D1–D19 (open, for the user to run) | in progress (desktop: #107) |
 
 ## 14. Commands
 `npm run dev` · `npm test` · `npm run build` · `npm run preview` · `npm run icons` (redraws `public/icons/`
