@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { AlertTriangle, ArrowDown, ArrowUp, CircleAlert, Copy, Plus, Trash2, Wrench } from "lucide-react";
+import { AlertTriangle, CircleAlert, Plus, Wrench } from "lucide-react";
 import { Sheet } from "../components/Sheet";
 import { IF_OPS, isObject, labelsOf, type Block, type Issue } from "@reactpod/program-model";
 import { Segmented, SwitchRow } from "../wizard/controls";
@@ -17,13 +17,16 @@ import { CHARGE_STYLES, chargeMode, goIsRandom, holdPod, releaseMode, setChargeM
 import { DEFAULT_GAME_MS, TOGGLE_STARTS, durationIsRandom, setDurationRandom, setTeamColor, setToggleStart, teamColors, toggleStart } from "./toggleStep";
 import { ExitPickerPage, ExitRow, type ExitEnv } from "./ExitPicker";
 import { ColorField, LedsField, ValueField } from "./fields";
+import { LedPresets, ColorName } from "./ledParts";
 import { MoreOptions } from "./MoreOptions";
 import { isValidVariableName, ownBlocks, setBlockField, setProgramField } from "./ops";
 import { podChoice, setPodChoice } from "./podChoice";
+import { isPodPick } from "./podPick";
+import { AdvancedStep, PodPickFields, ReportFields, SheetFooter, SummaryFields } from "./plainSheets";
 import { stepSentence, type SentenceOptions } from "./sentence";
 import { labelOf as labelOfName, settingLabel } from "./settingLabels";
 import { CountValue, Field, FixedOrRandomTime, fieldWords, TimeValue, type Apply, type FieldProps } from "./sheetParts";
-import { AddSprinklePage, ReportResults, SprinkleSection, type SprinkleContext } from "./Sprinkles";
+import { AddSprinklePage, SprinkleSection, type SprinkleContext } from "./Sprinkles";
 import { isCatchEarly, stepList, type LoopInfo, type Step } from "./structure";
 import { switchState, setSwitch } from "./switches";
 import inspector from "./Inspector.module.css";
@@ -83,7 +86,9 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
   const locked = ctx.lockedBy.get(name);
   const apply: Apply = (next, mergeKey) => ctx.apply(next, mergeKey ? { mergeKey } : undefined);
   const set = (field: string, value: unknown, merge = true) => apply(setBlockField(doc, name, field, value), merge ? `${name}.${field}` : undefined);
-  const kind = t(`editor.step.kind.${isCatchEarly(block) ? "delay" : block.type}`, { defaultValue: t("editor.step.kind.unknown") });
+  const kind = isPodPick(block, (ctx.blocks ?? new Map(ownBlocks(doc).map((b) => [b.name, b]))).values())
+    ? t("editor.step.pick.label")
+    : t(`editor.step.kind.${isCatchEarly(block) ? "delay" : block.type}`, { defaultValue: t("editor.step.kind.unknown") });
   const title = step?.number ? t("editor.step.title", { n: step.number, kind }) : kind;
   const programLabels = labelsOf(doc, i18n.language);
   const labelOf = (v: string) => labelOfName(v, t, programLabels);
@@ -98,6 +103,8 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
   };
   const sprinkles: SprinkleContext = { block, doc, set, apply, variables: ctx.variables, metrics: ctx.metrics, format: ctx.programFormat, exits };
   const back = () => setPage({ kind: "main" });
+  // the routes of a report ("pressed → continues at next") are for people who know them
+  const routesInMore = block.type === "communicate" && !expert;
 
   return (
     <Sheet title={title} icon={<Icon size={18} aria-hidden />} category={blockCategory(block.type)} sub={step?.inLoop ? t("editor.step.inRound") : undefined} onClose={() => ctx.select(null)}>
@@ -115,33 +122,17 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
           />
         ) : (
           <>
-            <p className={styles.story}>{stepSentence(block, t, sentence)}</p>
+            <p className={styles.story} aria-live="polite">
+              {stepSentence(block, t, sentence)}
+            </p>
             <ProblemList issues={issues} />
-            <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} metrics={ctx.metrics} />
-            <ExitsSection env={exits} block={block} />
+            <Essentials block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={ctx.variables} metrics={ctx.metrics} expert={expert} env={exits} format={ctx.programFormat} />
+            {!routesInMore && <ExitsSection env={exits} block={block} />}
             <SprinkleSection ctx={sprinkles} open={open} setOpen={setOpen} onAdd={() => setPage({ kind: "add" })} />
-            <MoreOptions block={block} doc={doc} set={set} apply={apply} variables={ctx.variables} metrics={ctx.metrics} />
+            <MoreOptions block={block} doc={doc} set={set} apply={apply} variables={ctx.variables} metrics={ctx.metrics}>
+              {routesInMore && <ExitsSection env={exits} block={block} />}
+            </MoreOptions>
 
-            <div className={inspector.actions}>
-              {ctx.step && (
-                <>
-                  <button className={inspector.action} disabled={!ctx.step.canUp} onClick={() => ctx.step!.move("up")}>
-                    <ArrowUp size={18} aria-hidden /> {t("editor.step.moveUp")}
-                  </button>
-                  <button className={inspector.action} disabled={!ctx.step.canDown} onClick={() => ctx.step!.move("down")}>
-                    <ArrowDown size={18} aria-hidden /> {t("editor.step.moveDown")}
-                  </button>
-                </>
-              )}
-              {ctx.duplicate && (
-                <button className={inspector.action} onClick={() => ctx.duplicate!(name)}>
-                  <Copy size={18} aria-hidden /> {t("editor.duplicate")}
-                </button>
-              )}
-              <button className={inspector.action} data-danger disabled={!!locked} onClick={() => ctx.remove?.(name)}>
-                <Trash2 size={18} aria-hidden /> {t("editor.step.deleteStep")}
-              </button>
-            </div>
             {locked && <p className={inspector.muted}>{t("editor.lockedBy", { file: locked })}</p>}
 
             {expert && (
@@ -152,6 +143,7 @@ function StepSheetBody({ block, step, issues, sentence, expert, ctx }: StepSheet
                 <BlockExpertFields block={block} ctx={ctx} />
               </section>
             )}
+            <SheetFooter ctx={ctx} name={name} locked={locked} />
           </>
         )}
       </div>
@@ -197,7 +189,7 @@ function ExitsSection({ env, block }: { env: ExitEnv; block: Block }) {
 
 /* ---------------------------------------------------------------- essentials */
 
-function Essentials({ block, doc, set, apply, labelOf, variables, metrics }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; metrics: readonly string[] }) {
+function Essentials({ block, doc, set, apply, labelOf, variables, metrics, expert, env, format }: FieldProps & { labelOf: (v: string) => string; variables: readonly string[]; metrics: readonly string[]; expert: boolean; env: ExitEnv; format?: number }) {
   const { t } = useTranslation();
   switch (block.type) {
     case "led":
@@ -205,10 +197,12 @@ function Essentials({ block, doc, set, apply, labelOf, variables, metrics }: Fie
         <>
           <Field label={t("editor.step.colour")}>
             <ColorField value={block.color} custom label={t("editor.step.colour")} onChange={(c) => set("color", c ?? "green", false)} />
+            <ColorName value={block.color} />
           </Field>
           {namedOff(block.color) ? null : (
             <Field label={t("editor.step.leds")}>
-              <LedsField value={block.leds} color={block.color} label={t("editor.step.leds")} onChange={(v) => set("leds", v)} />
+              <LedPresets value={block.leds} onChange={(v) => set("leds", v)} />
+              <LedsField value={block.leds} color={block.color} label={t("editor.step.leds")} numbers={expert} onChange={(v) => set("leds", v)} />
             </Field>
           )}
         </>
@@ -257,8 +251,11 @@ function Essentials({ block, doc, set, apply, labelOf, variables, metrics }: Fie
     }
     case "remoteResetAll":
       return <p className={styles.hint}>{t("editor.step.resetHint")}</p>;
-    case "setVariable":
-      return <SetVariableFields block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={variables} />;
+    case "setVariable": {
+      if (isPodPick(block, env.blocks.values())) return <PodPickFields block={block} doc={doc} set={set} apply={apply} />;
+      const raw = <SetVariableFields block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} variables={variables} />;
+      return expert ? raw : <AdvancedStep>{raw}</AdvancedStep>;
+    }
     case "if":
       return (
         <>
@@ -283,6 +280,7 @@ function Essentials({ block, doc, set, apply, labelOf, variables, metrics }: Fie
     case "summary":
       return (
         <>
+          <SummaryFields block={block} doc={doc} set={set} apply={apply} labelOf={labelOf} metrics={metrics} format={format} />
           <p className={styles.hint}>{t("editor.step.summaryHint")}</p>
           {STATS.map(([field, variable, key]) => (
             <SwitchRow
@@ -304,7 +302,7 @@ function Essentials({ block, doc, set, apply, labelOf, variables, metrics }: Fie
     case "toggle":
       return <ToggleFields block={block} doc={doc} set={set} apply={apply} />;
     case "communicate":
-      return <CommunicateFields block={block} doc={doc} set={set} apply={apply} metrics={metrics} />;
+      return <ReportFields block={block} doc={doc} set={set} apply={apply} metrics={metrics} env={env} />;
     case "repeat":
       return <CountValue label={t("editor.step.rounds")} value={block.count} doc={doc} min={1} onField={(n) => set("count", n)} apply={apply} />;
     default:
@@ -576,20 +574,6 @@ function ReleaseFields({ block, doc, set, apply }: FieldProps) {
 /* ---------------------------------------------------------------- domination */
 
 /** Essentials of "Domination": the two team colours, game length, who starts with which team, cooldown, results. */
-/**
- * communicate (programs.md §7.16): the time limit and the ports the client's answers and the button
- * lead to. The lists and the editable variables are under "More options".
- */
-function CommunicateFields({ block, doc, set, apply, metrics }: FieldProps & { metrics: readonly string[] }) {
-  const { t } = useTranslation();
-  return (
-    <>
-      <p className={styles.hint}>{t("editor.step.communicate.hint")}</p>
-      <ReportResults block={block} doc={doc} set={set} apply={apply} metrics={metrics} />
-    </>
-  );
-}
-
 function ToggleFields({ block, doc, set, apply }: FieldProps) {
   const { t } = useTranslation();
   const d = (key: string, o?: Record<string, unknown>) => t(`editor.step.toggle.${key}`, o);

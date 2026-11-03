@@ -183,13 +183,13 @@
     "noIssues": "No problems found.",
     "error": "Error",
     "warning": "Warning",
-    "presetBlock": "From {{file}} (read only). To change it, use “Convert to editable copy” in the game settings.",
+    "presetBlock": "This step comes from a shared game piece. Make all steps editable to change it.",
     "addBlock": "Add block",
     "addAtEnd": "added at the end, not connected",
     "addAfter": "inserted after {{name}}",
     "unsupported": "pod cannot run it",
     "templates": "Library as copy",
-    "templatesHelp": "Copies the blocks of a library part into this game, where you can change them.",
+    "templatesHelp": "Copies the blocks of a shared game piece into this game, where you can change them.",
     "type": "Block type",
     "blockName": "Block name",
     "nameInvalid": "Letters, digits, _ and -, starting with a letter (max. 32).",
@@ -218,10 +218,10 @@
     "deleteVariable": "Delete {{name}}",
     "menuPatternHelp": "How the game shows in the pod menu.",
     "presets": "Library presets",
-    "presetsHelp": "Included library parts stay read only and are shared with other games.",
+    "presetsHelp": "Included shared game pieces stay read only and are shared with other games.",
     "removePreset": "Remove {{path}}",
-    "addPreset": "Include a library part…",
-    "flatten": "Convert to editable copy",
+    "addPreset": "Include a shared game piece…",
+    "flatten": "Make all steps editable",
     "addAfterAction": "Add block after",
     "programSheet": {
       "title": "Game",
@@ -234,7 +234,7 @@
       "tweakNone": "This game has no settings to tweak. Change its steps in the editor.",
       "expert": "Expert",
       "start": "Start block",
-      "noPresets": "No library parts linked. This game is self-contained."
+      "noPresets": "No shared game pieces linked. This game is self-contained."
     },
     "exit": {
       "title": "Exits",
@@ -370,10 +370,6 @@
       }
     },
     "step": {
-      "communicate": {
-        "hint": "Sends the round result (the measurements since the last one), then waits for the app: continue, repeat or stop. A press goes on as well.",
-        "noLimit": "No limit"
-      },
       "viewSteps": "Steps",
       "viewBlocks": "Blocks",
       "view": "View",
@@ -409,7 +405,7 @@
       "problems_one": "{{count}} problem",
       "problems_other": "{{count}} problems",
       "unsupported": "not supported by your pod",
-      "locked": "from a library part",
+      "locked": "from a shared game piece",
       "ends": "the game ends here",
       "afterLast": "After the last round",
       "unreachable": "Not connected",
@@ -544,7 +540,7 @@
       "roundSub": "The steps in the bracket",
       "rounds": "Rounds",
       "roundHint": "The steps inside the bracket run this many times, then the steps after the last round follow.",
-      "roundLocked": "{{count}} rounds, set in a library part",
+      "roundLocked": "{{count}} rounds, set in a shared game piece",
       "addToEachRound": "Add a step to each round",
       "effect": {
         "label": "Effect",
@@ -641,7 +637,43 @@
           "release": "Letting go ends it",
           "accumulate": "Charge adds up"
         }
-      }
+      },
+      "pick": {
+        "label": "Pick a pod at random",
+        "any": "Any pod",
+        "never": "Never the same twice in a row",
+        "notMain": "Not the main pod",
+        "anyHint": "Every pod can be picked, the main pod too.",
+        "neverHint": "The pod picked last time is left out.",
+        "notMainHint": "Only the pods around the main pod are picked."
+      },
+      "advanced": {
+        "badge": "Advanced step",
+        "hint": "This step has no plain version yet.",
+        "show": "Show details",
+        "hide": "Hide details"
+      },
+      "report": {
+        "hint": "Sends the round result to the app and waits for its answer.",
+        "happens": "What happens",
+        "onContinue": "When you choose continue in the app: {{target}}",
+        "onPress": "When the main pod’s button is pressed: {{target}}",
+        "onTimeout": "When nobody answers in time: {{target}}"
+      },
+      "summary": {
+        "which": "Which result",
+        "show": "Show on the pod",
+        "showHint": "The average as a bar on the main pod’s ring.",
+        "target": "Target time"
+      },
+      "ledPreset": {
+        "label": "How many lights",
+        "all": "All lights",
+        "half": "Half",
+        "quarter": "Quarter"
+      },
+      "done": "Done",
+      "moreActions": "More actions"
     },
     "problem": {
       "summary_one": "{{count}} problem: {{text}}",
@@ -663,7 +695,7 @@
       "first": "The first step of the game",
       "recipes": "Recipes",
       "steps": "Single steps",
-      "library": "Library parts",
+      "library": "Shared game pieces",
       "libraryHint": "Inserted as a copy. To link a part as a preset, use the game settings.",
       "intent": {
         "light": {
@@ -918,7 +950,7 @@
     "clear": "Clear",
     "deleteFiles": "Delete files on the pod",
     "deleteNotConnected": "Connect the main pod to delete files.",
-    "deleteHint": "Library parts and the menu cannot be deleted. Remove a game from the menu first.",
+    "deleteHint": "Shared game pieces and the menu cannot be deleted. Remove a game from the menu first.",
     "inMenu": "in the menu",
     "deleteSelected_one": "Delete {{count}} file…",
     "deleteSelected_other": "Delete {{count}} files…",
@@ -979,7 +1011,7 @@
     "unknownField": "Unknown setting {{field}} is ignored by the pod",
     "indexInvalid": "The menu file is invalid",
     "indexDuplicate": "{{path}} is in the menu twice",
-    "indexNotProgram": "{{path}} is a library part, not a game",
+    "indexNotProgram": "{{path}} is a shared game piece, not a game",
     "tooManyTimers": "{{count}} different stopwatches, the pod allows {{max}}",
     "fieldNeedsFormat": "The connected pod ignores {{field}} (needs game format {{format}}, firmware update needed)",
     "timerNeverStopped": "Stopwatch {{name}} is started but never stopped",
@@ -1036,7 +1068,7 @@
     "close": "Close",
     "notFound": "{{path}} was not found.",
     "notConnected": "The pod is not connected.",
-    "fragment": "Library part",
+    "fragment": "Shared game piece",
     "variables": "Variables",
     "start": "Start",
     "fallbackToNext": "continues at “next”",
@@ -1514,8 +1546,8 @@
     "review": "Review changes",
     "restoreLead": "This replaces the pod menu with the default menu.",
     "planTitle": "This changes on the pods:",
-    "planExtra_one": "{{count}} library part or shipped game these games need",
-    "planExtra_other": "{{count}} library parts or shipped games these games need",
+    "planExtra_one": "{{count}} shared game piece or shipped game these games need",
+    "planExtra_other": "{{count}} shared game pieces or shipped games these games need",
     "progress": "Progress",
     "keepOn": "Do not switch off the pods.",
     "doneTitle": "Sent to the pods",
@@ -2006,7 +2038,7 @@
     "results": "Show results at the end",
     "resultsHint": "Average, best and number of presses",
     "timeLimitSetting": "The seconds are a setting above",
-    "noSwitches": "This game is built from library parts, so these switches cannot change it. Change the steps to make an editable copy first.",
+    "noSwitches": "This game is built from shared game pieces, so these switches cannot change it. Change the steps to make an editable copy first.",
     "try": "Try it",
     "saveAndTry": "Save and try",
     "save": "Save",

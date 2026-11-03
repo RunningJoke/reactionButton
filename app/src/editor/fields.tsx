@@ -156,7 +156,7 @@ export function ColorField({
 }
 
 /** LED selection of an `led` block: missing = all LEDs. */
-export function LedsField({ value, color, onChange, label }: { value: unknown; color: unknown; onChange: (leds: number[] | undefined) => void; label: string }) {
+export function LedsField({ value, color, onChange, label, numbers }: { value: unknown; color: unknown; onChange: (leds: number[] | undefined) => void; label: string; /** the LED numbers on the ring (expert mode); default: shown */ numbers?: boolean }) {
   const { t } = useTranslation();
   const all = !Array.isArray(value);
   const selected = new Set(all ? Array.from({ length: LED_COUNT }, (_, i) => i) : (value as unknown[]).filter((n): n is number => Number.isInteger(n)));
@@ -169,7 +169,7 @@ export function LedsField({ value, color, onChange, label }: { value: unknown; c
   };
   return (
     <div className={styles.picker}>
-      <LedRingPicker colors={Array.from({ length: LED_COUNT }, (_, i) => (selected.has(i) ? shown : undefined))} onToggle={toggle} size={220} label={label} />
+      <LedRingPicker colors={Array.from({ length: LED_COUNT }, (_, i) => (selected.has(i) ? shown : undefined))} onToggle={toggle} size={220} label={label} numbers={numbers} />
       <div className={styles.pickerActions}>
         <button type="button" className={styles.chip} aria-pressed={all} onClick={() => onChange(undefined)}>
           {t("picker.all")}

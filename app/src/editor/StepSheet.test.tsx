@@ -29,10 +29,13 @@ const program = (): ProgramJson => ({
     { name: "Game", type: "toggle", durationMs: 20000, next: "End" },
     { name: "Report", type: "communicate", next: "End" },
     { name: "Multi", type: "remoteMultiPress", next: "End" },
+    { name: "Bump", type: "setVariable", var: "ROUNDS", op: "=", value: 3, next: "End" },
+    { name: "Results", type: "summary", metric: "reaction", next: "End" },
   ],
 });
 
 let current: ProgramJson;
+const calls: string[] = [];
 
 function Harness({ name, expert = false, round = false, format }: { name: string; expert?: boolean; round?: boolean; format?: number }) {
   const [doc, setDoc] = useState(program);
@@ -47,10 +50,12 @@ function Harness({ name, expert = false, round = false, format }: { name: string
     lockedBy: new Map(),
     isProgram: true,
     apply: (next) => setDoc(next),
-    select: () => {},
+    select: () => calls.push("select"),
+    duplicate: (n) => calls.push(`duplicate ${n}`),
+    step: { canUp: true, canDown: false, move: (d) => calls.push(`move ${d}`) },
     addConnected: () => {},
     addAfter: () => {},
-    remove: () => {},
+    remove: (n) => calls.push(`remove ${n}`),
     programFormat: format,
   };
   const steps = stepList(doc);
@@ -199,6 +204,116 @@ describe("step sheet", () => {
     fireEvent.click(chips.getByRole("button", { name: "Pod 3" }));
     expect(block("Pod").pod).toBe(2);
     expect(ownBlocks(current).some((b) => b.name === "Pick")).toBe(false);
+  });
+
+  it("pick a pod at random: three plain choices on the existing ops, no raw fields", () => {
+    render(<Harness name="Pick" />);
+    const sheet = screen.getByRole("complementary");
+    expect(screen.queryByText("Setting")).toBeNull();
+    expect(screen.queryByText("What to do")).toBeNull();
+    expect(screen.queryByText("Value")).toBeNull();
+    const chips = within(screen.getByRole("group", { name: "Pick a pod at random" }));
+    expect(chips.getByRole("button", { name: "Not the main pod" }).getAttribute("aria-pressed")).toBe("true");
+    const headline = () => sheet.querySelector("[aria-live]")!.textContent;
+    const before = headline();
+    fireEvent.click(chips.getByRole("button", { name: "Never the same twice in a row" }));
+    // the same block the expert fields would write
+    expect(block("Pick")).toMatchObject({ op: "randomOther", value: "NODE_COUNT", var: "SELECTED_POD" });
+    expect(headline()).not.toBe(before); // live headline
+    fireEvent.click(chips.getByRole("button", { name: "Any pod" }));
+    expect(block("Pick")).toMatchObject({ op: "random", value: "NODE_COUNT" });
+    fireEvent.click(chips.getByRole("button", { name: "Not the main pod" }));
+    expect(block("Pick")).toMatchObject({ op: "random", value: "REQUIRED_PERIPHERALS" });
+  });
+
+  it("a setting step has no plain version: marked advanced, details on request", () => {
+    render(<Harness name="Bump" />);
+    expect(screen.getByText("Advanced step")).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Setting" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show details" }));
+    expect(screen.getByRole("group", { name: "Setting" })).toBeTruthy();
+    cleanup();
+    render(<Harness name="Bump" expert />);
+    expect(screen.queryByText("Advanced step")).toBeNull();
+    expect(screen.getByRole("group", { name: "Setting" })).toBeTruthy();
+  });
+
+  it("report to the app: sentences instead of exits, routes under More options", () => {
+    render(<Harness name="Report" />);
+    const sheet = screen.getByRole("complementary");
+    expect(sheet.textContent).toMatch(/Sends the round result to the app and waits/);
+    expect(sheet.textContent).not.toMatch(/\bms\b|Time-out/);
+    const what = within(screen.getByRole("list", { name: "What happens" }));
+    expect(what.getByText(/When you choose continue in the app/)).toBeTruthy();
+    expect(what.queryByText(/main pod’s button/)).toBeNull(); // no press exit set
+    // the route rows sit inside More options
+    const routes = screen.getByRole("region", { name: "Exits" });
+    expect(routes.closest("details")?.textContent).toMatch(/More options/);
+    // the time-out in seconds, with its sentence once there is a limit
+    addSprinkle(/Time limit/);
+    expect(block("Report").timeoutMs).toBe(30000);
+    expect(screen.getAllByText(/30 s/).length).toBeGreaterThan(0);
+  });
+
+  it("report to the app: expert mode keeps the exits in the open", () => {
+    render(<Harness name="Report" expert />);
+    expect(screen.getByRole("region", { name: "Exits" }).closest("details")).toBeNull();
+  });
+
+  it("show results: which result, show on the pod, target time in seconds", () => {
+    render(<Harness name="Results" />);
+    const sheet = screen.getByRole("complementary");
+    const which = screen.getByRole("combobox", { name: "Which result" }) as HTMLSelectElement;
+    expect(which.value).toBe("reaction");
+    expect([...which.options].map((o) => o.textContent)).toEqual(["Reaction time", "Round time"]);
+    fireEvent.change(which, { target: { value: "lap" } });
+    expect(block("Results").metric).toBe("lap");
+    expect(screen.queryByText("Target time")).toBeNull();
+    fireEvent.click(screen.getByRole("switch", { name: /Show on the pod/ }));
+    expect(block("Results")).toMatchObject({ show: true, targetMs: 500 });
+    expect(screen.getByText("Target time")).toBeTruthy();
+    expect(sheet.textContent).toMatch(/0\.5 s/);
+    expect(sheet.textContent).not.toMatch(/targetMs|showMs/);
+    // the Sprinkle row is not offered twice
+    expect(screen.queryByText("Show average bar")).toBeNull();
+    fireEvent.click(screen.getByRole("switch", { name: /Show on the pod/ }));
+    expect(block("Results").show).toBeUndefined();
+    expect(block("Results").targetMs).toBeUndefined();
+  });
+
+  it("sheet footer: Done, and the actions behind the dots", () => {
+    calls.length = 0;
+    render(<Harness name="Press" />);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(calls).toContain("select");
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    const menu = within(screen.getByRole("menu"));
+    expect((menu.getByRole("menuitem", { name: "Move down" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(menu.getByRole("menuitem", { name: "Move up" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Duplicate" }));
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete step" }));
+    expect(calls).toEqual(expect.arrayContaining(["move up", "duplicate Press", "remove Press"]));
+  });
+
+  it("LED step: the colour in words, presets, ring numbers only in expert mode", () => {
+    render(<Harness name="End" />);
+    expect(screen.getByText("Blue")).toBeTruthy();
+    expect(document.querySelectorAll(".led-picker-index").length).toBe(0);
+    const presets = within(screen.getByRole("group", { name: "How many lights" }));
+    expect(presets.getByRole("button", { name: "All lights" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(presets.getByRole("button", { name: "Half" }));
+    expect(block("End").leds).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    fireEvent.click(presets.getByRole("button", { name: "Quarter" }));
+    expect(block("End").leds).toEqual([0, 1, 2, 3, 4]);
+    fireEvent.click(presets.getByRole("button", { name: "All lights" }));
+    expect(block("End").leds).toBeUndefined();
+    cleanup();
+    render(<Harness name="End" expert />);
+    expect(document.querySelectorAll(".led-picker-index").length).toBeGreaterThanOrEqual(18);
   });
 
   it("expert section only in expert mode", () => {

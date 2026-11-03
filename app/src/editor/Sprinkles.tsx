@@ -70,7 +70,8 @@ type Item = { id: string; group: BehaviourGroup; behaviour?: Behaviour; state: B
 /** Every behaviour (and the pause countdown) that applies to the step, with its state. */
 function itemsOf(block: Block, doc: ProgramJson): Item[] {
   const mode = modeOf(block);
-  const items: Item[] = BEHAVIOURS.filter((b) => b.appliesTo(block, mode)).map((b) => ({ id: b.id, group: b.group, behaviour: b, state: b.isOn(block, doc) }));
+  // the Show results sheet asks for the bar itself
+  const items: Item[] = BEHAVIOURS.filter((b) => b.appliesTo(block, mode) && !(b.id === "showBar" && block.type === "summary")).map((b) => ({ id: b.id, group: b.group, behaviour: b, state: b.isOn(block, doc) }));
   if (ownCountdown(block)) items.push({ id: "countdown", group: "rules", state: countdownStyle(block) ? "on" : "off" });
   return items;
 }

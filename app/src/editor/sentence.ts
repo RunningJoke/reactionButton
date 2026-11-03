@@ -162,7 +162,7 @@ function sentenceOf(block: Block, t: TFunction, options: SentenceOptions): strin
     case "summary": {
       const stats = (["Average", "Best", "Worst", "Count"] as const).filter((s) => typeof block[`store${s}`] === "string");
       const base = stats.length ? t("sentence.summaryOf", { list: stats.map((s) => t(`sentence.stat.${s.toLowerCase()}`)).join(", ") }) : t("sentence.summary");
-      return typeof block.metric === "string" && block.metric !== "reaction" ? join(base, [t("sentence.ofMetric", { name: block.metric })]) : base;
+      return typeof block.metric === "string" && block.metric !== "reaction" ? join(base, [t("sentence.ofMetric", { name: t(`labels.metric.${block.metric}`, { defaultValue: block.metric }) })]) : base;
     }
     case "repeat":
       return repeatSentence(block.count, t, options);

@@ -30,10 +30,10 @@ export function moreFieldsOf(block: Block): FieldDef[] {
   return (blockType(block.type)?.fields ?? []).filter((f) => fieldLevel(f) === "more" && !own.includes(f.name) && (f.onlyMode === undefined || f.onlyMode === mode));
 }
 
-export function MoreOptions({ block, doc, set, apply, variables, metrics }: FieldProps & { variables: readonly string[]; metrics: readonly string[] }) {
+export function MoreOptions({ block, doc, set, apply, variables, metrics, children }: FieldProps & { variables: readonly string[]; metrics: readonly string[]; children?: ReactNode }) {
   const { t } = useTranslation();
   const fields = moreFieldsOf(block);
-  if (fields.length === 0) return null;
+  if (fields.length === 0 && !children) return null;
   const used = fields.some((f) => block[f.name] !== undefined);
   return (
     <details className={styles.more} open={used || undefined}>
@@ -41,6 +41,7 @@ export function MoreOptions({ block, doc, set, apply, variables, metrics }: Fiel
         <SlidersHorizontal size={18} aria-hidden /> {t("editor.step.moreOptions")}
       </summary>
       <div className={styles.moreBody}>
+        {children}
         {fields.map((f) => (
           <MoreField key={f.name} field={f} block={block} doc={doc} set={set} apply={apply} variables={variables} metrics={metrics} />
         ))}

@@ -183,13 +183,13 @@
     "noIssues": "Keine Probleme gefunden.",
     "error": "Fehler",
     "warning": "Warnung",
-    "presetBlock": "Aus {{file}} (nur lesen). Zum Ändern in den Spieleinstellungen „In bearbeitbare Kopie umwandeln“ wählen.",
+    "presetBlock": "Dieser Schritt stammt aus einem geteilten Spielteil. Mache alle Schritte bearbeitbar, um ihn zu ändern.",
     "addBlock": "Block hinzufügen",
     "addAtEnd": "wird am Ende angefügt, nicht verbunden",
     "addAfter": "wird nach {{name}} eingefügt",
     "unsupported": "Pod kann ihn nicht ausführen",
     "templates": "Bibliothek als Kopie",
-    "templatesHelp": "Kopiert die Blöcke eines Bibliotheksteils in dieses Spiel, dort sind sie änderbar.",
+    "templatesHelp": "Kopiert die Blöcke eines geteilten Spielteils in dieses Spiel, dort sind sie änderbar.",
     "type": "Blocktyp",
     "blockName": "Blockname",
     "nameInvalid": "Buchstaben, Ziffern, _ und -, beginnend mit einem Buchstaben (max. 32).",
@@ -218,10 +218,10 @@
     "deleteVariable": "{{name}} löschen",
     "menuPatternHelp": "So erscheint das Spiel im Pod-Menü.",
     "presets": "Bibliotheks-Vorlagen",
-    "presetsHelp": "Eingebundene Bibliotheksteile bleiben schreibgeschützt und werden mit anderen Spielen geteilt.",
+    "presetsHelp": "Eingebundene geteilte Spielteile bleiben schreibgeschützt und werden mit anderen Spielen geteilt.",
     "removePreset": "{{path}} entfernen",
-    "addPreset": "Bibliotheksteil einbinden…",
-    "flatten": "In bearbeitbare Kopie umwandeln",
+    "addPreset": "Geteiltes Spielteil einbinden…",
+    "flatten": "Alle Schritte bearbeitbar machen",
     "addAfterAction": "Block danach einfügen",
     "programSheet": {
       "title": "Spiel",
@@ -234,7 +234,7 @@
       "tweakNone": "Dieses Spiel hat keine Einstellungen zum Anpassen. Ändere seine Schritte im Editor.",
       "expert": "Experte",
       "start": "Startblock",
-      "noPresets": "Keine Bibliotheksteile verknüpft. Das Spiel ist eigenständig."
+      "noPresets": "Keine geteilten Spielteile verknüpft. Das Spiel ist eigenständig."
     },
     "exit": {
       "title": "Ausgänge",
@@ -370,10 +370,6 @@
       }
     },
     "step": {
-      "communicate": {
-        "hint": "Sendet das Rundenergebnis (die Messungen seit dem letzten), dann wartet der Ablauf auf die App: weiter, wiederholen oder stopp. Ein Druck geht ebenfalls weiter.",
-        "noLimit": "Keine Grenze"
-      },
       "viewSteps": "Schritte",
       "viewBlocks": "Blöcke",
       "view": "Ansicht",
@@ -409,7 +405,7 @@
       "problems_one": "{{count}} Problem",
       "problems_other": "{{count}} Probleme",
       "unsupported": "kann dein Pod nicht",
-      "locked": "aus einem Bibliotheksteil",
+      "locked": "aus einem geteilten Spielteil",
       "ends": "hier endet das Spiel",
       "afterLast": "Nach der letzten Runde",
       "unreachable": "Nicht verbunden",
@@ -544,7 +540,7 @@
       "roundSub": "Die Schritte in der Klammer",
       "rounds": "Runden",
       "roundHint": "Die Schritte in der Klammer laufen so oft, danach folgen die Schritte nach der letzten Runde.",
-      "roundLocked": "{{count}} Runden, festgelegt in einem Bibliotheksteil",
+      "roundLocked": "{{count}} Runden, festgelegt in einem geteilten Spielteil",
       "addToEachRound": "Schritt zu jeder Runde hinzufügen",
       "effect": {
         "label": "Effekt",
@@ -641,7 +637,43 @@
           "release": "Loslassen beendet",
           "accumulate": "Ladung summiert sich"
         }
-      }
+      },
+      "pick": {
+        "label": "Zufälligen Pod wählen",
+        "any": "Beliebiger Pod",
+        "never": "Nie zweimal derselbe hintereinander",
+        "notMain": "Nicht die Zentrale",
+        "anyHint": "Jeder Pod kann gewählt werden, auch die Zentrale.",
+        "neverHint": "Der Pod der letzten Runde wird ausgelassen.",
+        "notMainHint": "Nur die Pods um die Zentrale herum werden gewählt."
+      },
+      "advanced": {
+        "badge": "Erweiterter Schritt",
+        "hint": "Für diesen Schritt gibt es noch keine einfache Ansicht.",
+        "show": "Details zeigen",
+        "hide": "Details ausblenden"
+      },
+      "report": {
+        "hint": "Schickt das Rundenergebnis an die App und wartet auf ihre Antwort.",
+        "happens": "Was passiert",
+        "onContinue": "Wenn du in der App „Weiter“ wählst: {{target}}",
+        "onPress": "Wenn der Knopf der Zentrale gedrückt wird: {{target}}",
+        "onTimeout": "Wenn niemand rechtzeitig antwortet: {{target}}"
+      },
+      "summary": {
+        "which": "Welches Ergebnis",
+        "show": "Am Pod anzeigen",
+        "showHint": "Der Durchschnitt als Balken auf dem Ring der Zentrale.",
+        "target": "Zielzeit"
+      },
+      "ledPreset": {
+        "label": "Wie viele Lichter",
+        "all": "Alle Lichter",
+        "half": "Hälfte",
+        "quarter": "Viertel"
+      },
+      "done": "Fertig",
+      "moreActions": "Weitere Aktionen"
     },
     "problem": {
       "summary_one": "{{count}} Problem: {{text}}",
@@ -663,7 +695,7 @@
       "first": "Der erste Schritt des Spiels",
       "recipes": "Rezepte",
       "steps": "Einzelne Schritte",
-      "library": "Bibliotheksteile",
+      "library": "Geteilte Spielteile",
       "libraryHint": "Wird als Kopie eingefügt. Als verknüpfte Vorlage geht es über die Spieleinstellungen.",
       "intent": {
         "light": {
@@ -918,7 +950,7 @@
     "clear": "Leeren",
     "deleteFiles": "Dateien auf dem Pod löschen",
     "deleteNotConnected": "Verbinde die Zentrale, um Dateien zu löschen.",
-    "deleteHint": "Bibliotheksteile und das Menü können nicht gelöscht werden. Nimm ein Spiel zuerst aus dem Menü.",
+    "deleteHint": "Geteilte Spielteile und das Menü können nicht gelöscht werden. Nimm ein Spiel zuerst aus dem Menü.",
     "inMenu": "im Menü",
     "deleteSelected_one": "{{count}} Datei löschen…",
     "deleteSelected_other": "{{count}} Dateien löschen…",
@@ -979,7 +1011,7 @@
     "unknownField": "Unbekannte Angabe {{field}} wird vom Pod ignoriert",
     "indexInvalid": "Die Menüdatei ist ungültig",
     "indexDuplicate": "{{path}} steht doppelt im Menü",
-    "indexNotProgram": "{{path}} ist ein Bibliotheksteil, kein Spiel",
+    "indexNotProgram": "{{path}} ist ein geteiltes Spielteil, kein Spiel",
     "tooManyTimers": "{{count}} verschiedene Stoppuhren, der Pod erlaubt {{max}}",
     "fieldNeedsFormat": "Der verbundene Pod ignoriert {{field}} (braucht Spielformat {{format}}, Firmware-Update nötig)",
     "timerNeverStopped": "Stoppuhr {{name}} wird gestartet, aber nie gestoppt",
@@ -1036,7 +1068,7 @@
     "close": "Schließen",
     "notFound": "{{path}} wurde nicht gefunden.",
     "notConnected": "Der Pod ist nicht verbunden.",
-    "fragment": "Bibliotheksteil",
+    "fragment": "Geteiltes Spielteil",
     "variables": "Variablen",
     "start": "Start",
     "fallbackToNext": "geht bei „weiter“ weiter",
@@ -1514,8 +1546,8 @@
     "review": "Änderungen prüfen",
     "restoreLead": "Das ersetzt das Pod-Menü durch das Standard-Menü.",
     "planTitle": "Das ändert sich auf den Pods:",
-    "planExtra_one": "{{count}} Bibliotheksteil oder mitgeliefertes Spiel, das diese Spiele brauchen",
-    "planExtra_other": "{{count}} Bibliotheksteile oder mitgelieferte Spiele, die diese Spiele brauchen",
+    "planExtra_one": "{{count}} geteiltes Spielteil oder mitgeliefertes Spiel, das diese Spiele brauchen",
+    "planExtra_other": "{{count}} geteilte Spielteile oder mitgelieferte Spiele, die diese Spiele brauchen",
     "progress": "Fortschritt",
     "keepOn": "Die Pods nicht ausschalten.",
     "doneTitle": "Auf die Pods hochgeladen",
@@ -2006,7 +2038,7 @@
     "results": "Ergebnisse am Ende zeigen",
     "resultsHint": "Durchschnitt, Bestzeit und Anzahl der Drücke",
     "timeLimitSetting": "Die Sekunden sind oben eine Einstellung",
-    "noSwitches": "Dieses Spiel besteht aus Bibliotheksteilen, deshalb können diese Schalter es nicht ändern. Ändere zuerst die Schritte, um eine bearbeitbare Kopie zu machen.",
+    "noSwitches": "Dieses Spiel besteht aus geteilten Spielteilen, deshalb können diese Schalter es nicht ändern. Ändere zuerst die Schritte, um eine bearbeitbare Kopie zu machen.",
     "try": "Ausprobieren",
     "saveAndTry": "Speichern und ausprobieren",
     "save": "Speichern",

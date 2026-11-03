@@ -99,9 +99,9 @@ describe("Adjust sheet", () => {
     expect(blocks.some((b) => b.type === "setVariable" && b.var === "MISSES")).toBe(true);
   });
 
-  it("says when a program built from library parts has nothing to switch", () => {
+  it("says when a program built from shared game pieces has nothing to switch", () => {
     show({ source: "shipped", path: STERN });
-    expect(screen.getByText(/built from library parts/)).toBeTruthy();
+    expect(screen.getByText(/built from shared game pieces/)).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();
   });
 
@@ -118,7 +118,7 @@ describe("Adjust sheet", () => {
     useExpertModeStore.setState({ on: true });
     sheet();
     expect(screen.getByLabelText("Start block")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Convert to editable copy" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Make all steps editable" })).toBeTruthy();
     expect(screen.getByLabelText("Start value of MAX_LOOPS")).toBeTruthy();
     useExpertModeStore.setState({ on: false });
   });
