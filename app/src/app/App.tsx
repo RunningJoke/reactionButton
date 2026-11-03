@@ -11,6 +11,7 @@ import { AthletePage } from "../pages/AthletePage";
 import { SessionPage } from "../pages/SessionPage";
 import { LoginPage } from "../pages/LoginPage";
 import { WizardPage } from "../wizard/WizardPage";
+import { QuickWizard } from "../wizard/QuickWizard";
 import { TrainingPage } from "../pages/TrainingPage";
 
 
@@ -35,6 +36,7 @@ export function App() {
           <Route path="/games" element={<ProgramsPage />} />
           <Route path="/games/game" element={<GamePage />} />
           <Route path="/games/new" element={<WizardPage />} />
+          <Route path="/games/new/quick" element={<QuickWizard />} />
           {Object.entries(GAME_MODE_REDIRECTS).map(([from, mode]) => (
             <Route key={from} path={from} element={<Redirect to="/games/game" mode={mode} />} />
           ))}

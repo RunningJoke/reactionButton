@@ -49,10 +49,22 @@ describe("game page", () => {
 
   it("About falls back to the first sentence of the description", async () => {
     const json = { name: "X", description: "Short one. More text." };
-    const props = { sourceId: "shipped", path: "/prog/x.json", json, isProgram: true, resolved: { blocks: [], variables: {}, issues: [], doc: json }, graph: { nodes: [], edges: [] }, mine: false, copyLabel: "Make my copy", onMode: () => {}, onCopy: () => {}, onAdjust: () => {} };
+    const props = { sourceId: "shipped", path: "/prog/x.json", json, isProgram: true, resolved: { blocks: [], variables: {}, issues: [], doc: json }, graph: { nodes: [], edges: [] }, mine: false, copyLabel: "Make my copy", onMode: () => {}, onCopy: () => {}, onSettings: () => {} };
     render(<GameAbout {...(props as unknown as Parameters<typeof GameAbout>[0])} />);
     expect(screen.getByText("Short one.")).toBeTruthy();
     expect(screen.queryByText(/More text/)).toBeNull();
+  });
+
+  it("About offers Change settings for my game only; a shipped game offers a copy", () => {
+    const json = { name: "X", peripherals: 1 };
+    let opened = 0;
+    const props = { sourceId: "shipped", path: "/prog/x.json", json, isProgram: true, resolved: { blocks: [], variables: {}, issues: [], doc: json }, graph: { nodes: [], edges: [] }, mine: false, copyLabel: "Make my copy", onMode: () => {}, onCopy: () => {}, onSettings: () => opened++ };
+    const { rerender } = render(<GameAbout {...(props as unknown as Parameters<typeof GameAbout>[0])} />);
+    expect(screen.queryByRole("button", { name: "Change settings" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Make my copy" })).toBeTruthy();
+    rerender(<GameAbout {...({ ...props, mine: true } as unknown as Parameters<typeof GameAbout>[0])} />);
+    fireEvent.click(screen.getByRole("button", { name: "Change settings" }));
+    expect(opened).toBe(1);
   });
 
   it("the tabs switch the mode in the URL (replace) and respond to the arrow keys", async () => {

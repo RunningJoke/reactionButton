@@ -1,12 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, ChevronRight, CircleAlert, FileUp, FolderHeart, Loader, Package, Plus, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, BookLock, ChevronRight, CircleAlert, FileUp, FolderHeart, Loader, Package, Plus } from "lucide-react";
 import { PodIcon } from "../components/PodIcon";
 import { LedRing } from "../components/LedRing";
 import { useExpertMode } from "../editor/expertMode";
 import { buildCatalog, type CatalogEntry } from "../programs/catalog";
-import { AdjustSheet, type AdjustTarget } from "../programs/AdjustSheet";
 import { NewProgramModal, useTakenPaths } from "../programs/actions";
 import { olderPodNeeds, podsNeeded, summaryOf } from "../programs/requirements";
 import { SetArchiveButtons } from "../programs/SetArchiveButtons";
@@ -29,7 +28,6 @@ export function ProgramsPage() {
   const docs = useWorkspace((s) => s.programs);
   const idByPath = useMemo(() => new Map(docs.map((d) => [d.path, d])), [docs]);
   const [creating, setCreating] = useState(false);
-  const [adjusting, setAdjusting] = useState<AdjustTarget | null>(null);
   const library = pod.available && podCatalog.library.length > 0 ? { entries: podCatalog.library, source: "pod" as const } : { entries: shippedCatalog.library, source: "shipped" as const };
 
   return (
@@ -51,7 +49,6 @@ export function ProgramsPage() {
             entries={localCatalog.programs}
             source="local"
             href={(e) => gameUrl({ id: idByPath.get(e.path)!.id })}
-            onAdjust={(e) => setAdjusting({ source: "local", path: e.path })}
             tag={(e) => {
               const origin = idByPath.get(e.path)?.origin;
               return origin === "pod" ? t("programs.fromPod") : origin === "default" ? t("programs.fromShipped") : null;
@@ -75,7 +72,7 @@ export function ProgramsPage() {
               <AlertTriangle size={16} aria-hidden /> {t("programs.missingInMenu", { path })}
             </p>
           ))}
-          <EntryList entries={podCatalog.programs} source="pod" shipped={shipped.files} files={pod.files} onAdjust={(e) => setAdjusting({ source: "pod", path: e.path })} />
+          <EntryList entries={podCatalog.programs} source="pod" shipped={shipped.files} files={pod.files} />
         </section>
       ) : (
         <p className={styles.connectHint}>
@@ -87,7 +84,7 @@ export function ProgramsPage() {
         <h2 className={styles.heading}>
           <Package size={16} aria-hidden /> {t("programs.shipped")}
         </h2>
-        <EntryList entries={shippedCatalog.programs} source="shipped" onAdjust={(e) => setAdjusting({ source: "shipped", path: e.path })} />
+        <EntryList entries={shippedCatalog.programs} source="shipped" />
       </section>
 
       <section className={page.section}>
@@ -102,7 +99,6 @@ export function ProgramsPage() {
         <Plus size={26} aria-hidden />
       </button>
       <NewProgramModal open={creating} onClose={() => setCreating(false)} />
-      {adjusting && <AdjustSheet key={`${adjusting.source}:${adjusting.path}`} target={adjusting} onClose={() => setAdjusting(null)} />}
     </div>
   );
 }
@@ -164,11 +160,9 @@ type ListProps = {
   /** link target (default: the read-only view) */
   href?: (entry: CatalogEntry) => string;
   tag?: (entry: CatalogEntry) => string | null;
-  /** "Adjust" on program rows (editor-ux.md §4 G) */
-  onAdjust?: (entry: CatalogEntry) => void;
 };
 
-function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: ListProps) {
+function EntryList({ entries, source, shipped, files, href, tag }: ListProps) {
   const { t } = useTranslation();
   const [expert] = useExpertMode();
   const podFormat = usePodSession((s) => (s.state === "connected" ? podProgramFormat(s.info) : undefined));
@@ -209,14 +203,8 @@ function EntryList({ entries, source, shipped, files, href, tag, onAdjust }: Lis
               )}
               <Problems entry={entry} podFormat={podFormat} />
             </span>
-            {!(onAdjust && entry.kind === "program") && <ChevronRight size={18} aria-hidden className={styles.chevron} />}
+            <ChevronRight size={18} aria-hidden className={styles.chevron} />
           </Link>
-          {onAdjust && entry.kind === "program" && (
-            <button type="button" className={styles.adjust} onClick={() => onAdjust(entry)} aria-label={t("adjust.actionFor", { name: entry.name })} title={t("adjust.action")}>
-              <SlidersHorizontal size={18} aria-hidden />
-              <span>{t("adjust.action")}</span>
-            </button>
-          )}
         </li>
       ))}
     </ul>

@@ -45,8 +45,8 @@ describe("chip only for older pod software", () => {
 
 describe("summary", () => {
   it("takes the first sentence of the shipped descriptions", () => {
-    expect(summaryOf(JSON.parse(DEFAULT_FILES["/prog/solo.json"]!).description)).toBe("Central only.");
-    expect(summaryOf(JSON.parse(DEFAULT_FILES["/prog/duo.json"]!).description)).toBe("Two pods: the central and one peripheral take turns.");
+    expect(summaryOf(JSON.parse(DEFAULT_FILES["/prog/solo.json"]!).description)).toBe("Press the main pod as soon as it turns green.");
+    expect(summaryOf(JSON.parse(DEFAULT_FILES["/prog/duo.json"]!).description)).toBe("Two pods: the main pod and one more pod take turns.");
   });
 
   it("drops a format note, which the chip shows instead", () => {

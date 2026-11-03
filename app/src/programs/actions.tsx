@@ -6,11 +6,10 @@ import { Modal, modalStyles } from "../components/Modal";
 import { DEFAULT_FILES } from "../defaults";
 import { formatProgram } from "@reactpod/program-model";
 import { newProgram, type ProgramJson } from "../editor/ops";
-import { useEditor } from "../editor/editorStore";
-import { Copy, FilePlus, Wand2 } from "lucide-react";
+import { Copy, FilePlus, Wand2, Zap } from "lucide-react";
 import type { MenuGroup } from "@reactpod/program-model";
 import { LedRing } from "../components/LedRing";
-import { WIZARD_PATH, useWizard } from "../wizard/wizardStore";
+import { QUICK_PATH, WIZARD_PATH, useWizard } from "../wizard/wizardStore";
 import wizard from "../wizard/Wizard.module.css";
 import { buildCatalog } from "./catalog";
 import { usePodSession } from "../pod/session";
@@ -47,25 +46,6 @@ export async function ensureLocal(path: string, text: string | undefined, origin
   if (existing) return existing;
   if (text === undefined) return undefined;
   const doc = await add(JSON.parse(text) as Record<string, unknown>, origin, { path });
-  if (origin === "pod") await rememberPodBase(path);
-  return doc;
-}
-
-/**
- * Saves a changed program (Adjust sheet, editor-ux.md §4 G): into the local program with this path
- * (through the editor when it has it open, so undo works there), else as a new local copy with the
- * same path, like Edit does. The program on the pod is not touched until the next push.
- */
-export async function saveAdjusted(path: string, json: ProgramJson, origin: "local" | "pod" | "default"): Promise<ProgramDoc> {
-  const { programs, add, save } = useWorkspace.getState();
-  const existing = programs.find((p) => p.path === path);
-  if (existing) {
-    const editor = useEditor.getState();
-    if (editor.doc?.id === existing.id) editor.apply(json);
-    else await save({ ...existing, json });
-    return useWorkspace.getState().programs.find((p) => p.id === existing.id) ?? { ...existing, json };
-  }
-  const doc = await add(json, origin === "local" ? "local" : origin, { path });
   if (origin === "pod") await rememberPodBase(path);
   return doc;
 }
@@ -117,6 +97,11 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
     return (
       <Modal open={open} title={t("programs.newTitle")} onClose={close} actions={<button className={modalStyles.button} onClick={close}>{t("common.cancel")}</button>}>
         <NewProgramChooser
+          onQuick={() => {
+            useWizard.getState().start();
+            close();
+            navigate(QUICK_PATH);
+          }}
           onGame={() => {
             useWizard.getState().start();
             close();
@@ -182,11 +167,21 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
 }
 
 /** The three ways to start a program. */
-function NewProgramChooser({ onGame, onCopy, onEmpty }: { onGame: () => void; onCopy: () => void; onEmpty: () => void }) {
+function NewProgramChooser({ onQuick, onGame, onCopy, onEmpty }: { onQuick: () => void; onGame: () => void; onCopy: () => void; onEmpty: () => void }) {
   const { t } = useTranslation();
   return (
     <div className={wizard.chooser}>
       <p className={wizard.muted}>{t("wizard.chooser.question")}</p>
+      <button type="button" className={wizard.choice} onClick={onQuick}>
+        <span className={wizard.choiceIcon}>
+          <Zap size={26} aria-hidden />
+        </span>
+        <span className={wizard.choiceText}>
+          <strong>{t("wizard.chooser.quick")}</strong>
+          <span>{t("wizard.chooser.quickLine")}</span>
+          <span className={`${wizard.tag} ${wizard.tagAccent}`}>{t("wizard.chooser.recommended")}</span>
+        </span>
+      </button>
       <button type="button" className={wizard.choice} onClick={onGame}>
         <span className={wizard.choiceIcon}>
           <Wand2 size={26} aria-hidden />
@@ -194,7 +189,6 @@ function NewProgramChooser({ onGame, onCopy, onEmpty }: { onGame: () => void; on
         <span className={wizard.choiceText}>
           <strong>{t("wizard.chooser.game")}</strong>
           <span>{t("wizard.chooser.gameLine")}</span>
-          <span className={`${wizard.tag} ${wizard.tagAccent}`}>{t("wizard.chooser.recommended")}</span>
         </span>
       </button>
       <button type="button" className={wizard.choice} onClick={onCopy}>

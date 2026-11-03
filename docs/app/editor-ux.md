@@ -18,8 +18,8 @@ sheet; 9. dropped fields and links without asking; 10. had no guided start.
 
 | Persona | Sees blocks? | Main path |
 |---|---|---|
-| First-timer ("3 pods, a reaction game, now") | no | chooser → wizard → Try → add to menu |
-| Coach ("same drill, 20 rounds, 1–3 s pause, 2 s limit") | steps in words | Programs → Adjust; simple editor with switches |
+| First-timer ("3 pods, a reaction game, now") | no | chooser → Quick game → About → Try → add to menu |
+| Coach ("same drill, 20 rounds, 1–3 s pause, 2 s limit") | steps in words | Games → game → About → Change settings (G); simple editor with switches |
 | Tinkerer (must keep working) | yes | expert mode |
 
 Phone in one hand, gloves or sweaty fingers, nothing lost by accident.
@@ -28,8 +28,8 @@ Phone in one hand, gloves or sweaty fingers, nothing lost by accident.
 
 **S** = simple view, **T** = a Sprinkle or "More options", **E** = expert mode only.
 
-- **Start:** game wizard S · copy a program S · import `.json` S · start empty E.
-- **Adjust:** rounds (`MAX_LOOPS` / `repeat.count`) S · pause fixed or random S · time limit and what
+- **Start:** Quick game S · guided wizard S · copy a game S · import `.json` S · start empty E.
+- **Game settings:** rounds (`MAX_LOOPS` / `repeat.count`) S · pause fixed or random S · time limit and what
   happens when it runs out T · colours S · number of red pods T · pods needed S · catch false starts T.
 - **Flow:** add a step by intent S · add into a branch S · move up / down S · delete with undo, duplicate S ·
   repeat N times (bracket) S · `if` in words S · short vs long press T · **every exit with one picker S**
@@ -51,15 +51,25 @@ create / rename / delete settings, built-ins E.
 
 ## 4. Flow
 
-Programs → **+** → chooser (A) → wizard (B) → Ready: *Try it* (simulator), *Change steps* (editor C),
-*Save and add to menu*. Programs → *Adjust* (G). Editor: tap a step → step sheet (D); **+** → add a step
-(E); title → program sheet (F); More → expert mode (H).
+Games → **+** → chooser (A) → **Quick game** (B0: About, *Try*, *Change settings*) or the guided wizard (B; Ready:
+*Try it*, *Change steps* (editor C), *Save and add to menu*). Games → game → About → **Change settings** → the game
+settings panel (F, opened as G). Editor: tap a step → step sheet (D); **+** → add a step (E); *Game settings*
+(F); More → expert mode (H).
 
-### A. "New program" chooser
-Three cards: **Start from a game** (recommended), **Copy one of my programs**, **Start empty** ("for people
-who know blocks").
+### A. "New game" chooser
+Four cards: **Quick game** (recommended, B0), **Start from a game** (the guided wizard, B), **Copy one of my
+games**, **Start empty** ("for people who know blocks").
 
-### B. Game wizard
+### B0. Quick game (`/games/new/quick`, `wizard/QuickWizard.tsx`)
+One screen, no steps: **Game** (select, with the game's one-line description), **Pods besides the main pod**
+(stepper; a game that needs more pods raises it to its minimum and its minus stops there; not shown for Solo,
+which uses only the main pod, and Duo, which uses one pod), **Rounds**, **Target colour** (swatches; red is off
+for "All at once" with red pods), **Name** (placeholder: the game's name). A problem is named in words under the
+fields and disables both buttons. **Create game** saves the game and opens its About. **Create and adjust** saves
+it and opens Edit with the game settings panel (F) open. Everything else (pauses, time limit, measuring, menu
+pattern) starts from the game's defaults and is changed in the panel afterwards.
+
+### B. Guided wizard ("Start from a game")
 One question per screen, Back / Next, prefilled, ≤ 6 screens:
 1. Game: solo, star, random pod (never twice), all at once (with red pods), duo; animated LED preview and
    the pod count. 2. Pods: stepper; games that need more are explained, not hidden. 3. Rounds and timing:
@@ -70,7 +80,7 @@ One question per screen, Back / Next, prefilled, ≤ 6 screens:
 Ready screen: name (editable), menu pattern, the program as a short story ("12 rounds: pause 1–3 s, light a
 random pod green, wait for the press (max 2 s)…"). Generated programs are self-contained (templates), follow
 the shipped `star`, `random`, `multi`, `solo`, `duo`, use only blocks the firmware has, and write answers into
-variables (`ROUNDS`, `PAUSE_MIN_MS`, …) and fields so Adjust can change them. Loop (decision 2): a `repeat`
+variables (`ROUNDS`, `PAUSE_MIN_MS`, …) and fields so the game settings panel can change them. Loop (decision 2): a `repeat`
 block (`count: "ROUNDS"`, `storeIndex: "RUNS"`, `body` = first round step, `done` = first step after; the last
 round step and early exits link back) if `info.programFormat` ≥ 2; otherwise (older or no pod) the `lib/loop`
 pattern (`setVariable RUNS +1`, `if RUNS >= MAX_LOOPS`). Both show as the same Repeat bracket.
@@ -146,18 +156,26 @@ when too slow", "Pause between rounds", "Flash red on a false start". Values com
 colour of the previous light, the round's time limit; a value field never creates a variable by itself
 ("new setting…" asks for a name). Expert mode shows block types and library parts last.
 
-### F. Program sheet
-**Basics**: name, description, pods besides the central (picture stepper), menu pattern. **Settings you can
-tweak**: variables as labelled steppers; labels from a table in the app (decision 1,
-`editor/settingLabels.ts`, texts in en/de): `MAX_LOOPS`/`ROUNDS` → "Rounds", `PAUSE_MIN_MS` → "Shortest
-pause", a known `_MS` suffix → seconds; unknown names as is. **Expert**: start block, library parts,
-convert to editable copy, raw variables.
+### F. Game settings panel (contents)
+Edit with `panel=settings` (`editor/ProgramSettings.tsx`), top to bottom: **Basics**: name, description, pods
+besides the main pod (picture stepper), menu pattern ("Listed on the pods"). **Settings you can tweak**: variables
+as labelled steppers; labels from a table in the app (decision 1, `editor/settingLabels.ts`, texts in en/de):
+`MAX_LOOPS`/`ROUNDS` → "Rounds", `PAUSE_MIN_MS` → "Shortest pause", a known `_MS` suffix → seconds; unknown
+names as is. **For the whole game**: time limit (seconds to press, "if too slow": goes on / counts a miss / ends
+the round), record reaction times, show results at the end (`programSwitches.ts`); a switch appears only where
+the game's own steps allow it. **Expert** (expert mode): start block, library parts, convert to editable copy,
+raw variables.
 
-### G. Adjust sheet (Programs page)
-The program's settings (F) and whole-program switches (time limit, record times, results at the end), with
-**Try it** and **Save** at the bottom; for every program: mine, pod (also a read-only pod), shipped
-(decision 3). Non-local programs are saved as a local copy with the same path; the pod's file stays until the
-next push. On a read-only pod the sheet says the copy stays on this phone.
+### G. Opening the panel, shipped games and Make my copy
+- Opened from **About → Change settings** (my games only) or from the game's ··· menu → **Game settings**. Both
+  open Edit with the panel on top (`mode=edit&panel=settings`). Changes in the panel use the same undo / redo as
+  the steps.
+- Shipped and pod games are read-only. About shows the settings summary but no **Change settings**; its action is
+  **Make my copy**. Edit shows "This game comes with the app and cannot be changed. Make your own copy to edit it."
+  with the same button. The copy keeps the path, is saved on this phone and opens in Edit; the pod's file stays
+  until the game is sent. A read-only pod offers the copy too; it stays on this phone.
+- A game built only from shared game pieces (Stern, Run5) has no switches for the whole game. The panel says so
+  and points to changing the steps first.
 
 ### H. Expert mode
 Switch under More (editor) and Settings → Advanced, remembered per device (`editor/expertMode.ts`): block
@@ -203,7 +221,7 @@ repeat / If you choose stop"; app-only role `ifPressedEarly` for the false-start
 ## 6. Decisions (2026-10-21)
 1. Setting labels live in the app (name table); the program file gets no new key.
 2. The wizard uses `repeat` with `programFormat` ≥ 2, else the `lib/loop` pattern.
-3. Adjust is offered on a read-only pod too; it saves a local copy and says it cannot be pushed there.
+3. Make my copy is offered for shipped and pod games, also on a read-only pod; it saves a local copy on this phone and changes nothing on the pod.
 
 ## 7. As built – deviations
 
@@ -213,8 +231,7 @@ repeat / If you choose stop"; app-only role `ifPressedEarly` for the false-start
 | time limit of a press | fixed only; existing random limits show both values | a random limit without a recorded time marks a false-start pause |
 | "Don't touch" on one pod | on: also sets a time limit, stops recording; off: does not restore exactly | a red pod without a limit waits forever |
 | "End the round" when too slow | not for "all at once" | its pods stay lit after a timeout |
-| Adjust with unsaved changes | "Save and try" | the simulator opens saved programs only |
-| Adjust switches | none for programs built only from library parts (Stern, Run5); Duo has no results switch | switches edit the program's own steps |
+| Whole-game switches (panel) | none for games built only from library parts (Stern, Run5); Duo has no results switch | switches edit the game's own steps |
 | Add a step | "Light a pod" / "Race" off without pods; "Race" adds "Turn all pods off"; "Repeat" adds 3 rounds with 1 s pause; recipes do not reset Misses between series | valid and runnable after every tap |
 | reversed range | validator warning `rangeReversed` (app and `validate_programs.py`) | the firmware then always uses the shortest time (programs.md §7.3) |
 | Sprinkles (#88) | UI name Sprinkles (Streusel), code id `behaviour`; the six feature switches are the first entries | one concept for everything optional on a step |

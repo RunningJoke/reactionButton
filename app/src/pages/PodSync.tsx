@@ -128,7 +128,8 @@ function ChangeRow({ state, readOnly }: { state: FileSync; readOnly: boolean }) 
         {state.status === "conflict" && <span className={styles.note}>{t("sync.conflictHint")}</span>}
         {error && <span className={modalStyles.error}>{error}</span>}
       </div>
-      <SyncBadge status={state.status} />
+      {/* new / not on the pods yet: the card heading already says so */}
+      {state.status !== "new" && state.status !== "localNewer" && <SyncBadge status={state.status} />}
       {!readOnly && state.status === "podNewer" && (
         <button className={page.textButton} onClick={run(keepPod)}>
           {t("sync.takeOver")}

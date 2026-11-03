@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "Duo",
-  "description": "Two pods: the central and one peripheral take turns. Each target lights after a random 0.5-2 s pause, so the player has to react instead of anticipate. A target that is not pressed within 5 s counts as a miss (MISSES). 10 rounds, then the summary.",
+  "description": "Two pods: the main pod and one more pod take turns. Each target lights after a random 0.5-2 s pause, so the player has to react instead of anticipate. A target that is not pressed within 5 s counts as a miss (MISSES). 10 rounds, then the summary.",
   "story": { "en": "The main pod and one more pod take turns. Each lights green after a short random pause. Press it fast. If you wait more than 5 seconds it counts as a miss.", "de": "Die Zentrale und ein weiterer Pod sind abwechselnd dran. Jeder leuchtet nach kurzer, zufälliger Pause grün. Schnell drücken. Nach mehr als 5 Sekunden zählt es als verpasst." },
   "labels": { "reaction": { "en": "Reaction time", "de": "Reaktionszeit" }, "cycle": { "en": "Total time", "de": "Gesamtzeit" }, "MISSES": { "en": "Misses", "de": "Verpasst" } },
   "peripherals": 1,
