@@ -371,6 +371,22 @@
   color: var(--text-muted);
 }
 
+.switchCard[data-flat] {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 0;
+  background: none;
+}
+
+.switchCard[data-flat] .switchRow {
+  min-height: 48px;
+  padding: var(--space-3) 0;
+}
+
+.switchCard[data-flat] .switchBody {
+  padding: var(--space-3) 0 var(--space-4);
+}
+
 .switchRow {
   display: flex;
   align-items: center;
