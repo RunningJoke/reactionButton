@@ -33,7 +33,7 @@ describe("pod menu", () => {
     await waitFor(() => expect(rowPaths().length).toBeGreaterThanOrEqual(3));
     const [a, b, c] = rowPaths() as string[];
 
-    const handle = screen.getAllByRole("button", { name: /^Drag / })[0]!;
+    const handle = screen.getAllByTitle(/^Drag /)[0]!;
     fireEvent.pointerDown(handle, { pointerId: 1, clientY: 32 });
     fireEvent.pointerMove(handle, { pointerId: 1, clientY: 180 });
     fireEvent.pointerUp(handle, { pointerId: 1, clientY: 180 });

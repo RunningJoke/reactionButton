@@ -97,11 +97,11 @@ export function MenuPage() {
     d.to = d.centers.filter((c, j) => j !== d.from && c < e.clientY).length;
     setDrag({ from: d.from, to: d.to, dy: e.clientY - d.startY, height: d.height });
   };
-  const dragEnd = () => {
+  const dragEnd = (drop: boolean) => {
     const d = dragRef.current;
     dragRef.current = null;
     setDrag(null);
-    if (d && d.to !== d.from) move(d.from, d.to);
+    if (drop && d && d.to !== d.from) move(d.from, d.to);
   };
   /** Offset of a row while another row is dragged: the rows in between make room for it. */
   const rowStyle = (i: number) => {
@@ -134,8 +134,10 @@ export function MenuPage() {
                   className={styles.handle}
                   onPointerDown={(e) => dragStart(i, e)}
                   onPointerMove={dragMove}
-                  onPointerUp={dragEnd}
-                  onPointerCancel={dragEnd}
+                  onPointerUp={() => dragEnd(true)}
+                  onPointerCancel={() => dragEnd(false)}
+                  tabIndex={-1}
+                  aria-hidden
                   aria-label={t("menu.dragHandle", { name: entry.name })}
                   title={t("menu.dragHandle", { name: entry.name })}
                 >
