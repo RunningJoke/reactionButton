@@ -27,6 +27,11 @@ export type FileSync = {
   pod?: FileEntry;
 };
 
+/** Files the app would send: not on the pods yet (new or changed here). */
+export function unsentChanges(states: readonly FileSync[] | null | undefined): FileSync[] {
+  return (states ?? []).filter((s) => s.status === "new" || s.status === "localNewer");
+}
+
 export type SyncInput = {
   programs: readonly ProgramDoc[];
   /** the saved local menu; `undefined` = the menu follows the pod */

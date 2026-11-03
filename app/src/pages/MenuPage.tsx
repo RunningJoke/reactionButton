@@ -11,6 +11,7 @@ import { usePodSession } from "../pod/session";
 import { ensureLocal } from "../programs/actions";
 import { useLocalMenu, useProgramSource } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
+import { UnsentBar } from "./PodSync";
 import styles from "./MenuPage.module.css";
 
 type Origin = "local" | "pod" | "shipped" | "missing";
@@ -83,6 +84,7 @@ export function MenuPage() {
   return (
     <div className={styles.menuPage}>
       <div className={styles.scroll}>
+        <UnsentBar local={saved} />
         <p className={styles.intro}>{t("menu.intro")}</p>
         {!saved && <p className={styles.note}>{connected ? t("menu.fromPod") : t("menu.fromShipped")}</p>}
         {entries.length === 0 ? (
