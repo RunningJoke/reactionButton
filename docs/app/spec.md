@@ -90,8 +90,8 @@ Sub-pages show a back arrow in the header (to an explicit parent computed per ro
 | Route | Content |
 |---|---|
 | **Train** `/train` | the training view (§ Training view); Connect when no set is connected |
-| **Games** `/games` | local, pod and shipped games + library; new (chooser), duplicate, Adjust, import, export, set export / import |
-| `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary (Adjust), pod status, Try / Edit or Make my copy, Blocks (expert). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
+| **Games** `/games` | local, pod and shipped games + library; new (chooser), duplicate, import, export, set export / import |
+| `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary, pod status, Try / Change settings (my games) or Make my copy, Blocks (expert). Change settings and ··· → Game settings open Edit with the game settings panel (`panel=settings`). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
 | `/games/new` | wizard |
 | **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
 | **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; send, Reset menu; *Train* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
@@ -114,7 +114,7 @@ type SyncState  = { setId: string; files: Record<string /*path*/, { crc: string;
 - No layout on the pod: the column order is computed when a program opens (`model/graph.ts`).
 - Path from the name: slug ≤ 20 characters, so `/prog/<slug>.json` ≤ 31; must not collide with a local,
   pod or shipped path.
-- Local programs are editable; shipped and pod programs are read-only. **Make my copy** (and Adjust) makes a local
+- Local programs are editable; shipped and pod programs are read-only. **Make my copy** makes a local
   copy with the **same path** that replaces the pod file at push; an existing copy opens instead.
   **Duplicate** = new name and path. Library files are never local.
 - **One local menu** = the set being built; until changed it shows the pod's menu, else the shipped one.
@@ -126,7 +126,7 @@ type SyncState  = { setId: string; files: Record<string /*path*/, { crc: string;
 
 ## 7. Editor
 
-Simple step view, step sheet, wizard, Adjust, expert mode: [editor-ux.md](editor-ux.md). This section is the
+Simple step view, step sheet, wizard, Quick game, game settings panel, expert mode: [editor-ux.md](editor-ux.md). This section is the
 block column (expert mode) and the rules both views share.
 
 ### 7.1 Block column
