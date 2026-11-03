@@ -61,8 +61,11 @@ export function createBlock(def: BlockTypeDef, name: string): Block {
 }
 
 /**
- * Adds a block of `type`. With `after` (an own block that has a `next` port) the new block is
- * inserted behind it: after → new → the old next. Without blocks yet, the new block is the start.
+ * Adds a block of `type`. With `after` (an own block whose first port is `next`) the new block is
+ * inserted behind it: after → new → the old next. Otherwise the new block is appended, and the
+ * block that leads to it (`after`, else the last own block) gets `next` = new, if it has a `next`
+ * port and no `next` yet, so the flow does not end before the new block. Without blocks yet, the
+ * new block is the start.
  */
 export function addBlock(doc: ProgramJson, type: string, taken: ReadonlySet<string>, after?: string | null): { doc: ProgramJson; name: string } {
   const def = blockType(type);
@@ -81,6 +84,10 @@ export function addBlock(doc: ProgramJson, type: string, taken: ReadonlySet<stri
     const at = blocks.findIndex((b) => b.name === after);
     blocks.splice(at + 1, 0, block);
   } else {
+    const lead = anchor ?? blocks[blocks.length - 1];
+    if (lead && blockType(lead.type)?.ports.includes("next") && lead.next === undefined) {
+      blocks = blocks.map((b) => (b === lead ? { ...b, next: name } : b));
+    }
     blocks = [...blocks, block];
   }
   const next = withBlocks(doc, blocks);

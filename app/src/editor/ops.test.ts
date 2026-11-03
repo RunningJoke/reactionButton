@@ -18,6 +18,7 @@ import {
   newProgram,
   ownBlocks,
   renameBlock,
+  setBlockField,
   type ProgramJson,
 } from "./ops";
 
@@ -49,6 +50,34 @@ describe("editing operations", () => {
     let doc = addBlock(newProgram("T"), "if", new Set()).doc;
     doc = addBlock(doc, "led", names(doc), "If1").doc;
     expect(ownBlocks(doc)[0]!.true).toBeUndefined();
+    expect(ownBlocks(doc)[1]!.name).toBe("Led1");
+  });
+
+  it("links a block appended without an anchor from the last block (#109)", () => {
+    let doc = addBlock(newProgram("T"), "led", new Set()).doc;
+    doc = addBlock(doc, "delay", names(doc)).doc;
+    expect(ownBlocks(doc).map((b) => [b.name, b.next])).toEqual([
+      ["Led1", "Delay1"],
+      ["Delay1", undefined],
+    ]);
+  });
+
+  it("does not overwrite an existing next of the block before the new one (#109)", () => {
+    let doc = addBlock(newProgram("T"), "led", new Set()).doc;
+    doc = addBlock(doc, "delay", names(doc)).doc;
+    doc = setBlockField(doc, "Delay1", "next", "Led1");
+    doc = addBlock(doc, "button", names(doc)).doc;
+    expect(ownBlocks(doc).map((b) => [b.name, b.next])).toEqual([
+      ["Led1", "Delay1"],
+      ["Delay1", "Led1"],
+      ["Button1", undefined],
+    ]);
+  });
+
+  it("leaves a previous last block without a next port untouched (#109)", () => {
+    const before = addBlock(newProgram("T"), "if", new Set()).doc;
+    const doc = addBlock(before, "led", names(before)).doc;
+    expect(ownBlocks(doc)[0]).toEqual(ownBlocks(before)[0]);
     expect(ownBlocks(doc)[1]!.name).toBe("Led1");
   });
 
