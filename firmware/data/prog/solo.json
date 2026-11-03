@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "Solo",
-  "description": "Central only. Blue = get ready, green = press now, red = false start, cyan = hit. The reaction time is printed as RESULT line.",
+  "description": "Press the main pod as soon as it turns green. Blue = get ready, green = press now, red = false start, cyan = hit. The reaction time is printed as RESULT line.",
   "story": { "en": "Only the main pod. It glows blue, then turns green after a random wait. Press it as fast as you can. Pressing too early turns it red. Your reaction time is shown.", "de": "Nur die Zentrale. Sie leuchtet blau und wird nach zufälliger Wartezeit grün. So schnell wie möglich drücken. Zu früh gedrückt wird sie rot. Die Reaktionszeit wird angezeigt." },
   "labels": { "reaction": { "en": "Reaction time", "de": "Reaktionszeit" } },
   "peripherals": 0,

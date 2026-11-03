@@ -124,6 +124,7 @@
 }
 
 .tag {
+  white-space: nowrap;
   padding: 0 6px;
   border-radius: 999px;
   background: var(--surface-2);
