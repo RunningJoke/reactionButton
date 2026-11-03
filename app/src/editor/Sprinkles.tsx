@@ -493,6 +493,7 @@ function CountdownRow(ctx: FieldProps) {
   const available = hasCountdownTime(block);
   return (
     <SwitchRow
+      flat
       label={c("label")}
       hint={!available ? c("needsLimit") : style ? c("on", { style: c(`styles.${style}`) }) : c("off")}
       checked={style !== null}

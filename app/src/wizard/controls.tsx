@@ -11,6 +11,7 @@ export function SwitchRow({
   hint,
   checked,
   disabled,
+  flat,
   onChange,
   children,
 }: {
@@ -18,12 +19,14 @@ export function SwitchRow({
   hint?: string;
   checked: boolean;
   disabled?: boolean;
+  /** no box, a hairline row (inside a sprinkle body) */
+  flat?: boolean;
   onChange: (on: boolean) => void;
   children?: ReactNode;
 }) {
   const id = useId();
   return (
-    <div className={styles.switchCard} data-disabled={disabled || undefined}>
+    <div className={styles.switchCard} data-disabled={disabled || undefined} data-flat={flat || undefined}>
       <label className={styles.switchRow} htmlFor={id}>
         <span className={styles.switchText}>
           <strong>{label}</strong>
