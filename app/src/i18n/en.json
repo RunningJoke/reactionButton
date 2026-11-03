@@ -177,7 +177,7 @@
     "redo": "Redo",
     "more": "More",
     "settings": "Game settings",
-    "emptyProgram": "This game has no blocks yet. Add the first one with +.",
+    "emptyProgram": "This game has no blocks yet. Add the first one below.",
     "check": "Check",
     "size": "{{size}} of {{max}} bytes",
     "noIssues": "No problems found.",
@@ -418,12 +418,14 @@
       "moveDown": "Move down",
       "deleteStep": "Delete step",
       "deleted": "Step deleted",
+      "deletedN": "Step {{n}} deleted",
       "undo": "Undo",
-      "addToRound": "Add a step",
+      "add": "Add step",
       "addEndOfRound": "added at the end of the round",
       "addEnd": "added at the end",
       "addAfter": "added after step {{n}}",
-      "empty": "This game has no steps yet. Add the first one with +.",
+      "empty": "This game has no steps yet. Add the first one below.",
+      "loopBack": "Then start the next round",
       "count_one": "{{count}} step",
       "count_other": "{{count}} steps",
       "title": "Step {{n}}: {{kind}}",
@@ -640,6 +642,12 @@
           "accumulate": "Charge adds up"
         }
       }
+    },
+    "problem": {
+      "summary_one": "{{count}} problem: {{text}}",
+      "summary_other": "{{count}} problems: {{text}}",
+      "fix": "Fix",
+      "showAll": "Show all"
     },
     "add": {
       "group": {

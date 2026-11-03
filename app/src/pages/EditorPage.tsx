@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CircleCheck, Lock, MoreVertical, Plus, Redo2, Settings2, Undo2, Wrench } from "lucide-react";
+import { AlertTriangle, ChevronRight, CircleAlert, CircleCheck, Lock, MoreVertical, Plus, Redo2, Settings2, Undo2, Wrench } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
 import { Sheet } from "../components/Sheet";
 import { BlockDetailsSheet, IssueList } from "../editor/BlockDetails";
@@ -84,7 +84,7 @@ function insertionPoint(steps: readonly Step[], selected: string | null, own: Re
 
 function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const { t, i18n } = useTranslation();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const { apply, undo, redo, select, selected, past, future } = useEditor();
   const source = useProgramSource("local");
   const podFiles = usePodSession((s) => (s.state === "connected" ? s.files : null));
@@ -95,6 +95,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const [expert, setExpert] = useExpertMode();
   const view: View = expert ? "blocks" : "steps";
   const [toast, setToast] = useState<{ text: string; at: number } | null>(null);
+  const [fresh, setFresh] = useState<{ block: string; at: number } | null>(null);
   const json = doc.json;
 
   const model = useMemo(() => {
@@ -136,8 +137,10 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
   const remove = (name: string) => {
     const next = view === "steps" ? deleteStep(json, name, model.flat) : deleteBlock(json, name);
     if (next === json) return;
+    const number = model.steps.find((s) => s.block === name && !s.loop)?.number;
     apply(next, { select: null });
-    setToast({ text: t("editor.step.deleted"), at: useEditor.getState().past.length });
+    const text = view === "steps" && number ? t("editor.step.deletedN", { n: number }) : t("editor.step.deleted");
+    setToast({ text, at: useEditor.getState().past.length });
   };
   const move = (name: string, direction: "up" | "down") => moveStep(json, name, direction, model.flat);
 
@@ -195,7 +198,16 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     if (!text) return;
     const { doc: next, names } = insertTemplate(json, JSON.parse(text) as ProgramJson, taken);
     apply(next, { select: names[0] ?? null });
+    if (names[0]) setFresh({ block: names[0], at: Date.now() });
     setPanel(null);
+  };
+
+  /** the game page's Try mode (the bar's "Try ›") */
+  const tryGame = () => {
+    const query = new URLSearchParams(params);
+    query.set("mode", "try");
+    query.delete("panel");
+    setParams(query, { replace: true });
   };
 
   // desktop shortcuts: undo / redo, Delete removes the selected block
@@ -238,12 +250,6 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             )}
           </span>
         </div>
-        <button className={styles.icon} onClick={undo} disabled={past.length === 0} aria-label={t("editor.undo")} title={t("editor.undo")}>
-          <Undo2 size={20} aria-hidden />
-        </button>
-        <button className={styles.icon} onClick={redo} disabled={future.length === 0} aria-label={t("editor.redo")} title={t("editor.redo")}>
-          <Redo2 size={20} aria-hidden />
-        </button>
         <button
           className={styles.icon}
           data-level={errors ? "error" : warnings ? "warn" : "ok"}
@@ -275,22 +281,12 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             values={resolved.variables}
             selected={panel ? null : selected}
             onSelect={ctx.select}
+            onShowAll={() => setPanel("issues")}
+            fresh={fresh}
           />
         ) : (
           <ProgramColumnView graph={graph} selected={panel ? null : selected} onSelect={ctx.select} />
         )}
-
-        <button
-          className={styles.fab}
-          onClick={() => {
-            setPending(null);
-            setPanel("palette");
-          }}
-          aria-label={view === "steps" ? t("editor.step.addToRound") : t("editor.addBlock")}
-          title={view === "steps" ? t("editor.step.addToRound") : t("editor.addBlock")}
-        >
-          <Plus size={26} aria-hidden />
-        </button>
 
         {/* a step added from an exit ("a new step here…") is connected to that exit */}
         {panel === "palette" && (!pending || view === "steps") && (
@@ -304,6 +300,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             library={{ paths: model.library, read: model.read }}
             onAdd={(next, focus) => {
               apply(next, { select: focus });
+              setFresh({ block: focus, at: Date.now() });
               setPending(null);
               setPanel(null);
             }}
@@ -369,7 +366,6 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             ctx={ctx}
           />
         )}
-        {toast && past.length === toast.at && <UndoToast text={toast.text} onUndo={undo} onClose={() => setToast(null)} />}
         {!panel && selectedNode && !ownBlock && !bracket && (
           <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select}>
             {!selectedNode.external && (
@@ -379,6 +375,30 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             )}
           </BlockDetailsSheet>
         )}
+        {toast && past.length === toast.at && <UndoToast text={toast.text} onUndo={undo} onClose={() => setToast(null)} top={panel !== null || selected !== null} />}
+      </div>
+
+      {/* undo, redo, add, try: the editing actions, above the tab bar */}
+      <div className={styles.actions}>
+        <button type="button" className={styles.icon} onClick={undo} disabled={past.length === 0} aria-label={t("editor.undo")} title={t("editor.undo")}>
+          <Undo2 size={22} aria-hidden />
+        </button>
+        <button type="button" className={styles.icon} onClick={redo} disabled={future.length === 0} aria-label={t("editor.redo")} title={t("editor.redo")}>
+          <Redo2 size={22} aria-hidden />
+        </button>
+        <button
+          type="button"
+          className={styles.addStep}
+          onClick={() => {
+            setPending(null);
+            setPanel("palette");
+          }}
+        >
+          <Plus size={20} aria-hidden /> {view === "steps" ? t("editor.step.add") : t("editor.addBlock")}
+        </button>
+        <button type="button" className={styles.tryButton} onClick={tryGame}>
+          {t("game.mode.try")} <ChevronRight size={20} aria-hidden />
+        </button>
       </div>
 
       <Modal open={menuOpen} title={name} onClose={() => setMenuOpen(false)}>

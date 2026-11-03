@@ -1,6 +1,6 @@
-import { memo, useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CircleAlert, CornerDownRight, Lock, OctagonX, Repeat, SlidersHorizontal, Unplug } from "lucide-react";
+import { AlertTriangle, CircleAlert, CornerDownRight, Lock, OctagonX, Repeat, RotateCcw, SlidersHorizontal, Unplug } from "lucide-react";
 import type { Block, Issue } from "@reactpod/program-model";
 import { advancedCount } from "./behaviours";
 import { blockCategory, blockIcon } from "./blockStyle";
@@ -25,6 +25,10 @@ type Props = {
   values: Readonly<Record<string, number>>;
   selected: string | null;
   onSelect: (name: string | null) => void;
+  /** the check sheet with every problem ("Show all" of the banner) */
+  onShowAll: () => void;
+  /** a step that was just added: moved to the middle of the view and highlighted for a moment */
+  fresh?: { block: string; at: number } | null;
 };
 
 type Node = { step: Step; children: Node[] };
@@ -43,22 +47,30 @@ function tree(steps: readonly Step[]): Node[] {
   return level(0);
 }
 
+const FRESH_MS = 1600;
+
 /**
  * Simple view of the editor (docs/app/editor-ux.md §4 C): numbered steps in plain language, a
  * "Repeat N rounds" bracket around the round, branches as lines under their step.
  */
-export function StepListView({ steps, blocks, own, issues, supportedTypes, values, selected, onSelect }: Props) {
+export function StepListView({ steps, blocks, own, issues, supportedTypes, values, selected, onSelect, onShowAll, fresh }: Props) {
   const { t } = useTranslation();
   const root = useRef<HTMLDivElement>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const nodes = useMemo(() => tree(steps), [steps]);
   const byBlock = useMemo(() => new Map(steps.filter((s) => !s.loop).map((s) => [s.block, s])), [steps]);
   const loops = useMemo(() => steps.filter((s) => s.loop).map((s) => s.loop!), [steps]);
+  const reachable = useMemo(() => steps.filter((s) => !s.loop && !s.unreachable), [steps]);
+  const firstBlock = reachable[0]?.block;
+  const lastBlock = reachable.at(-1)?.block;
   const options = useMemo<SentenceOptions>(() => sentenceOptions(blocks.values(), values, (name) => settingLabel(name, t).label), [blocks, values, t]);
   const problems = useMemo(() => {
     const map = new Map<string, Issue[]>();
     for (const issue of issues) if (issue.block) map.set(issue.block, [...(map.get(issue.block) ?? []), issue]);
     return map;
   }, [issues]);
+  // errors first: the banner names the first of them
+  const firstIssue = useMemo(() => issues.find((i) => i.severity === "error") ?? issues[0], [issues]);
 
   // keep the selected step in view (also when picked from a branch line or the check sheet)
   useEffect(() => {
@@ -71,6 +83,27 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
     const top = card.getBoundingClientRect().top - box.getBoundingClientRect().top;
     if (top < 8 || top > free - 48) box.scrollTo?.({ top: box.scrollTop + top - 8, behavior: "smooth" });
   }, [selected]);
+
+  // a step just added: its middle goes to the middle of the visible part, then the highlight goes
+  useEffect(() => {
+    if (!fresh) return;
+    const card = root.current?.querySelector<HTMLElement>(`[data-step="${CSS.escape(fresh.block)}"]`);
+    const box = root.current?.parentElement;
+    if (!card || !box) return;
+    const free = window.matchMedia?.("(min-width: 900px)").matches ? box.clientHeight : box.clientHeight * 0.3;
+    const top = card.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    box.scrollTo?.({ top: box.scrollTop + top + card.offsetHeight / 2 - free / 2, behavior: reduced ? "auto" : "smooth" });
+    setFlash(fresh.block);
+    const timer = setTimeout(() => setFlash(null), FRESH_MS);
+    return () => clearTimeout(timer);
+  }, [fresh]);
+
+  const isInside = (from: Step, head: string) => {
+    let cur: Step | undefined = from;
+    while (cur?.branchOf) cur = byBlock.get(cur.branchOf.block);
+    return cur?.inLoop === head;
+  };
 
   /** words for where a branch goes */
   const targetLabel = (branch: StepBranch, from: Step): { text: string; to?: string } => {
@@ -89,12 +122,6 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
     return { text: to };
   };
 
-  const isInside = (from: Step, head: string) => {
-    let cur: Step | undefined = from;
-    while (cur?.branchOf) cur = byBlock.get(cur.branchOf.block);
-    return cur?.inLoop === head;
-  };
-
   const sentence = (name: string) => {
     const block = blocks.get(name);
     return block ? stepSentence(block, t, options) : name;
@@ -108,6 +135,8 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
       const value = exitValue(blocks, steps, block, branch.port);
       if (value.kind === "next") return [];
       const label = exitLabel(block, branch.port, t);
+      // the last step goes on with the first one: that is the next round, not a jump to "step 1"
+      if (value.kind === "step" && value.target === firstBlock && step.block === lastBlock) return [{ port: branch.port, label, text: t("editor.step.loopBack"), to: value.target, loop: true }];
       const where = targetLabel(branch, step);
       const text = value.kind === "countMiss" ? t("editor.exit.countMiss") : value.kind === "nextRound" ? t("editor.step.nextRound") : value.kind === "leave" ? t("editor.exit.leave") : where.text;
       return [{ port: branch.port, label, text, to: where.to }];
@@ -165,6 +194,7 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
           issues={problems.get(step.block) ?? []}
           unsupported={!!supportedTypes && !supportedTypes.includes(String(blocks.get(step.block)?.type))}
           selected={selected === step.block}
+          fresh={flash === step.block}
           onSelect={onSelect}
           lines={lines(step)}
         >
@@ -178,13 +208,38 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
   return (
     <div className={styles.scroll} data-sheet={selected ? true : undefined} onClick={() => onSelect(null)}>
       <div ref={root} className={styles.list} onClick={(e) => e.stopPropagation()}>
+        {firstIssue && (
+          <ProblemBanner issue={firstIssue} count={issues.length} onFix={() => (firstIssue.block ? onSelect(firstIssue.block) : onShowAll())} onShowAll={onShowAll} />
+        )}
         {render(nodes, false)}
       </div>
     </div>
   );
 }
 
-type Line = { port: string; label: string; text: string; to?: string };
+/** "1 problem: …" at the top of the list, with Fix (the step of the first problem) and Show all. */
+function ProblemBanner({ issue, count, onFix, onShowAll }: { issue: Issue; count: number; onFix: () => void; onShowAll: () => void }) {
+  const { t } = useTranslation();
+  const error = issue.severity === "error";
+  return (
+    <section className={styles.problem} data-level={error ? "error" : "warn"} aria-label={t("editor.check")}>
+      {error ? <CircleAlert size={18} aria-hidden /> : <AlertTriangle size={18} aria-hidden />}
+      <p className={styles.problemText}>{t("editor.problem.summary", { count, text: t(`issues.${issue.code}`, issue.params ?? {}) })}</p>
+      <div className={styles.problemActions}>
+        <button type="button" onClick={onFix}>
+          {t("editor.problem.fix")}
+        </button>
+        {count > 1 && (
+          <button type="button" onClick={onShowAll}>
+            {t("editor.problem.showAll")}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+type Line = { port: string; label: string; text: string; to?: string; loop?: boolean };
 
 type CardProps = {
   step: Step;
@@ -194,19 +249,20 @@ type CardProps = {
   issues: readonly Issue[];
   unsupported: boolean;
   selected: boolean;
+  fresh: boolean;
   onSelect: (name: string | null) => void;
   lines: Line[];
   children?: React.ReactNode;
 };
 
-const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupported, selected, onSelect, lines, children }: CardProps) {
+const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupported, selected, fresh, onSelect, lines, children }: CardProps) {
   const { t } = useTranslation();
   const Icon = blockIcon(block && isCatchEarly(block) ? "delay" : block?.type);
   const records = typeof block?.record === "string";
   const advanced = block ? advancedCount(block, step) : 0;
   const ends = block && portsOf(block).every((p) => typeof block[p] !== "string");
   return (
-    <div className={styles.card} data-category={blockCategory(block?.type)} data-selected={selected || undefined} data-step={step.block}>
+    <div className={styles.card} data-category={blockCategory(block?.type)} data-selected={selected || undefined} data-fresh={fresh || undefined} data-step={step.block}>
       <button type="button" className={styles.main} aria-pressed={selected} onClick={() => onSelect(step.block)}>
         <span className={styles.num}>{step.number}</span>
         <span className={styles.tile} aria-hidden>
@@ -235,8 +291,13 @@ const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupp
       </button>
       {(lines.length > 0 || ends) && (
         <ul className={styles.branches}>
-          {lines.map(({ port, label, text: where, to }) => {
-            const content = (
+          {lines.map(({ port, label, text: where, to, loop }) => {
+            const content = loop ? (
+              <>
+                <RotateCcw size={14} aria-hidden />
+                <span>{where}</span>
+              </>
+            ) : (
               <>
                 <CornerDownRight size={14} aria-hidden />
                 <span>
@@ -247,7 +308,7 @@ const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupp
             return (
               <li key={port}>
                 {to ? (
-                  <button type="button" className={styles.branch} onClick={() => onSelect(to)} aria-label={t("editor.step.goTo", { role: label, target: where })}>
+                  <button type="button" className={styles.branch} onClick={() => onSelect(to)} aria-label={loop ? undefined : t("editor.step.goTo", { role: label, target: where })}>
                     {content}
                   </button>
                 ) : (

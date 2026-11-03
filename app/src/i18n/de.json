@@ -177,7 +177,7 @@
     "redo": "Wiederholen",
     "more": "Mehr",
     "settings": "Spieleinstellungen",
-    "emptyProgram": "Dieses Spiel hat noch keine Blöcke. Den ersten mit + hinzufügen.",
+    "emptyProgram": "Dieses Spiel hat noch keine Blöcke. Füge unten den ersten hinzu.",
     "check": "Prüfung",
     "size": "{{size}} von {{max}} Bytes",
     "noIssues": "Keine Probleme gefunden.",
@@ -418,12 +418,14 @@
       "moveDown": "Nach unten",
       "deleteStep": "Schritt löschen",
       "deleted": "Schritt gelöscht",
+      "deletedN": "Schritt {{n}} gelöscht",
       "undo": "Rückgängig",
-      "addToRound": "Schritt hinzufügen",
+      "add": "Schritt hinzufügen",
       "addEndOfRound": "kommt ans Ende der Runde",
       "addEnd": "kommt ans Ende",
       "addAfter": "kommt nach Schritt {{n}}",
-      "empty": "Dieses Spiel hat noch keine Schritte. Füge den ersten mit + hinzu.",
+      "empty": "Dieses Spiel hat noch keine Schritte. Füge unten den ersten hinzu.",
+      "loopBack": "Dann die nächste Runde starten",
       "count_one": "{{count}} Schritt",
       "count_other": "{{count}} Schritte",
       "title": "Schritt {{n}}: {{kind}}",
@@ -640,6 +642,12 @@
           "accumulate": "Ladung summiert sich"
         }
       }
+    },
+    "problem": {
+      "summary_one": "{{count}} Problem: {{text}}",
+      "summary_other": "{{count}} Probleme: {{text}}",
+      "fix": "Beheben",
+      "showAll": "Alle anzeigen"
     },
     "add": {
       "group": {

@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
-import type { Block } from "@reactpod/program-model";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { Block, Issue } from "@reactpod/program-model";
 import i18n from "../i18n";
 import { advancedCount } from "./behaviours";
 import { linkMissCounter } from "./switches";
 import { ownBlocks, type ProgramJson } from "./ops";
 import { stepList } from "./structure";
 import { StepListView } from "./StepListView";
+
+// jsdom has no CSS.escape (the list scrolls to the selected and the added step)
+(globalThis as { CSS?: unknown }).CSS ??= { escape: (s: string) => s };
 
 const program = (): ProgramJson => ({
   version: 1,
@@ -21,9 +24,10 @@ const program = (): ProgramJson => ({
   ],
 });
 
-function view(doc: ProgramJson) {
+function view(doc: ProgramJson, extra: { issues?: Issue[]; onSelect?: (name: string | null) => void; onShowAll?: () => void; fresh?: { block: string; at: number } | null } = {}) {
   const blocks = new Map(ownBlocks(doc).map((b) => [b.name, b as Block]));
-  render(<StepListView steps={stepList(doc)} blocks={blocks} own={new Set(blocks.keys())} issues={[]} values={{}} selected={null} onSelect={() => {}} />);
+  const props = { steps: stepList(doc), blocks, own: new Set(blocks.keys()), issues: extra.issues ?? [], values: {}, selected: null, onSelect: extra.onSelect ?? (() => {}), onShowAll: extra.onShowAll ?? (() => {}), fresh: extra.fresh };
+  return render(<StepListView {...props} />);
 }
 
 describe("step list", () => {
@@ -55,5 +59,44 @@ describe("step list", () => {
     expect(screen.getByText("After a long press").closest("span")!.textContent).toMatch(/^After a long press · /);
     // "after a short press" goes where the step goes on: not a line
     expect(screen.queryByText("After a short press")).toBeNull();
+  });
+
+  it("the last step that goes back to the first one says it starts the next round, not step 1", () => {
+    view(program());
+    expect(screen.getByText("Then start the next round")).toBeTruthy();
+    // the long press of "Press" still jumps to step 1: that line keeps its words
+    expect(screen.getByText("After a long press").closest("span")!.textContent).toMatch(/^After a long press · step 1/);
+  });
+
+  it("a problem banner on top names the first problem and offers Fix (the step) and Show all", () => {
+    const onSelect = vi.fn();
+    const onShowAll = vi.fn();
+    const issues = [
+      { severity: "warning", code: "unreachable", file: "/prog/x.json", block: "Done" },
+      { severity: "error", code: "invalidColor", file: "/prog/x.json", block: "Late" },
+    ] as Issue[];
+    view(program(), { issues, onSelect, onShowAll });
+    expect(screen.getByText("2 problems: Invalid colour")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fix" }));
+    expect(onSelect).toHaveBeenLastCalledWith("Late");
+    fireEvent.click(screen.getByRole("button", { name: "Show all" }));
+    expect(onShowAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("one problem: no Show all; no banner without problems", () => {
+    const { unmount } = view(program(), { issues: [{ severity: "error", code: "invalidColor", file: "/prog/x.json", block: "Late" }] as Issue[] });
+    expect(screen.getByText("1 problem: Invalid colour")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Show all" })).toBeNull();
+    unmount();
+    view(program());
+    expect(screen.queryByRole("button", { name: "Fix" })).toBeNull();
+  });
+
+  it("a step just added is marked, so it can be highlighted (and scrolled to the middle)", () => {
+    const { rerender } = view(program());
+    expect(document.querySelector('[data-step="Press"][data-fresh]')).toBeNull();
+    const blocks = new Map(ownBlocks(program()).map((b) => [b.name, b as Block]));
+    rerender(<StepListView steps={stepList(program())} blocks={blocks} own={new Set(blocks.keys())} issues={[]} values={{}} selected={null} onSelect={() => {}} onShowAll={() => {}} fresh={{ block: "Press", at: 1 }} />);
+    expect(document.querySelector('[data-step="Press"][data-fresh]')).toBeTruthy();
   });
 });
