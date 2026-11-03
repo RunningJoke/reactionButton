@@ -48,7 +48,7 @@ describe("This set", () => {
     await reorderMenu();
     inRouter(<PodPage />);
     await waitFor(() => expect(screen.getByText("1 change is not on the pods yet")).toBeTruthy());
-    expect(screen.getByText("Pod menu: new order")).toBeTruthy();
+    expect(screen.getByText("Games on the pods: new order")).toBeTruthy();
     expect(screen.queryByText(/programs\.json/)).toBeNull();
     expect(screen.getByRole("button", { name: "Send to pods" })).toBeTruthy();
   });

@@ -49,7 +49,7 @@
       "disconnected": "Die Verbindung wurde getrennt.",
       "openFailed": "Der Anschluss ließ sich nicht öffnen. Nutzt ihn eine andere App (z. B. ein serieller Monitor)?",
       "notAllowed": "Der Browser hat den Zugriff nicht erlaubt.",
-      "busy": "Der Pod ist beschäftigt (Spiel oder Abgleich läuft). Warte, bis er wieder im Pod-Menü ist.",
+      "busy": "Der Pod ist beschäftigt (Spiel oder Abgleich läuft). Warte, bis er wieder bei seinen Spielen ist.",
       "overflow": "Der Pod kam nicht hinterher. Bitte noch einmal versuchen.",
       "unknown": "Etwas ist schiefgegangen.",
       "auth_required": "Dieser Pod ist mit einer PIN geschützt. Gib sie ein, um etwas zu ändern.",
@@ -216,7 +216,7 @@
     "variableName": "Variablenname",
     "variableValue": "Startwert von {{name}}",
     "deleteVariable": "{{name}} löschen",
-    "menuPatternHelp": "So erscheint das Spiel im Pod-Menü.",
+    "menuPatternHelp": "So erscheint das Spiel auf den Pods.",
     "presets": "Bibliotheks-Vorlagen",
     "presetsHelp": "Eingebundene geteilte Spielteile bleiben schreibgeschützt und werden mit anderen Spielen geteilt.",
     "removePreset": "{{path}} entfernen",
@@ -917,8 +917,8 @@
     }
   },
   "menu": {
-    "title": "Pod-Menü",
-    "intro": "Reihenfolge der Spiele im Pod-Menü und ihr LED-Muster. Wird auf diesem Gerät gespeichert und beim Hochladen mitgeschickt.",
+    "title": "Spiele auf den Pods",
+    "intro": "Reihenfolge der Spiele auf den Pods und ihr LED-Muster. Wird auf diesem Gerät gespeichert und beim Hochladen mitgeschickt.",
     "fromPod": "Ausgangspunkt ist das Menü des verbundenen Pods.",
     "fromShipped": "Ausgangspunkt ist das mitgelieferte Menü.",
     "editPattern": "Menümuster von {{name}}",
@@ -1099,9 +1099,9 @@
       "shipped": "gehört zur App"
     },
     "status": {
-      "inMenu": "Im Pod-Menü auf Platz {{place}} · auf den Pods",
+      "inMenu": "Platz {{place}} bei den Spielen auf den Pods",
       "notOnPods": "Noch nicht auf den Pods",
-      "onPodsNotInMenu": "Auf den Pods, nicht im Pod-Menü"
+      "onPodsNotInMenu": "Auf den Pods, aber nicht in deren Spielliste"
     }
   },
   "graph": {
@@ -1506,7 +1506,7 @@
     "clean": "Alles ist auf den Pods",
     "status": {
       "inSync": "gleich",
-      "localNewer": "hier geändert",
+      "localNewer": "noch nicht auf den Pods",
       "podNewer": "auf dem Pod geändert",
       "conflict": "Konflikt",
       "new": "neu",
@@ -1538,13 +1538,13 @@
     "partial_other": "{{count}} Dateien wurden vorher schon hochgeladen. Lade noch einmal hoch, um fertig zu werden.",
     "close": "Schließen",
     "change": {
-      "menu": "Pod-Menü: neue Reihenfolge",
+      "menu": "Spiele auf den Pods: neue Reihenfolge",
       "game": "Spiel: {{name}}"
     },
     "unsent_one": "{{count}} Änderung ist noch nicht auf den Pods",
     "unsent_other": "{{count}} Änderungen sind noch nicht auf den Pods",
     "review": "Änderungen prüfen",
-    "restoreLead": "Das ersetzt das Pod-Menü durch das Standard-Menü.",
+    "restoreLead": "Das ersetzt die Spiele auf den Pods durch die Standardliste.",
     "planTitle": "Das ändert sich auf den Pods:",
     "planExtra_one": "{{count}} geteiltes Spielteil oder mitgeliefertes Spiel, das diese Spiele brauchen",
     "planExtra_other": "{{count}} geteilte Spielteile oder mitgelieferte Spiele, die diese Spiele brauchen",
@@ -1707,7 +1707,7 @@
       "pausedSent": "Das Spiel ist pausiert.",
       "resumedSent": "Das Spiel läuft weiter.",
       "state": {
-        "MENU": "Pod-Menü",
+        "MENU": "Spiele auf den Pods",
         "DISCOVERY": "Suche",
         "CONFIRM": "Bereit",
         "RUN": "Läuft",
@@ -1725,7 +1725,7 @@
       "pressToStart": "Zum Starten die Zentrale drücken.",
       "nowRun": "Runde läuft – Ergebnisse erscheinen hier",
       "nowPaused": "Das Spiel ist pausiert. Setze es fort, wenn du bereit bist.",
-      "nowMenu": "Kein Spiel läuft. Wähle eins im Pod-Menü.",
+      "nowMenu": "Kein Spiel läuft. Wähle eins aus den Spielen auf den Pods.",
       "nowDiscovery": "Die Pods verbinden sich mit dem Set.",
       "nowError": "Der Pod meldet einen Fehler.",
       "nowOffline": "Das Set ist gerade nicht verbunden.",
@@ -1931,7 +1931,7 @@
       "title": "Dein Spiel ist fertig",
       "name": "Name",
       "menu": "Menü-Muster",
-      "menuHint": "So erscheint es im Pod-Menü. Tippe auf LEDs, um es zu ändern.",
+      "menuHint": "So erscheint es auf den Pods. Tippe auf LEDs, um es zu ändern.",
       "size": "Belegt {{percent}} % des Platzes für ein Spiel.",
       "story": "Was passiert",
       "try": "Im Simulator ausprobieren",

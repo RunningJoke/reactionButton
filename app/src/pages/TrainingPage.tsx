@@ -5,6 +5,7 @@ import { useStore, type StoreApi } from "zustand";
 import { ChevronRight, Minus, Pause, Play, Plug, Plus, Repeat, Square, X } from "lucide-react";
 import { useConnectDialog } from "../app/connectDialogStore";
 import { useScreenWakeLock } from "../app/wakeLock";
+import { LED_COUNT } from "@reactpod/program-model";
 import { LedRing } from "../components/LedRing";
 import { Named } from "../components/Named";
 import type { PodClient } from "../pod/client";
@@ -130,6 +131,9 @@ function KeepOpenHint() {
 
 /** Light colour of the state pill (pod-light colours: running green, waiting blue, paused yellow). */
 type Tone = "green" | "blue" | "yellow" | "neutral" | "error";
+
+/** The puck shows the same state colour as the pill (pod colours, see colorToRgb); neutral = dark. */
+const TONE_LED: Record<Tone, string | undefined> = { green: "green", blue: "blue", yellow: "yellow", error: "red", neutral: undefined };
 
 function SetCard({ store }: { store: StoreApi<PodSession> }) {
   const { t, i18n } = useTranslation();
@@ -270,7 +274,7 @@ function SetCard({ store }: { store: StoreApi<PodSession> }) {
   return (
     <article className={view.card} data-state={state} aria-label={setLabel(session) ?? t("training.view.connecting")}>
       <section className={view.stateCard} aria-live="polite">
-        <LedRing size={64} />
+        <LedRing size={64} colors={TONE_LED[tone] ? Array(LED_COUNT).fill(TONE_LED[tone]) : undefined} />
         <div className={view.stateText}>
           <span className={view.pill} data-tone={tone}>
             <span className={view.dot} aria-hidden />

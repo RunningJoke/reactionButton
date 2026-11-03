@@ -102,7 +102,7 @@ describe("training view", () => {
     renderPage();
     const card = screen.getByRole("article");
     expect(within(card).queryByRole("button", { name: /Continue|Start|Resume|Stop/ })).toBeNull();
-    expect(within(card).getByText("No game is running. Pick one in the pod menu.")).toBeTruthy();
+    expect(within(card).getByText("No game is running. Pick one from the games on the pods.")).toBeTruthy();
 
     pod.emitReady();
     await refresh();

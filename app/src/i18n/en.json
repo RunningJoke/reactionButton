@@ -49,7 +49,7 @@
       "disconnected": "The connection was lost.",
       "openFailed": "The port could not be opened. Is another app (e.g. a serial monitor) using it?",
       "notAllowed": "The browser did not allow access.",
-      "busy": "The pod is busy (game or sync running). Wait until it is back in the pod menu.",
+      "busy": "The pod is busy (game or sync running). Wait until it is back at its game list.",
       "overflow": "The pod could not keep up. Please try again.",
       "unknown": "Something went wrong.",
       "auth_required": "This pod is protected with a PIN. Enter it to make changes.",
@@ -216,7 +216,7 @@
     "variableName": "Variable name",
     "variableValue": "Start value of {{name}}",
     "deleteVariable": "Delete {{name}}",
-    "menuPatternHelp": "How the game shows in the pod menu.",
+    "menuPatternHelp": "How the game shows on the pods.",
     "presets": "Library presets",
     "presetsHelp": "Included shared game pieces stay read only and are shared with other games.",
     "removePreset": "Remove {{path}}",
@@ -229,7 +229,7 @@
       "pods": "Pods besides the main pod",
       "podsTotal_one": "{{count}} pod in the set",
       "podsTotal_other": "{{count}} pods in the set",
-      "menu": "In the pod menu",
+      "menu": "Listed on the pods",
       "tweak": "Settings you can tweak",
       "tweakNone": "This game has no settings to tweak. Change its steps in the editor.",
       "expert": "Expert",
@@ -917,8 +917,8 @@
     }
   },
   "menu": {
-    "title": "Pod menu",
-    "intro": "Order of the games in the pod menu and their LED pattern. Kept on this device and sent with Send to pods.",
+    "title": "Games on the pods",
+    "intro": "Order of the games on the pods and their LED pattern. Kept on this device and sent with Send to pods.",
     "fromPod": "Starting from the menu of the connected pod.",
     "fromShipped": "Starting from the shipped menu.",
     "editPattern": "Menu pattern of {{name}}",
@@ -1099,9 +1099,9 @@
       "shipped": "comes with the app"
     },
     "status": {
-      "inMenu": "In the pod menu at place {{place}} · on the pods",
+      "inMenu": "Place {{place}} in the games on the pods",
       "notOnPods": "Not on the pods yet",
-      "onPodsNotInMenu": "On the pods, not in the pod menu"
+      "onPodsNotInMenu": "On the pods, but not in their game list"
     }
   },
   "graph": {
@@ -1506,7 +1506,7 @@
     "clean": "Everything is on the pods",
     "status": {
       "inSync": "in sync",
-      "localNewer": "changed here",
+      "localNewer": "not on the pods yet",
       "podNewer": "changed on the pod",
       "conflict": "conflict",
       "new": "new",
@@ -1538,13 +1538,13 @@
     "partial_other": "{{count}} files were sent before. Send again to finish.",
     "close": "Close",
     "change": {
-      "menu": "Pod menu: new order",
+      "menu": "Games on the pods: new order",
       "game": "Game: {{name}}"
     },
     "unsent_one": "{{count}} change is not on the pods yet",
     "unsent_other": "{{count}} changes are not on the pods yet",
     "review": "Review changes",
-    "restoreLead": "This replaces the pod menu with the default menu.",
+    "restoreLead": "This replaces the games on the pods with the default list.",
     "planTitle": "This changes on the pods:",
     "planExtra_one": "{{count}} shared game piece or shipped game these games need",
     "planExtra_other": "{{count}} shared game pieces or shipped games these games need",
@@ -1707,7 +1707,7 @@
       "pausedSent": "The game is paused.",
       "resumedSent": "The game goes on.",
       "state": {
-        "MENU": "Pod menu",
+        "MENU": "Games on the pods",
         "DISCOVERY": "Discovery",
         "CONFIRM": "Ready",
         "RUN": "Running",
@@ -1725,7 +1725,7 @@
       "pressToStart": "Press the main pod to start.",
       "nowRun": "Round in progress – results appear here",
       "nowPaused": "The game is paused. Resume when you are ready.",
-      "nowMenu": "No game is running. Pick one in the pod menu.",
+      "nowMenu": "No game is running. Pick one from the games on the pods.",
       "nowDiscovery": "The pods are joining the set.",
       "nowError": "The pod reports an error.",
       "nowOffline": "The set is not connected right now.",
@@ -1931,7 +1931,7 @@
       "title": "Your game is ready",
       "name": "Name",
       "menu": "Menu pattern",
-      "menuHint": "This is how it shows in the pod menu. Tap LEDs to change it.",
+      "menuHint": "This is how it shows on the pods. Tap LEDs to change it.",
       "size": "Uses {{percent}} % of the space for one game.",
       "story": "What happens",
       "try": "Try it in the simulator",
