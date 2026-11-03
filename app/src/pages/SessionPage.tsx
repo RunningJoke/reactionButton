@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronLeft, Download, EyeOff, Trash2, Undo2, UserRound } from "lucide-react";
+import { ChevronDown, Download, EyeOff, Trash2, Undo2, UserRound } from "lucide-react";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
 import { Named } from "../components/Named";
@@ -35,7 +35,7 @@ export function SessionPage() {
     return (
       <div className={page.page}>
         <p className={page.muted}>
-          {t("results.sessionMissing")} <Link to="/results">{t("results.back")}</Link>
+          {t("results.sessionMissing")}
         </p>
       </div>
     );
@@ -55,9 +55,6 @@ export function SessionPage() {
 
   return (
     <div className={page.page}>
-      <Link to={athleteUrl(session.athleteId)} className={styles.back}>
-        <ChevronLeft size={20} aria-hidden /> {athlete?.name ?? t("results.unassigned")}
-      </Link>
       <section className={page.section}>
         <div className={styles.title}>
           <h2 className={styles.display}>{programName(session.programPath)}</h2>

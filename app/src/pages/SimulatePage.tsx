@@ -1,48 +1,26 @@
 /** Simulator (docs/app/spec.md §8): all pods of a program, the graph with the current block, controls, panels. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Copy, FastForward, Hand, Pause, Pencil, Play, RotateCcw, StepForward } from "lucide-react";
+import { Copy, FastForward, Hand, Pause, Play, RotateCcw, StepForward } from "lucide-react";
 import { Named } from "../components/Named";
 import { isMsSetting } from "../editor/settingLabels";
 import { formatMs } from "../results/stats";
 import { LedRing } from "../components/LedRing";
-import { useEditor } from "../editor/editorStore";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
 import { buildGraph } from "../model/graph";
-import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
-import { isProgramFile } from "@reactpod/program-model";
 import { hasErrors, validateProgram } from "@reactpod/program-model";
-import { editorUrl, simulateUrl, useLocalMenu, useProgramSource, type SourceId } from "../programs/sources";
+import { editorUrl, useProgramSource, type SourceId } from "../programs/sources";
 import type { CommunicateView, PodView, Snapshot, StopReason } from "../simulator/engine";
 import { SPEEDS, useSimulation, type SimulationControls } from "../simulator/useSimulation";
-import { useWorkspace } from "../store/workspace";
 import page from "./Page.module.css";
 import styles from "./SimulatePage.module.css";
 
-type Target = { source: SourceId; path: string; id?: string };
+export type SimulateTarget = { source: SourceId; path: string; id?: string };
 
-/** The program to simulate: `?id=` (local), `?source=&path=`, else the program open in the editor, else the first in the menu. */
-function useTarget(): Target | null {
-  const [params] = useSearchParams();
-  const programs = useWorkspace((s) => s.programs);
-  const editorDoc = useEditor((s) => s.doc);
-  const { menu } = useLocalMenu();
-  const id = params.get("id");
-  const source = params.get("source");
-  const path = params.get("path");
-  if (id) {
-    const doc = programs.find((p) => p.id === id);
-    return doc ? { source: "local", path: doc.path, id } : null;
-  }
-  if (path && (source === "pod" || source === "shipped" || source === "local")) return { source, path };
-  if (editorDoc) return { source: "local", path: editorDoc.path, id: editorDoc.id };
-  return menu[0] ? { source: "local", path: menu[0] } : null;
-}
-
-export function SimulatePage() {
+/** Try mode of the game page: the simulator for one game. */
+export function SimulatePage({ target }: { target: SimulateTarget }) {
   const { t } = useTranslation();
-  const target = useTarget();
   const source = useProgramSource(target?.source ?? "local");
   const read = source.read;
 
@@ -64,7 +42,6 @@ export function SimulatePage() {
 
   return (
     <div className={`${page.page} ${styles.page}`}>
-      <ProgramPicker target={target} />
       {!target || !model ? (
         <p className={page.muted}>{t("simulate.noProgram")}</p>
       ) : !model.ok || !sim ? (
@@ -91,65 +68,6 @@ export function SimulatePage() {
             />
           </section>
         </div>
-      )}
-    </div>
-  );
-}
-
-function ProgramPicker({ target }: { target: Target | null }) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const programs = useWorkspace((s) => s.programs);
-  const { menu } = useLocalMenu();
-  const local = useProgramSource("local");
-  const name = (path: string) => {
-    try {
-      const doc = JSON.parse(local.read(path) ?? "") as unknown;
-      return isProgramFile(doc) ? doc.name : path;
-    } catch {
-      return path;
-    }
-  };
-  const own = programs.map((p) => ({ value: `id:${p.id}`, label: String(p.json.name ?? p.path) }));
-  const inMenu = menu.filter((p) => p !== INDEX_PATH && !isLibraryPath(p) && !programs.some((d) => d.path === p)).map((p) => ({ value: `path:${p}`, label: name(p) }));
-  const current = target?.id ? `id:${target.id}` : target ? `path:${target.path}` : "";
-  const known = [...own, ...inMenu].some((o) => o.value === current);
-
-  return (
-    <div className={styles.picker}>
-      <label htmlFor="sim-program">{t("simulate.program")}</label>
-      <select
-        id="sim-program"
-        value={current}
-        onChange={(e) => {
-          const [kind, rest] = [e.target.value.slice(0, e.target.value.indexOf(":")), e.target.value.slice(e.target.value.indexOf(":") + 1)];
-          navigate(kind === "id" ? simulateUrl({ id: rest }) : simulateUrl({ source: "local", path: rest }), { replace: true });
-        }}
-      >
-        {!known && target && <option value={current}>{name(target.path)}</option>}
-        {own.length > 0 && (
-          <optgroup label={t("programs.mine")}>
-            {own.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {inMenu.length > 0 && (
-          <optgroup label={t("nav.menu")}>
-            {inMenu.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-      {target?.id && (
-        <Link className={styles.iconLink} to={editorUrl(target.id)} aria-label={t("simulate.openEditor")} title={t("simulate.openEditor")}>
-          <Pencil size={18} aria-hidden />
-        </Link>
       )}
     </div>
   );

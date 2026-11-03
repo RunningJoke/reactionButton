@@ -1,12 +1,10 @@
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { Layout } from "./Layout";
-import { DEFAULT_PATH, REDIRECTS } from "./navigation";
+import { DEFAULT_PATH, GAME_MODE_REDIRECTS, REDIRECTS } from "./navigation";
 import { PodPage } from "../pages/PodPage";
-import { EditorPage } from "../pages/EditorPage";
 import { MenuPage } from "../pages/MenuPage";
-import { SimulatePage } from "../pages/SimulatePage";
 import { ProgramsPage } from "../pages/ProgramsPage";
-import { ProgramViewPage } from "../pages/ProgramViewPage";
+import { GamePage } from "../pages/GamePage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { ResultsPage } from "../pages/ResultsPage";
 import { AthletePage } from "../pages/AthletePage";
@@ -16,9 +14,13 @@ import { WizardPage } from "../wizard/WizardPage";
 import { TrainingPage } from "../pages/TrainingPage";
 
 
-function Redirect({ to }: { to: string }) {
+/** Keeps the query; `mode` sets the game page mode. */
+export function Redirect({ to, mode }: { to: string; mode?: string }) {
   const { search } = useLocation();
-  return <Navigate to={to + search} replace />;
+  const params = new URLSearchParams(search);
+  if (mode) params.set("mode", mode);
+  const query = params.toString();
+  return <Navigate to={to + (query ? `?${query}` : "")} replace />;
 }
 
 // Hash routing: works offline, on any host path and inside the Capacitor webview.
@@ -31,10 +33,11 @@ export function App() {
           <Route path="/set" element={<PodPage />} />
           <Route path="/set/menu" element={<MenuPage />} />
           <Route path="/games" element={<ProgramsPage />} />
-          <Route path="/games/view" element={<ProgramViewPage />} />
+          <Route path="/games/game" element={<GamePage />} />
           <Route path="/games/new" element={<WizardPage />} />
-          <Route path="/games/edit" element={<EditorPage />} />
-          <Route path="/games/try" element={<SimulatePage />} />
+          {Object.entries(GAME_MODE_REDIRECTS).map(([from, mode]) => (
+            <Route key={from} path={from} element={<Redirect to="/games/game" mode={mode} />} />
+          ))}
           {Object.entries(REDIRECTS).map(([from, to]) => (
             <Route key={from} path={from} element={<Redirect to={to} />} />
           ))}

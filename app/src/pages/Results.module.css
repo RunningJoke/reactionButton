@@ -184,17 +184,6 @@
   flex: 1 1 140px;
 }
 
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--touch);
-  margin-bottom: var(--space-2);
-  color: var(--accent);
-  font-weight: 500;
-  text-decoration: none;
-}
-
 .title {
   display: flex;
   align-items: center;
@@ -267,8 +256,21 @@
   margin: 0;
 }
 
+/* a wide table scrolls inside its box (never widens the page); tighter cells on phones */
 .tableWrap {
+  max-width: 100%;
   overflow-x: auto;
+}
+
+@media (max-width: 420px) {
+  .tableWrap .table {
+    font-size: 13px;
+  }
+
+  .tableWrap .table th,
+  .tableWrap .table td {
+    padding-right: var(--space-1);
+  }
 }
 
 .table {

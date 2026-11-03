@@ -7,8 +7,6 @@
     "set": "This set",
     "back": "Back",
     "games": "Games",
-    "editor": "Editor",
-    "simulate": "Simulate",
     "menu": "Menu",
     "settings": "Settings",
     "main": "Main navigation",
@@ -174,9 +172,6 @@
   "editor": {
     "title": "Editor",
     "intro": "Build games block by block.",
-    "noProgram": "No game open",
-    "noProgramHint": "Create a new game, or open one in Games and tap Edit.",
-    "openProgram": "Open from Games",
     "untitled": "Untitled game",
     "undo": "Undo",
     "redo": "Redo",
@@ -818,8 +813,6 @@
   },
   "simulate": {
     "title": "Simulate",
-    "open": "Simulate",
-    "program": "Game",
     "noProgram": "Choose a game to simulate, or create one in the editor.",
     "hasErrors": "This game has errors and cannot be simulated. Fix them in the editor first.",
     "openEditor": "Open in the editor",
@@ -1021,24 +1014,44 @@
     "ifStopped": "If stopped"
   },
   "view": {
-    "back": "Back",
-    "details": "Details",
     "close": "Close",
     "notFound": "{{path}} was not found.",
     "notConnected": "The pod is not connected.",
     "fragment": "Library part",
-    "source": {
-      "pod": "on the pod",
-      "shipped": "shipped"
-    },
-    "issues_one": "{{count}} note",
-    "issues_other": "{{count}} notes",
     "variables": "Variables",
-    "includes": "Includes",
     "start": "Start",
     "fallbackToNext": "continues at “next”",
     "edit": "Edit",
     "openCopy": "Open my copy"
+  },
+  "game": {
+    "mode": {
+      "about": "About",
+      "edit": "Edit",
+      "try": "Try"
+    },
+    "modes": "Game view",
+    "more": "More actions",
+    "makeCopy": "Make my copy",
+    "readOnly": "This game comes with the app and cannot be changed. Make your own copy to edit it.",
+    "settings": "Game settings",
+    "settingsTitle": "Game settings",
+    "story": "What happens",
+    "pods": "Pods",
+    "notes": "Notes",
+    "try": "Try",
+    "edit": "Edit",
+    "blocks": "Blocks",
+    "origin": {
+      "mine": "My game",
+      "pod": "on the pod",
+      "shipped": "comes with the app"
+    },
+    "status": {
+      "inMenu": "In the pod menu at place {{place}} · on the pods",
+      "notOnPods": "Not on the pods yet",
+      "onPodsNotInMenu": "On the pods, not in the pod menu"
+    }
   },
   "graph": {
     "start": "Start block",
@@ -1517,7 +1530,6 @@
     "waitingUpload_one": "{{count}} session waits for upload.",
     "waitingUpload_other": "{{count}} sessions wait for upload.",
     "platformSettings": "Platform settings",
-    "back": "Results",
     "sessions": "Trainings",
     "noSessions": "No results yet.",
     "reportCount_one": "{{count}} round result",
@@ -1757,8 +1769,7 @@
     "devNote": "Development option. Will be removed."
   },
   "login": {
-    "unavailable": "Sign-in is not available right now.",
-    "back": "Back to Results"
+    "unavailable": "Sign-in is not available right now."
   },
   "wizard": {
     "numberLocale": "en",

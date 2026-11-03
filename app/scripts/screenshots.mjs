@@ -34,10 +34,10 @@ await desk.screenshot({ path: `${out}/settings-desktop.png` });
 await phone.goto(`${base}#/games`);
 await phone.getByText("Shipped programs").waitFor();
 await phone.screenshot({ path: `${out}/programs.png`, fullPage: true });
-const view = (path, source = "shipped") => `${base}#/games/view?source=${source}&path=${encodeURIComponent(path)}`;
+const view = (path, source = "shipped") => `${base}#/games/game?source=${source}&path=${encodeURIComponent(path)}&mode=about`;
 for (const [name, path] of [["solo", "/prog/solo.json"], ["duo", "/prog/duo.json"], ["run5", "/prog/run5.json"], ["star", "/prog/lib/star.json"]]) {
   await phone.goto(view(path));
-  await phone.locator(".rp-card").first().waitFor();
+  await phone.getByRole("tablist").or(phone.locator(".rp-card").first()).first().waitFor();
   await phone.waitForTimeout(300);
   await phone.screenshot({ path: `${out}/view-${name}.png` });
 }
@@ -46,9 +46,7 @@ await phone.waitForTimeout(200);
 await phone.screenshot({ path: `${out}/view-star-sheet.png` });
 
 await desk.goto(view("/prog/duo.json"));
-await desk.locator(".rp-card").first().waitFor();
-await desk.getByRole("button", { name: "Details" }).click();
-await desk.locator(".rp-card", { hasText: "CentralPress" }).click();
+await desk.getByRole("tablist").waitFor();
 await desk.waitForTimeout(300);
 await desk.screenshot({ path: `${out}/view-duo-desktop.png` });
 
@@ -86,7 +84,7 @@ await coach.screenshot({ path: `${out}/train-waiting.png`, fullPage: true });
 await coach.getByRole("link", { name: /All rounds today/ }).click();
 await coach.locator("details summary").first().click();
 await coach.screenshot({ path: `${out}/results-session.png`, fullPage: true });
-await coach.getByRole("link", { name: "Mia" }).click();
+await coach.getByRole("link", { name: "Back" }).click();
 await coach.screenshot({ path: `${out}/results-athlete.png`, fullPage: true });
 await coach.goto(`${base}#/settings`);
 await coach.getByText("Platform (preview)").click();
@@ -99,8 +97,8 @@ for (const [width, height] of [[360, 1300], [1200, 900]]) {
     const tag = `${width}-${colorScheme}`;
     const ed = await browser.newPage({ viewport: { width, height }, locale: "en-US", colorScheme });
     const edit = async (path) => {
-      await ed.goto(`${base}#/games/view?source=shipped&path=${encodeURIComponent(path)}`);
-      await ed.getByRole("button", { name: "Edit", exact: true }).click();
+      await ed.goto(`${base}#/games/game?source=shipped&path=${encodeURIComponent(path)}&mode=about`);
+      await ed.getByRole("button", { name: /Make my copy|Open my copy/ }).first().click();
       await ed.getByText(/^1/).first().waitFor();
     };
     const shot = async (name) => {

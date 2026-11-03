@@ -83,17 +83,16 @@ Used for development, tests and demos; it must behave like the firmware.
 
 Same on phone and desktop: header (title, connection chip, settings gear) + three destinations, **Train**,
 **Games** and **Results** (floating tab bar on phones, side rail from 900 px). Icon first, short label.
-Sub-pages show a back link in the header and keep their tab highlighted. Old links are redirected
-(`/pod` → `/set`, `/training` → `/train`, `/programs*` → `/games*`, `/editor` → `/games/edit`,
-`/simulate` → `/games/try`, `/menu` → `/set/menu`; query strings are kept). Default route: `/train`.
+Sub-pages show a back arrow in the header (to an explicit parent computed per route: session → its athlete, game → Games, menu → This set; never history -1) and keep their tab highlighted; on phones the connection chip is icon-only there. Old links are redirected
+(`/pod` → `/set`, `/training` → `/train`, `/programs*` → `/games*`, `/editor`, `/games/edit` → `/games/game?mode=edit`,
+`/simulate`, `/games/try` → `...mode=try`, `/games/view` → `...mode=about`, `/menu` → `/set/menu`; query strings are kept). Default route: `/train`.
 
 | Route | Content |
 |---|---|
 | **Train** `/train` | the training view (§ Training view); Connect when no set is connected |
 | **Games** `/games` | local, pod and shipped games + library; new (chooser), duplicate, Adjust, import, export, set export / import |
-| `/games/view`, `/games/new` | game details; wizard |
-| `/games/edit` | one game in the editor (§7, editor-ux.md) |
-| `/games/try` | simulator: pods + graph + controls (§8) |
+| `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary (Adjust), pod status, Try / Edit or Make my copy, Blocks (expert). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
+| `/games/new` | wizard |
 | **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
 | **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; push, restore defaults; *Training* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
 | `/set/menu` | order of `/programs.json`, LED ring picker per game |

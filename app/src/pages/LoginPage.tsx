@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { PlatformError } from "../platform/api";
 import { platformClient, usePlatformSettings } from "../platform/settings";
@@ -39,11 +39,6 @@ export function LoginPage() {
             {error}
           </p>
         )}
-        <div className={styles.row}>
-          <Link to="/results" className={styles.button}>
-            {t("login.back")}
-          </Link>
-        </div>
       </section>
     </div>
   );

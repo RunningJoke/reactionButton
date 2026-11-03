@@ -56,10 +56,9 @@ describe("This set", () => {
   it("marks the connection chip while changes are not on the pods", async () => {
     await connectPod("simulated");
     inRouter(<ConnectionChip />);
-    await waitFor(() => expect(screen.getByText("Connected")).toBeTruthy());
-    expect(screen.queryByRole("img", { name: "Changes not on the pods yet" })).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Connected" })).toBeTruthy());
     await reorderMenu();
-    await waitFor(() => expect(screen.getByRole("img", { name: "Changes not on the pods yet" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Connected · Changes not on the pods yet" })).toBeTruthy());
   });
 });
 

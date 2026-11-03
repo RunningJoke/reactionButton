@@ -10,7 +10,7 @@ import { LED_COUNT, MAX_FILE_SIZE, byteLength, formatProgram } from "@reactpod/p
 import { LedRingPicker } from "../components/LedRingPicker";
 import { usePodSession } from "../pod/session";
 import { useTakenPaths } from "../programs/actions";
-import { editorUrl, simulateUrl, useLocalMenu } from "../programs/sources";
+import { editorUrl, gameUrl, simulateUrl, useLocalMenu } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import {
   GAMES,
@@ -474,7 +474,7 @@ function ReadyScreen() {
                 const doc = await persist();
                 if (!menu.includes(doc.path)) await setMenu([...menu, doc.path]);
                 useWizard.getState().start();
-                navigate("/set/menu");
+                navigate(gameUrl({ id: doc.id }));
               })}
             >
               <ListPlus size={18} aria-hidden /> {t("wizard.ready.saveToMenu")}

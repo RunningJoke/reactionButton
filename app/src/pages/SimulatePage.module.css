@@ -2,42 +2,6 @@
   max-width: 1200px;
 }
 
-.picker {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.picker label {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.picker select {
-  flex: 1;
-  min-width: 0;
-  min-height: var(--touch);
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  color: var(--text);
-}
-
-.iconLink {
-  display: grid;
-  place-items: center;
-  width: var(--touch);
-  height: var(--touch);
-  border-radius: var(--radius-m);
-  color: var(--text-muted);
-}
-
-.iconLink:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
 
 .blocked {
   color: var(--error);
@@ -45,6 +9,7 @@
 
 .layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 

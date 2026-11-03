@@ -7,8 +7,6 @@
     "set": "Dieses Set",
     "back": "Zurück",
     "games": "Spiele",
-    "editor": "Editor",
-    "simulate": "Simulation",
     "menu": "Menü",
     "settings": "Einstellungen",
     "main": "Hauptnavigation",
@@ -174,9 +172,6 @@
   "editor": {
     "title": "Editor",
     "intro": "Block für Block Spiele bauen.",
-    "noProgram": "Kein Spiel geöffnet",
-    "noProgramHint": "Neues Spiel anlegen oder unter Spiele eines öffnen und Bearbeiten tippen.",
-    "openProgram": "Unter „Spiele“ öffnen",
     "untitled": "Spiel ohne Namen",
     "undo": "Rückgängig",
     "redo": "Wiederholen",
@@ -818,8 +813,6 @@
   },
   "simulate": {
     "title": "Simulation",
-    "open": "Simulieren",
-    "program": "Spiel",
     "noProgram": "Wähle ein Spiel zum Simulieren oder erstelle eines im Editor.",
     "hasErrors": "Dieses Spiel hat Fehler und kann nicht simuliert werden. Behebe sie zuerst im Editor.",
     "openEditor": "Im Editor öffnen",
@@ -1021,24 +1014,44 @@
     "ifStopped": "Wenn gestoppt"
   },
   "view": {
-    "back": "Zurück",
-    "details": "Details",
     "close": "Schließen",
     "notFound": "{{path}} wurde nicht gefunden.",
     "notConnected": "Der Pod ist nicht verbunden.",
     "fragment": "Bibliotheksteil",
-    "source": {
-      "pod": "auf dem Pod",
-      "shipped": "mitgeliefert"
-    },
-    "issues_one": "{{count}} Hinweis",
-    "issues_other": "{{count}} Hinweise",
     "variables": "Variablen",
-    "includes": "Bindet ein",
     "start": "Start",
     "fallbackToNext": "geht bei „weiter“ weiter",
     "edit": "Bearbeiten",
     "openCopy": "Meine Kopie öffnen"
+  },
+  "game": {
+    "mode": {
+      "about": "Info",
+      "edit": "Bearbeiten",
+      "try": "Testen"
+    },
+    "modes": "Spielansicht",
+    "more": "Weitere Aktionen",
+    "makeCopy": "Eigene Kopie anlegen",
+    "readOnly": "Dieses Spiel gehört zur App und lässt sich nicht ändern. Lege eine eigene Kopie an, um es zu bearbeiten.",
+    "settings": "Spieleinstellungen",
+    "settingsTitle": "Spieleinstellungen",
+    "story": "Was passiert",
+    "pods": "Pods",
+    "notes": "Hinweise",
+    "try": "Testen",
+    "edit": "Bearbeiten",
+    "blocks": "Blöcke",
+    "origin": {
+      "mine": "Mein Spiel",
+      "pod": "auf dem Pod",
+      "shipped": "gehört zur App"
+    },
+    "status": {
+      "inMenu": "Im Pod-Menü auf Platz {{place}} · auf den Pods",
+      "notOnPods": "Noch nicht auf den Pods",
+      "onPodsNotInMenu": "Auf den Pods, nicht im Pod-Menü"
+    }
   },
   "graph": {
     "start": "Startblock",
@@ -1517,7 +1530,6 @@
     "waitingUpload_one": "{{count}} Training wartet auf das Hochladen.",
     "waitingUpload_other": "{{count}} Trainings warten auf das Hochladen.",
     "platformSettings": "Plattform-Einstellungen",
-    "back": "Ergebnisse",
     "sessions": "Trainings",
     "noSessions": "Noch keine Ergebnisse.",
     "reportCount_one": "{{count}} Rundenergebnis",
@@ -1757,8 +1769,7 @@
     "devNote": "Entwickleroption. Wird entfernt."
   },
   "login": {
-    "unavailable": "Anmeldung ist im Moment nicht verfügbar.",
-    "back": "Zurück zu Ergebnissen"
+    "unavailable": "Anmeldung ist im Moment nicht verfügbar."
   },
   "wizard": {
     "numberLocale": "de",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Download, Ellipsis, Link2, Pencil, Trash2, Unlink } from "lucide-react";
+import { ChevronRight, Download, Ellipsis, Link2, Pencil, Trash2, Unlink } from "lucide-react";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
 import { PlatformError, type PlatformAthlete } from "../platform/api";
@@ -39,7 +39,7 @@ export function AthletePage() {
     return (
       <div className={page.page}>
         <p className={page.muted}>
-          {t("results.athleteMissing")} <Link to="/results">{t("results.back")}</Link>
+          {t("results.athleteMissing")}
         </p>
       </div>
     );
@@ -59,9 +59,6 @@ export function AthletePage() {
 
   return (
     <div className={page.page}>
-      <Link to="/results" className={styles.back}>
-        <ChevronLeft size={20} aria-hidden /> {t("results.back")}
-      </Link>
       <section className={page.section}>
         <div className={styles.title}>
           <h2 className={styles.display}>{name}</h2>

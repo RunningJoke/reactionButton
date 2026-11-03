@@ -10,7 +10,7 @@ import { AdjustSheet, type AdjustTarget } from "../programs/AdjustSheet";
 import { NewProgramModal, useTakenPaths } from "../programs/actions";
 import { olderPodNeeds, podsNeeded, summaryOf } from "../programs/requirements";
 import { SetArchiveButtons } from "../programs/SetArchiveButtons";
-import { editorUrl, podProgramFormat, useProgramSource, validateOptionsOf, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
+import { editorUrl, gameUrl, podProgramFormat, useProgramSource, validateOptionsOf, viewUrl, type ProgramSource, type SourceId } from "../programs/sources";
 import { parseProgramText, useWorkspace } from "../store/workspace";
 import { usePodSession } from "../pod/session";
 import page from "./Page.module.css";
@@ -50,7 +50,7 @@ export function ProgramsPage() {
           <EntryList
             entries={localCatalog.programs}
             source="local"
-            href={(e) => editorUrl(idByPath.get(e.path)!.id)}
+            href={(e) => gameUrl({ id: idByPath.get(e.path)!.id })}
             onAdjust={(e) => setAdjusting({ source: "local", path: e.path })}
             tag={(e) => {
               const origin = idByPath.get(e.path)?.origin;
