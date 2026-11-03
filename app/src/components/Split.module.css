@@ -1,0 +1,34 @@
+/* Phone: one column. From 900 px: two columns, the side column sticks below the header. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.main,
+.side {
+  min-width: 0;
+}
+
+@media (max-width: 899px) {
+  .desktopOnly {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .side {
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - var(--header-h) - 2 * var(--space-4));
+    overflow-y: auto;
+  }
+}
