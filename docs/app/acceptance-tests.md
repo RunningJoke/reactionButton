@@ -151,7 +151,7 @@ mark "pass" only when the user reported it.
 | AT-P1–P13, AT-M1–M5 | 2026-10-19 | 2.7 | accepted (P5, P6) |
 | AT-R1–R6, AT-E1–E14, AT-U1–U6 | 2026-10-26 | 2.9 | pass (P7, P8) |
 | AT-E2, E3, E5, E15–E19 | – | – | open (#88, step sheet and step list rebuilt, ready for test) |
-| AT-E11, E12 | – | – | open (#106, rewritten for the Game settings panel; the 2026-10-26 pass was for the Adjust sheet) |
+| AT-E11, E12 | 2026-11-03 | 2.17 | pass (#106, rewritten for the Game settings panel) |
 | AT-L1–L12 | – | 2.12 | open (P9, ready for test; L3 changed by #87) |
 | AT-L13–L17 | – | – | open (#87, specified, not built) |
-| AT-D1–D25 | – | – | open (#106, PR #110 merged; for the user to test) |
+| AT-D1–D25 | 2026-11-03 | 2.17 | pass (P10, #106) |
