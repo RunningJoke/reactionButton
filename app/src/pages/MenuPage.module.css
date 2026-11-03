@@ -44,6 +44,46 @@
   border-top: 1px solid var(--border);
 }
 
+.row {
+  transition: transform 150ms ease;
+}
+
+.dragging {
+  position: relative;
+  z-index: 1;
+  transition: none;
+  background: var(--surface-2);
+  box-shadow: var(--floating-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}
+
+/* touch-action: none only here, so the rest of the row still scrolls the page. */
+.handle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--touch);
+  height: var(--touch);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.handle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 .index {
   min-width: 1.4em;
   font-size: 13px;
@@ -171,6 +211,6 @@
   border-radius: 18px;
   background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
+  box-shadow: var(--floating-shadow);
   cursor: pointer;
 }

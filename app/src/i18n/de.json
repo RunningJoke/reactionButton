@@ -932,6 +932,7 @@
     "noPattern": "kein Menümuster",
     "up": "{{name}} nach oben",
     "down": "{{name}} nach unten",
+    "dragHandle": "{{name}} ziehen, um es zu verschieben",
     "remove": "{{name}} aus dem Menü nehmen",
     "add": "Spiel hinzufügen",
     "nothingToAdd": "Alle Spiele sind im Menü.",
