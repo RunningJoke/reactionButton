@@ -224,7 +224,7 @@
     "flatten": "Alle Schritte bearbeitbar machen",
     "addAfterAction": "Block danach einfügen",
     "programSheet": {
-      "title": "Spiel",
+      "title": "Spieleinstellungen",
       "sub": "Name, Pods und die Einstellungen, die du am häufigsten änderst",
       "pods": "Pods außer der Zentrale",
       "podsTotal_one": "{{count}} Pod im Set",
@@ -1087,6 +1087,7 @@
     "readOnly": "Dieses Spiel gehört zur App und lässt sich nicht ändern. Lege eine eigene Kopie an, um es zu bearbeiten.",
     "settings": "Spieleinstellungen",
     "settingsTitle": "Spieleinstellungen",
+    "changeSettings": "Einstellungen ändern",
     "story": "Was passiert",
     "pods": "Pods",
     "notes": "Hinweise",
@@ -1944,6 +1945,8 @@
       "question": "Wie möchtest du anfangen?",
       "game": "Mit einem Spiel anfangen",
       "gameLine": "Beantworte fünf Fragen. Die App baut das Spiel, du kannst es gleich ausprobieren.",
+      "quick": "Schnelles Spiel",
+      "quickLine": "Ein Bildschirm: Spiel, Pods, Runden und Farbe wählen. Den Rest änderst du später in den Spieleinstellungen.",
       "recommended": "Empfohlen",
       "copy": "Eines meiner Spiele kopieren",
       "copyLine": "Nimm eines deiner Spiele oder ein mitgeliefertes und ändere es.",
@@ -2017,17 +2020,15 @@
       "charge": "Ladezeit"
     }
   },
-  "adjust": {
-    "action": "Anpassen",
-    "actionFor": "{{name}} anpassen",
-    "title": "Anpassen: {{name}}",
-    "subLocal": "Änderungen gelten für das ganze Spiel.",
-    "subShipped": "Beim Speichern entsteht deine eigene Kopie. Das mitgelieferte Spiel bleibt, wie es ist.",
-    "subPod": "Beim Speichern entsteht eine Kopie auf diesem Handy. Das Spiel auf dem Pod bleibt, wie es ist, bis du es hochlädst.",
-    "existingCopy": "Du hast schon eine Kopie dieses Spiels. Anpassen ändert deine Kopie.",
-    "readOnly": "Dieser Pod ist nicht die Zentrale und kann keine Spiele annehmen. Deine Kopie bleibt auf diesem Handy: Probiere sie im Simulator aus oder lade sie auf ein Set hoch, wenn du dessen Zentrale verbindest. Sie kann nicht auf diesen Pod hochgeladen werden.",
-    "settings": "Einstellungen",
-    "wholeProgram": "Für das ganze Spiel",
+  "quick": {
+    "title": "Schnelles Spiel",
+    "game": "Spiel",
+    "hint": "Alles andere startet mit den Voreinstellungen des Spiels. Du kannst es jederzeit in den Spieleinstellungen ändern.",
+    "create": "Spiel erstellen",
+    "createAdjust": "Erstellen und anpassen"
+  },
+  "switches": {
+    "wholeGame": "Für das ganze Spiel",
     "timeLimit": "Zeitlimit",
     "timeLimitOn": "Zu langsam nach {{s}}",
     "timeLimitOff": "Warten, so lange es dauert",
@@ -2038,13 +2039,7 @@
     "results": "Ergebnisse am Ende zeigen",
     "resultsHint": "Durchschnitt, Bestzeit und Anzahl der Drücke",
     "timeLimitSetting": "Die Sekunden sind oben eine Einstellung",
-    "noSwitches": "Dieses Spiel besteht aus geteilten Spielteilen, deshalb können diese Schalter es nicht ändern. Ändere zuerst die Schritte, um eine bearbeitbare Kopie zu machen.",
-    "try": "Ausprobieren",
-    "saveAndTry": "Speichern und ausprobieren",
-    "save": "Speichern",
-    "steps": "Lieber die Schritte ändern",
-    "saved": "Gespeichert.",
-    "notFound": "Das Spiel wurde nicht gefunden."
+    "none": "Dieses Spiel besteht aus geteilten Spielteilen, deshalb können diese Schalter es nicht ändern. Ändere zuerst die Schritte, um eine bearbeitbare Kopie zu machen."
   },
   "sentence": {
     "decimal": ",",

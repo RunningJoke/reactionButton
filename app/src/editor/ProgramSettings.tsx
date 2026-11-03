@@ -4,7 +4,18 @@ import { Layers, Plus, Settings2, Trash2 } from "lucide-react";
 import { Sheet } from "../components/Sheet";
 import { DEFAULT_FILES } from "../defaults";
 import { BUILTIN_VARIABLES, formatProgram, isLibraryPath, isObject, MAX_PERIPHERALS, resolveProgram } from "@reactpod/program-model";
-import { SetDrawing, Stepper } from "../wizard/controls";
+import { OptionList, SetDrawing, Stepper, SwitchRow } from "../wizard/controls";
+import { LIMITS } from "../wizard/answers";
+import { formatMs } from "../results/stats";
+import {
+  programSwitchApplies,
+  programSwitchState,
+  programTimeLimit,
+  programTimeoutAction,
+  setProgramSwitch,
+  setProgramTimeLimit,
+  type ProgramSwitch,
+} from "../programs/programSwitches";
 import { MenuPatternField, NumberInput } from "./fields";
 import { isValidVariableName, renameVariable, setProgramField, uniqueName, type ProgramJson } from "./ops";
 import { settingLabel, settingRange, stepSetting, tweakableSettings } from "./settingLabels";
@@ -29,8 +40,8 @@ type Props = {
 };
 
 /**
- * Program sheet (editor-ux.md §4 F): basics (name, description, pods, menu pattern), the settings
- * a coach changes, and – in expert mode – start block, library parts and the raw variables.
+ * Game settings (editor-ux.md §4 F), the one place for a game's settings: basics (name, description, pods,
+ * menu pattern), the settings a coach changes, the switches for the whole game, and – in expert mode – start block, library parts and the raw variables.
  */
 export function ProgramSettings({ json, path, names, library, apply, onFlatten, onClose, read }: Props) {
   const { t } = useTranslation();
@@ -74,6 +85,11 @@ export function ProgramSettings({ json, path, names, library, apply, onFlatten, 
       <section className={styles.group}>
         <h4>{t("editor.programSheet.tweak")}</h4>
         <TweakSettings json={json} path={path} read={read} apply={apply} />
+      </section>
+
+      <section className={styles.group}>
+        <h4>{t("switches.wholeGame")}</h4>
+        <GameSwitches json={json} apply={apply} />
       </section>
 
       {expert && <ExpertSection json={json} names={names} library={library} path={path} apply={apply} onFlatten={onFlatten} />}
@@ -139,6 +155,59 @@ export function TweakSettings({ json, path, read, apply }: { json: ProgramJson; 
 }
 
 const readShipped = (p: string) => DEFAULT_FILES[p];
+
+/** Time limit, record times, results at the end – for every press of the game (programSwitches.ts). */
+function GameSwitches({ json, apply }: { json: ProgramJson; apply: (json: ProgramJson) => void }) {
+  const { t } = useTranslation();
+  const sec = (ms: number) => formatMs(ms, t("wizard.numberLocale"));
+  const applies = (["timeLimit", "record", "results"] as const).filter((id) => programSwitchApplies(json, id));
+  if (applies.length === 0) return <p className={styles.muted}>{t("switches.none")}</p>;
+
+  const state = (id: ProgramSwitch) => programSwitchState(json, id);
+  const hint = (id: ProgramSwitch, on: string, off: string) => (state(id) === "mixed" ? t("switches.mixed") : state(id) ? on : off);
+  const limit = programTimeLimit(json);
+  const action = programTimeoutAction(json);
+  const limitMs = typeof limit === "number" ? limit : undefined;
+
+  return (
+    <>
+      {applies.includes("timeLimit") && (
+        <SwitchRow
+          label={t("switches.timeLimit")}
+          hint={hint("timeLimit", limitMs !== undefined ? t("switches.timeLimitOn", { s: sec(limitMs) }) : t("switches.timeLimitSetting"), t("switches.timeLimitOff"))}
+          checked={state("timeLimit") === true}
+          onChange={(on) => apply(setProgramSwitch(json, "timeLimit", on))}
+        >
+          {limitMs !== undefined && (
+            <Stepper
+              label={t("switches.secondsToPress")}
+              value={limitMs}
+              min={LIMITS.timeLimitMs.min}
+              max={LIMITS.timeLimitMs.max}
+              step={LIMITS.timeLimitMs.step}
+              format={sec}
+              onChange={(ms) => apply(setProgramTimeLimit(json, ms))}
+            />
+          )}
+          <OptionList<TimeoutChoice>
+            label={t("wizard.timing.tooSlow")}
+            value={action === "goOn" || action === "countMiss" || action === "endRound" ? action : ("" as TimeoutChoice)}
+            options={(["goOn", "countMiss", "endRound"] as const).map((v) => ({ value: v, label: t(`wizard.timing.onTimeout.${v}`) }))}
+            onChange={(v) => apply(setProgramSwitch(json, "timeLimit", true, { onTimeout: v }))}
+          />
+        </SwitchRow>
+      )}
+      {applies.includes("record") && (
+        <SwitchRow label={t("switches.record")} hint={t("switches.recordHint")} checked={state("record") === true} onChange={(on) => apply(setProgramSwitch(json, "record", on))} />
+      )}
+      {applies.includes("results") && (
+        <SwitchRow label={t("switches.results")} hint={t("switches.resultsHint")} checked={state("results") === true} onChange={(on) => apply(setProgramSwitch(json, "results", on))} />
+      )}
+    </>
+  );
+}
+
+type TimeoutChoice = "goOn" | "countMiss" | "endRound";
 
 /** Start block, library parts ("convert to editable copy") and the raw variables table. */
 function ExpertSection({ json, names, library, path, apply, onFlatten }: { json: ProgramJson; names: readonly string[]; library: readonly string[]; path: string; apply: Apply; onFlatten: () => void }) {

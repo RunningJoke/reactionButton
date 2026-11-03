@@ -224,7 +224,7 @@
     "flatten": "Make all steps editable",
     "addAfterAction": "Add block after",
     "programSheet": {
-      "title": "Game",
+      "title": "Game settings",
       "sub": "Name, pods and the settings you change most",
       "pods": "Pods besides the main pod",
       "podsTotal_one": "{{count}} pod in the set",
@@ -1087,6 +1087,7 @@
     "readOnly": "This game comes with the app and cannot be changed. Make your own copy to edit it.",
     "settings": "Game settings",
     "settingsTitle": "Game settings",
+    "changeSettings": "Change settings",
     "story": "What happens",
     "pods": "Pods",
     "notes": "Notes",
@@ -1944,6 +1945,8 @@
       "question": "How do you want to start?",
       "game": "Start from a game",
       "gameLine": "Answer five questions. The app builds the game, you can try it right away.",
+      "quick": "Quick game",
+      "quickLine": "One screen: pick the game, pods, rounds and colour. Change the rest later in the game settings.",
       "recommended": "Recommended",
       "copy": "Copy one of my games",
       "copyLine": "Take one of your games or a shipped one and change it.",
@@ -2017,17 +2020,15 @@
       "charge": "Charge time"
     }
   },
-  "adjust": {
-    "action": "Adjust",
-    "actionFor": "Adjust {{name}}",
-    "title": "Adjust: {{name}}",
-    "subLocal": "Changes apply to the whole game.",
-    "subShipped": "Saving makes your own copy. The shipped game stays as it is.",
-    "subPod": "Saving makes a copy on this phone. The game on the pod stays as it is until you send it to the pods.",
-    "existingCopy": "You already have a copy of this game. Adjust changes your copy.",
-    "readOnly": "This pod is not the main pod, so it cannot take games. Your copy stays on this phone: try it in the simulator or send it to a set when you connect its main pod. It cannot be sent to this pod.",
-    "settings": "Settings",
-    "wholeProgram": "For the whole game",
+  "quick": {
+    "title": "Quick game",
+    "game": "Game",
+    "hint": "Everything else starts from the game's defaults. Change it any time in the game settings.",
+    "create": "Create game",
+    "createAdjust": "Create and adjust"
+  },
+  "switches": {
+    "wholeGame": "For the whole game",
     "timeLimit": "Time limit",
     "timeLimitOn": "Too slow after {{s}}",
     "timeLimitOff": "Wait as long as it takes",
@@ -2038,13 +2039,7 @@
     "results": "Show results at the end",
     "resultsHint": "Average, best and number of presses",
     "timeLimitSetting": "The seconds are a setting above",
-    "noSwitches": "This game is built from shared game pieces, so these switches cannot change it. Change the steps to make an editable copy first.",
-    "try": "Try it",
-    "saveAndTry": "Save and try",
-    "save": "Save",
-    "steps": "Change the steps instead",
-    "saved": "Saved.",
-    "notFound": "The game was not found."
+    "none": "This game is built from shared game pieces, so these switches cannot change it. Change the steps to make an editable copy first."
   },
   "sentence": {
     "decimal": ".",
