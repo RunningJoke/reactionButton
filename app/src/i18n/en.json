@@ -932,6 +932,7 @@
     "noPattern": "no menu pattern",
     "up": "Move {{name}} up",
     "down": "Move {{name}} down",
+    "dragHandle": "Drag {{name}} to move it",
     "remove": "Remove {{name}} from the menu",
     "add": "Add game",
     "nothingToAdd": "All games are in the menu.",

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowDown, ArrowUp, ListOrdered, Plus, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, ListOrdered, Plus, X } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { Sheet } from "../components/Sheet";
 import { DEFAULT_FILES } from "../defaults";
@@ -29,6 +29,10 @@ export function MenuPage() {
   const podFiles = usePodSession((s) => s.files);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  // Drag state: `drag` drives the rows' offsets, `dragRef` holds the row geometry taken at pointer down.
+  const [drag, setDrag] = useState<{ from: number; to: number; dy: number; height: number } | null>(null);
+  const dragRef = useRef<{ from: number; to: number; startY: number; height: number; centers: number[] } | null>(null);
+  const listRef = useRef<HTMLOListElement>(null);
 
   const describe = useMemo(() => {
     const localPaths = new Set(programs.map((p) => p.path));
@@ -79,6 +83,35 @@ export function MenuPage() {
     void setMenu(next);
   };
 
+  // Pointer drag: the row lands where the pointer is among the other rows' centres. The arrows stay as the no-drag path.
+  const dragStart = (i: number, e: PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const rects = [...(listRef.current?.children ?? [])].map((li) => li.getBoundingClientRect());
+    const height = rects[i]?.height ?? 0;
+    dragRef.current = { from: i, to: i, startY: e.clientY, height, centers: rects.map((r) => r.top + r.height / 2) };
+    setDrag({ from: i, to: i, dy: 0, height });
+  };
+  const dragMove = (e: PointerEvent<HTMLButtonElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    d.to = d.centers.filter((c, j) => j !== d.from && c < e.clientY).length;
+    setDrag({ from: d.from, to: d.to, dy: e.clientY - d.startY, height: d.height });
+  };
+  const dragEnd = (drop: boolean) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDrag(null);
+    if (drop && d && d.to !== d.from) move(d.from, d.to);
+  };
+  /** Offset of a row while another row is dragged: the rows in between make room for it. */
+  const rowStyle = (i: number) => {
+    if (!drag) return undefined;
+    if (i === drag.from) return { transform: `translateY(${drag.dy}px)` };
+    if (drag.to > drag.from && i > drag.from && i <= drag.to) return { transform: `translateY(${-drag.height}px)` };
+    if (drag.to < drag.from && i >= drag.to && i < drag.from) return { transform: `translateY(${drag.height}px)` };
+    return undefined;
+  };
+
   const editingEntry = editing ? describe(editing) : null;
 
   return (
@@ -90,9 +123,26 @@ export function MenuPage() {
         {entries.length === 0 ? (
           <p className={styles.note}>{t("pod.emptyMenu")}</p>
         ) : (
-          <ol className={styles.list}>
+          <ol className={styles.list} ref={listRef}>
             {entries.map((entry, i) => (
-              <li key={entry.path} className={styles.row}>
+              <li
+                key={entry.path}
+                className={`${styles.row} ${drag?.from === i ? styles.dragging : ""}`}
+                style={rowStyle(i)}
+              >
+                <button
+                  className={styles.handle}
+                  onPointerDown={(e) => dragStart(i, e)}
+                  onPointerMove={dragMove}
+                  onPointerUp={() => dragEnd(true)}
+                  onPointerCancel={() => dragEnd(false)}
+                  tabIndex={-1}
+                  aria-hidden
+                  aria-label={t("menu.dragHandle", { name: entry.name })}
+                  title={t("menu.dragHandle", { name: entry.name })}
+                >
+                  <GripVertical size={20} aria-hidden />
+                </button>
                 <span className={styles.index}>{i + 1}</span>
                 <button
                   className={styles.ring}

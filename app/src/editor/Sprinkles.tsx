@@ -315,7 +315,7 @@ function KeepBody({ block, doc, set, variables }: SprinkleContext) {
     return (
       <>
         {TOGGLE_RESULTS.map(([field, variable, key]) => (
-          <SwitchRow key={field} label={d(`result.${key}`)} hint={typeof block[field] === "string" ? t("editor.step.keptIn", { name: labelOf(block[field] as string) }) : undefined} checked={typeof block[field] === "string"} onChange={(on) => set(field, on ? variable : undefined, false)} />
+          <SwitchRow key={field} flat label={d(`result.${key}`)} hint={typeof block[field] === "string" ? t("editor.step.keptIn", { name: labelOf(block[field] as string) }) : undefined} checked={typeof block[field] === "string"} onChange={(on) => set(field, on ? variable : undefined, false)} />
         ))}
       </>
     );
@@ -493,6 +493,7 @@ function CountdownRow(ctx: FieldProps) {
   const available = hasCountdownTime(block);
   return (
     <SwitchRow
+      flat
       label={c("label")}
       hint={!available ? c("needsLimit") : style ? c("on", { style: c(`styles.${style}`) }) : c("off")}
       checked={style !== null}
