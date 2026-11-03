@@ -367,7 +367,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
           />
         )}
         {!panel && selectedNode && !ownBlock && !bracket && (
-          <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select}>
+          <BlockDetailsSheet node={selectedNode} known={taken} onSelect={ctx.select} onFlatten={() => apply(flattenIncludes(json, resolved))}>
             {!selectedNode.external && (
               <p className={styles.locked}>
                 <Lock size={14} aria-hidden /> {t("editor.presetBlock", { file: selectedNode.file })}
