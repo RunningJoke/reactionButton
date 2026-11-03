@@ -13,6 +13,8 @@ export const DEFAULT_PODS = 3;
 
 /** Route of the wizard (inside Programs). */
 export const WIZARD_PATH = "/games/new";
+/** One-screen quick game. */
+export const QUICK_PATH = "/games/new/quick";
 
 type WizardState = {
   answers: WizardAnswers;
