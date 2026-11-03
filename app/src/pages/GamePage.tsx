@@ -2,12 +2,11 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Copy, Download, MoreVertical, Pencil, SlidersHorizontal, Trash2, Settings2 } from "lucide-react";
+import { Copy, Download, MoreVertical, Pencil, Trash2, Settings2 } from "lucide-react";
 import { Modal, modalStyles } from "../components/Modal";
 import { useEditor } from "../editor/editorStore";
 import { isLibraryPath, isObject, resolveProgram, validateProgram } from "@reactpod/program-model";
 import { buildGraph } from "../model/graph";
-import { AdjustSheet } from "../programs/AdjustSheet";
 import { DeleteProgramModal, downloadProgram, NewProgramModal, useEditCopy } from "../programs/actions";
 import { fileName } from "../programs/catalog";
 import { podsNeeded } from "../programs/requirements";
@@ -62,7 +61,6 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
   const editCopy = useEditCopy();
   const localCopy = useWorkspace((s) => s.programs.some((p) => p.path === path));
   const [menu, setMenu] = useState(false);
-  const [adjusting, setAdjusting] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const mine = doc !== undefined;
@@ -99,6 +97,8 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
     if (next !== "edit") query.delete("panel");
     setParams(query, { replace: true });
   };
+  // the settings panel lives in Edit (undo / redo, same store); About only shows the summary
+  const openSettings = () => setParams(new URLSearchParams({ ...Object.fromEntries(params), mode: "edit", panel: "settings" }), { replace: true });
   const makeCopy = () => void editCopy(path, source.read(path)!, sourceId === "pod" ? "pod" : "default");
   const copyLabel = localCopy ? t("view.openCopy") : t("game.makeCopy");
   const effective: GameMode = isProgram ? mode : "about";
@@ -132,7 +132,7 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
             copyLabel={copyLabel}
             onMode={setMode}
             onCopy={makeCopy}
-            onAdjust={() => setAdjusting(true)}
+            onSettings={openSettings}
           />
         )}
         {effective === "edit" &&
@@ -153,7 +153,7 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
         <div className={styles.menu}>
           {mine && doc ? (
             <>
-              <button onClick={() => (setMenu(false), setParams(new URLSearchParams({ ...Object.fromEntries(params), mode: "edit", panel: "settings" }), { replace: true }))}>
+              <button onClick={() => (setMenu(false), openSettings())}>
                 <Settings2 size={18} aria-hidden /> {t("game.settings")}
               </button>
               <button onClick={() => (setMenu(false), setDuplicating(true))}>
@@ -168,9 +168,6 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
             </>
           ) : (
             <>
-              <button onClick={() => (setMenu(false), setAdjusting(true))}>
-                <SlidersHorizontal size={18} aria-hidden /> {t("adjust.action")}
-              </button>
               <button onClick={() => (setMenu(false), makeCopy())}>
                 <Pencil size={18} aria-hidden /> {copyLabel}
               </button>
@@ -192,7 +189,6 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
           navigate("/games");
         }}
       />
-      {adjusting && <AdjustSheet target={{ source: sourceId, path }} onClose={() => setAdjusting(false)} />}
     </div>
   );
 }

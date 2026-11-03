@@ -27,7 +27,7 @@ describe("New program chooser and game wizard", () => {
   it("offers three ways to start, the game first", async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "New game" }));
-    const game = screen.getByRole("button", { name: /Start from a game/ });
+    const game = screen.getByRole("button", { name: /Quick game/ });
     expect(game.textContent).toContain("Recommended");
     expect(screen.getByRole("button", { name: /Copy one of my games/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start empty/ }).textContent).toContain("For people who know blocks");
