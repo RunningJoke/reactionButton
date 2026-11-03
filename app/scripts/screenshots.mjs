@@ -1,104 +1,111 @@
 // Screenshots of the preview build for visual checks: npm run build && npm run preview, then
 //   node scripts/screenshots.mjs <out dir> [base url]
 // Uses the locally installed Chrome (playwright-core, no browser download). Set CHROME to override.
+// Labels are read from src/i18n/en.json, so a copy change does not break the selectors.
 import { chromium } from "playwright-core";
+import en from "../src/i18n/en.json" with { type: "json" };
 
 const out = process.argv[2] ?? ".";
 const base = process.argv[3] ?? "http://localhost:4173/";
 const executablePath = process.env.CHROME ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
+
+const raw = (key) => key.split(".").reduce((node, part) => node[part], en);
+const str = (key, vars = {}) => raw(key).replace(/\{\{(\w+)\}\}/g, (_, name) => vars[name]);
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** A pattern for a string with placeholders: each {{var}} matches anything. */
+const re = (key) => new RegExp(raw(key).split(/\{\{\w+\}\}/).map(esc).join(".*"));
+
 const browser = await chromium.launch({ executablePath });
+const widths = [360, 1200, 1440];
+const themes = ["light", "dark"];
 
-const phone = await browser.newPage({ viewport: { width: 360, height: 760 }, locale: "en-US" });
-await phone.goto(`${base}#/set`);
-await phone.screenshot({ path: `${out}/pod-start.png` });
-await phone.getByRole("button", { name: "Connect", exact: true }).click();
-await phone.screenshot({ path: `${out}/connect-dialog.png` });
-await phone.getByRole("button", { name: /Demo pod/ }).click();
-await phone.getByText("/prog/solo.json").waitFor();
-await phone.screenshot({ path: `${out}/pod-connected.png`, fullPage: true });
-await phone.getByRole("button", { name: "Connected" }).click();
-await phone.screenshot({ path: `${out}/connect-dialog-connected.png` });
-await phone.keyboard.press("Escape");
-
-const desk = await browser.newPage({ viewport: { width: 1200, height: 800 }, locale: "de-DE", colorScheme: "dark" });
-await desk.goto(`${base}#/set`);
-await desk.getByRole("button", { name: "Nicht verbunden" }).click();
-await desk.getByRole("button", { name: /Demo-Pod/ }).click();
-await desk.getByText("/prog/solo.json").waitFor();
-await desk.screenshot({ path: `${out}/pod-desktop.png` });
-await desk.getByRole("link", { name: "Einstellungen" }).first().click();
-await desk.getByText("Debug-Konsole").click();
-await desk.screenshot({ path: `${out}/settings-desktop.png` });
-
-// P3: programs list and graphs
-await phone.goto(`${base}#/games`);
-await phone.getByText("Shipped programs").waitFor();
-await phone.screenshot({ path: `${out}/programs.png`, fullPage: true });
-const view = (path, source = "shipped") => `${base}#/games/game?source=${source}&path=${encodeURIComponent(path)}&mode=about`;
-for (const [name, path] of [["solo", "/prog/solo.json"], ["duo", "/prog/duo.json"], ["run5", "/prog/run5.json"], ["star", "/prog/lib/star.json"]]) {
-  await phone.goto(view(path));
-  await phone.getByRole("tablist").or(phone.locator(".rp-card").first()).first().waitFor();
-  await phone.waitForTimeout(300);
-  await phone.screenshot({ path: `${out}/view-${name}.png` });
-}
-await phone.locator(".rp-card", { hasText: "SelectPod" }).click();
-await phone.waitForTimeout(200);
-await phone.screenshot({ path: `${out}/view-star-sheet.png` });
-
-await desk.goto(view("/prog/duo.json"));
-await desk.getByRole("tablist").waitFor();
-await desk.waitForTimeout(300);
-await desk.screenshot({ path: `${out}/view-duo-desktop.png` });
-
-// Athletes and results (#47): demo pod with sample reports
-const coach = await browser.newPage({ viewport: { width: 360, height: 760 }, locale: "en-US" });
-await coach.goto(`${base}#/results`);
-await coach.getByRole("button", { name: "Add athlete" }).click();
-await coach.getByLabel("Name or nickname").fill("Mia");
-await coach.getByRole("button", { name: "Save" }).click();
-await coach.screenshot({ path: `${out}/results-athletes.png` });
-// the demo pod's round result comes from Settings → Advanced; then back to the training surface
+// Settings → Advanced has the demo round result; then back to the training surface
 const demoReport = async (page) => {
   await page.goto(`${base}#/settings`);
-  await page.getByRole("button", { name: "Demo: send a round result" }).click();
+  await page.getByRole("button", { name: str("training.demoReport") }).click();
   await page.goto(`${base}#/train`);
 };
-await coach.goto(`${base}#/train`);
-await coach.screenshot({ path: `${out}/train-not-connected.png`, fullPage: true });
-await coach.getByRole("button", { name: "Connect a set" }).click();
-await coach.getByRole("button", { name: /demo/i }).click();
-await coach.getByRole("button", { name: "Mia" }).waitFor();
-await coach.getByRole("button", { name: "Mia" }).click();
-await coach.screenshot({ path: `${out}/train-idle.png`, fullPage: true });
-for (let i = 0; i < 3; i++) {
-  await demoReport(coach);
-  await coach.getByRole("button", { name: "Repeat" }).waitFor();
-  await coach.waitForTimeout(150);
-  if (i === 1) await coach.getByRole("button", { name: /Repeat/ }).click();
-  else await coach.getByRole("button", { name: "Continue", exact: true }).click();
-  await coach.waitForTimeout(150);
-}
-await demoReport(coach);
-await coach.getByRole("button", { name: "More: Rounds" }).click();
-await coach.screenshot({ path: `${out}/train-waiting.png`, fullPage: true });
-await coach.getByRole("link", { name: /All rounds today/ }).click();
-await coach.locator("details summary").first().click();
-await coach.screenshot({ path: `${out}/results-session.png`, fullPage: true });
-await coach.getByRole("link", { name: "Back" }).click();
-await coach.screenshot({ path: `${out}/results-athlete.png`, fullPage: true });
-await coach.goto(`${base}#/settings`);
-await coach.getByText("Platform (preview)").click();
-await coach.getByLabel("Server").fill("https://api.example.org");
-await coach.screenshot({ path: `${out}/settings-platform.png`, fullPage: true });
+const view = (path, source = "shipped", mode = "about") =>
+  `${base}#/games/game?source=${source}&path=${encodeURIComponent(path)}&mode=${mode}`;
 
-// Step sheet and Sprinkles (#88): 360 / 1200 px, both themes
-for (const [width, height] of [[360, 1300], [1200, 900]]) {
-  for (const colorScheme of ["light", "dark"]) {
+// One context per width and theme: a copy of the app's data, the demo pod, and the screens of the design review
+for (const width of widths) {
+  for (const colorScheme of themes) {
     const tag = `${width}-${colorScheme}`;
-    const ed = await browser.newPage({ viewport: { width, height }, locale: "en-US", colorScheme });
+    const page = await browser.newPage({ viewport: { width, height: 800 }, locale: "en-US", colorScheme });
+    const shot = (name, fullPage = true) => page.screenshot({ path: `${out}/${tag}-${name}.png`, fullPage });
+
+    // Results: one athlete (the training surface needs one)
+    await page.goto(`${base}#/results`);
+    await page.getByRole("button", { name: str("results.addAthlete"), exact: true }).click();
+    await page.getByLabel(str("results.athleteName")).fill("Mia");
+    await page.getByRole("button", { name: str("pod.save"), exact: true }).click();
+    await shot("results-empty");
+
+    // Train: not connected, then the demo pod through "Connect a set"
+    await page.goto(`${base}#/train`);
+    await shot("train-not-connected");
+    await page.getByRole("button", { name: str("training.guide.connect"), exact: true }).click();
+    await shot("connect-dialog", false);
+    await page.getByRole("button", { name: re("pod.connect.simulated") }).click();
+    await page.getByRole("button", { name: "Mia", exact: true }).click();
+    await shot("train-idle");
+    for (let i = 0; i < 3; i++) {
+      await demoReport(page);
+      await page.getByRole("button", { name: str("training.repeat"), exact: true }).waitFor();
+      if (i === 1) await page.getByRole("button", { name: str("training.repeat"), exact: true }).click();
+      else await page.getByRole("button", { name: str("training.continue"), exact: true }).click();
+    }
+    await demoReport(page);
+    await page.getByRole("button", { name: str("training.vars.more", { name: str("settingLabels.rounds") }) }).click();
+    await shot("train-waiting");
+
+    // Results: the session of today and the athlete it belongs to
+    await page.getByRole("link", { name: str("training.last.all") }).click();
+    await page.locator("details summary").first().click();
+    await shot("results-session");
+    await page.getByRole("link", { name: str("nav.back"), exact: true }).click();
+    await shot("results-athlete");
+
+    // This set: the connected pod, its menu, and the game page
+    await page.getByRole("button", { name: re("connection.connected") }).click();
+    await shot("this-set");
+    await page.getByRole("link", { name: str("menu.title") }).click();
+    await shot("pod-menu");
+
+    await page.goto(`${base}#/games`);
+    await page.getByText(str("programs.shipped")).waitFor();
+    await shot("games");
+    await page.goto(view("/prog/duo.json"));
+    await page.getByRole("tablist").waitFor();
+    await page.waitForTimeout(300);
+    await shot("game-about");
+    await page.getByRole("tab", { name: str("game.mode.edit"), exact: true }).click();
+    await page.getByRole("button", { name: str("game.makeCopy"), exact: true }).click();
+    await page.waitForTimeout(300);
+    await shot("game-edit");
+    await page.getByRole("tab", { name: str("game.mode.try"), exact: true }).click();
+    await page.waitForTimeout(300);
+    await shot("game-try");
+
+    await page.goto(`${base}#/settings`);
+    await page.getByText(str("settings.console")).click();
+    await shot("settings");
+    await page.getByText(str("platform.title")).click();
+    await shot("settings-platform");
+
+    await page.close();
+  }
+}
+
+// Step sheet and Sprinkles (#88): all widths, both themes
+for (const width of widths) {
+  for (const colorScheme of themes) {
+    const tag = `${width}-${colorScheme}`;
+    const ed = await browser.newPage({ viewport: { width, height: width === 360 ? 1300 : 900 }, locale: "en-US", colorScheme });
     const edit = async (path) => {
-      await ed.goto(`${base}#/games/game?source=shipped&path=${encodeURIComponent(path)}&mode=about`);
-      await ed.getByRole("button", { name: /Make my copy|Open my copy/ }).first().click();
+      await ed.goto(view(path));
+      await ed.getByRole("button", { name: new RegExp(`${esc(str("game.makeCopy"))}|${esc(str("view.openCopy"))}`) }).first().click();
       await ed.getByText(/^1/).first().waitFor();
     };
     const shot = async (name) => {
@@ -106,23 +113,23 @@ for (const [width, height] of [[360, 1300], [1200, 900]]) {
       await ed.screenshot({ path: `${out}/editor-${tag}-${name}.png` });
     };
     await edit("/prog/solo.json");
-    await ed.getByRole("button", { name: "Add a step", exact: true }).click();
+    await ed.getByRole("button", { name: str("editor.step.add"), exact: true }).click();
     await shot("palette");
-    await ed.getByRole("button", { name: "Close" }).click();
-    await ed.getByText("Wait for a press on the central").first().click();
+    await ed.getByRole("button", { name: str("view.close"), exact: true }).click();
+    await ed.getByText(str("sentence.press")).first().click();
     await shot("press");
-    await ed.getByRole("button", { name: /^\+ Time limit/ }).click();
+    await ed.getByRole("button", { name: new RegExp(`^\\+ ${esc(str("editor.switch.timeLimit"))}`) }).click();
     await shot("press-time-limit");
-    await ed.getByRole("button", { name: /^If too slow/ }).click();
+    await ed.getByRole("button", { name: new RegExp(`^${esc(str("editor.exit.role.ifTooSlow"))}`) }).click();
     await shot("exit-picker");
-    await ed.getByRole("button", { name: /Back/ }).click();
-    await ed.getByRole("button", { name: /Add sprinkle/ }).click();
+    await ed.getByRole("button", { name: str("nav.back"), exact: true }).click();
+    await ed.getByRole("button", { name: str("editor.sprinkle.add") }).click();
     await shot("add-page");
-    await ed.getByRole("button", { name: /Back/ }).click();
+    await ed.getByRole("button", { name: str("nav.back"), exact: true }).click();
     await ed.getByText(/^Wait 0\.8/).first().click();
     await shot("pause");
     await edit("/prog/charge.json");
-    await ed.getByText(/^Hold the central to charge/).first().click();
+    await ed.getByText(re("sentence.charge")).first().click();
     await shot("charge");
     await edit("/prog/domination.json");
     await ed.getByText(/^Domination: red against blue/).first().click();
