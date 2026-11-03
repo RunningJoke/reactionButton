@@ -7,7 +7,7 @@
     "set": "This set",
     "back": "Back",
     "games": "Games",
-    "menu": "Menu",
+    "menu": "Games on the pods",
     "settings": "Settings",
     "main": "Main navigation",
     "results": "Results"
@@ -1100,7 +1100,7 @@
       "shipped": "comes with the app"
     },
     "status": {
-      "inMenu": "Place {{place}} in the games on the pods",
+      "inMenu": "No. {{place}} on the pods",
       "notOnPods": "Not on the pods yet",
       "onPodsNotInMenu": "On the pods, but not in their game list"
     }
