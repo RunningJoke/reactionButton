@@ -72,6 +72,7 @@ export function ProgramsPage() {
               <AlertTriangle size={16} aria-hidden /> {t("programs.missingInMenu", { path })}
             </p>
           ))}
+          <EntryList entries={podCatalog.programs} source="pod" shipped={shipped.files} files={pod.files} />
         </section>
       ) : (
         <p className={styles.connectHint}>
@@ -83,6 +84,7 @@ export function ProgramsPage() {
         <h2 className={styles.heading}>
           <Package size={16} aria-hidden /> {t("programs.shipped")}
         </h2>
+        <EntryList entries={shippedCatalog.programs} source="shipped" />
       </section>
 
       <section className={page.section}>
