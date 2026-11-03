@@ -357,7 +357,7 @@ export function deleteStep(doc: ProgramJson, name: string, flat: ProgramJson = d
 export function addStep(doc: ProgramJson, type: string, taken: ReadonlySet<string>, after?: string | null): { doc: ProgramJson; name: string } {
   const anchor = after ? ownBlocks(doc).find((b) => b.name === after) : undefined;
   const port = anchor ? (mainPort(anchor) ?? (portsOf(anchor)[0] === "next" ? "next" : undefined)) : undefined;
-  if (!anchor || !port || port === "next") return addBlock(doc, type, taken, anchor && port ? after : null);
+  if (!anchor || !port || port === "next") return addBlock(doc, type, taken, anchor ? after : null);
   const def = blockType(type);
   if (!def) throw new Error(`unknown block type ${type}`);
   const name = newBlockName(type, taken);

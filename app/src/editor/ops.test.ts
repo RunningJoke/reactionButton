@@ -258,6 +258,15 @@ describe("step list operations", () => {
     // after a plain block it behaves like addBlock
     expect(addStep(solo, "delay", names(solo), "Ready").doc).toEqual(addBlock(solo, "delay", names(solo), "Ready").doc);
   });
+
+  it("adds a step after an if without linking an unrelated last step (#109)", () => {
+    let doc = addBlock(newProgram("T"), "led", new Set()).doc;
+    doc = addBlock(doc, "if", names(doc)).doc;
+    doc = addBlock(doc, "led", names(doc)).doc;
+    const last = ownBlocks(doc).at(-1)!;
+    const added = addStep(doc, "delay", names(doc), "If1").doc;
+    expect(ownBlocks(added).find((b) => b.name === last.name)!.next).toBeUndefined();
+  });
 });
 
 describe("variables", () => {
