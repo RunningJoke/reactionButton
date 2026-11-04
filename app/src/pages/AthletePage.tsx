@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Download, Ellipsis, Link2, Pencil, Trash2, Unlink } from "lucide-react";
 import { HoldButton } from "../components/HoldButton";
 import { Modal, modalStyles } from "../components/Modal";
+import { useDesktop } from "../components/Split";
+import { selectUrl } from "../app/navigation";
 import { PlatformError, type PlatformAthlete } from "../platform/api";
 import { canUpload, isSignedIn, platformClient, usePlatformSettings } from "../platform/settings";
 import { deleteAthleteEverywhere } from "../results/athleteDeletion";
@@ -17,12 +19,24 @@ import { ChangeChip, StatsTable, TrendBars, UploadBadge, useProgramName } from "
 import page from "./Page.module.css";
 import styles from "./Results.module.css";
 
-/** History of one athlete (or of the sessions without athlete): statistics, sessions, CSV export. */
+/** The athlete page (phone); on desktop the same view sits beside the list (`/results?athlete=`). */
 export function AthletePage() {
-  const { t, i18n } = useTranslation();
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const id = params.get("id");
+  const desktop = useDesktop();
+  // old links on desktop: the selection on the Results page (the list stays visible)
+  if (desktop) return <Navigate to={id === null ? "/results" : selectUrl(id)} replace />;
+  return (
+    <div className={page.page}>
+      <AthleteView id={id} />
+    </div>
+  );
+}
+
+/** History of one athlete (or of the sessions without athlete, id "none"): statistics, sessions, CSV export. */
+export function AthleteView({ id }: { id: string | null }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { athletes, sessions, reports, loaded, load } = useResults();
   const programName = useProgramName();
   const [menu, setMenu] = useState(false);
@@ -37,11 +51,9 @@ export function AthletePage() {
   if (!loaded) return null;
   if (!none && !athlete) {
     return (
-      <div className={page.page}>
-        <p className={page.muted}>
-          {t("results.athleteMissing")}
-        </p>
-      </div>
+      <p className={page.muted}>
+        {t("results.athleteMissing")}
+      </p>
     );
   }
   const own = sessions.filter((s) => (none ? s.athleteId === null : s.athleteId === id)).filter((s) => reports.some((r) => r.sessionId === s.id));
@@ -58,7 +70,7 @@ export function AthletePage() {
   };
 
   return (
-    <div className={page.page}>
+    <>
       <section className={page.section}>
         <div className={styles.title}>
           <h2 className={styles.display}>{name}</h2>
@@ -174,7 +186,7 @@ export function AthletePage() {
           </Modal>
         </>
       )}
-    </div>
+    </>
   );
 }
 

@@ -10,7 +10,12 @@ const subscribe = (onChange: () => void) => {
 
 /** True from 900 px (the rail layout), for content that only exists on desktop (e.g. a second live view). */
 export function useDesktop(): boolean {
-  return useSyncExternalStore(subscribe, () => window.matchMedia?.(DESKTOP).matches ?? false, () => false);
+  return useSyncExternalStore(subscribe, isDesktop, () => false);
+}
+
+/** The current viewport, read once (for links and back targets outside render). */
+export function isDesktop(): boolean {
+  return window.matchMedia?.(DESKTOP).matches ?? false;
 }
 
 /**
