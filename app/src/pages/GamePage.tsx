@@ -3,6 +3,7 @@ import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Copy, Download, MoreVertical, Pencil, Trash2, Settings2 } from "lucide-react";
+import { Split, useDesktop } from "../components/Split";
 import { Modal, modalStyles } from "../components/Modal";
 import { useEditor } from "../editor/editorStore";
 import { isLibraryPath, isObject, resolveProgram, validateProgram } from "@reactpod/program-model";
@@ -40,6 +41,9 @@ function useGameRef(): { source: SourceId; path: string; id?: string } | null | 
   return { source, path };
 }
 
+/** Typing in the editor does not restart the side simulator on every key. */
+const RESTART_MS = 400;
+
 export function GamePage() {
   const ref = useGameRef();
   if (ref === undefined) return null;
@@ -64,6 +68,7 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
   const [duplicating, setDuplicating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const mine = doc !== undefined;
+  const desktop = useDesktop();
 
   const view = useMemo(() => {
     const text = source.read(path);
@@ -137,7 +142,14 @@ function Game({ game }: { game: { source: SourceId; path: string; id?: string } 
         )}
         {effective === "edit" &&
           (mine && id ? (
-            <EditorPage id={id} />
+            desktop ? (
+              // desktop: the step list and, beside it, the game running; it restarts a moment after an edit
+              <Split className={styles.editSplit} side={<SimulatePage target={{ source: sourceId, path, id }} restartAfterMs={RESTART_MS} />} sideOnPhone={false}>
+                <EditorPage id={id} />
+              </Split>
+            ) : (
+              <EditorPage id={id} />
+            )
           ) : (
             <div className={styles.readOnly}>
               <p>{t("game.readOnly")}</p>

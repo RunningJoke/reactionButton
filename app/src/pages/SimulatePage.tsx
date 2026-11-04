@@ -31,13 +31,25 @@ type Words = { steps: Step[]; blocks: Map<string, Block>; options: SentenceOptio
 const CHIP_MS = 3500;
 type Chip = { text: string; early: boolean; key: number };
 
-export function SimulatePage({ target }: { target: SimulateTarget }) {
+/** `value`, once it has stopped changing for `ms` (0: at once). */
+function useSettled<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    if (!ms) return;
+    const timer = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return ms ? settled : value;
+}
+
+/** `restartAfterMs`: the side simulator in Edit restarts this long after the last edit of the game. */
+export function SimulatePage({ target, restartAfterMs = 0 }: { target: SimulateTarget; restartAfterMs?: number }) {
   const { t, i18n } = useTranslation();
   const source = useProgramSource(target?.source ?? "local");
   const read = source.read;
 
   // keyed by the program text: `read` changes with every local edit of any program
-  const text = target ? read(target.path) : undefined;
+  const text = useSettled(target ? read(target.path) : undefined, restartAfterMs);
   const readRef = useRef(read);
   readRef.current = read;
   const path = target?.path;
