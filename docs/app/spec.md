@@ -407,7 +407,7 @@ The user approves each phase; acceptance tests: [acceptance-tests.md](acceptance
 | P7 | athletes, results, platform upload (#47, #48) | done (AT-R* 2026-10-26) |
 | P8 | block builder for first-timers (editor-ux.md) | done (AT-E* 2026-10-26) |
 | P9 | training view, reconnect, wake lock (#46); several sets on hold | ready for test (AT-L*) |
-| P10 | design review rework (#106): Train · Games · Results, game page About · Edit · Try, This set, results progress, game texts per program, plain copy (en/de); acceptance tests AT-D1–D25 | done (desktop: #107) |
+| P10 | design review rework (#106): Train · Games · Results, game page About · Edit · Try, This set, results progress, game texts per program, plain copy (en/de); acceptance tests AT-D1–D25 | done (desktop: #107, AT-D26–D30) |
 
 ## 14. Commands
 `npm run dev` · `npm test` · `npm run build` · `npm run preview` · `npm run icons` (redraws `public/icons/`

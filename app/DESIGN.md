@@ -51,6 +51,11 @@ cap down; 140 px for 1–2 pods, 116 px for 3–4, 96 px for more. List pucks 56
   bottom; `.main` keeps room for it; fixed elements (the + button) above it. Toasts at the top, except the
   "ready offline" notice, which sits at the bottom above the tab bar.
 - ≥ 900 px: side rail with all destinations (Settings included), no tab bar.
+- ≥ 900 px, two columns (`components/Split`, page class `.wide`): what you act on left, what you look at
+  right and sticky. Train: controls | last round and progress. Edit: step list | live simulator. Results:
+  athletes | selected athlete (`?athlete=`). This set: pods and menu | set and Send to pods. Games on the
+  pods: list | pattern editor. Content that only exists on desktop mounts with `useDesktop()`, never hidden
+  with CSS. Dialogs (`Modal`) are centred with a scrim from 600 px.
 
 ## Screens
 - **Train:** one live surface for the connected set. State header in the pod-light colours with the state in
