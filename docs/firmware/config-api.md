@@ -111,6 +111,7 @@ Bluetooth does not expose it). `features` and fields by firmware:
 | 2.14 | – | `status.powerOff`, `sleep` event |
 | 2.15 | `patterns` | op `pattern`; system patterns (architecture §7.1); link revision 5 (colour 10, identity as n LEDs in the new palette) |
 | 2.17 | `startVars` | `setVariables` also in CONFIRM; `status.ready.editable` (§3 start variables); MaxLoop override cleared after the next select |
+| 2.18 | – | `stop` returns to MENU without a reboot (BLE stays connected, peripherals stay joined) |
 
 **Battery** (`{percent, mv}`, missing = unknown): one Li-ion cell, 3.30 V = 0 %, 4.20 V = 100 %, piecewise
 linear (`Battery.cpp`); 16 samples, refreshed every 3 s; on USB it reads the charge voltage (≈ 100 %).
@@ -164,7 +165,7 @@ store (upload changed includes first), nothing is written, the request must fit 
 | `select` | central, MENU | `program`: index, path or name | load, radio on, DISCOVERY |
 | `start` | central, CONFIRM | – | like the confirm press; `not_ready` while pods are missing; `low_battery` |
 | `press` | any | – | simulated short press (not for the menu) |
-| `stop` | central | – | ends the program; the pod restarts as central into the menu (clears reports) |
+| `stop` | central | – | ends the program and returns to MENU in place, without a reboot: BLE stays connected, the joined peripherals get RESET and stay joined (the next `select` finds them at once). Clears reports, variables, results and the athlete; response `{ok, state:"MENU"}` (fw < 2.18: the pod restarts as central into the menu) |
 | `effect` | any (`effects`) | `effect` name, `color`, `color2`, `brightness`, `durationMs`, `periodMs`, `segment`, `from`/`to` (dim), `value` (level %), `reverse`, `endOff`, `delayMs`; central also `target`: `"self"` (default), pod id, `"pods"`, `"all"` | test op; common start now + `delayMs` (default 50 ms with pods, else 0). → `effect`, central `startAtUs`, `sent[]`, `skipped[]`. `busy` in a game / while armed |
 | `pattern` | any (`patterns`) | `name`: `boot`, `search`, `joined`, `discovery`, `ready`, `select`, `selectCancel`, `selected`, `paused`, `lowBattery`, `sleep`, `menu`; `percent` (boot, 0–100), `podId` (joined), `wanted`, `found` (discovery), `fillMs` (selectCancel), `breathing` (menu) | plays a system pattern (architecture §7.1) on this pod's ring; central: itself only, peripheral: itself. → `pattern`, `durationMs` (0 = endless). `busy` in a game / while armed |
 | `blink` | central (`identify`) | `pod`: id, or `-1`/missing = central | 2 s in its identity colour (central white), shown within 0.5 s. Only MENU/DISCOVERY/CONFIRM (`busy`); unknown id `bad_request`; pod fw < 2.8 `not_ready`. → `pod`, `durationMs` 2000 |

@@ -29,7 +29,11 @@ jobs:
       - run: pip install platformio
       - run: python tools/validate_programs.py
       - run: pip install bleak pyserial && python -m unittest discover -s tools -p "test_*.py"
+      - run: pio test -d firmware -e native
       - run: pio run -d firmware -e NewBoard
+      # report only: findings show in the log, they do not fail the job
+      - run: pio check -d firmware -e NewBoard --fail-on-defect=high
+        continue-on-error: true
       - name: Flash usage
         run: |
           bin=$(stat -c %s firmware/.pio/build/NewBoard/firmware.bin)

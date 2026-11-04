@@ -51,6 +51,9 @@ class BlockManager {
 
         void run();
 
+        // Ends the game and drops the program (stop): leaves the current block, frees blocks and context
+        void unload();
+
         // Leaves and re-enters the current block, e.g. to re-arm pods after a pause
         void restartCurrentBlock();
 

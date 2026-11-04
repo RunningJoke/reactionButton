@@ -24,6 +24,22 @@ void PodNetwork::setAcceptNewPods(bool accept, uint8_t maxPods) {
     this->maxPods = maxPods;
 }
 
+void PodNetwork::endGame() {
+    for(uint8_t i = 0; i < this->pods.size(); i++) {
+        this->reset(i);
+    }
+    this->events.clear();
+    this->acceptNew = false;
+    this->claimPending = false;
+    this->setSyncAllowed(false);
+}
+
+void PodNetwork::keepPods(uint8_t maxPods) {
+    if(this->pods.size() > maxPods) {
+        this->pods.resize(maxPods);
+    }
+}
+
 int16_t PodNetwork::findPod(const uint8_t* mac) const {
     for(size_t i = 0; i < this->pods.size(); i++) {
         if(EspNowLink::sameMac(this->pods[i].mac, mac)) {

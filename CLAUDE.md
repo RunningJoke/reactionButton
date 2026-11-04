@@ -20,10 +20,11 @@ together; one branch may touch all of them. User guides and the full history of 
 ## Commands (repo root; pio is in `~/.platformio/penv/Scripts/`)
 
 ```sh
-pio run -d firmware -e NewBoard                                  # build (≈4 min clean); firmware.bin ≈ 68 % of the 2 MB app slot (-Os)
+pio run -d firmware -e NewBoard                                  # build (≈4 min clean); firmware.bin ≈ 52 % of the 2 MB app slot (-Os)
 pio run -d firmware -e NewBoard -t upload   --upload-port COM4   # then often RESET by hand: reactpod_serial.py wait-boot
 pio run -d firmware -e NewBoard -t uploadfs --upload-port COM4   # programs (not in the firmware image)
 python3 tools/fw_syntax_check/check.py                           # host g++ syntax check of firmware/src in seconds
+pio test -d firmware -e native                                   # host unit tests (Unity), pure firmware modules
 python tools/validate_programs.py
 python tools/reactpod_serial.py --port COM4 monitor              # log + JSON API over USB
 cd app && npm test && npx tsc                                    # before every app commit
