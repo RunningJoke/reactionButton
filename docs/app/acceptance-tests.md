@@ -132,6 +132,11 @@ mark "pass" only when the user reported it.
 | AT-D23 | Games → **+** → Quick game: pick game, pods, rounds and colour on one screen; tap **Create game**; repeat and tap **Create and adjust** | one screen with those four fields, a name field and both buttons; Create game opens About of the new game; Create and adjust opens Edit with the **Game settings** panel open |
 | AT-D24 | Quick game: pods at 0, pick **All at once** (needs 2 pods besides the main pod) | the pods stepper rises to 2 and its minus stops there; with Solo or Duo no pods stepper is shown |
 | AT-D25 | Games → **+** → **Start from a game** (the guided wizard) | reached from the chooser as "Start from a game"; the five questions (game, pods, rounds and timing, colours, measure) and the Ready screen (Try it, Change steps, Save and add to menu) as before |
+| AT-D26 | desktop (≥ 900 px): open my game → **Edit**; change a step, wait half a second | step list left, live simulator right; the simulator restarts with the change once, not on every key; at 360 px Edit has no simulator |
+| AT-D27 | desktop: **Train** with a named athlete, during a game | controls left (state, athlete, values, Continue / Repeat / Pause / Stop); Last round result and Progress right; at 360 px the order is as before |
+| AT-D28 | desktop: **Results**, click a second athlete; reload; open a training and go back | list left, selected athlete right (highlighted row); the URL keeps `?athlete=`; back returns to the same athlete; an old `/results/athlete` link opens the split; at 360 px list and athlete are separate pages |
+| AT-D29 | desktop: **This set** with an unsent change; **Games on the pods** → tap a ring | the sync card with Send to pods sticks on the right; the menu pattern editor opens beside the list instead of a sheet; drag and arrows still work |
+| AT-D30 | desktop: **Send to pods** | centred dialog with a dimmed background; the checks count "1 of 1", never past the total |
 
 ## U – Usability
 | ID | Steps | Expected |
@@ -155,3 +160,4 @@ mark "pass" only when the user reported it.
 | AT-L1–L12 | – | 2.12 | open (P9, ready for test; L3 changed by #87) |
 | AT-L13–L17 | – | – | open (#87, specified, not built) |
 | AT-D1–D25 | 2026-11-03 | 2.17 | pass (P10, #106) |
+| AT-D26–D30 | – | – | open (#107 desktop layouts, for the user to test) |

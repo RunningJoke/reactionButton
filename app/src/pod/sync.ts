@@ -286,11 +286,13 @@ export async function executePush(client: PodClient, plan: PushPlan, options: Pu
   for (const item of presets) await upload(item);
 
   if (options.dryRun) {
-    for (const item of rest) {
-      if (item.reason === "menu") continue;
+    const dry = rest.filter((item) => {
+      if (item.reason === "menu") return false;
       const request = { op: "validate", id: 2 ** 31, path: item.path, data: item.text };
-      if (byteLength(JSON.stringify(request)) + 1 > options.maxRequest) continue; // too big: checked after the upload
-      options.onStep?.({ phase: "check", path: item.path, done, total });
+      return byteLength(JSON.stringify(request)) + 1 <= options.maxRequest; // too big: checked after the upload
+    });
+    for (const [i, item] of dry.entries()) {
+      options.onStep?.({ phase: "check", path: item.path, done: i, total: dry.length });
       await check(client, item.path, item.text, result.podIssues);
     }
     if (result.podIssues.length) {
@@ -300,8 +302,8 @@ export async function executePush(client: PodClient, plan: PushPlan, options: Pu
   }
 
   for (const item of rest) await upload(item);
-  for (const path of plan.validate) {
-    options.onStep?.({ phase: "check", path, done, total });
+  for (const [i, path] of plan.validate.entries()) {
+    options.onStep?.({ phase: "check", path, done: i, total: plan.validate.length });
     await check(client, path, undefined, result.podIssues);
   }
   return result;

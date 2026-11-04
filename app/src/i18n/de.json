@@ -936,7 +936,8 @@
     "remove": "{{name}} aus dem Menü nehmen",
     "add": "Spiel hinzufügen",
     "nothingToAdd": "Alle Spiele sind im Menü.",
-    "copyNote": "Eine Änderung des Musters legt eine lokale Kopie dieses Spiels an (gleicher Pfad)."
+    "copyNote": "Eine Änderung des Musters legt eine lokale Kopie dieses Spiels an (gleicher Pfad).",
+    "pickPattern": "Wähle links ein Spiel, um hier sein LED-Muster zu bearbeiten."
   },
   "settings": {
     "title": "Einstellungen",
@@ -1758,6 +1759,9 @@
       "all": "Alle Runden heute",
       "none": "Noch kein Rundenergebnis.",
       "noValues": "Diese Runde hat keine Werte."
+    },
+    "progress": {
+      "title": "Fortschritt"
     },
     "vars": {
       "title": "Werte für die nächste Runde",

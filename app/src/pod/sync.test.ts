@@ -9,7 +9,7 @@ import { crcHex } from "./crc32";
 import type { ListResponse } from "./protocol";
 import { SimulatedPod } from "./simulated/SimulatedPod";
 import { SimulatedTransport } from "./simulated/SimulatedTransport";
-import { deepEqual, executePush, formatMenu, parsePodMessage, planPush, planRestore, syncStates, type SyncInput } from "./sync";
+import { deepEqual, executePush, formatMenu, parsePodMessage, planPush, planRestore, syncStates, type PushStep, type SyncInput } from "./sync";
 
 function doc(path: string, json: Record<string, unknown>, origin: ProgramDoc["origin"] = "local"): ProgramDoc {
   return { id: path, path, json, origin, updatedAt: 0 };
@@ -147,6 +147,16 @@ describe("push", () => {
     // afterwards everything is in sync
     const after = syncStates(input(pod, [doc("/prog/sprint.json", sprint())], bases, ["/prog/sprint.json"]));
     expect(after.filter((s) => s.status !== "inSync" && s.status !== "podOnly")).toEqual([]);
+  });
+
+  it("counts check steps on their own, never past their total", async () => {
+    const pod = new SimulatedPod({ files: { [INDEX_PATH]: formatMenu([]) } });
+    const client = await connect(pod);
+    const plan = planPush(syncStates(input(pod, [doc("/prog/sprint.json", sprint())], {}, ["/prog/sprint.json"])), podState(pod));
+    const steps: PushStep[] = [];
+    await executePush(client, plan, { dryRun: true, maxRequest: 12288, onStep: (s) => steps.push(s) });
+    expect(steps.some((s) => s.phase === "check")).toBe(true);
+    for (const s of steps) expect(s.done).toBeLessThan(s.total);
   });
 
   it("stops before any program is written when the pod's dry run fails", async () => {

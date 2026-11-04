@@ -2,6 +2,14 @@ import type { ComponentType } from "react";
 import { Layers, Trophy, Settings } from "lucide-react";
 import { PodIcon } from "../components/PodIcon";
 import { useResults } from "../results/results";
+import { isDesktop } from "../components/Split";
+
+/** An athlete's page on the phone (`/results/athlete` redirects to the selection on desktop). */
+export const athleteUrl = (id: string | null) => `/results/athlete?id=${id ?? "none"}`;
+/** The Results list with an athlete selected (desktop: the list left, the athlete right). */
+export const selectUrl = (id: string | null) => `/results?athlete=${id ?? "none"}`;
+/** Where a link to an athlete goes on this screen size. */
+export const athleteLinkUrl = (id: string | null) => (isDesktop() ? selectUrl(id) : athleteUrl(id));
 
 export type NavItem = {
   path: string;
@@ -37,7 +45,7 @@ export const SUBPAGES: Record<string, SubPage> = {
     // a session goes back to its athlete, else to Results
     back: (params) => {
       const session = useResults.getState().sessions.find((s) => s.id === params.get("id"));
-      return session ? `/results/athlete?id=${session.athleteId ?? "none"}` : "/results";
+      return session ? athleteLinkUrl(session.athleteId) : "/results";
     },
   },
   "/login": { titleKey: "nav.results", back: "/results" },

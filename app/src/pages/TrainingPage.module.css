@@ -1,7 +1,14 @@
 /* Live training surface (#46, #106): one column, state first, controls in a bar above the tab bar. */
 
+/* phone: one column of 560 px at most; from 900 px the Split (components/Split) takes the page width */
 .surface {
   max-width: 560px;
+}
+
+@media (min-width: 900px) {
+  .surface {
+    max-width: none;
+  }
 }
 
 .card {

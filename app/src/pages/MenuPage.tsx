@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, ListOrdered, Plus, X } from "lucide-react";
 import { LedRing } from "../components/LedRing";
 import { Sheet } from "../components/Sheet";
+import { Split, useDesktop } from "../components/Split";
 import { DEFAULT_FILES } from "../defaults";
 import { MenuPatternField } from "../editor/fields";
 import { INDEX_PATH, isLibraryPath } from "@reactpod/program-model";
@@ -27,6 +28,7 @@ export function MenuPage() {
   const local = useProgramSource("local");
   const connected = usePodSession((s) => s.state === "connected");
   const podFiles = usePodSession((s) => s.files);
+  const desktop = useDesktop();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   // Drag state: `drag` drives the rows' offsets, `dragRef` holds the row geometry taken at pointer down.
@@ -113,79 +115,117 @@ export function MenuPage() {
   };
 
   const editingEntry = editing ? describe(editing) : null;
+  // the pattern editor: a sheet on phone, the right column on desktop (#107)
+  const pattern = editingEntry && (
+    <>
+      {editingEntry.origin !== "local" && <p className={styles.note}>{t("menu.copyNote")}</p>}
+      <MenuPatternField
+        value={editingEntry.menu}
+        onChange={async (groups) => {
+          const doc = await ensureLocal(editingEntry.path, editingEntry.text, editingEntry.origin === "pod" ? "pod" : "default");
+          if (!doc) return;
+          await useWorkspace.getState().save({ ...doc, json: { ...doc.json, menu: groups } });
+        }}
+      />
+    </>
+  );
 
   return (
     <div className={styles.menuPage}>
       <div className={styles.scroll}>
-        <UnsentBar local={saved} />
-        <p className={styles.intro}>{t("menu.intro")}</p>
-        {!saved && <p className={styles.note}>{connected ? t("menu.fromPod") : t("menu.fromShipped")}</p>}
-        {entries.length === 0 ? (
-          <p className={styles.note}>{t("pod.emptyMenu")}</p>
-        ) : (
-          <ol className={styles.list} ref={listRef}>
-            {entries.map((entry, i) => (
-              <li
-                key={entry.path}
-                className={`${styles.row} ${drag?.from === i ? styles.dragging : ""}`}
-                style={rowStyle(i)}
-              >
-                <button
-                  className={styles.handle}
-                  onPointerDown={(e) => dragStart(i, e)}
-                  onPointerMove={dragMove}
-                  onPointerUp={() => dragEnd(true)}
-                  onPointerCancel={() => dragEnd(false)}
-                  tabIndex={-1}
-                  aria-hidden
-                  aria-label={t("menu.dragHandle", { name: entry.name })}
-                  title={t("menu.dragHandle", { name: entry.name })}
+        <Split
+          sideOnPhone={false}
+          side={
+            !desktop ? null : editingEntry ? (
+              <section className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <div className={styles.panelTitle}>
+                    <h3>{editingEntry.name}</h3>
+                    <span className={styles.sub}>{t("programs.menuPattern")}</span>
+                  </div>
+                  <button className={styles.close} onClick={() => setEditing(null)} aria-label={t("view.close")}>
+                    <X size={20} aria-hidden />
+                  </button>
+                </div>
+                {pattern}
+              </section>
+            ) : (
+              <section className={styles.panel}>
+                <p className={styles.note}>{t("menu.pickPattern")}</p>
+              </section>
+            )
+          }
+        >
+          <UnsentBar local={saved} />
+          <p className={styles.intro}>{t("menu.intro")}</p>
+          {!saved && <p className={styles.note}>{connected ? t("menu.fromPod") : t("menu.fromShipped")}</p>}
+          {entries.length === 0 ? (
+            <p className={styles.note}>{t("pod.emptyMenu")}</p>
+          ) : (
+            <ol className={styles.list} ref={listRef}>
+              {entries.map((entry, i) => (
+                <li
+                  key={entry.path}
+                  className={`${styles.row} ${drag?.from === i ? styles.dragging : ""}`}
+                  style={rowStyle(i)}
                 >
-                  <GripVertical size={20} aria-hidden />
-                </button>
-                <span className={styles.index}>{i + 1}</span>
-                <button
-                  className={styles.ring}
-                  disabled={entry.origin === "missing"}
-                  onClick={() => setEditing(entry.path)}
-                  aria-label={t("menu.editPattern", { name: entry.name })}
-                  title={t("menu.editPattern", { name: entry.name })}
-                >
-                  <LedRing groups={entry.menu} size={44} label={t("programs.menuPattern")} />
-                </button>
-                <span className={styles.text}>
-                  <span className={styles.name}>
-                    {entry.name}
-                    {entry.origin !== "missing" && <span className={styles.tag}>{t(`menu.origin.${entry.origin}`)}</span>}
+                  <button
+                    className={styles.handle}
+                    onPointerDown={(e) => dragStart(i, e)}
+                    onPointerMove={dragMove}
+                    onPointerUp={() => dragEnd(true)}
+                    onPointerCancel={() => dragEnd(false)}
+                    tabIndex={-1}
+                    aria-hidden
+                    aria-label={t("menu.dragHandle", { name: entry.name })}
+                    title={t("menu.dragHandle", { name: entry.name })}
+                  >
+                    <GripVertical size={20} aria-hidden />
+                  </button>
+                  <span className={styles.index}>{i + 1}</span>
+                  <button
+                    className={styles.ring}
+                    disabled={entry.origin === "missing"}
+                    onClick={() => setEditing(entry.path)}
+                    aria-label={t("menu.editPattern", { name: entry.name })}
+                    title={t("menu.editPattern", { name: entry.name })}
+                  >
+                    <LedRing groups={entry.menu} size={44} label={t("programs.menuPattern")} />
+                  </button>
+                  <span className={styles.text}>
+                    <span className={styles.name}>
+                      {entry.name}
+                      {entry.origin !== "missing" && <span className={styles.tag}>{t(`menu.origin.${entry.origin}`)}</span>}
+                    </span>
+                    <code className={styles.path}>{entry.path}</code>
+                    {entry.origin === "missing" && (
+                      <span className={styles.warn}>
+                        <AlertTriangle size={13} aria-hidden /> {t("pod.missingFile")}
+                      </span>
+                    )}
+                    {sameAs.has(entry.path) && (
+                      <span className={styles.warn}>
+                        <AlertTriangle size={13} aria-hidden /> {t("menu.samePattern", { name: sameAs.get(entry.path) })}
+                      </span>
+                    )}
+                    {entry.menu.length === 0 && entry.origin !== "missing" && <span className={styles.warn}>{t("menu.noPattern")}</span>}
                   </span>
-                  <code className={styles.path}>{entry.path}</code>
-                  {entry.origin === "missing" && (
-                    <span className={styles.warn}>
-                      <AlertTriangle size={13} aria-hidden /> {t("pod.missingFile")}
-                    </span>
-                  )}
-                  {sameAs.has(entry.path) && (
-                    <span className={styles.warn}>
-                      <AlertTriangle size={13} aria-hidden /> {t("menu.samePattern", { name: sameAs.get(entry.path) })}
-                    </span>
-                  )}
-                  {entry.menu.length === 0 && entry.origin !== "missing" && <span className={styles.warn}>{t("menu.noPattern")}</span>}
-                </span>
-                <span className={styles.buttons}>
-                  <button disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={t("menu.up", { name: entry.name })}>
-                    <ArrowUp size={18} aria-hidden />
-                  </button>
-                  <button disabled={i === entries.length - 1} onClick={() => move(i, i + 1)} aria-label={t("menu.down", { name: entry.name })}>
-                    <ArrowDown size={18} aria-hidden />
-                  </button>
-                  <button onClick={() => void setMenu(menu.filter((p) => p !== entry.path))} aria-label={t("menu.remove", { name: entry.name })}>
-                    <X size={18} aria-hidden />
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
+                  <span className={styles.buttons}>
+                    <button disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={t("menu.up", { name: entry.name })}>
+                      <ArrowUp size={18} aria-hidden />
+                    </button>
+                    <button disabled={i === entries.length - 1} onClick={() => move(i, i + 1)} aria-label={t("menu.down", { name: entry.name })}>
+                      <ArrowDown size={18} aria-hidden />
+                    </button>
+                    <button onClick={() => void setMenu(menu.filter((p) => p !== entry.path))} aria-label={t("menu.remove", { name: entry.name })}>
+                      <X size={18} aria-hidden />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Split>
       </div>
 
       <button className={styles.fab} onClick={() => setAdding(true)} aria-label={t("menu.add")} title={t("menu.add")}>
@@ -222,17 +262,9 @@ export function MenuPage() {
         </Sheet>
       )}
 
-      {editingEntry && (
+      {editingEntry && !desktop && (
         <Sheet title={editingEntry.name} sub={t("programs.menuPattern")} onClose={() => setEditing(null)}>
-          {editingEntry.origin !== "local" && <p className={styles.note}>{t("menu.copyNote")}</p>}
-          <MenuPatternField
-            value={editingEntry.menu}
-            onChange={async (groups) => {
-              const doc = await ensureLocal(editingEntry.path, editingEntry.text, editingEntry.origin === "pod" ? "pod" : "default");
-              if (!doc) return;
-              await useWorkspace.getState().save({ ...doc, json: { ...doc.json, menu: groups } });
-            }}
-          />
+          {pattern}
         </Sheet>
       )}
     </div>

@@ -244,3 +244,17 @@
 .menu button[data-danger] {
   color: var(--error);
 }
+
+/* Edit on desktop (#107): step list left, simulator right, both scroll on their own inside the page body */
+.body .editSplit {
+  height: 100%;
+  max-width: none;
+  align-items: stretch;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.body .editSplit > aside {
+  position: static;
+  max-height: none;
+  border-left: 1px solid var(--border);
+}

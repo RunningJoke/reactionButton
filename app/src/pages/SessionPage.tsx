@@ -12,7 +12,7 @@ import { csvFilename, csvSeparator, downloadText, resultsCsv } from "../results/
 import type { StoredReport } from "../results/report";
 import { reportsOfSession, sessionUploadStatus, useResults } from "../results/results";
 import { formatMs, mainMetric, reportDuration, summarizeReports, summarizeValues } from "../results/stats";
-import { athleteUrl } from "./ResultsPage";
+import { athleteLinkUrl } from "../app/navigation";
 import { formatDateTime, StatsTable, UploadBadge, useProgramName } from "./resultsUi";
 import page from "./Page.module.css";
 import styles from "./Results.module.css";
@@ -171,7 +171,7 @@ export function SessionPage() {
                 void useResults
                   .getState()
                   .deleteSession(session.id)
-                  .then(() => navigate(athleteUrl(session.athleteId)))
+                  .then(() => navigate(athleteLinkUrl(session.athleteId)))
               }
             >
               {t("settings.holdToDelete")}

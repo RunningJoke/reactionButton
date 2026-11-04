@@ -72,6 +72,18 @@ for (const width of widths) {
     await shot("this-set");
     await page.getByRole("link", { name: str("menu.title") }).click();
     await shot("pod-menu");
+    // the pattern editor (a right column on desktop, a sheet on phone), then a change and the send dialog (#107)
+    await page.getByRole("button", { name: re("menu.editPattern") }).first().click();
+    await shot("pod-menu-pattern");
+    await page.getByRole("button", { name: str("view.close"), exact: true }).first().click();
+    await page.getByRole("button", { name: re("menu.down") }).first().click();
+    await page.getByRole("button", { name: re("connection.connected") }).click();
+    await page.waitForURL(/#\/set$/);
+    await page.getByRole("button", { name: str("sync.push"), exact: true }).first().waitFor();
+    await shot("this-set-unsent");
+    await page.getByRole("button", { name: str("sync.push"), exact: true }).first().click();
+    await shot("send-dialog", false);
+    await page.getByRole("button", { name: str("common.cancel"), exact: true }).click();
 
     await page.goto(`${base}#/games`);
     await page.getByText(str("programs.shipped")).waitFor();

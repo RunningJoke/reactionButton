@@ -62,6 +62,29 @@ describe("This set", () => {
   });
 });
 
+describe("This set on desktop (#107)", () => {
+  afterEach(() => {
+    delete (window as { matchMedia?: unknown }).matchMedia;
+  });
+
+  it("puts the sync card in the sticky side column and the pods on the left", async () => {
+    stubDesktop(true);
+    await connectPod("simulated");
+    await reorderMenu();
+    inRouter(<PodPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Send to pods" })).toBeTruthy());
+    const side = document.querySelector("aside");
+    expect(side?.textContent).toContain("1 change is not on the pods yet");
+    expect(side?.textContent).not.toContain("Pods (");
+    expect(screen.getByText(/Pods \(/)).toBeTruthy();
+  });
+});
+
+/** window.matchMedia for the desktop query (jsdom has none). */
+function stubDesktop(matches: boolean) {
+  window.matchMedia = ((query: string) => ({ matches, media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+}
+
 describe("pod status text", () => {
   it("says what is wrong in words and shows nothing for an unknown battery", () => {
     const { rerender } = render(<PodStatusText health="low" percent={12} />);

@@ -34,6 +34,13 @@
   color: var(--accent);
 }
 
+/* the athlete shown on the desktop side (issue #107) */
+.entry[aria-current="true"] {
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-s);
+  background: var(--accent-soft);
+}
+
 .avatar {
   display: grid;
   place-items: center;
