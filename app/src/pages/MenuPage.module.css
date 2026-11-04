@@ -12,6 +12,68 @@
   padding: var(--space-4) var(--space-4) var(--fab-clear);
 }
 
+/* desktop: the list and the pattern column (components/Split) take the width, not 960 px */
+@media (min-width: 900px) {
+  .scroll {
+    max-width: none;
+  }
+}
+
+/* the pattern editor in the right column (desktop) */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  font-size: 14px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.panelTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.panelTitle h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--touch);
+  height: var(--touch);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 .intro {
   margin: 0 0 var(--space-2);
   color: var(--text-muted);
