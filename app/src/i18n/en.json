@@ -1760,6 +1760,9 @@
       "none": "No round result yet.",
       "noValues": "This round has no values."
     },
+    "progress": {
+      "title": "Progress"
+    },
     "vars": {
       "title": "Values for the next round",
       "less": "Less: {{name}}",

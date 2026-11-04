@@ -8,16 +8,17 @@ import { useScreenWakeLock } from "../app/wakeLock";
 import { LED_COUNT } from "@reactpod/program-model";
 import { LedRing } from "../components/LedRing";
 import { Named } from "../components/Named";
+import { Split, useDesktop } from "../components/Split";
 import type { PodClient } from "../pod/client";
 import { PodError } from "../pod/protocol";
 import { hasFeature, setLabel, usePodSessions, type PodSession } from "../pod/session";
 import { sendAthlete, sendCommand, sendPause, sendResume, sendStart, sendVariables, type CommandName } from "../results/podReports";
 import { reportsOfSession, useResults } from "../results/results";
-import type { StoredReport } from "../results/report";
-import { formatMs, summarizeValues } from "../results/stats";
+import type { StoredReport, TrainingSession } from "../results/report";
+import { athleteProgress, formatMs, summarizeValues } from "../results/stats";
 import { isMsSetting, labelOf } from "../editor/settingLabels";
 import { AthleteModal, sessionUrl } from "./ResultsPage";
-import { useProgramName } from "./resultsUi";
+import { ChangeChip, TrendBars, useProgramName } from "./resultsUi";
 import page from "./Page.module.css";
 import view from "./TrainingPage.module.css";
 
@@ -66,12 +67,14 @@ export function TrainingPage() {
   useScreenWakeLock(entries.length > 0);
 
   return (
-    <div className={`${page.page} ${view.surface}`}>
-      {entries.length === 0 ? (
-        <ConnectGuide />
-      ) : (
-        entries.map((entry) => <SetCard key={entry.id} store={entry.store} />)
-      )}
+    <div className={`${page.page} ${page.wide}`}>
+      <div className={view.surface}>
+        {entries.length === 0 ? (
+          <ConnectGuide />
+        ) : (
+          entries.map((entry) => <SetCard key={entry.id} store={entry.store} />)
+        )}
+      </div>
     </div>
   );
 }
@@ -271,149 +274,168 @@ function SetCard({ store }: { store: StoreApi<PodSession> }) {
 
   const showBar = canCommand && (ready || paused || podState === "RUN" || !!waiting);
 
+  // desktop: the last round and the athlete's progress sit in the right column; phone: the last round stays in the flow
+  const desktop = useDesktop();
+  const lastSection = (
+    <section className={view.block} aria-labelledby="last-title" aria-live="polite">
+      <h3 id="last-title" className={view.blockTitle}>
+        {t("training.last.title")}
+      </h3>
+      {last && reportSession ? <LastRound kept={kept} sessionId={reportSession.id} language={i18n.language} /> : <p className={view.muted}>{t("training.last.none")}</p>}
+    </section>
+  );
+  const athleteSessions = sessions.filter((s) => s.athleteId === selected);
+  const progressSection = (
+    <section className={view.block} aria-labelledby="progress-title">
+      <h3 id="progress-title" className={view.blockTitle}>
+        {t("training.progress.title")}
+      </h3>
+      {selected ? <AthleteProgress sessions={athleteSessions} reports={reports} /> : <p className={view.muted}>{t("training.who.hint")}</p>}
+    </section>
+  );
+
   return (
     <article className={view.card} data-state={state} aria-label={setLabel(session) ?? t("training.view.connecting")}>
-      <section className={view.stateCard} aria-live="polite">
-        <LedRing size={64} colors={TONE_LED[tone] ? Array(LED_COUNT).fill(TONE_LED[tone]) : undefined} />
-        <div className={view.stateText}>
-          <span className={view.pill} data-tone={tone}>
-            <span className={view.dot} aria-hidden />
-            {pill}
-          </span>
-          <h2 className={view.game}>
-            {reportSession ? programName(reportSession.programPath) : (setLabel(session) ?? t("training.view.connecting"))}
-          </h2>
-          <p className={view.now}>{nowLine}</p>
-          {round !== undefined && max !== undefined && podState !== "MENU" && (
-            <p className={view.round}>{t("training.view.round", { n: round, max })}</p>
-          )}
-        </div>
-      </section>
-
-      {connected && !reportsOn && <p className={view.warn}>{t("training.view.oldFirmware")}</p>}
-      {connected && reportsOn && !remote && <p className={view.muted}>{t("training.noRemote")}</p>}
-      {connected && !hasFeature(info, "liveBle") && <p className={view.muted}>{t("training.view.noLiveBle")}</p>}
-
-      <section className={view.block} aria-labelledby="who-title">
-        <h3 id="who-title" className={view.blockTitle}>
-          {t("training.who.title")}
-        </h3>
-        <div className={view.chips} role="group" aria-labelledby="who-title">
-          {shown.map((a) => (
-            <button
-              key={a.id}
-              className={view.chip}
-              aria-pressed={a.id === selected}
-              disabled={!setId || busy}
-              onClick={() => void assign(a.id === selected ? null : a.id)}
-            >
-              {a.name}
-            </button>
-          ))}
-          {ordered.length > VISIBLE_ATHLETES && (
-            <button className={view.chip} data-quiet aria-expanded={all} onClick={() => setAll(!all)}>
-              {all ? t("training.who.fewer") : t("training.who.more", { count: ordered.length - VISIBLE_ATHLETES })}
-            </button>
-          )}
-          <button className={view.chip} data-add disabled={!setId} onClick={() => setAdding(true)}>
-            <Plus size={16} aria-hidden /> {t("results.addAthlete")}
-          </button>
-        </div>
-        {!selected && <p className={view.muted}>{t("training.who.hint")}</p>}
-      </section>
-
-      <section className={view.block} aria-labelledby="last-title" aria-live="polite">
-        <h3 id="last-title" className={view.blockTitle}>
-          {t("training.last.title")}
-        </h3>
-        {last && reportSession ? <LastRound kept={kept} sessionId={reportSession.id} language={i18n.language} /> : <p className={view.muted}>{t("training.last.none")}</p>}
-      </section>
-
-      {canCommand && Object.keys(editable).length > 0 && (
-        <section className={`${view.block} ${view.vars}`} aria-labelledby="vars-title">
-          <h3 id="vars-title" className={view.blockTitle}>
-            {t("training.vars.title")}
-          </h3>
-          {Object.entries(editable).map(([name, range]) => (
-            <Stepper
-              key={name}
-              name={name}
-              min={range.min}
-              max={range.max}
-              value={draft[name] ?? range.value}
-              changed={name in changes}
-              applyKey={ready ? "Start" : "Continue"}
-              disabled={busy}
-              onChange={(n) => setDraft({ ...draft, [name]: n })}
-            />
-          ))}
-        </section>
-      )}
-
-      {queued && (
-        <div className={view.queued} role="status">
-          <span>{t("training.view.queued", { command: t(`training.${queued}`) })}</span>
-          <button className={view.button} onClick={() => store.getState().cancelQueued()}>
-            <X size={18} aria-hidden /> {t("training.view.cancel")}
-          </button>
-        </div>
-      )}
-      {queueError && (
-        <p className={view.status} data-tone="error" role="status">
-          {errorText(queueError)}
-        </p>
-      )}
-      {message && (
-        <p className={view.status} data-tone={message.tone} role="status">
-          {message.text}
-        </p>
-      )}
-
-      <KeepOpenHint />
-
-      {showBar && (
-        <div className={view.bar}>
-          {ready ? (
-            <button className={`${view.button} ${view.primary} ${view.main}`} disabled={busy} onClick={() => void start()}>
-              <Play size={20} aria-hidden /> {changed ? t("training.view.startWith") : t("training.view.start")}
-            </button>
-          ) : paused ? (
-            <button className={`${view.button} ${view.primary} ${view.main}`} disabled={busy} onClick={() => void run(sendResume, t("training.view.resumedSent"))}>
-              <Play size={20} aria-hidden /> {t("training.view.resume")}
-            </button>
-          ) : (
-            <>
-              <button className={`${view.button} ${view.primary} ${view.main}`} disabled={busy} onClick={() => press("continue")}>
-                <Play size={20} aria-hidden /> {changed ? t("training.continueWith") : t("training.continue")}
+      <Split sideOnPhone={false} side={desktop ? <div className={view.card}>{lastSection}{progressSection}</div> : null}>
+        <div className={view.card}>
+          <section className={view.stateCard} aria-live="polite">
+            <LedRing size={64} colors={TONE_LED[tone] ? Array(LED_COUNT).fill(TONE_LED[tone]) : undefined} />
+            <div className={view.stateText}>
+              <span className={view.pill} data-tone={tone}>
+                <span className={view.dot} aria-hidden />
+                {pill}
+              </span>
+              <h2 className={view.game}>
+                {reportSession ? programName(reportSession.programPath) : (setLabel(session) ?? t("training.view.connecting"))}
+              </h2>
+              <p className={view.now}>{nowLine}</p>
+              {round !== undefined && max !== undefined && podState !== "MENU" && (
+                <p className={view.round}>{t("training.view.round", { n: round, max })}</p>
+              )}
+            </div>
+          </section>
+    
+          {connected && !reportsOn && <p className={view.warn}>{t("training.view.oldFirmware")}</p>}
+          {connected && reportsOn && !remote && <p className={view.muted}>{t("training.noRemote")}</p>}
+          {connected && !hasFeature(info, "liveBle") && <p className={view.muted}>{t("training.view.noLiveBle")}</p>}
+    
+          <section className={view.block} aria-labelledby="who-title">
+            <h3 id="who-title" className={view.blockTitle}>
+              {t("training.who.title")}
+            </h3>
+            <div className={view.chips} role="group" aria-labelledby="who-title">
+              {shown.map((a) => (
+                <button
+                  key={a.id}
+                  className={view.chip}
+                  aria-pressed={a.id === selected}
+                  disabled={!setId || busy}
+                  onClick={() => void assign(a.id === selected ? null : a.id)}
+                >
+                  {a.name}
+                </button>
+              ))}
+              {ordered.length > VISIBLE_ATHLETES && (
+                <button className={view.chip} data-quiet aria-expanded={all} onClick={() => setAll(!all)}>
+                  {all ? t("training.who.fewer") : t("training.who.more", { count: ordered.length - VISIBLE_ATHLETES })}
+                </button>
+              )}
+              <button className={view.chip} data-add disabled={!setId} onClick={() => setAdding(true)}>
+                <Plus size={16} aria-hidden /> {t("results.addAthlete")}
               </button>
-              <div className={view.actions}>
-                <Action id="repeat" caption={t("training.cap.repeat")} title={t("training.cap.repeatLong")}>
-                  <button className={view.button} disabled={busy} onClick={() => press("repeat")} aria-describedby="cap-repeat">
-                    <Repeat size={18} aria-hidden /> {t("training.repeat")}
+            </div>
+            {!selected && <p className={view.muted}>{t("training.who.hint")}</p>}
+          </section>
+    
+          {!desktop && lastSection}
+    
+          {canCommand && Object.keys(editable).length > 0 && (
+            <section className={`${view.block} ${view.vars}`} aria-labelledby="vars-title">
+              <h3 id="vars-title" className={view.blockTitle}>
+                {t("training.vars.title")}
+              </h3>
+              {Object.entries(editable).map(([name, range]) => (
+                <Stepper
+                  key={name}
+                  name={name}
+                  min={range.min}
+                  max={range.max}
+                  value={draft[name] ?? range.value}
+                  changed={name in changes}
+                  applyKey={ready ? "Start" : "Continue"}
+                  disabled={busy}
+                  onChange={(n) => setDraft({ ...draft, [name]: n })}
+                />
+              ))}
+            </section>
+          )}
+    
+          {queued && (
+            <div className={view.queued} role="status">
+              <span>{t("training.view.queued", { command: t(`training.${queued}`) })}</span>
+              <button className={view.button} onClick={() => store.getState().cancelQueued()}>
+                <X size={18} aria-hidden /> {t("training.view.cancel")}
+              </button>
+            </div>
+          )}
+          {queueError && (
+            <p className={view.status} data-tone="error" role="status">
+              {errorText(queueError)}
+            </p>
+          )}
+          {message && (
+            <p className={view.status} data-tone={message.tone} role="status">
+              {message.text}
+            </p>
+          )}
+    
+          <KeepOpenHint />
+    
+          {showBar && (
+            <div className={view.bar}>
+              {ready ? (
+                <button className={`${view.button} ${view.primary} ${view.main}`} disabled={busy} onClick={() => void start()}>
+                  <Play size={20} aria-hidden /> {changed ? t("training.view.startWith") : t("training.view.start")}
+                </button>
+              ) : paused ? (
+                <button className={`${view.button} ${view.primary} ${view.main}`} disabled={busy} onClick={() => void run(sendResume, t("training.view.resumedSent"))}>
+                  <Play size={20} aria-hidden /> {t("training.view.resume")}
+                </button>
+              ) : (
+                <>
+                  <button className={`${view.button} ${view.primary} ${view.main}`} disabled={busy} onClick={() => press("continue")}>
+                    <Play size={20} aria-hidden /> {changed ? t("training.continueWith") : t("training.continue")}
                   </button>
-                </Action>
-                {pauseOn && (
-                  <Action caption={t("training.cap.pause")} id="pause">
-                    <button
-                      className={view.button}
-                      disabled={busy}
-                      aria-describedby="cap-pause"
-                      onClick={() => void run(sendPause, t("training.view.pausedSent"))}
-                    >
-                      <Pause size={18} aria-hidden /> {t("training.view.pause")}
-                    </button>
-                  </Action>
-                )}
-                <Action caption={t("training.cap.stop")} id="stop">
-                  <button className={`${view.button} ${view.danger}`} disabled={busy} onClick={() => press("stop")} aria-describedby="cap-stop">
-                    <Square size={18} aria-hidden /> {t("training.stop")}
-                  </button>
-                </Action>
-              </div>
-            </>
+                  <div className={view.actions}>
+                    <Action id="repeat" caption={t("training.cap.repeat")} title={t("training.cap.repeatLong")}>
+                      <button className={view.button} disabled={busy} onClick={() => press("repeat")} aria-describedby="cap-repeat">
+                        <Repeat size={18} aria-hidden /> {t("training.repeat")}
+                      </button>
+                    </Action>
+                    {pauseOn && (
+                      <Action caption={t("training.cap.pause")} id="pause">
+                        <button
+                          className={view.button}
+                          disabled={busy}
+                          aria-describedby="cap-pause"
+                          onClick={() => void run(sendPause, t("training.view.pausedSent"))}
+                        >
+                          <Pause size={18} aria-hidden /> {t("training.view.pause")}
+                        </button>
+                      </Action>
+                    )}
+                    <Action caption={t("training.cap.stop")} id="stop">
+                      <button className={`${view.button} ${view.danger}`} disabled={busy} onClick={() => press("stop")} aria-describedby="cap-stop">
+                        <Square size={18} aria-hidden /> {t("training.stop")}
+                      </button>
+                    </Action>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </Split>
       <AthleteModal open={adding} onClose={() => setAdding(false)} onSaved={(a) => void assign(a.id)} />
     </article>
   );
@@ -479,7 +501,30 @@ function LastRound({ kept, sessionId, language }: { kept: readonly StoredReport[
   );
 }
 
-/** One editable variable as − value + (times in 0.1 s steps, counts in 1); the new value is sent with Continue / Start. */
+/** The athlete's average trend over all trainings, the change to the one before, the personal best (as on the athlete page). */
+function AthleteProgress({ sessions, reports }: { sessions: readonly TrainingSession[]; reports: readonly StoredReport[] }) {
+  const { t, i18n } = useTranslation();
+  const progress = athleteProgress(sessions, reports);
+  const latest = progress.points.at(-1);
+  if (!latest || !progress.metric) return <p className={view.muted}>{t("results.noValues")}</p>;
+  return (
+    <>
+      <span className={view.figureLabel}>
+        <Named name={progress.metric} /> · {t("results.latestAverage")}
+      </span>
+      <span className={view.figure}>{formatMs(latest.average, i18n.language)}</span>
+      <ChangeChip change={progress.change} />
+      <TrendBars progress={progress} />
+      {progress.best && (
+        <span className={view.figureLabel}>
+          {t("results.personalBest", { value: formatMs(progress.best.ms, i18n.language), date: new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(progress.best.at) })}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** One editable variable as − value +(times in 0.1 s steps, counts in 1); the new value is sent with Continue / Start. */
 function Stepper({
   name,
   min,

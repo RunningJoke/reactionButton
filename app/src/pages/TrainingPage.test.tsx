@@ -306,6 +306,24 @@ describe("training view", () => {
     localStorage.removeItem("reactpod.hint.keepOpen");
   });
 
+  it("shows the last round and the athlete's progress in a side column on desktop only", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("min-width: 900px"), media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+    try {
+      await connectPod("simulated");
+      renderPage();
+      expect(screen.getByRole("heading", { name: "Progress" })).toBeTruthy();
+      expect(screen.getAllByRole("heading", { name: "Last round result" })).toHaveLength(1);
+      cleanup();
+      window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+      renderPage();
+      expect(screen.queryByRole("heading", { name: "Progress" })).toBeNull();
+      expect(screen.getAllByRole("heading", { name: "Last round result" })).toHaveLength(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("has a text for every error code the app can show", () => {
     for (const code of ERROR_CODES) expect(i18n.t(`training.errors.${code}`), code).not.toBe(`training.errors.${code}`);
   });
