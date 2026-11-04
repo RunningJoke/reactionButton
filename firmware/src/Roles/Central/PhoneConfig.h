@@ -36,6 +36,9 @@ class PhoneConfig {
         // A program was selected: BLE stays on, the connection moves to the game interval
         void enterGame();
 
+        // The game is over (stop): the connection stays, new connections no longer get the game interval
+        void leaveGame() { this->gameMode = false; this->gameIntervalPending = false; }
+
         // Handles received requests. Call once per loop pass.
         void service();
 

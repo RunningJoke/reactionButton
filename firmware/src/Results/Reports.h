@@ -74,6 +74,9 @@ class Reports {
         // Removes the report and all older ones from the buffer
         void ack(uint32_t reportId);
 
+        // Back to the state of a fresh boot: log, buffered reports, ids, dropped counter and athlete (stop)
+        void clear();
+
         // Session: athlete id copied into every following report (RAM, lost on reboot)
         void setAthlete(const std::string& athlete) { this->athleteId = athlete; }
         const std::string& athlete() const { return this->athleteId; }

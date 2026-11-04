@@ -15,6 +15,17 @@ void Reports::beginProgram(const char* program, uint32_t setId, uint32_t nowMs) 
     this->lastReportMs = nowMs;
 }
 
+void Reports::clear() {
+    this->logMetrics.clear();
+    this->logCount = 0;
+    this->logDropped = 0;
+    this->cycleCount = 0;
+    this->nextId = 1;
+    this->dropped = 0;
+    this->athleteId.clear();
+    this->buffer.clear();
+}
+
 void Reports::log(const char* metric, uint8_t podId, int32_t ms, uint32_t nowMs) {
     int index = -1;
     for(size_t i = 0; i < this->logMetrics.size(); i++) {

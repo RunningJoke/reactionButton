@@ -66,6 +66,7 @@ class CentralRole : public IRole {
         bool selectedFlashing() const;
         void updateMenuRing();
         void fail(const char* message);
+        void stopToMenu();
 
         void opPrograms(JsonDocument& response);
         void opSelect(JsonObjectConst request, JsonDocument& response);
@@ -110,5 +111,4 @@ class CentralRole : public IRole {
         int64_t refusedUntilUs = 0;        // CONFIRM: red after a refused start until this time, then READY again
 
         int64_t blinkEndUs = 0;            // "blink" of the central itself ends here (0 = not blinking)
-        int64_t rebootAtUs = 0;            // "stop": reboot into the menu shortly after answering
 };

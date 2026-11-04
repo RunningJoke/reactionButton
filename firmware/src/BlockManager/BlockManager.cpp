@@ -296,6 +296,15 @@ void BlockManager::run() {
     }
 }
 
+void BlockManager::unload() {
+    if(this->running && this->context != nullptr) {
+        this->blocks[this->currentIndex]->exit(*this->context);
+    }
+    this->clear();
+    delete this->context;
+    this->context = nullptr;
+}
+
 void BlockManager::restartCurrentBlock() {
     if(!this->running) {
         return;
