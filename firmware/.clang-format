@@ -1,0 +1,26 @@
+# Matches the firmware sources: 4 spaces, braces attached, no space before the parentheses of if / for /
+# while / function calls ("if(x)"), access specifiers one level out ("    public:" above 8-space members).
+# Check a file without changing it: clang-format --dry-run -Werror firmware/src/...
+# Do not reformat existing files in bulk; only format the lines you change.
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 120
+UseTab: Never
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AccessModifierOffset: -4
+PointerAlignment: Left
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: false
+  AfterFunctionDeclarationName: false
+  AfterFunctionDefinitionName: false
+  AfterFunctionCall: false
+  AfterOverloadedOperator: false
+SortIncludes: false
+MaxEmptyLinesToKeep: 2

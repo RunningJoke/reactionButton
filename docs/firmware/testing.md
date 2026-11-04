@@ -111,3 +111,17 @@ line in the release PR. Automated lines: `python tools/reactpod_hwtest.py --cent
 Central + ≥ 1 peripheral of one set on USB. Reboots the central into the menu, runs lines 1, 2, 4, 5, 6 (USB),
 PASS / FAIL per check, exit 1 on failure. Takes peripherals out by rebooting them as central and back;
 restores every pod's role at the end. `--quick` skips line 6 (~2 min).
+
+## 13. Host unit tests (`native` env)
+Unity tests on the PC, no pod needed: `firmware/test/` (`test_variables`, `test_link_frames`, `test_engine`).
+Only the pure modules are built (`build_src_filter` in `firmware/platformio.ini`); the stubs in
+`tools/fw_syntax_check/stubs` stand in for Arduino / ESP-IDF names, `test/host_stubs.cpp` defines the few
+functions the modules call. Runs in CI on every firmware PR.
+
+```sh
+pio test -d firmware -e native            # all suites; needs a host g++ (on Windows: MSYS2 ucrt64 on PATH)
+pio test -d firmware -e native -f test_link_frames   # one suite
+```
+
+A module that needs the runtime (block classes, BlockManager, BlockFactory, LEDManager) is not built here:
+add it to `build_src_filter` only with its runtime stubs in `test/host_stubs.cpp`.
