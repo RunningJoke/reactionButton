@@ -31,6 +31,13 @@ class PodNetwork : public IPodNetwork {
         // Processes received frames. Call once per loop pass.
         void service();
 
+        // Game over (stop): RESET to every pod (off, activation cancelled), pending events dropped, no new
+        // pods, no sync. The pods stay joined; run service() on so they keep their heartbeat.
+        void endGame();
+
+        // Keeps the first maxPods pods; the others are let go (no PONG, they search for a central again)
+        void keepPods(uint8_t maxPods);
+
         // Program store sync in both directions; switch off while a game runs
         void setSyncAllowed(bool allowed);
 

@@ -96,7 +96,7 @@ order. An EFFECT takes the ring until it ends; ARM or RESET gives the ring back 
 | ERROR | no programs or load error: red blink (1 s on/off), reboot needed. Programs can still be uploaded |
 | DISCOVERY | non-blocking, one claim per HELLO; LEDs 0–7 pod markers in the pod colour, SEARCH on 8–17 (§7.1); SOLO (0 peripherals) never starts ESP-NOW |
 | CONFIRM | all required pods claimed: READY (whole ring breathes green); a press that starts after entering starts the game; earlier events dropped. `setVariables` is accepted here (`startVars`, config-api §3): the values are used by the first cycle. Start refused below 5 % battery: red 1 s |
-| RUN | the game |
+| RUN | the game. `stop` (config API) leaves any state after MENU for MENU without a reboot: block, variables, results and reports are dropped, the ring shows the menu, BLE stays connected, the radio keeps running and the joined pods get RESET and stay joined (UNCLAIMED only if the central is silent > 2 s). The next `select` keeps the first `peripherals` of them and goes through DISCOVERY |
 | PAUSED | PAUSED pattern (whole ring breathes amber) for a pod silent > 1.5 s or phone `pause` (`phonePaused`). Pod loss resumes by itself when all are back; a phone pause only with `resume` (config-api §5). The current block is left and re-entered (re-arms its pods) |
 
 BLE (fw ≥ 2.12, `liveBle`, ADR 0005) stays connected in every state; `PhoneConfig::service()` runs in

@@ -14,6 +14,7 @@
 #include "Config/SerialConsole.h"
 #include "Diagnostics/Diag.h"
 #include "Results/Reports.h"
+#include "Results/Results.h"
 #include "Block/CommunicateBlock/CommunicateBlock.h"
 #include "Battery/Battery.h"
 
@@ -89,14 +90,10 @@ void CentralRole::continueRun() {
 }
 
 void CentralRole::run() {
-    if(this->rebootAtUs != 0 && esp_timer_get_time() >= this->rebootAtUs) {
-        Console.flush();
-        esp_restart();
-    }
-
     int64_t now = esp_timer_get_time();
     Button::get().update();
-    if(this->state != State::MENU && this->state != State::ERROR) {
+    // in the MENU the radio keeps running after a stop: the joined pods stay joined (PONG)
+    if((this->state != State::MENU && this->state != State::ERROR) || this->network.isStarted()) {
         this->network.service();
     }
 
@@ -199,6 +196,7 @@ bool CentralRole::startProgram() {
 
     int64_t required = vars->getVariable("REQUIRED_PERIPHERALS");
     this->requiredPeripherals = (uint8_t)constrain(required, (int64_t)0, (int64_t)MAX_PERIPHERALS);
+    this->network.keepPods(this->requiredPeripherals);      // pods that stayed joined after a stop: no more than this program uses
 
     // BLE stays on (liveBle, ADR 0005): the phone keeps its connection and gets the game interval
     Diag::step("select: BLE game mode");
@@ -214,6 +212,7 @@ bool CentralRole::startProgram() {
         this->fail("Radio (ESP-NOW) could not be started");
         return false;
     }
+    this->network.setSyncAllowed(true);
     this->network.setAcceptNewPods(true, this->requiredPeripherals);
     this->drawnPodCount = -1;
     Diag::step("loop");
@@ -469,14 +468,40 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
     } else if(strcmp(op, "resume") == 0) {
         this->opResume(response);
     } else if(strcmp(op, "stop") == 0) {
-        // back to the program menu: restart as central (answer first)
-        Settings::setBootRole(1);
-        this->rebootAtUs = esp_timer_get_time() + 300000;
+        this->stopToMenu();
         response["ok"] = true;
+        response["state"] = stateName(this->state);
     } else {
         return false;
     }
     return true;
+}
+
+// stop: back to the program menu without a reboot. BLE and the joined pods stay up; everything a game
+// (or a prepared game) built up is reset to what a fresh boot into the menu has.
+void CentralRole::stopToMenu() {
+    BlockManager::getManager()->unload();       // current block left, blocks and context freed (CommunicateBlock statics follow)
+    VariableManager::getManager()->clear();
+    Results::get().resetAll();
+    Reports::get().clear();                     // "stop clears reports", ids restart at 1
+    this->network.endGame();                    // pods: RESET (off, cancelled), events dropped, no claims, no sync
+    this->phone.leaveGame();
+
+    this->phonePaused = false;
+    this->requiredPeripherals = 0;
+    this->drawnPodCount = -1;
+    this->readyPending = false;
+    this->refusedUntilUs = 0;
+    this->blinkEndUs = 0;
+    this->menuBreathing = false;
+    this->modelSelectorCounter = 0;
+    this->modelSelectorPressStart = 0;
+    this->selectStarted = false;
+    this->waitForBootRelease = Button::get().isDown();      // a button held now is not a menu press
+
+    LEDManager::getManager()->turnOff();
+    this->setState(State::MENU);
+    this->reloadMenu();
 }
 
 void CentralRole::opPrograms(JsonDocument& response) {

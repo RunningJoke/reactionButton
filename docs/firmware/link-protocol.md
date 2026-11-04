@@ -157,6 +157,7 @@ Number 1…7 (pod id + 1), fixed colour from `Identity::PALETTE`; reported as `s
 | Clear pairing | unclaimed peripheral, hold 3 s → white flash, setId 0 |
 | Pod silent > 1.5 s | central PAUSED (whole ring amber, §7.1 of architecture) |
 | No PONG > 2 s | peripheral → UNCLAIMED |
+| `stop` on the central | RESET to every pod (READY, off), PONG goes on in the MENU: the pods stay claimed, no reboot, no new frame |
 | Pod back | re-claimed with its old id; all back → current block restarted |
 
 All pods of a set share one set id, so any of them can be the central.

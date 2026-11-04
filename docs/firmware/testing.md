@@ -19,7 +19,7 @@ responses cyan. Type ops (`status`, `programs`, `select 8`, `start`, `press`, `r
 
 ## 4. Single commands
 `status` · `reboot central|peripheral` (asks for RESET if needed) · `programs` · `select 8|/prog/duo.json|Duo`
-· `start` · `press` · `stop` (pod restarts) · `push firmware/data` / `pull backup` · `results` · `trace on` ·
+· `start` · `press` · `stop` (back to the menu in place, no reboot) · `push firmware/data` / `pull backup` · `results` · `trace on` ·
 `set-pin 1234`.
 
 ## 5. Guided test

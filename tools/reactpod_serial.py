@@ -659,7 +659,7 @@ def main():
     p.add_argument("--no-input", action="store_true", help="only show output")
     p = sub.add_parser("select"); p.add_argument("program", help="index, path or name")
     p = sub.add_parser("reboot"); p.add_argument("role", nargs="?", default="auto", choices=["auto", "central", "peripheral"])
-    sub.add_parser("stop", help="end the program, back to the menu (the pod restarts)")
+    sub.add_parser("stop", help="end the program, back to the menu (no reboot, fw >= 2.18)")
     p = sub.add_parser("trace"); p.add_argument("state", choices=["on", "off"])
     p = sub.add_parser("set-name", help="set the set name advertised over BLE (\"\" = default)"); p.add_argument("name")
     p = sub.add_parser("set-pin", help="set the PIN for BLE writes, 4-6 digits (\"\" = clear it)"); p.add_argument("pin")
