@@ -5,6 +5,7 @@ import { Activity, AlertTriangle, BatteryWarning, BookLock, ChevronDown, Chevron
 import { ErrorBanner } from "../app/ConnectDialog";
 import { useConnectDialog } from "../app/connectDialogStore";
 import { Modal, modalStyles } from "../components/Modal";
+import { Split, useDesktop } from "../components/Split";
 import { INDEX_PATH, isLibraryPath, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
 import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
 import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
@@ -19,7 +20,7 @@ import styles from "./PodPage.module.css";
 export function PodPage() {
   const state = usePodSession((s) => s.state);
   return (
-    <div className={page.page}>
+    <div className={state === "connected" ? `${page.page} ${page.wide}` : page.page}>
       <ErrorBanner />
       {state === "connected" ? <Connected /> : <NotConnected busy={state === "connecting"} />}
     </div>
@@ -92,6 +93,7 @@ function Connected() {
   const states = useSyncStates();
   const refreshStatus = usePodSession((s) => s.refreshStatus);
   const disconnect = usePodSession((s) => s.disconnect);
+  const desktop = useDesktop();
   useEffect(() => {
     const timer = window.setInterval(() => void refreshStatus(), BATTERY_REFRESH_MS);
     return () => window.clearInterval(timer);
@@ -101,7 +103,8 @@ function Connected() {
   const status = new Map(states?.map((s) => [s.path, s.status]));
   const podCount = 1 + (session.status?.pods?.length ?? 0);
 
-  return (
+  // set info and sync: first on phone, the sticky side column on desktop (#107)
+  const setInfo = (
     <>
       <header className={styles.setHeader}>
         <div className={styles.podTitle}>
@@ -130,8 +133,15 @@ function Connected() {
           <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
         </p>
       )}
+    </>
+  );
+  const sync = <UnsentCard states={states} readOnly={readOnly} />;
+
+  return (
+    <Split side={desktop ? <>{setInfo}{sync}</> : null} sideOnPhone={false}>
+      {!desktop && setInfo}
       <TrainingLink />
-      <UnsentCard states={states} readOnly={readOnly} />
+      {!desktop && sync}
       {role === "central" && <PodList />}
       <MenuRow count={list.menu.length} />
       <button className={styles.menuLink} aria-expanded={details} onClick={() => setDetails(!details)}>
@@ -162,7 +172,7 @@ function Connected() {
         </button>
       </div>
       <RenameSetModal open={renaming} onClose={() => setRenaming(false)} />
-    </>
+    </Split>
   );
 }
 
