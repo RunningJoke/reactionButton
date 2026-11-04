@@ -936,7 +936,8 @@
     "remove": "Remove {{name}} from the menu",
     "add": "Add game",
     "nothingToAdd": "All games are in the menu.",
-    "copyNote": "Changing the pattern makes a local copy of this game (same path)."
+    "copyNote": "Changing the pattern makes a local copy of this game (same path).",
+    "pickPattern": "Pick a game in the list to edit its LED pattern here."
   },
   "settings": {
     "title": "Settings",
