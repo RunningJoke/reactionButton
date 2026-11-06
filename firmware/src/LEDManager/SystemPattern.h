@@ -26,7 +26,7 @@
  *   SLEEP         white drains anticlockwise with ease-out (1.6 s) while dimming to dark (2 s)
  *   MENU          the snapshot (the program's menu pattern) at system brightness; breathing while a phone
  *                 is connected (`breathing`)
- *   UPDATE        white bar fills clockwise over LEDs 0 ... 17, one LED per 100 / 18 % (`percent`, see
+ *   UPDATE        dim white bar fills clockwise over LEDs 0 ... 17, one LED per 100 / 18 % (`percent`, see
  *                 updateProgress); the LEDs not filled breathe dark red (2200 ms)
  *   UPDATE_VERIFY full white bar, dimmed, breathing (checking the image)
  *   UPDATE_READY  whole ring static green at 30 % (image verified, waiting for the other pods)
@@ -85,8 +85,8 @@ namespace SystemPattern {
     // Frame at `elapsedMs` since the start. Returns true when the pattern has ended (this is its last frame).
     bool render(Id id, const Args& args, uint32_t elapsedMs, Pixel out[LEDS]);
 
-    // Sets the bar of a playing UPDATE pattern (clamped to 0 ... 100). Only stores the value: the ring follows
-    // at most every LEDManager::UPDATE_FRAME_US, so the caller never waits for the LEDs
+    // Sets the bar of a playing UPDATE pattern (clamped to 0 ... 100) and draws it if a frame is due
+    // (LEDManager::setPatternPercent): call it between a request and its response
     void updateProgress(uint8_t percent);
 
     // JSON name ("boot", "search", ...) for the test op; nullptr / COUNT_ if unknown

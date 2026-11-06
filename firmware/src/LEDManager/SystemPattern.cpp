@@ -31,6 +31,7 @@ namespace {
     // see at gamma 2 and SYSTEM_LEVEL); the values are a first guess, to be tuned on the real LEDs
     const float UPDATE_FLOOR = 0.3f;
     const float UPDATE_RED_PEAK = 0.6f;
+    const float UPDATE_BAR_LEVEL = 0.4f;
     const float UPDATE_VERIFY_DIM = 0.6f;
     const float UPDATE_READY_LEVEL = 0.3f;
     const uint32_t UPDATE_BLINK_MS = 1000;      // the error blink, on and off
@@ -239,7 +240,7 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
             float back = breathe(t, BREATHE_GREEN_MS, UPDATE_FLOOR) * UPDATE_RED_PEAK;
             for(uint8_t i = 0; i < LEDS; i++) {
                 if(i < lit) {
-                    set(out[i], *WHITE, 1.0f);
+                    set(out[i], *WHITE, UPDATE_BAR_LEVEL);
                 } else {
                     set(out[i], *RED, back);
                 }

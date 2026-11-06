@@ -248,6 +248,8 @@ void LEDManager::setPatternPercent(uint8_t percent)
     OutputGuard guard(this->outputMutex);
     if(this->mode == Mode::PATTERN && this->pattern == SystemPattern::Id::UPDATE) {
         this->patternArgs.percent = percent;
+        this->serviceEffect(true);
+        this->updateStreamUs = esp_timer_get_time();
     }
 }
 
@@ -278,13 +280,19 @@ void LEDManager::onStartTimer(void* arg)
     static_cast<LEDManager*>(arg)->serviceEffect();
 }
 
-void LEDManager::serviceEffect()
+void LEDManager::serviceEffect(bool updateFrame)
 {
     OutputGuard guard(this->outputMutex);
     if(this->effectState != EffectState::RUNNING) {
         return;     // stopped (or finished) since the timer was armed
     }
     int64_t now = esp_timer_get_time();
+    // while chunks arrive, frames are drawn only between request and response (setPatternPercent): a frame sent
+    // while bytes arrive flickers. Without chunks (an upload that stalled) the ring goes on by itself
+    if(!updateFrame && this->mode == Mode::PATTERN && this->pattern == SystemPattern::Id::UPDATE
+       && now - this->updateStreamUs < UPDATE_STREAM_US) {
+        return;
+    }
     if(now < this->effectStart) {
         return;     // not started yet
     }

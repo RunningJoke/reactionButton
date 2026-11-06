@@ -203,7 +203,7 @@ old firmware stays in its slot; the image is only used after a successful `otaEn
   unfinished update is lost on reboot. A write error in the slot is `storage`. `otaBegin` in the first 15 s
   after an `otaActivate` (the image is still on trial, the ESP-IDF refuses to write the next image then):
   `busy`, "the running firmware is still being tested"; try again after a few seconds.
-- Ring (architecture §7.1): `UPDATE` with the bar while receiving, `UPDATE_VERIFY` in `otaEnd`,
+- Ring (architecture §7.1): `UPDATE` with the bar while receiving and in `otaEnd`,
   `UPDATE_READY` once verified, `UPDATE_FAILED` (three red blinks) on failure; after `otaAbort`, a failure
   and the timeout the normal state of the role again.
 - `maxChunk` is 3072 (4096 base64 characters). Over USB, measured with fw 2.19: 1.1 MB in 30 s (37 kB/s),

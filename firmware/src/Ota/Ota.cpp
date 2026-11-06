@@ -286,7 +286,7 @@ void Ota::opWrite(JsonObjectConst request, JsonDocument& response) {
     }
     received += length;
     lastActivityMs = millis();
-    LEDManager::getManager()->setPatternPercent(percent(received, total));
+    SystemPattern::updateProgress(percent(received, total));
     response["ok"] = true;
     response["received"] = received;
 }
@@ -300,8 +300,7 @@ void Ota::opEnd(JsonDocument& response) {
         ConfigApi::setError(response, "not_ready", String("received ") + received + " of " + total + " bytes");
         return;
     }
-    state = State::VERIFYING;
-    LEDManager::getManager()->playPattern(SystemPattern::Id::UPDATE_VERIFY);
+    state = State::VERIFYING;     // about 150 ms: the bar stays, a pattern for that long would only be a blip
 
     uint8_t digest[32];
     mbedtls_sha256_finish_ret(&hash, digest);

@@ -47,7 +47,7 @@ import serial
 import serial.tools.list_ports
 
 from reactpod_format import report_line
-from reactpod_ota import (OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
+from reactpod_ota import (TRIAL_WAIT_S, OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
                           result_lines, run_sync)
 
 PUT_CHUNK = 2048
@@ -424,6 +424,11 @@ def run_ota(pod: PodSerial, args) -> int:
     status = pod.wait_ready(lambda s: True, timeout=120, prompt_after=15, reason="after the update")
     if status is None:
         hint("the pod does not answer after the restart")
+        return 1
+    say("waiting for the self-test of the new firmware ...")
+    time.sleep(TRIAL_WAIT_S)
+    if pod.wait_ready(lambda s: True, timeout=120, prompt_after=15, reason="after the self-test") is None:
+        hint("the pod does not answer after the self-test")
         return 1
     lines, code = result_lines(running, pod.request("info"))
     say(f"written and verified in {progress.elapsed:.1f} s, total {time.time() - started:.1f} s")

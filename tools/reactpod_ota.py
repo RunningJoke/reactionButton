@@ -143,6 +143,10 @@ def failure_lines(error: OtaError) -> list:
     return lines
 
 
+# A new image is on trial for 15 s after boot; lastResult is only known after that (a failed self-test restarts the pod)
+TRIAL_WAIT_S = 17
+
+
 def result_lines(before: str, info: dict) -> tuple:
     """(lines, exit code) after the restart: firmware, running slot, outcome of the last otaActivate."""
     ota = info.get("ota") or {}
