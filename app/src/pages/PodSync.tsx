@@ -10,7 +10,7 @@ import { INDEX_PATH } from "@reactpod/program-model";
 import { PodError } from "../pod/protocol";
 import { isReadOnly, needsPin, usePodSession } from "../pod/session";
 import { planPush, planRestore, unsentChanges, type FileSync, type PodIssue, type PushPlan, type PushResult, type PushStep, type SyncStatus } from "../pod/sync";
-import { keepMine, keepPod, runPush, useSyncStates } from "../pod/syncActions";
+import { keepMine, keepPod, runPush, useMenuOverBudget, useSyncStates } from "../pod/syncActions";
 import { editorUrl, podProgramFormat, viewUrl } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import page from "./Page.module.css";
@@ -160,6 +160,7 @@ export function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"
   const [deselected, setDeselected] = useState<ReadonlySet<string>>(new Set());
   const [pin, setPin] = useState("");
   const askPin = needsPin(session);
+  const overBudget = useMenuOverBudget();
 
   const candidates = useMemo(() => states.filter((s) => s.status === "new" || s.status === "localNewer"), [states]);
   const plan: PushPlan | null = useMemo(() => {
@@ -248,6 +249,7 @@ export function PushDialog({ mode, states, onClose }: { mode: "push" | "restore"
           ) : (
             mode === "push" && <PlanInWords uploads={plan.uploads} />
           )}
+          {mode === "push" && overBudget && <p className={styles.warnText}>{t("pod.storeOverBudget")}</p>}
           {plan.skipped.length > 0 && <p className={styles.note}>{t("sync.skipped", { count: plan.skipped.length })}</p>}
           {plan.errors.size > 0 && <LocalErrors errors={plan.errors} />}
           {askPin && plan.uploads.length > 0 && (

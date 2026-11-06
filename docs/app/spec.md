@@ -346,6 +346,7 @@ Two behaviours (#88). Specified here once; `editor-ux.md` refers to this section
 | Reports buffered on the pod | 8 | `Reports.h` `MAX_REPORTS` |
 | Values per report period | 48 | `Reports.h` `LOG_SIZE`; further values are counted, not kept |
 | Metric names per report period | 16 | `Reports.h` `MAX_METRICS` |
+| Files of a set (programs, includes, menu) | 144 KB, warning only | `MAX_STORE_BYTES` (`limits.ts`), ADR 0009 |
 
 **5. Open points**
 - Can the user choose the main metric of the phone view? Default `reaction`.

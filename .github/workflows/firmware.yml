@@ -39,6 +39,8 @@ jobs:
           bin=$(stat -c %s firmware/.pio/build/NewBoard/firmware.bin)
           slot=$(( $(awk -F'[,[:space:]]+' '$3 == "ota_0" || $3 == "factory" { print $5; exit }' firmware/partitions.csv) ))
           echo "firmware.bin: $bin bytes of $slot ($((100 * bin / slot)) % of the app slot)" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ $((bin * 100)) -gt $((95 * slot)) ]; then echo "::error::firmware.bin is over 95 % of the app slot"; exit 1; fi
+          if [ $((bin * 100)) -gt $((85 * slot)) ]; then echo "::warning::firmware.bin is over 85 % of the app slot"; fi
       - run: pio run -d firmware -e NewBoard -t buildfs
       - uses: actions/upload-artifact@v4
         with:

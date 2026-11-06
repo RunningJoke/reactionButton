@@ -3,12 +3,35 @@
  * restore defaults and delete. Ties `sync.ts` to the pod session and the workspace.
  */
 import { useEffect, useMemo } from "react";
-import { INDEX_PATH } from "@reactpod/program-model";
+import { formatProgram, INDEX_PATH, resolveProgram, storeOverBudget } from "@reactpod/program-model";
+import { DEFAULT_FILES } from "../defaults";
 import { fileCache } from "../store/fileCache";
 import { useWorkspace } from "../store/workspace";
 import { PodError } from "./protocol";
 import { hasFeature, isReadOnly, usePodSession } from "./session";
-import { executePush, syncStates, type FileSync, type PushPlan, type PushResult, type PushStep } from "./sync";
+import { executePush, formatMenu, syncStates, type FileSync, type PushPlan, type PushResult, type PushStep } from "./sync";
+import { byteLength } from "./utf8";
+
+/**
+ * The local menu's files (`/programs.json`, its programs and their includes) are over the pod's store budget
+ * (`MAX_STORE_BYTES`, #121). A warning only: pushing is never blocked.
+ */
+export function useMenuOverBudget(): boolean {
+  const { programs, menu } = useWorkspace();
+  const { list, files } = usePodSession();
+  return useMemo(() => {
+    if (!list) return false;
+    const texts = new Map(programs.map((p) => [p.path, formatProgram(p.json)]));
+    if (menu) texts.set(INDEX_PATH, formatMenu(menu));
+    const read = (path: string) => texts.get(path) ?? files[path] ?? DEFAULT_FILES[path];
+    const paths = new Set<string>([INDEX_PATH]);
+    for (const program of menu ?? list.menu) {
+      paths.add(program);
+      for (const file of resolveProgram(program, read).files.keys()) paths.add(file);
+    }
+    return storeOverBudget([...paths].map((path) => byteLength(read(path) ?? "")));
+  }, [programs, menu, list, files]);
+}
 
 /** States of all files of the connected set; `null` while not connected or files are still loading. */
 export function useSyncStates(): FileSync[] | null {
