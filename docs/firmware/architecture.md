@@ -22,7 +22,7 @@ Sources: `hardware/pcb` (KiCad), `hardware/casing` (FreeCAD).
 |---|---|
 | `platformio.ini` | single env `NewBoard`, USB-CDC console |
 | `sdkconfig.NewBoard` | WiFi + SW coexistence, BT controller only (`BT_CONTROLLER_ONLY`; the host stack is NimBLE-Arduino), `FREERTOS_HZ=1000`, task WDT off, C++ exceptions off, `-Os`, log level INFO (`CONFIG_LOG_MAXIMUM_LEVEL=3`), assertions on, `CONFIG_ADC_ONESHOT_FORCE_USE_ADC2_ON_C3`. Controller limits are changed here (`pio run -d firmware -t menuconfig`); NimBLE host limits are `-DCONFIG_BT_NIMBLE_*` build flags in `platformio.ini` |
-| `partitions.csv` | nvs 20 KB, otadata, **one** app slot `ota_0` 2 MB, SPIFFS 1.9 MB, coredump 64 KB |
+| `partitions.csv` | nvs 20 KB, otadata, **two** app slots `ota_0` / `ota_1` 1 792 KB each, SPIFFS 384 KB, coredump 64 KB (ADR 0009) |
 | `CMakeLists.txt`, `src/CMakeLists.txt` | ESP-IDF glue (globs `src/`) |
 
 **Serial port:** with `arduino, espidf` the core is built without `ARDUINO_USB_CDC_ON_BOOT`, so `Serial` is

@@ -9,7 +9,7 @@ Tool: `tools/reactpod_serial.py` (`pip install pyserial`) on the pod's USB port;
 ## 2. Flash
 `pio run -d firmware -e NewBoard -t upload --upload-port COM4`, then `-t uploadfs`. The pod usually stays
 in download mode: `reactpod_serial.py --port COM4 wait-boot` tells you when to press **RESET** (not BOOT)
-and prints role, state, firmware, generation, last reset. Flash every pod of a set.
+and prints role, state, firmware, generation, last reset. Flash every pod of a set. Firmware from the first release with the ADR 0009 partition table needs one full flash of every pod (`-t upload`, then `-t uploadfs`), because the partition table changed; programs on the pod are lost.
 
 ## 3. Monitor
 `reactpod_serial.py --port COM4 monitor --log pod.log`: firmware log (grey), `[boot]` (green; red with
