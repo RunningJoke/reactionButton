@@ -15,7 +15,7 @@ together; one branch may touch all of them. User guides and the full history of 
 | `platform/` | Community platform (Hono + Postgres), **on hold** (ADR 0007) | [spec](docs/platform/spec.md), [deploy](platform/deploy/README.md) |
 | `spec/` | Generated, checked in: `platform-api.yaml` (`cd platform && npm run openapi`), `program.schema.json` (`cd packages/program-model && npm run schema`) | – |
 | `hardware/` | KiCad PCB, FreeCAD casing | – |
-| `docs/decisions/` | [ADRs](docs/decisions/README.md): repo layout, versions, platform, live BLE (0005), no OTA (0006), platform on hold (0007) | – |
+| `docs/decisions/` | [ADRs](docs/decisions/README.md): repo layout, versions, platform, live BLE (0005), platform on hold (0007), NimBLE (0008), OTA (0009, replaces no OTA 0006) | – |
 
 ## Commands (repo root; pio is in `~/.platformio/penv/Scripts/`)
 
