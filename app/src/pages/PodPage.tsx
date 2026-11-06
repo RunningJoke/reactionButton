@@ -11,7 +11,7 @@ import { PodError, type FileEntry, type ListResponse } from "../pod/protocol";
 import { firmwareSupported, isReadOnly, needsPin, programFormatNewer, setLabel, usePodSession } from "../pod/session";
 import { canFind, podHealth, type PodHealth } from "../pod/setView";
 import type { SyncStatus } from "../pod/sync";
-import { useSyncStates } from "../pod/syncActions";
+import { useMenuOverBudget, useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
 import { ResetMenuButton, SyncBadge, UnsentCard } from "./PodSync";
 import page from "./Page.module.css";
@@ -91,6 +91,7 @@ function Connected() {
   const [renaming, setRenaming] = useState(false);
   const [details, setDetails] = useState(false);
   const states = useSyncStates();
+  const overBudget = useMenuOverBudget();
   const refreshStatus = usePodSession((s) => s.refreshStatus);
   const disconnect = usePodSession((s) => s.disconnect);
   const desktop = useDesktop();
@@ -127,6 +128,7 @@ function Connected() {
       </header>
       {!firmwareSupported(info) && <p className={styles.warn}>{t("pod.firmwareUnsupported", { version: info.firmware })}</p>}
       {programFormatNewer(info) && <p className={styles.warn}>{t("pod.programFormatNewer", { pod: info.programFormat, app: PROGRAM_FORMAT })}</p>}
+      {overBudget && <p className={styles.warn}>{t("pod.storeOverBudget")}</p>}
       {readOnly && <p className={styles.note}>{t("pod.readOnly")}</p>}
       {!readOnly && info.pinRequired && (
         <p className={styles.note}>

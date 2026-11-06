@@ -7,6 +7,8 @@ export const LIBRARY_DIR = "/prog/lib/";
 export const MAX_PATH = 31;
 export const MAX_FILE_SIZE = 16384;
 export const MAX_REQUEST = 12288;
+/** Sum of a set's files in bytes: SPIFFS 384 KB is reliable to 288 KB and a full sync needs the store twice (ADR 0009). */
+export const MAX_STORE_BYTES = 144 * 1024;
 export const MAX_GET_CHUNK = 4096;
 export const MAX_INCLUDE_DEPTH = 3;
 export const MAX_PERIPHERALS = 7;
@@ -23,6 +25,11 @@ export const PROGRAM_FORMAT_VERSION = 1;
 export const PROGRAM_FORMAT = 6;
 /** Longest set name in bytes (`setName`). */
 export const MAX_SET_NAME = 16;
+
+/** Whether the files of a set (sizes in bytes) exceed MAX_STORE_BYTES. Exactly at the limit is not over. */
+export function storeOverBudget(sizes: readonly number[]): boolean {
+  return sizes.reduce((sum, size) => sum + size, 0) > MAX_STORE_BYTES;
+}
 
 /** Same rules as ProgramStore::isValidPath in the firmware. */
 export function isValidPath(path: unknown): path is string {

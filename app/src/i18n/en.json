@@ -74,6 +74,7 @@
     "free": "Free space",
     "firmwareUnsupported": "This app is made for firmware 2.x. The pod runs {{version}}; some things may not work.",
     "readOnly": "Games can only be changed on the main pod. This pod is shown read only.",
+    "storeOverBudget": "These programs are too big to copy to all pods. Remove or shorten some.",
     "groups": {
       "menu": "Menu ({{count}})",
       "other": "Other games ({{count}})",

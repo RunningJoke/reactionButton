@@ -74,6 +74,7 @@
     "free": "Frei",
     "firmwareUnsupported": "Diese App ist für Firmware 2.x gemacht. Der Pod hat {{version}}; manches funktioniert evtl. nicht.",
     "readOnly": "Spiele können nur auf der Zentrale geändert werden. Dieser Pod wird nur angezeigt.",
+    "storeOverBudget": "Diese Spiele sind zu groß, um sie auf alle Pods zu kopieren. Entferne oder kürze einige.",
     "groups": {
       "menu": "Menü ({{count}})",
       "other": "Weitere Spiele ({{count}})",
