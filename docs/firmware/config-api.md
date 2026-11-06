@@ -51,16 +51,17 @@ the central only (not synced) and advertised after the current connection ends.
 | `bad_request` | not JSON, unknown op, missing / bad field (also an unknown pod id) |
 | `bad_path` | path not allowed (§4) |
 | `not_found` | file missing |
-| `bad_offset` | `get` past the end / `put` not continuing the upload |
-| `too_large` | file > 16384 or request > 12288 bytes |
+| `bad_offset` | `get` past the end / `put` or `otaWrite` not continuing the upload (`otaWrite` also returns `received`) |
+| `too_large` | file > 16384 or request > 12288 bytes; `otaBegin` image larger than the slot, `otaWrite` past `size` |
 | `crc_mismatch`, `invalid_json` | final `put` chunk rejected, nothing stored |
 | `invalid_program` | `validate`: `message` names file + block |
-| `storage` | flash write failed |
+| `storage` | flash write failed (`otaBegin` / `otaWrite`: the update is `failed`) |
+| `ota_failed` | firmware update (§5 Firmware update): image or hash rejected, nothing activated (fw ≥ 2.19) |
 | `overflow` | data came faster than processed: resend |
 | `auth_required`, `auth_failed` | PIN (§8) |
-| `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed |
-| `not_ready` | no block waits / pods missing / pod too old |
-| `low_battery` | `start` with a pod < 5 % (fw ≥ 2.13) |
+| `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed; `select` while an update runs; `otaBegin` outside the menu or while the new image is on trial (15 s after an `otaActivate`) |
+| `not_ready` | no block waits / pods missing / pod too old; `otaWrite` / `otaEnd` / `otaActivate` in the wrong update state |
+| `low_battery` | `start` with a pod < 5 % (fw ≥ 2.13); `otaBegin` below 30 % (fw ≥ 2.19) |
 | `not_editable`, `out_of_range` | `setVariables` |
 | `not_running`, `not_paused` | `pause` outside RUN, `resume` without a phone pause |
 
@@ -112,6 +113,7 @@ Bluetooth does not expose it). `features` and fields by firmware:
 | 2.15 | `patterns` | op `pattern`; system patterns (architecture §7.1); link revision 5 (colour 10, identity as n LEDs in the new palette) |
 | 2.17 | `startVars` | `setVariables` also in CONFIRM; `status.ready.editable` (§3 start variables); MaxLoop override cleared after the next select |
 | 2.18 | – | `stop` returns to MENU without a reboot (BLE stays connected, peripherals stay joined) |
+| 2.19 | `ota` | firmware update over the config API (ops `otaBegin`, `otaWrite`, `otaEnd`, `otaActivate`, `otaAbort`), `info.ota`, `status.ota`; USB requests up to `maxRequest` (12288) work (before: about 4 KB) |
 
 **Battery** (`{percent, mv}`, missing = unknown): one Li-ion cell, 3.30 V = 0 %, 4.20 V = 100 %, piecewise
 linear (`Battery.cpp`); 16 samples, refreshed every 3 s; on USB it reads the charge voltage (≈ 100 %).
@@ -155,6 +157,65 @@ has unknown type 'buton'"). Loads with all includes, as the game would, without 
 (`validateInline`): dry run of that text; `path` must be valid but need not exist, includes come from the
 store (upload changed includes first), nothing is written, the request must fit `maxRequest`.
 
+### Firmware update (`ota`, fw 2.19)
+
+Replaces the firmware without USB: the image goes into the inactive one of two app slots (ADR 0009), is
+checked, and the pod boots it on `otaActivate`. The programs and settings (NVS, SPIFFS) are not touched. The
+old firmware stays in its slot; the image is only used after a successful `otaEnd` and `otaActivate`.
+
+```json
+→ {"op":"otaBegin","size":1095344,"sha256":"<64 hex>","version":"2.20"}
+← {"op":"otaBegin","ok":true,"slotSize":1835008,"maxChunk":3072,"received":0}
+→ {"op":"otaWrite","offset":0,"data":"<base64 of up to maxChunk bytes>"}
+← {"op":"otaWrite","ok":true,"received":3072}
+→ {"op":"otaEnd"}        ← {"op":"otaEnd","ok":true}       (SHA-256 and the image checked)
+→ {"op":"otaActivate"}   ← {"op":"otaActivate","ok":true}  (then the pod restarts into the new firmware)
+→ {"op":"otaAbort"}      ← {"op":"otaAbort","ok":true}     (any time; state back to idle)
+```
+
+- `otaBegin`: `size` (bytes of `firmware.bin`, > 0), `sha256` (hex of the whole image), optional `version`
+  (≤ 31 characters, shown in `status.ota`). Answers at once, there is no long erase: each 4 KB sector is
+  erased just before it is written (`OTA_WITH_SEQUENTIAL_WRITES`; the pod is busy for that time, the client
+  sends one request at a time, so an `otaWrite` answers after about 80 ms instead of 30 ms). That mode needs
+  the lossless, in-order stream that `bad_offset` enforces; it must not be used for a broadcast. The firmware
+  can erase the whole slot in `otaBegin` instead (one constant in `Ota.cpp`): that answer then takes 4.4 s,
+  and the pod does not serve other requests (BLE included) meanwhile.
+- **Resume:** `otaBegin` with the same `size` and `sha256` while the update is `receiving` (the pod has not
+  rebooted, nothing aborted it) continues it: `received` > 0 says where to go on. A dropped BLE or USB
+  connection does not end the update. A different `size` or `sha256` discards the old one and starts anew.
+  An update with no `otaWrite` for 10 minutes is discarded.
+- `otaWrite`: `offset` must equal `received` (`bad_offset`, the error also carries `received`). `data` is
+  base64 of 1 to `maxChunk` raw bytes (a request fits `maxRequest`). The first chunk must start with the
+  image header, else `ota_failed`. Past `size`: `too_large`.
+- `otaEnd`: needs `received` = `size` (else `not_ready`). Compares SHA-256 with `sha256` and lets the
+  ESP-IDF check the image; failure `ota_failed`, the update is `failed`, nothing changes in the boot choice.
+  Takes about 150 ms.
+- `otaActivate`: only in state `ready`. Selects the new slot, keeps the current role for the next start
+  (a central comes back as central) and restarts, like `reboot`. The new image is **on trial** (fw >= 2.19,
+  architecture §4.1): it is marked valid only after 15 s and a self-test, otherwise the bootloader returns
+  to the old firmware at the next reset. `info.ota.lastResult` reports the outcome.
+- `otaAbort`: discards the update (also `ready` and `failed`).
+- Rules: allowed only when the pod is in the **menu** (central: state MENU) or, for a peripheral, **not in a
+  game** (unclaimed or ready), else `busy`. PIN as for `put` (`auth_required`, serial needs none), for all five
+  ops. `otaBegin` below 30 % battery: `low_battery` (a pod with no reading is allowed). `size` above
+  `slotSize`: `too_large`. `size` or `sha256` missing / bad: `bad_request`. During an update the pod does not
+  switch off, `select` (and the menu button) is refused (`busy`), a peripheral ignores the central, and an
+  unfinished update is lost on reboot. A write error in the slot is `storage`. `otaBegin` in the first 15 s
+  after an `otaActivate` (the image is still on trial, the ESP-IDF refuses to write the next image then):
+  `busy`, "the running firmware is still being tested"; try again after a few seconds.
+- Ring (architecture §7.1): `UPDATE` with the bar while receiving, `UPDATE_VERIFY` in `otaEnd`,
+  `UPDATE_READY` once verified, `UPDATE_FAILED` (three red blinks) on failure; after `otaAbort`, a failure
+  and the timeout the normal state of the role again.
+- `maxChunk` is 3072 (4096 base64 characters). Over USB, measured with fw 2.19: 1.1 MB in 30 s (37 kB/s),
+  the same at 2048 and at `maxChunk`; with the full-size erase 17 s (4.4 s `otaBegin`, then 84 to 86 kB/s).
+- `status.ota` = `{"state":"idle|receiving|verifying|ready|failed","received":0,"total":0,"version":""}`
+  (`verifying` is only visible to other transports, `otaEnd` answers when it is over).
+  `info.ota` = `{"slotSize":1835008,"running":"app0","lastResult":"none|ok|rolledBack"}`: `running` is the
+  slot of the running image; `lastResult` is the outcome of the last `otaActivate` (`none`: no update since the
+  last `otaBegin`, or the new image is still on trial; `ok`: the new image runs and is valid; `rolledBack`: the
+  new image panicked, failed its self-test or was reset inside the 15 s, and the bootloader returned to the old
+  one). It is set at the start after the outcome and kept until the next `otaBegin`.
+
 ### Control and test ops
 
 | op | Where | Request | Response / effect |
@@ -167,7 +228,7 @@ store (upload changed includes first), nothing is written, the request must fit 
 | `press` | any | – | simulated short press (not for the menu) |
 | `stop` | central | – | ends the program and returns to MENU in place, without a reboot: BLE stays connected, the joined peripherals get RESET and stay joined (the next `select` finds them at once). Clears reports, variables, results and the athlete; response `{ok, state:"MENU"}` (fw < 2.18: the pod restarts as central into the menu) |
 | `effect` | any (`effects`) | `effect` name, `color`, `color2`, `brightness`, `durationMs`, `periodMs`, `segment`, `from`/`to` (dim), `value` (level %), `reverse`, `endOff`, `delayMs`; central also `target`: `"self"` (default), pod id, `"pods"`, `"all"` | test op; common start now + `delayMs` (default 50 ms with pods, else 0). → `effect`, central `startAtUs`, `sent[]`, `skipped[]`. `busy` in a game / while armed |
-| `pattern` | any (`patterns`) | `name`: `boot`, `search`, `joined`, `discovery`, `ready`, `select`, `selectCancel`, `selected`, `paused`, `lowBattery`, `sleep`, `menu`; `percent` (boot, 0–100), `podId` (joined), `wanted`, `found` (discovery), `fillMs` (selectCancel), `breathing` (menu) | plays a system pattern (architecture §7.1) on this pod's ring; central: itself only, peripheral: itself. → `pattern`, `durationMs` (0 = endless). `busy` in a game / while armed |
+| `pattern` | any (`patterns`) | `name`: `boot`, `search`, `joined`, `discovery`, `ready`, `select`, `selectCancel`, `selected`, `paused`, `lowBattery`, `sleep`, `menu`, `update`, `updateVerify`, `updateReady`, `updateFailed`; `percent` (boot, 0–100; update, 0–100, the bar: 0, 50 and 100 preview it), `podId` (joined), `wanted`, `found` (discovery), `fillMs` (selectCancel), `breathing` (menu) | plays a system pattern (architecture §7.1) on this pod's ring; central: itself only, peripheral: itself. → `pattern`, `durationMs` (0 = endless; `updateFailed` 6000). `busy` in a game / while armed |
 | `blink` | central (`identify`) | `pod`: id, or `-1`/missing = central | 2 s in its identity colour (central white), shown within 0.5 s. Only MENU/DISCOVERY/CONFIRM (`busy`); unknown id `bad_request`; pod fw < 2.8 `not_ready`. → `pod`, `durationMs` 2000 |
 | `results` | any | `reset` (bool) | statistics per metric since the last summary |
 | `trace` | any, serial | `on` (bool) | `{"event":"block","name","t"}` on every block entry |

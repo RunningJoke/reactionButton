@@ -51,6 +51,10 @@ class PeripheralRole : public IRole {
         bool idle() const override { return this->state == State::UNCLAIMED || this->state == State::READY; }
         // only unclaimed: a claimed pod belongs to a set and stays awake for its central
         bool powerOffAllowed() const override { return this->state == State::UNCLAIMED; }
+        // not in a game: unclaimed or claimed and waiting
+        bool otaAllowed() const override { return this->state == State::UNCLAIMED || this->state == State::READY; }
+        // the update ignored the central: start over, becoming unclaimed shows the SEARCH ring
+        void otaEnded() override { this->becomeUnclaimed(); }
 
     private:
         enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };

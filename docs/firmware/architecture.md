@@ -70,6 +70,34 @@ Power on → Serial, SPIFFS, pins → BOOT pattern 2.6 s (§7.1: battery gauge 1
 yes: `CentralRole` (BLE `ReactPod xxxx`), no: `PeripheralRole` (ESP-NOW, HELLO). The role changes only by
 reboot. Wake from deep sleep is a normal boot.
 
+### 4.1 First start after a firmware update (#124, ADR 0009)
+
+`CONFIG_APP_ROLLBACK_ENABLE` is on, and `Ota.cpp` overrides the framework's weak `verifyRollbackLater()`, so
+`initArduino()` does **not** mark the new image valid (its default does so unconditionally). The image stays
+`ESP_OTA_IMG_PENDING_VERIFY`, and `Ota::service()` decides once, 15 s after start (`SELF_TEST_MS`):
+
+- **Self-test passes:** `esp_ota_mark_app_valid_cancel_rollback`, `info.ota.lastResult` = `ok`. The test is
+  deliberately small, so that no ordinary situation fails it: SPIFFS mounted, the role object exists, and the
+  radio of the role is up: BLE (NimBLE initialised) on a central, ESP-NOW on a peripheral. The central's
+  ESP-NOW radio is off in the menu (#122), so it is not tested there. Not tested: a phone, peripherals,
+  programs, battery.
+- **Self-test fails:** `esp_ota_mark_app_invalid_rollback_and_reboot` returns to the old slot at once. If there is
+  no valid other slot (the call returns an error), the image is kept and marked valid: a pod never
+  boot-loops. A pod flashed over USB is never on trial (the upload resets `otadata`, state undefined), so
+  this does not apply to it.
+- **Panic, watchdog or any reset inside the 15 s** (also a power cut): the bootloader sees `PENDING_VERIFY`
+  at the next reset, marks the image aborted and starts the old one. A pod switched off in the first 15 s
+  after an update therefore comes back with the old firmware; this is the design (the image has not
+  proved itself yet), the update has to be repeated.
+- `otaBegin` is refused with `busy` during the 15 s (ESP-IDF cannot start a new image while the running one
+  is pending).
+- `lastResult` (`Ota::boot`): `otaActivate` stores the new slot in NVS. At the next start the pod compares
+  it with the running slot: equal and valid: `ok`; equal and still pending: wait for the verdict; different:
+  the bootloader rolled back, `rolledBack` if `esp_ota_get_last_invalid_partition` is that slot. The entry
+  is cleared on that boot, the result stays until the next `otaBegin`. This NVS comparison is kept (instead of
+  asking only `esp_ota_get_last_invalid_partition`) because it also knows `ok` and can be reset by `otaBegin`,
+  while the invalid mark stays in `otadata` until the slot is written again.
+
 ## 5. State machines
 
 ### 5.1 Peripheral
@@ -219,6 +247,10 @@ for orange, violet and cream are provisional until checked on the real LEDs (bri
 | Start refused (pod < 5 %) | – | red, whole ring | 1000, then READY again |
 | Central PAUSED | PAUSED | whole ring amber | breathes 2600 (floor 15 %) |
 | Central ERROR | – | red | blink 1000 on / 1000 off (unchanged) |
+| Firmware update (#125, #123: `otaBegin` ... `otaEnd`) | UPDATE | white bar fills clockwise, one LED per 5.6 % (`updateProgress`, ≤ 20 fps); the rest breathe dark red | breathes 2200 (floor 30 %, peak 60 % of dark red); the colours are a first guess, check on the LEDs |
+| Firmware update, image being checked (#125, `otaEnd`) | UPDATE_VERIFY | full white bar, dimmed, breathing | breathes 2200 at 60 % |
+| Firmware update, waiting for the other pods (#125) | UPDATE_READY | whole ring green | static, 30 % |
+| Firmware update failed (#125) | UPDATE_FAILED | red, whole ring (the error blink) | blink 1000 on / 1000 off, three times (6000), then dark; the normal state again |
 | Auto power-off | SLEEP | white ring drains anticlockwise with ease-out while dimming to dark | drain 1600, dim 2000, then deep sleep (§8.2) |
 | Game | – | owned by the program (effects, colours) | unchanged |
 

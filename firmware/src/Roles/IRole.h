@@ -37,4 +37,10 @@ class IRole {
 
         // Whether the pod may go to deep sleep after the idle time (#21, Power/AutoPowerOff.h)
         virtual bool powerOffAllowed() const { return false; }
+
+        // Whether a firmware update (Ota, otaBegin) may begin: the central in its menu, a peripheral outside a game
+        virtual bool otaAllowed() const { return false; }
+
+        // The update is over or discarded: show the role's own ring again (the UPDATE pattern is still on it)
+        virtual void otaEnded() {}
 };

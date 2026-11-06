@@ -22,6 +22,7 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py blink 2               # find pod 3 (its number minus 1); no id = the central (firmware >= 2.13)
     python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
+    python tools/reactpod_serial.py ota firmware/.pio/build/NewBoard/firmware.bin [--no-activate]   # firmware >= 2.19
 
 --port is optional; without it the first Espressif USB port (VID 303A) is used.
 --log FILE writes everything received to a file (with timestamps).
@@ -46,6 +47,8 @@ import serial
 import serial.tools.list_ports
 
 from reactpod_format import report_line
+from reactpod_ota import (OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
+                          result_lines, run_sync)
 
 PUT_CHUNK = 2048
 ESPRESSIF_VID = 0x303A
@@ -158,7 +161,8 @@ class PodSerial:
                     time.sleep(0.5)
                 continue
             try:
-                chunk = self.ser.read(1024)
+                # read what is there: read(1024) would wait for its 100 ms timeout on every short answer (#122)
+                chunk = self.ser.read(max(1, self.ser.in_waiting))
             except (serial.SerialException, OSError):
                 self._close()
                 continue
@@ -388,6 +392,46 @@ def battery_text(battery) -> str:
     if not battery:
         return "-"
     return f"{battery['percent']} % ({battery['mv'] / 1000:.2f} V)"
+
+
+def run_ota(pod: PodSerial, args) -> int:
+    """Firmware update (fw >= 2.19): the image goes to the inactive slot, then the pod restarts into it."""
+    image = load_image(args.image)
+    info = pod.request("info")
+    if not ota_supported(info):
+        hint(f"firmware {info.get('firmware')} cannot update over the config API (needs 2.19)")
+        return 1
+    running = info.get("ota", {}).get("running")
+    say(f"image {args.image}: {len(image)} bytes; running slot {running}, firmware {info.get('firmware')}")
+    pod.drain_events()
+    progress = Progress(say)
+    started = time.time()
+    try:
+        run_sync(ota_steps(image, activate=not args.no_activate, progress=progress),
+                 lambda op, fields: pod.request(op, timeout=10, check=False, **fields))
+    except OtaError as error:
+        for line in failure_lines(error):
+            hint(line)
+        return 1
+    if args.no_activate:
+        say(f"verified in {progress.elapsed:.1f} s; not activated (the update stays ready, "
+            "run ota again without --no-activate to activate it)")
+        return 0
+    say("activating; the pod restarts ...")
+    if pod.wait_event(lambda e: e.get("event") == "boot", 60) is None:
+        hint("the pod did not restart after otaActivate. Press its RESET button or switch it off and on.")
+        return 1
+    status = pod.wait_ready(lambda s: True, timeout=120, prompt_after=15, reason="after the update")
+    if status is None:
+        hint("the pod does not answer after the restart")
+        return 1
+    lines, code = result_lines(running, pod.request("info"))
+    say(f"written and verified in {progress.elapsed:.1f} s, total {time.time() - started:.1f} s")
+    for line in lines:
+        say(line)
+    if code:
+        hint("the new firmware did not start; the pod rolled back to the old one")
+    return code
 
 
 def print_pods(status: dict):
@@ -663,6 +707,9 @@ def main():
     p = sub.add_parser("trace"); p.add_argument("state", choices=["on", "off"])
     p = sub.add_parser("set-name", help="set the set name advertised over BLE (\"\" = default)"); p.add_argument("name")
     p = sub.add_parser("set-pin", help="set the PIN for BLE writes, 4-6 digits (\"\" = clear it)"); p.add_argument("pin")
+    p = sub.add_parser("ota", help="update the firmware from a firmware.bin (firmware >= 2.19)")
+    p.add_argument("image", help="firmware.bin, e.g. firmware/.pio/build/NewBoard/firmware.bin")
+    p.add_argument("--no-activate", action="store_true", help="stop after otaEnd: verified, not activated")
     sub.add_parser("reports", help="reports not acknowledged yet (firmware >= 2.11)")
     p = sub.add_parser("ack", help="acknowledge a report: it and the older ones leave the buffer"); p.add_argument("id", type=int)
     p = sub.add_parser("command", help="answer a waiting communicate block")
@@ -795,6 +842,8 @@ def main():
             run_monitor(pod, args.seconds, interactive=not args.no_input and sys.stdin.isatty())
         elif args.command == "test":
             return run_test(pod, args)
+        elif args.command == "ota":
+            return run_ota(pod, args)
     except KeyboardInterrupt:
         say("\naborted")
     except (TimeoutError, ConnectionError, RuntimeError) as e:

@@ -1,6 +1,7 @@
 #include "Console.h"
 #include <esp_log.h>
 #include "hal/usb_serial_jtag_ll.h"
+#include "Config/ConfigApi.h"
 
 HWCDC Console;
 static int emptyFree = 0;     // availableForWrite() with nothing queued
@@ -16,7 +17,8 @@ static int logToConsole(const char* format, va_list args) {
 
 void consoleBegin() {
     Console.setTxBufferSize(4096);
-    Console.setRxBufferSize(4096);
+    // a request of MAX_REQUEST bytes plus its newline must fit: the loop drains the buffer once per pass (#137)
+    Console.setRxBufferSize(ConfigApi::MAX_REQUEST + 256);
     Console.begin();
     emptyFree = Console.availableForWrite();
     esp_log_set_vprintf(&logToConsole);

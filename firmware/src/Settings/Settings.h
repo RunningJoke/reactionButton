@@ -49,4 +49,11 @@ namespace Settings {
     void setBootRole(uint8_t role);
     // Returns the stored boot role and clears it
     uint8_t takeBootRole();
+
+    // Firmware update (Ota): the slot (1 = ota_0, 2 = ota_1) that otaActivate selected, until the next boot reads
+    // it (cleared with setOtaPending(0) once the boot is settled); and the outcome of that boot (0 none, 1 ok, 2 rolled back), kept
+    void setOtaPending(uint8_t slot);
+    uint8_t getOtaPending();
+    void setOtaResult(uint8_t result);
+    uint8_t getOtaResult();
 }

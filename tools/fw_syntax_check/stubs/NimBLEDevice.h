@@ -120,4 +120,5 @@ public:
     static NimBLEAdvertising* getAdvertising();
     static bool startAdvertising();
     static bool stopAdvertising();
+    static bool getInitialized();
 };

@@ -9,7 +9,7 @@ namespace SystemPattern {
 namespace {
     const char* const NAMES[] = {
         "none", "boot", "search", "joined", "discovery", "ready", "select", "selectCancel", "selected", "paused",
-        "lowBattery", "sleep", "menu"
+        "lowBattery", "sleep", "menu", "update", "updateVerify", "updateReady", "updateFailed"
     };
     static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == (size_t)Id::COUNT_, "one name per pattern");
 
@@ -27,6 +27,14 @@ namespace {
     const ColorSet GAUGE = {0, 70, 255};
     const float GAUGE_LEVEL = 0.6f;
     const uint32_t LOW_BATTERY_ON_MS = 200;
+    // update (#125): dark red breathes between 18 % and 60 % (at the breathing floor it would be too dark to
+    // see at gamma 2 and SYSTEM_LEVEL); the values are a first guess, to be tuned on the real LEDs
+    const float UPDATE_FLOOR = 0.3f;
+    const float UPDATE_RED_PEAK = 0.6f;
+    const float UPDATE_VERIFY_DIM = 0.6f;
+    const float UPDATE_READY_LEVEL = 0.3f;
+    const uint32_t UPDATE_BLINK_MS = 1000;      // the error blink, on and off
+    const uint32_t UPDATE_FAILED_MS = 6 * UPDATE_BLINK_MS;
 
     inline uint8_t toLevel(float k) {
         return k <= 0.0f ? 0 : k >= 1.0f ? 255 : (uint8_t)(k * 255.0f + 0.5f);
@@ -40,9 +48,9 @@ namespace {
     }
 
     // floor ... 1 ... floor, raised cosine, starts at the floor
-    inline float breathe(uint32_t t, uint32_t period) {
+    inline float breathe(uint32_t t, uint32_t period, float low = BREATHE_FLOOR) {
         float phase = (float)(t % period) / (float)period;
-        return BREATHE_FLOOR + (1.0f - BREATHE_FLOOR) * (0.5f - 0.5f * cosf(2.0f * (float)M_PI * phase));
+        return low + (1.0f - low) * (0.5f - 0.5f * cosf(2.0f * (float)M_PI * phase));
     }
 
     inline void set(Pixel& p, const ColorSet& color, float k) {
@@ -90,6 +98,11 @@ namespace {
     }
 }
 
+void updateProgress(uint8_t percent)
+{
+    LEDManager::getManager()->setPatternPercent(percent > 100 ? 100 : percent);
+}
+
 uint32_t durationMs(Id id, const Args& args)
 {
     switch(id) {
@@ -98,6 +111,7 @@ uint32_t durationMs(Id id, const Args& args)
         case Id::SELECT_CANCEL: return args.fillMs;
         case Id::SELECTED: return SELECTED_MS;
         case Id::SLEEP: return SLEEP_MS;
+        case Id::UPDATE_FAILED: return UPDATE_FAILED_MS;
         default: return 0;
     }
 }
@@ -218,6 +232,35 @@ bool render(Id id, const Args& args, uint32_t t, Pixel out[LEDS])
             }
             break;
         }
+        case Id::UPDATE:
+        {
+            // one LED per 100 / 18 %, clockwise from LED 0; the rest breathe dark red
+            uint8_t lit = args.percent <= 100 ? (uint8_t)(args.percent * LEDS / 100) : 0;
+            float back = breathe(t, BREATHE_GREEN_MS, UPDATE_FLOOR) * UPDATE_RED_PEAK;
+            for(uint8_t i = 0; i < LEDS; i++) {
+                if(i < lit) {
+                    set(out[i], *WHITE, 1.0f);
+                } else {
+                    set(out[i], *RED, back);
+                }
+            }
+            break;
+        }
+        case Id::UPDATE_VERIFY:
+            fill(out, *WHITE, breathe(t, BREATHE_GREEN_MS, UPDATE_FLOOR) * UPDATE_VERIFY_DIM);
+            break;
+
+        case Id::UPDATE_READY:
+            fill(out, *GREEN, UPDATE_READY_LEVEL);
+            break;
+
+        case Id::UPDATE_FAILED:
+            // on in the 1st, 3rd and 5th second; ended (the last frame) = dark
+            if(!ended && (t / UPDATE_BLINK_MS) % 2 == 0) {
+                fill(out, *RED, 1.0f);
+            }
+            break;
+
         default:
             break;
     }

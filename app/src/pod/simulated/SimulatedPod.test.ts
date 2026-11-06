@@ -128,6 +128,8 @@ describe("SimulatedPod (config API)", () => {
     expect(call(pod, { op: "pattern", name: "search" })).toMatchObject({ ok: true, durationMs: 0 });
     expect(call(pod, { op: "pattern", name: "selectCancel", fillMs: 1200 })).toMatchObject({ ok: true, pattern: "selectCancel", durationMs: 1200 });
     expect(call(pod, { op: "pattern", name: "lowBattery", percent: 12, podId: 1 })).toMatchObject({ ok: true, durationMs: 0 });
+    expect(call(pod, { op: "pattern", name: "update", percent: 50 })).toMatchObject({ ok: true, pattern: "update", durationMs: 0 });
+    expect(call(pod, { op: "pattern", name: "updateFailed" })).toMatchObject({ ok: true, durationMs: 6000 });
     expect(call(pod, { op: "pattern", name: "blink" })).toMatchObject({ ok: false, error: "bad_request" });
     expect(call(pod, { op: "pattern", name: "joined", podId: 5 })).toMatchObject({ ok: true, durationMs: 0 });
     expect(call(pod, { op: "pattern", name: "joined", podId: -1 })).toMatchObject({ ok: false, error: "bad_request" });

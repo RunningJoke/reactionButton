@@ -243,6 +243,14 @@ void LEDManager::playPattern(SystemPattern::Id id, const SystemPattern::Args& ar
     this->startPlayer(startUs);
 }
 
+void LEDManager::setPatternPercent(uint8_t percent)
+{
+    OutputGuard guard(this->outputMutex);
+    if(this->mode == Mode::PATTERN && this->pattern == SystemPattern::Id::UPDATE) {
+        this->patternArgs.percent = percent;
+    }
+}
+
 void LEDManager::startPlayer(int64_t startUs)
 {
     int64_t now = esp_timer_get_time();
@@ -283,7 +291,9 @@ void LEDManager::serviceEffect()
     // frame rate limit, except for the end frame (a countdown ends on time)
     uint32_t durationMs = this->playingDurationMs();
     bool ended = durationMs != 0 && now - this->effectStart >= (int64_t)durationMs * 1000;
-    if(!ended && now - this->lastFrameUs < MIN_FRAME_US) {
+    int64_t minFrameUs = this->mode == Mode::PATTERN && this->pattern == SystemPattern::Id::UPDATE ? UPDATE_FRAME_US
+                                                                                                    : MIN_FRAME_US;
+    if(!ended && now - this->lastFrameUs < minFrameUs) {
         return;
     }
     this->renderEffect(now);

@@ -54,7 +54,8 @@
       "unknown": "Etwas ist schiefgegangen.",
       "auth_required": "Dieser Pod ist mit einer PIN geschützt. Gib sie ein, um etwas zu ändern.",
       "auth_failed": "Falsche PIN. Warte 3 Sekunden, bevor du es noch einmal versuchst.",
-      "low_battery": "Ein Akku ist unter 5 %. Vor dem Start die Pods laden."
+      "low_battery": "Ein Akku ist unter 5 %. Vor dem Start die Pods laden.",
+      "ota_failed": "Der Pod hat das Firmware-Abbild abgelehnt. Die alte Firmware läuft weiter; die Aktualisierung noch einmal senden."
     },
     "kind": {
       "ble": "Bluetooth-Pod",
@@ -1698,6 +1699,7 @@
       "auth_required": "Der Pod braucht zuerst seine PIN.",
       "auth_failed": "Die PIN ist falsch. Einige Sekunden warten und erneut versuchen.",
       "low_battery": "Der Akku eines Pods ist unter 5 %. Vor dem Start laden.",
+      "ota_failed": "Der Pod hat das Firmware-Abbild abgelehnt. Die alte Firmware läuft weiter; die Aktualisierung noch einmal senden.",
       "protocol": "Der Pod hat eine Antwort geschickt, die die App nicht versteht."
     },
     "view": {
