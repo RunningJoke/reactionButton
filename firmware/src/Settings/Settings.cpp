@@ -96,13 +96,10 @@ void Settings::setOtaPending(uint8_t slot) {
     prefs.end();
 }
 
-uint8_t Settings::takeOtaPending() {
+uint8_t Settings::getOtaPending() {
     Preferences prefs;
-    prefs.begin(NAMESPACE, false);
+    prefs.begin(NAMESPACE, true);
     uint8_t slot = prefs.getUChar(KEY_OTA_PENDING, 0);
-    if(slot != 0) {
-        prefs.putUChar(KEY_OTA_PENDING, 0);
-    }
     prefs.end();
     return slot;
 }

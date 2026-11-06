@@ -1,5 +1,7 @@
 #include "Ota.h"
 #include <esp_ota_ops.h>
+#include <SPIFFS.h>
+#include <NimBLEDevice.h>
 #include <esp_partition.h>
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
@@ -8,6 +10,8 @@
 #include "Roles/RoleManager.h"
 #include "Settings/Settings.h"
 #include "Battery/Battery.h"
+#include "Link/EspNowLink.h"
+#include "Config/Console.h"
 
 using namespace OtaRules;
 
@@ -20,6 +24,10 @@ namespace {
     const uint8_t RESULT_NONE = 0, RESULT_OK = 1, RESULT_ROLLED_BACK = 2;
     const size_t MAX_BASE64 = (Ota::MAX_CHUNK + 2) / 3 * 4;
     const size_t MAX_VERSION = 31;
+
+    // An image that was just activated must stay up this long and pass selfTest() before it is marked valid (#124)
+    const uint32_t SELF_TEST_MS = 15000;
+    bool onTrial = false;           // the running image is PENDING_VERIFY: the bootloader drops it at the next reset
 
     State state = State::IDLE;
     const esp_partition_t* target = nullptr;
@@ -34,6 +42,38 @@ namespace {
 
     int slotIndex(const esp_partition_t* partition) {
         return partition == nullptr ? 0 : partition->subtype - ESP_PARTITION_SUBTYPE_APP_OTA_MIN + 1;
+    }
+
+    bool runningOnTrial() {
+        esp_ota_img_states_t imageState;
+        return esp_ota_get_state_partition(esp_ota_get_running_partition(), &imageState) == ESP_OK
+            && imageState == ESP_OTA_IMG_PENDING_VERIFY;
+    }
+
+    // What must be up in every ordinary situation: no phone, no peripheral, no program is not a failure.
+    // The central's ESP-NOW radio is off in the menu (#122), so it is not tested there; its BLE service is.
+    bool selfTest() {
+        IRole* role = RoleManager::getManager()->current();
+        if(role == nullptr || SPIFFS.totalBytes() == 0) {
+            return false;
+        }
+        return strcmp(role->name(), "central") == 0 ? NimBLEDevice::getInitialized() : EspNowLink::get().isStarted();
+    }
+
+    // Verdict on an image on trial. Nothing to roll back to (USB-flashed pod, other slot erased): the call returns
+    // and the image is kept, so the pod never boot-loops.
+    void judge() {
+        onTrial = false;
+        if(!selfTest()) {
+            Console.println("OTA self-test failed, rolling back");
+            esp_ota_mark_app_invalid_rollback_and_reboot();
+            Console.println("OTA rollback impossible, keeping this image");
+        }
+        if(Settings::getOtaPending() != 0) {
+            Settings::setOtaResult(RESULT_OK);
+            Settings::setOtaPending(0);
+        }
+        esp_ota_mark_app_valid_cancel_rollback();
     }
 
     void restoreRing() {
@@ -82,15 +122,38 @@ bool Ota::busy() {
     return inProgress(state);
 }
 
+// lastResult: otaActivate leaves the slot in NVS (pending). The boot after it settles the result:
+//  - the slot runs and is on trial: wait, service() decides after the self-test;
+//  - the slot runs and is valid: ok;
+//  - another slot runs and the bootloader has marked the pending one invalid or aborted (panic, reset inside
+//    the trial window, failed self-test): rolledBack. The invalid-slot check keeps a stale entry from a pod
+//    that was flashed over USB in between from reporting a rollback.
+// Kept until the next otaBegin.
 void Ota::boot() {
-    uint8_t pending = Settings::takeOtaPending();
-    if(pending != 0) {
-        Settings::setOtaResult(pending == slotIndex(esp_ota_get_running_partition()) ? RESULT_OK : RESULT_ROLLED_BACK);
+    onTrial = runningOnTrial();
+    uint8_t pending = Settings::getOtaPending();
+    if(pending == 0 || (pending == slotIndex(esp_ota_get_running_partition()) && onTrial)) {
+        return;
     }
+    if(pending == slotIndex(esp_ota_get_running_partition())) {
+        Settings::setOtaResult(RESULT_OK);
+    } else if(slotIndex(esp_ota_get_last_invalid_partition()) == pending) {
+        Settings::setOtaResult(RESULT_ROLLED_BACK);
+    }
+    Settings::setOtaPending(0);
+}
+
+// Replaces the weak, unconditional one in the Arduino core (esp32-hal-misc.c): initArduino() then leaves a
+// PENDING_VERIFY image alone and judge() decides.
+extern "C" bool verifyRollbackLater() {
+    return true;
 }
 
 void Ota::service() {
     uint32_t now = millis();
+    if(onTrial && now >= SELF_TEST_MS) {
+        judge();
+    }
     if(inProgress(state) && expired(now, lastActivityMs)) {
         reset();
         restoreRing();
@@ -127,6 +190,10 @@ void Ota::opBegin(JsonObjectConst request, JsonDocument& response) {
             String("battery at ") + Battery::percent() + " %, an update needs " + MIN_BATTERY_PERCENT + " %");
         return;
     }
+    if(onTrial) {
+        ConfigApi::setError(response, "busy", "the running firmware is still being tested (15 s after an update), try again");
+        return;
+    }
     const esp_partition_t* slot = esp_ota_get_next_update_partition(nullptr);
     if(slot == nullptr) {
         ConfigApi::setError(response, "storage", "no slot for an update");
@@ -141,6 +208,7 @@ void Ota::opBegin(JsonObjectConst request, JsonDocument& response) {
     restoreAtMs = 0;
     if(!resumes(state, total, sha, size, hex)) {
         reset();
+        Settings::setOtaResult(RESULT_NONE);
         esp_err_t err = esp_ota_begin(slot, ERASE_SEQUENTIAL ? OTA_WITH_SEQUENTIAL_WRITES : size, &handle);
         if(err != ESP_OK) {
             handle = 0;

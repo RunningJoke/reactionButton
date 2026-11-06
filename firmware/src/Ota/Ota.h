@@ -18,10 +18,10 @@ namespace Ota {
 
     bool isOp(const char* op);
 
-    // Call at boot: the outcome of the last otaActivate (info.ota.lastResult)
+    // Call at boot: settles info.ota.lastResult and notes whether this image is on trial (PENDING_VERIFY, #124)
     void boot();
 
-    // Once per loop pass: discards an update that has been idle for too long, gives the ring back after UPDATE_FAILED
+    // Once per loop pass: runs the self-test of an image on trial once, discards an update that has been idle for too long, gives the ring back after UPDATE_FAILED
     void service();
 
     // An update has begun and is not over (receiving, verifying or verified): no power-off, no program selection
