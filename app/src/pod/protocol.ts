@@ -20,7 +20,8 @@ export type ApiErrorCode =
   | "not_paused" /** resume: no phone pause is active (firmware ≥ 2.12) */
   | "auth_required" /** a PIN is set: put / delete / setName need `auth` first (firmware ≥ 2.6) */
   | "auth_failed" /** wrong PIN, or a retry within 3 s */
-  | "low_battery"; /** start: the central or a pod is below 5 % (firmware ≥ 2.13, battery) */
+  | "low_battery" /** start: the central or a pod is below 5 % (firmware ≥ 2.13, battery); otaBegin: below 30 % (firmware ≥ 2.19) */
+  | "ota_failed"; /** firmware update: the image or its hash was rejected, nothing activated (firmware ≥ 2.19, ota) */
 
 /** Errors raised by the app itself while talking to a pod. */
 export type ClientErrorCode =
@@ -70,6 +71,8 @@ export type InfoResponse = ResponseBase & {
   programFormat?: number;
   /** optional API features (firmware ≥ 2.4; missing = none) */
   features?: PodFeature[];
+  /** firmware ≥ 2.19 (feature `ota`): the update slots; `lastResult` is the outcome of the last `otaActivate` */
+  ota?: { slotSize: number; running: string; lastResult: "none" | "ok" | "rolledBack" };
 };
 
 /**
@@ -79,6 +82,7 @@ export type InfoResponse = ResponseBase & {
  * `identify` (firmware ≥ 2.13): the op `blink` (find a pod); `status.pods[]` has `number` and `color`.
  * `battery` (firmware ≥ 2.13): `battery` in `status` and `pods[]` (BatteryLevel).
  * `patterns` (firmware ≥ 2.15): the op `pattern` (PatternName) plays a system pattern on a pod.
+ * `ota` (firmware ≥ 2.19): the ops `otaBegin`, `otaWrite`, `otaEnd`, `otaActivate`, `otaAbort`, `info.ota`, `status.ota`.
  */
 export type PodFeature = "validateInline" | "listMeta" | "reports" | "remote" | "pause" | "liveBle" | "identify" | "battery" | "patterns" | (string & {});
 
@@ -151,6 +155,8 @@ export type StatusResponse = ResponseBase & {
   phonePaused?: boolean;
   /** firmware ≥ 2.12 */
   heap?: { free: number; minFree: number };
+  /** firmware ≥ 2.19 (feature `ota`): the update in progress */
+  ota?: OtaStatus;
   /** central, firmware ≥ 2.12: BLE connection; intervalMs 0 = not known yet */
   ble?: { connected: boolean; intervalMs: number };
   /** central, firmware ≥ 2.11: who trains now ("" = none) */
@@ -178,6 +184,15 @@ export type PodStatus = {
   /** firmware ≥ 2.13: missing = unknown (older pod or no reading) */
   battery?: BatteryLevel;
 };
+
+/** Firmware update over the config API (firmware ≥ 2.19, feature `ota`; config-api.md "Firmware update"). */
+export type OtaStatus = { state: "idle" | "receiving" | "verifying" | "ready" | "failed"; received: number; total: number; version: string };
+export type OtaBeginRequest = { size: number; sha256: string; version?: string };
+/** `received` > 0: the same image was open and continues there. Chunks are base64 of up to `maxChunk` raw bytes. */
+export type OtaBeginResponse = ResponseBase & { slotSize: number; maxChunk: number; received: number };
+export type OtaWriteRequest = { offset: number; data: string };
+/** `bad_offset` also carries `received` */
+export type OtaWriteResponse = ResponseBase & { received: number };
 
 /** `blink` (firmware ≥ 2.13, feature `identify`). `pod` -1 = the central itself. */
 export type BlinkResponse = ResponseBase & { pod: number; durationMs: number };

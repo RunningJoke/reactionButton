@@ -8,6 +8,7 @@
 #include "LEDManager/SystemPattern.h"
 #include "LEDManager/Identity.h"
 #include "Battery/Battery.h"
+#include "Ota/Ota.h"
 #include <WiFi.h>
 
 using namespace Protocol;
@@ -46,7 +47,12 @@ void PeripheralRole::run() {
 
     RxFrame frame;
     while(this->link.receive(frame)) {
-        this->handleFrame(frame);
+        if(!Ota::busy()) {      // a firmware update owns the pod: the central is ignored, claimed or not
+            this->handleFrame(frame);
+        }
+    }
+    if(Ota::busy()) {
+        return;
     }
 
     int64_t now = esp_timer_get_time();

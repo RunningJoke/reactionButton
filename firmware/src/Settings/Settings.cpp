@@ -9,6 +9,8 @@ static const char* KEY_BOOT_ROLE = "bootRole";
 static const char* KEY_STORE_HASH = "storeHash";
 static const char* KEY_SET_NAME = "setName";
 static const char* KEY_PIN = "pin";
+static const char* KEY_OTA_PENDING = "otaPend";
+static const char* KEY_OTA_RESULT = "otaRes";
 
 static uint32_t nameRevision = 0;
 
@@ -85,6 +87,39 @@ uint8_t Settings::takeBootRole() {
     }
     prefs.end();
     return role;
+}
+
+void Settings::setOtaPending(uint8_t slot) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    prefs.putUChar(KEY_OTA_PENDING, slot);
+    prefs.end();
+}
+
+uint8_t Settings::takeOtaPending() {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    uint8_t slot = prefs.getUChar(KEY_OTA_PENDING, 0);
+    if(slot != 0) {
+        prefs.putUChar(KEY_OTA_PENDING, 0);
+    }
+    prefs.end();
+    return slot;
+}
+
+void Settings::setOtaResult(uint8_t result) {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, false);
+    prefs.putUChar(KEY_OTA_RESULT, result);
+    prefs.end();
+}
+
+uint8_t Settings::getOtaResult() {
+    Preferences prefs;
+    prefs.begin(NAMESPACE, true);
+    uint8_t result = prefs.getUChar(KEY_OTA_RESULT, 0);
+    prefs.end();
+    return result;
 }
 
 uint32_t Settings::getStoreHash() {

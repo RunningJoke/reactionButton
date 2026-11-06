@@ -14,6 +14,7 @@
 #include "Roles/RoleManager.h"
 #include "Diagnostics/Diag.h"
 #include "Battery/Battery.h"
+#include "Ota/Ota.h"
 
 static const char* TAG = "CONFIGAPI";
 
@@ -122,6 +123,11 @@ void ConfigApi::handleRequest(const std::string& text) {
     else if(strcmp(op, "setName") == 0) this->opSetName(req, response);
     else if(strcmp(op, "auth") == 0) this->opAuth(req, response);
     else if(strcmp(op, "setPin") == 0) this->opSetPin(req, response);
+    else if(Ota::isOp(op)) {
+        if(this->opOta(op, req, response)) {
+            return;     // response already sent, the pod restarts
+        }
+    }
     else if(strcmp(op, "reboot") == 0) {
         this->opReboot(req, response);
         return;     // response already sent, the pod restarts
@@ -138,7 +144,8 @@ void ConfigApi::opHelp(JsonDocument& response) {
     response["ok"] = true;
     JsonArray ops = response["ops"].to<JsonArray>();
     const char* common[] = {"help", "status", "info", "list", "get", "put", "delete", "validate",
-                            "results", "trace", "reboot", "setName", "auth"};
+                            "results", "trace", "reboot", "setName", "auth", "otaBegin", "otaWrite", "otaEnd",
+                            "otaActivate", "otaAbort"};
     for(const char* op : common) ops.add(op);
     if(this->isSerial()) {
         ops.add("setPin");
@@ -174,6 +181,7 @@ void ConfigApi::opStatus(JsonDocument& response) {
     JsonObject heap = response["heap"].to<JsonObject>();
     heap["free"] = (uint32_t)esp_get_free_heap_size();
     heap["minFree"] = (uint32_t)esp_get_minimum_free_heap_size();
+    Ota::describeStatus(response.as<JsonObject>());
     Diag::describe(response["lastReset"].to<JsonObject>());
     Battery::describe(response.as<JsonObject>());      // missing while the level is unknown
     AutoPowerOff::describe(response.as<JsonObject>());
@@ -217,6 +225,8 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("battery");
     features.add("patterns");
     features.add("startVars");
+    features.add("ota");
+    Ota::describeInfo(response.as<JsonObject>());
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
         types.add(BlockFactory::typeName(i));
@@ -251,10 +261,29 @@ void ConfigApi::opReboot(JsonObjectConst request, JsonDocument& response) {
     Settings::setBootRole(bootRole);
     response["ok"] = true;
     response["role"] = role;
+    this->sendAndRestart(response);
+}
+
+void ConfigApi::sendAndRestart(JsonDocument& response) {
     this->send(response);
     Console.flush();
     delay(200);
     esp_restart();
+}
+
+bool ConfigApi::opOta(const char* op, JsonObjectConst request, JsonDocument& response) {
+    if(!this->checkWriteAccess(response)) {
+        return false;
+    }
+    if(strcmp(op, "otaBegin") == 0) Ota::opBegin(request, response);
+    else if(strcmp(op, "otaWrite") == 0) Ota::opWrite(request, response);
+    else if(strcmp(op, "otaEnd") == 0) Ota::opEnd(response);
+    else if(strcmp(op, "otaAbort") == 0) Ota::opAbort(response);
+    else if(Ota::opActivate(response)) {
+        this->sendAndRestart(response);
+        return true;
+    }
+    return false;
 }
 
 void ConfigApi::opSetName(JsonObjectConst request, JsonDocument& response) {

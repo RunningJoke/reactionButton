@@ -9,6 +9,7 @@
 #include "Settings/Settings.h"
 #include "Diagnostics/Diag.h"
 #include "Link/EspNowLink.h"
+#include "Ota/Ota.h"
 
 uint64_t timestamp = 0;
 
@@ -30,6 +31,7 @@ void setup() {
   consoleBegin();
   SPIFFS.begin(true);
   ProgramStore::get().begin();
+  Ota::boot();
 
 
   pinMode(PIN_BUTTON_PRESS , INPUT);

@@ -8,6 +8,7 @@
 #include "Diagnostics/Diag.h"
 #include "LEDManager/LEDManager.h"
 #include "Power/AutoPowerOff.h"
+#include "Ota/Ota.h"
 
 RoleManager* RoleManager::manager = nullptr;
 
@@ -46,7 +47,8 @@ void RoleManager::run() {
     }
     // after the role: an effect started in this pass already showed its first frame
     LEDManager::getManager()->service();
-    AutoPowerOff::service(this->role != nullptr && this->role->powerOffAllowed());
+    Ota::service();
+    AutoPowerOff::service(this->role != nullptr && this->role->powerOffAllowed() && !Ota::busy());
 }
 
 bool RoleManager::idle() const {

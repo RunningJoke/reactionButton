@@ -45,6 +45,8 @@ class CentralRole : public IRole {
         bool idle() const override { return this->state == State::MENU || this->state == State::CONFIRM || this->state == State::ERROR; }
         // the menu without a phone: nobody is configuring the pod, and no game is prepared
         bool powerOffAllowed() const override { return this->state == State::MENU && !this->phone.connected(); }
+        bool otaAllowed() const override { return this->state == State::MENU; }
+        void otaEnded() override;
 
     private:
         enum class State : uint8_t { MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR };

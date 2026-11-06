@@ -59,6 +59,10 @@ class ConfigApi {
         void opSetName(JsonObjectConst request, JsonDocument& response);
         void opAuth(JsonObjectConst request, JsonDocument& response);
         void opSetPin(JsonObjectConst request, JsonDocument& response);
+        // otaBegin ... otaAbort (Ota); true if the response is already sent and the pod restarts
+        bool opOta(const char* op, JsonObjectConst request, JsonDocument& response);
+        // answers, then restarts the pod (reboot, otaActivate)
+        void sendAndRestart(JsonDocument& response);
 
         // true if a write op may run; otherwise sets the auth_required error
         bool checkWriteAccess(JsonDocument& response);

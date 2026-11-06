@@ -17,6 +17,7 @@
 #include "Results/Results.h"
 #include "Block/CommunicateBlock/CommunicateBlock.h"
 #include "Battery/Battery.h"
+#include "Ota/Ota.h"
 
 namespace {
     const int64_t SELECT_DELAY_US = 200000;     // a press shorter than this shows no SELECT (light language, #82)
@@ -107,6 +108,9 @@ void CentralRole::run() {
 
     switch(this->state) {
         case State::MENU:
+            if(Ota::busy()) {
+                break;      // a firmware update owns the ring and the button (#123)
+            }
             if(ProgramStore::get().hash() != this->menuStoreHash) {
                 this->reloadMenu();     // programs changed via BLE or serial
             }
@@ -518,7 +522,21 @@ void CentralRole::opPrograms(JsonDocument& response) {
     }
 }
 
+// A firmware update is over or discarded (Ota): the menu ring again; updateMenuRing then plays the MENU pattern
+void CentralRole::otaEnded() {
+    LEDManager* leds = LEDManager::getManager();
+    if(this->state == State::MENU && this->catalog.size() > 0) {
+        this->catalog.showMenu(this->selectedModel, *leds);
+    } else {
+        leds->turnOff();
+    }
+}
+
 void CentralRole::opSelect(JsonObjectConst request, JsonDocument& response) {
+    if(Ota::busy()) {
+        ConfigApi::setError(response, "busy", "a firmware update is running, send otaAbort first");
+        return;
+    }
     if(this->state != State::MENU) {
         ConfigApi::setError(response, "busy", String("a program is already selected (state ") + stateName(this->state) + "), use 'stop' first");
         return;

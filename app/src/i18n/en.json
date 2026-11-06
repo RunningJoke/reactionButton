@@ -54,7 +54,8 @@
       "unknown": "Something went wrong.",
       "auth_required": "This pod is protected with a PIN. Enter it to make changes.",
       "auth_failed": "Wrong PIN. Wait 3 seconds before you try again.",
-      "low_battery": "A battery is below 5 %. Charge the pods before you start."
+      "low_battery": "A battery is below 5 %. Charge the pods before you start.",
+      "ota_failed": "The pod rejected the firmware image. The old firmware keeps running; send the update again."
     },
     "kind": {
       "ble": "Bluetooth pod",
@@ -1698,6 +1699,7 @@
       "auth_required": "The pod needs its PIN first.",
       "auth_failed": "The PIN is wrong. Wait a few seconds and try again.",
       "low_battery": "A pod's battery is below 5 %. Charge it before the start.",
+      "ota_failed": "The pod rejected the firmware image. The old firmware keeps running; send the update again.",
       "protocol": "The pod sent an answer the app does not understand."
     },
     "view": {
