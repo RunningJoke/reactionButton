@@ -12,9 +12,9 @@
 using namespace OtaRules;
 
 namespace {
-    // How the slot is erased. Sequential: esp_ota_begin returns at once and each 64 KB block is erased just
-    // before it is written (a gap of 46 to 69 ms, #122). It needs the lossless, in-order stream of this path.
-    // Switching to the full-size erase (a 4 s wait in otaBegin) is this one line.
+    // How the slot is erased. Sequential: esp_ota_begin returns at once and esp_ota_write erases each 4 KB sector
+    // just before writing it (1.1 MB over USB: 30 s). It needs the lossless, in-order stream of this path.
+    // Full-size erase (1.1 MB over USB: 4.4 s wait in otaBegin + 13 s) is this one line; decide with the BLE numbers (#122).
     const bool ERASE_SEQUENTIAL = true;
 
     const uint8_t RESULT_NONE = 0, RESULT_OK = 1, RESULT_ROLLED_BACK = 2;
@@ -144,7 +144,7 @@ void Ota::opBegin(JsonObjectConst request, JsonDocument& response) {
         esp_err_t err = esp_ota_begin(slot, ERASE_SEQUENTIAL ? OTA_WITH_SEQUENTIAL_WRITES : size, &handle);
         if(err != ESP_OK) {
             handle = 0;
-            ConfigApi::setError(response, "storage", String("esp_ota_begin: ") + esp_err_to_name(err));
+            fail(response, "storage", String("esp_ota_begin: ") + esp_err_to_name(err));   // also ends a replaced update's ring
             return;
         }
         target = slot;
