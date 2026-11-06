@@ -8,6 +8,8 @@
 static const char* TAG = "ESPNOW";
 static const uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+volatile uint32_t EspNowLink::bcastOk = 0, EspNowLink::bcastFail = 0;
+
 EspNowLink& EspNowLink::get() {
     static EspNowLink link;
     return link;
@@ -69,7 +71,11 @@ void EspNowLink::onReceive(const uint8_t* mac, const uint8_t* data, int len) {
 
 void EspNowLink::onSent(const uint8_t* mac, esp_now_send_status_t status) {
     EspNowLink& link = EspNowLink::get();
-    if(mac == nullptr || link.txStatusQueue == nullptr || EspNowLink::sameMac(mac, BROADCAST_MAC)) {
+    if(mac != nullptr && EspNowLink::sameMac(mac, BROADCAST_MAC)) {
+        if(status == ESP_NOW_SEND_SUCCESS) bcastOk++; else bcastFail++;
+        return;
+    }
+    if(mac == nullptr || link.txStatusQueue == nullptr) {
         return;
     }
     TxStatus result;

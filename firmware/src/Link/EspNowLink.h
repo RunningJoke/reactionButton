@@ -31,6 +31,7 @@ struct RxFrame {
 class EspNowLink {
     public:
         static EspNowLink& get();
+        static volatile uint32_t bcastOk, bcastFail;   // spike #122: broadcast send callbacks
 
         bool begin(uint8_t channel);
 

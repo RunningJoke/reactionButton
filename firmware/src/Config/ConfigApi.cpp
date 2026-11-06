@@ -14,6 +14,7 @@
 #include "Roles/RoleManager.h"
 #include "Diagnostics/Diag.h"
 #include "Battery/Battery.h"
+#include "OtaTest/OtaTest.h"
 
 static const char* TAG = "CONFIGAPI";
 
@@ -126,6 +127,7 @@ void ConfigApi::handleRequest(const std::string& text) {
         this->opReboot(req, response);
         return;     // response already sent, the pod restarts
     }
+    else if(OtaTest::handle(op, req, response)) {}
     else if(role == nullptr || !role->control(op, req, response)) {
         setError(response, "bad_request", String("unknown op '") + op + "' (try 'help')");
     }
