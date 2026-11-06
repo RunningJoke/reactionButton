@@ -28,7 +28,7 @@
  *                 is connected (`breathing`)
  *   UPDATE        white bar fills clockwise over LEDs 0 ... 17, one LED per 100 / 18 % (`percent`, see
  *                 updateProgress); the LEDs not filled breathe dark red (2200 ms)
- *   UPDATE_VERIFY full white bar, dimmed, breathing (image verified)
+ *   UPDATE_VERIFY full white bar, dimmed, breathing (checking the image)
  *   UPDATE_READY  whole ring static green at 30 % (image verified, waiting for the other pods)
  *   UPDATE_FAILED red blink three times (1000 on / 1000 off), then dark; the caller shows the normal state again
  *
