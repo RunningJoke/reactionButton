@@ -20,6 +20,7 @@ belong in the menu. Requires: pip install bleak
     python tools/reactpod_config.py scan               # list the sets in range
     python tools/reactpod_config.py live               # stay connected through the game (firmware >= 2.12)
     python tools/reactpod_config.py live --auto --athlete ath_42   # continue every communicate block
+    python tools/reactpod_config.py ota firmware/.pio/build/NewBoard/firmware.bin [--no-activate]   # firmware >= 2.19
 
 `live` prints the `state` and `report` events, fetches and acknowledges the reports (also after
 a reconnect), and reads keys from stdin: c continue, r repeat, s stop, p pause, u resume,
@@ -45,6 +46,8 @@ from bleak import BleakClient, BleakScanner
 from bleak.exc import BleakError
 
 from reactpod_format import report_line
+from reactpod_ota import (OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
+                          result_lines, run_async)
 
 SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab"
 COMMAND_UUID = "12345678-1234-1234-1234-1234567890b1"
@@ -121,7 +124,7 @@ class ReactPodConfig:
             else:
                 self.responses.put_nowait(message)
 
-    async def request(self, op: str, **fields) -> dict:
+    async def request(self, op: str, check: bool = True, **fields) -> dict:
         async with self.lock:
             request_id = self.next_id
             self.next_id += 1
@@ -135,7 +138,7 @@ class ReactPodConfig:
             while True:
                 response = await asyncio.wait_for(self.responses.get(), timeout=10)
                 if response.get("id") in (request_id, None):
-                    if not response.get("ok"):
+                    if check and not response.get("ok"):
                         raise PodError(op, response)
                     return response
 
@@ -414,6 +417,72 @@ class Live:
                 say(f"[{op}] ok {json.dumps(details, ensure_ascii=False)}".rstrip())
 
 
+OTA_RECONNECT_TIMEOUT = 120     # s to wait for the pod to answer again after otaActivate
+
+
+async def wait_for_pod(address, args) -> dict:
+    """After otaActivate the pod restarts and drops BLE: connects again and returns its info (None on timeout)."""
+    deadline = time.time() + OTA_RECONNECT_TIMEOUT
+    while time.time() < deadline:
+        await asyncio.sleep(2)
+        try:
+            device = await find_device(address, args.name)
+            if device is None:
+                continue
+            async with BleakClient(device) as client:
+                pod = ReactPodConfig(client)
+                await pod.start()
+                if args.pin:
+                    await pod.request("auth", pin=args.pin)
+                return pod.info
+        except (ConnectionError, BleakError, asyncio.TimeoutError, OSError, PodError):
+            continue
+    return None
+
+
+async def ota(args) -> int:
+    """Firmware update over BLE (fw >= 2.19), the same steps as `reactpod_serial.py ota`."""
+    image = load_image(args.image)
+    device = await find_device(args.address, args.name)
+    if device is None:
+        sys.exit("No ReactPod in configuration mode found (boot the central with the button held)")
+    address = getattr(device, "address", device)     # the restart must find this pod, not another set
+    async with BleakClient(device) as client:
+        pod = ReactPodConfig(client)
+        await pod.start()
+        if args.pin:
+            await pod.request("auth", pin=args.pin)
+        if not ota_supported(pod.info):
+            print(f"firmware {pod.info.get('firmware')} cannot update over the config API (needs 2.19)", file=sys.stderr)
+            return 1
+        running = pod.info.get("ota", {}).get("running")
+        print(f"image {args.image}: {len(image)} bytes; running slot {running}, firmware {pod.info.get('firmware')}")
+        progress = Progress()
+        started = time.time()
+        try:
+            await run_async(ota_steps(image, activate=not args.no_activate, progress=progress),
+                            lambda op, fields: pod.request(op, check=False, **fields))
+        except OtaError as error:
+            for line in failure_lines(error):
+                print(line, file=sys.stderr)
+            return 1
+    if args.no_activate:
+        print(f"verified in {progress.elapsed:.1f} s; not activated (the update stays ready, "
+              "run ota again without --no-activate to activate it)")
+        return 0
+    print("activating; the pod restarts ...")
+    info = await wait_for_pod(address, args)
+    if info is None:
+        print("the pod did not answer after the restart; check it with info", file=sys.stderr)
+        return 1
+    lines, code = result_lines(running, info)
+    print(f"written and verified in {progress.elapsed:.1f} s, total {time.time() - started:.1f} s")
+    print("\n".join(lines))
+    if code:
+        print("the new firmware did not start; the pod rolled back to the old one", file=sys.stderr)
+    return code
+
+
 async def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--address")
@@ -434,6 +503,9 @@ async def main():
     p = sub.add_parser("live", help="stay connected through the game (firmware >= 2.12): events, reports, keys")
     p.add_argument("--auto", action="store_true", help="answer every waiting communicate block with continue")
     p.add_argument("--athlete", help="athlete id set at every connect (session op)")
+    p = sub.add_parser("ota", help="update the firmware from a firmware.bin (firmware >= 2.19)")
+    p.add_argument("image", help="firmware.bin, e.g. firmware/.pio/build/NewBoard/firmware.bin")
+    p.add_argument("--no-activate", action="store_true", help="stop after otaEnd: verified, not activated")
     args = parser.parse_args()
 
     if args.command == "scan":
@@ -442,6 +514,8 @@ async def main():
     if args.command == "live":
         await Live(args).run()
         return
+    if args.command == "ota":
+        sys.exit(await ota(args))
 
     device = await find_device(args.address, args.name)
     if device is None:

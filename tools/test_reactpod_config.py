@@ -8,7 +8,9 @@ Needs bleak (pip install bleak), like the client itself.
     python tools/test_reactpod_config.py
 """
 import asyncio
+import base64
 import contextlib
+import hashlib
 import io
 import json
 import sys
@@ -17,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reactpod_config as config  # noqa: E402
+import reactpod_ota as ota  # noqa: E402
 from reactpod_format import report_line  # noqa: E402
 
 SAMPLE_REPORT = {
@@ -272,6 +275,162 @@ class FetchTests(unittest.TestCase):
         self.assertFalse(asyncio.run(config.answer_continue(request, out.append)))
         self.assertEqual(len(attempts), 1)
         self.assertIn("busy", out[0])
+
+
+def fail(code: str, message: str = "", **extra) -> dict:
+    return {"ok": False, "error": code, "message": message, **extra}
+
+
+class FakeOtaPod:
+    """The ota ops as the firmware answers them (config-api.md "Firmware update"), one update at a time.
+    `fail_writes_after`: the next otaWrite after that many good ones answers bad_offset.
+    `begin_error`: otaBegin answers this error code (a pod not in the menu answers busy)."""
+
+    def __init__(self, fail_writes_after=None, begin_error=None):
+        self.state = "idle"
+        self.size = self.sha = None
+        self.data = bytearray()
+        self.ops = []
+        self.writes = 0
+        self.activated = False
+        self.fail_writes_after = fail_writes_after
+        self.begin_error = begin_error
+
+    @classmethod
+    def partial(cls, image: bytes, received: int):
+        """A pod with an unfinished upload of `image` (the connection dropped after `received` bytes)."""
+        pod = cls()
+        pod.state, pod.size, pod.sha = "receiving", len(image), hashlib.sha256(image).hexdigest()
+        pod.data = bytearray(image[:received])
+        return pod
+
+    def handle(self, op: str, fields: dict) -> dict:
+        self.ops.append(op)
+        if op == "otaBegin":
+            if self.begin_error:
+                return fail(self.begin_error, "not allowed now")
+            if not (self.state in ("receiving", "ready") and fields["size"] == self.size and fields["sha256"] == self.sha):
+                self.state, self.size, self.sha, self.data = "receiving", fields["size"], fields["sha256"], bytearray()
+            return {"ok": True, "slotSize": 1835008, "maxChunk": 3072, "received": len(self.data)}
+        if op == "otaWrite":
+            if self.state != "receiving":
+                return fail("not_ready", "no update is receiving")
+            if self.fail_writes_after is not None and self.writes >= self.fail_writes_after:
+                return fail("bad_offset", "offset is not the bytes received", received=len(self.data))
+            if fields["offset"] != len(self.data):
+                return fail("bad_offset", "offset is not the bytes received", received=len(self.data))
+            self.data += base64.b64decode(fields["data"])
+            self.writes += 1
+            return {"ok": True, "received": len(self.data)}
+        if op == "status":
+            return {"ok": True, "ota": {"state": self.state, "received": len(self.data), "total": self.size or 0}}
+        if op == "otaEnd":
+            if self.state == "ready":
+                return fail("not_ready", "update state ready")
+            if len(self.data) != self.size:
+                return fail("not_ready", "not all bytes received")
+            if hashlib.sha256(self.data).hexdigest() != self.sha:
+                self.state = "failed"
+                return fail("ota_failed", "sha256 differs")
+            self.state = "ready"
+            return {"ok": True}
+        if op == "otaActivate":
+            if self.state != "ready":
+                return fail("not_ready", "no verified update")
+            self.activated = True
+            return {"ok": True}
+        if op == "otaAbort":
+            self.state, self.data = "idle", bytearray()
+            return {"ok": True}
+        return fail("unknown_op", op)
+
+
+def run_over_ble(image: bytes, pod: FakeOtaPod, activate: bool = True):
+    """The async driver (reactpod_config.py) over the fake BLE link."""
+    link = FakeLink(lambda request: line({"op": request["op"], "id": request["id"],
+                                          **pod.handle(request["op"], {k: v for k, v in request.items()
+                                                                       if k not in ("op", "id")})}))
+    cfg = config.ReactPodConfig(link)
+    link.pod = cfg
+
+    async def scenario():
+        return await ota.run_async(ota.ota_steps(image, activate=activate),
+                                   lambda op, fields: cfg.request(op, check=False, **fields))
+    return asyncio.run(scenario())
+
+
+def run_over_serial(image: bytes, pod: FakeOtaPod, activate: bool = True):
+    """The sync driver (reactpod_serial.py) over a fake USB request function."""
+    return ota.run_sync(ota.ota_steps(image, activate=activate), lambda op, fields: pod.handle(op, fields))
+
+
+IMAGE = bytes(range(256)) * 20      # 5120 bytes: writes of 2048, 2048, 1024 (chunks capped at 2048)
+
+
+class OtaTests(unittest.TestCase):
+    def test_normal_run_uploads_verifies_and_activates(self):
+        for name, run in (("ble", run_over_ble), ("usb", run_over_serial)):
+            with self.subTest(transport=name):
+                pod = FakeOtaPod()
+                self.assertEqual(run(IMAGE, pod), "activated")
+                self.assertEqual(pod.ops, ["otaBegin", "otaWrite", "otaWrite", "otaWrite", "otaEnd", "otaActivate"])
+                self.assertEqual(bytes(pod.data), IMAGE)
+                self.assertTrue(pod.activated)
+
+    def test_begin_carries_size_and_sha256(self):
+        pod = FakeOtaPod()
+        seen = []
+
+        def request(op, fields):
+            seen.append((op, fields))
+            return pod.handle(op, fields)
+        ota.run_sync(ota.ota_steps(IMAGE), request)
+        self.assertEqual(seen[0], ("otaBegin", {"size": len(IMAGE), "sha256": hashlib.sha256(IMAGE).hexdigest()}))
+
+    def test_resume_continues_from_received(self):
+        pod = FakeOtaPod.partial(IMAGE, 3000)
+        self.assertEqual(run_over_ble(IMAGE, pod), "activated")
+        self.assertEqual(pod.ops, ["otaBegin", "otaWrite", "otaWrite", "otaEnd", "otaActivate"])
+        self.assertTrue(pod.activated)
+        self.assertEqual(bytes(pod.data), IMAGE)
+
+    def test_bad_offset_is_an_error_and_the_open_update_is_aborted(self):
+        pod = FakeOtaPod(fail_writes_after=1)
+        with self.assertRaises(ota.OtaError) as caught:
+            run_over_ble(IMAGE, pod)
+        self.assertEqual(caught.exception.code, "bad_offset")
+        self.assertIs(caught.exception.aborted, True)
+        self.assertEqual(pod.ops, ["otaBegin", "otaWrite", "otaWrite", "otaAbort"])
+        self.assertEqual(pod.state, "idle")
+        self.assertFalse(pod.activated)
+
+    def test_no_activate_stops_after_otaend(self):
+        pod = FakeOtaPod()
+        self.assertEqual(run_over_serial(IMAGE, pod, activate=False), "verified")
+        self.assertEqual(pod.ops[-1], "otaEnd")
+        self.assertEqual(pod.state, "ready")     # left ready, not aborted
+        self.assertFalse(pod.activated)
+
+    def test_rerun_after_no_activate_activates_without_otaend(self):
+        pod = FakeOtaPod()
+        self.assertEqual(run_over_serial(IMAGE, pod, activate=False), "verified")
+        self.assertEqual(run_over_serial(IMAGE, pod), "activated")
+        self.assertEqual(pod.ops[5:], ["otaBegin", "status", "otaActivate"])
+        self.assertTrue(pod.activated)
+
+    def test_failure_before_the_update_opens_sends_no_abort(self):
+        pod = FakeOtaPod(begin_error="busy")
+        with self.assertRaises(ota.OtaError) as caught:
+            run_over_serial(IMAGE, pod)
+        self.assertEqual(caught.exception.code, "busy")
+        self.assertIsNone(caught.exception.aborted)
+        self.assertEqual(pod.ops, ["otaBegin"])
+
+    def test_result_lines_flag_a_rollback(self):
+        lines, code = ota.result_lines("app0", {"firmware": "2.19", "ota": {"running": "app1", "lastResult": "ok"}})
+        self.assertEqual(code, 0)
+        self.assertIn("info.ota.running app1 (before: app0)", lines)
+        self.assertEqual(ota.result_lines("app1", {"ota": {"running": "app1", "lastResult": "rolledBack"}})[1], 1)
 
 
 if __name__ == "__main__":

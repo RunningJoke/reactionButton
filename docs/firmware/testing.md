@@ -20,7 +20,7 @@ responses cyan. Type ops (`status`, `programs`, `select 8`, `start`, `press`, `r
 ## 4. Single commands
 `status` · `reboot central|peripheral` (asks for RESET if needed) · `programs` · `select 8|/prog/duo.json|Duo`
 · `start` · `press` · `stop` (back to the menu in place, no reboot) · `push firmware/data` / `pull backup` · `results` · `trace on` ·
-`set-pin 1234`.
+`set-pin 1234` · `ota firmware.bin [--no-activate]` (§14).
 
 ## 5. Guided test
 `reactpod_serial.py --port COM4 --log test.log test --program /prog/duo.json --auto-press`: connects, makes
@@ -125,3 +125,16 @@ pio test -d firmware -e native -f test_link_frames   # one suite
 
 A module that needs the runtime (block classes, BlockManager, BlockFactory, LEDManager) is not built here:
 add it to `build_src_filter` only with its runtime stubs in `test/host_stubs.cpp`.
+
+## 14. Firmware update (`ota`, fw ≥ 2.19)
+`reactpod_serial.py --port COM3 ota firmware/.pio/build/NewBoard/firmware.bin [--no-activate]` (USB), and the
+same command in `reactpod_config.py` (BLE, central in the menu; `--name`, `--address`, `--pin` as for the other ops).
+Both use the steps of config-api "Firmware update" from `tools/reactpod_ota.py`: SHA-256, `otaBegin`, `otaWrite`
+chunks (2048 raw bytes, progress line every 5 %), `otaEnd`, `otaActivate`, wait for the restart, then print
+`info.firmware`, `info.ota.running` (before and after) and `info.ota.lastResult`; exit 1 on `rolledBack`.
+`--no-activate` stops after `otaEnd`: the image is verified and the update stays `ready` (`status.ota.state`).
+A failed step prints `update failed: <code>: <message>`, sends `otaAbort` while the update is open and exits 1.
+A run that is interrupted (Ctrl+C, cable) leaves the update open: the same command resumes it from `received`.
+Measured over USB with fw 2.19 (1.11 MB, 2048-byte chunks, 543 requests): upload 30 s at 37 kB/s, 34 s with
+the activation and the restart. The reader no longer waits 100 ms per answer (#122).
+Tests: `python tools/test_reactpod_config.py` (fake pod: normal run, resume, `bad_offset` with abort, `--no-activate`).
