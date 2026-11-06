@@ -26,6 +26,11 @@
  *   SLEEP         white drains anticlockwise with ease-out (1.6 s) while dimming to dark (2 s)
  *   MENU          the snapshot (the program's menu pattern) at system brightness; breathing while a phone
  *                 is connected (`breathing`)
+ *   UPDATE        white bar fills clockwise over LEDs 0 ... 17, one LED per 100 / 18 % (`percent`, see
+ *                 updateProgress); the LEDs not filled breathe dark red (2200 ms)
+ *   UPDATE_VERIFY full white bar, dimmed, breathing (image verified)
+ *   UPDATE_READY  whole ring static green at 30 % (image verified, waiting for the other pods)
+ *   UPDATE_FAILED red blink three times (1000 on / 1000 off), then dark; the caller shows the normal state again
  *
  * System brightness: patterns are for close range, so LEDManager shows them at half the game brightness
  * (SYSTEM_LEVEL); games stay at full brightness.
@@ -36,11 +41,11 @@ namespace SystemPattern {
 
     enum class Id : uint8_t {
         NONE = 0, BOOT, SEARCH, JOINED, DISCOVERY, READY, SELECT, SELECT_CANCEL, SELECTED, PAUSED, LOW_BATTERY, SLEEP,
-        MENU, COUNT_
+        MENU, UPDATE, UPDATE_VERIFY, UPDATE_READY, UPDATE_FAILED, COUNT_
     };
 
     struct Args {
-        uint8_t percent = 255;      // BOOT: battery percent, 255 = unknown
+        uint8_t percent = 255;      // BOOT: battery percent, 255 = unknown. UPDATE: bar in percent, above 100 = no bar
         uint8_t podId = 0;          // JOINED: own pod id (LED and colour, Identity)
         uint8_t wanted = 0;         // DISCOVERY: pods the program needs
         uint8_t found = 0;          // DISCOVERY: pods claimed (ids 0 ... found-1, ids go in claim order)
@@ -79,6 +84,10 @@ namespace SystemPattern {
 
     // Frame at `elapsedMs` since the start. Returns true when the pattern has ended (this is its last frame).
     bool render(Id id, const Args& args, uint32_t elapsedMs, Pixel out[LEDS]);
+
+    // Sets the bar of a playing UPDATE pattern (clamped to 0 ... 100). Only stores the value: the ring follows
+    // at most every LEDManager::UPDATE_FRAME_US, so the caller never waits for the LEDs
+    void updateProgress(uint8_t percent);
 
     // JSON name ("boot", "search", ...) for the test op; nullptr / COUNT_ if unknown
     const char* name(Id id);

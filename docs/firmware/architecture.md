@@ -219,6 +219,10 @@ for orange, violet and cream are provisional until checked on the real LEDs (bri
 | Start refused (pod < 5 %) | – | red, whole ring | 1000, then READY again |
 | Central PAUSED | PAUSED | whole ring amber | breathes 2600 (floor 15 %) |
 | Central ERROR | – | red | blink 1000 on / 1000 off (unchanged) |
+| Firmware update (#125; not wired into an update flow yet) | UPDATE | white bar fills clockwise, one LED per 5.6 % (`updateProgress`, ≤ 20 fps); the rest breathe dark red | breathes 2200 (floor 30 %, peak 60 % of dark red); the colours are a first guess, check on the LEDs |
+| Firmware update, image verified (#125) | UPDATE_VERIFY | full white bar, dimmed, breathing | breathes 2200 at 60 % |
+| Firmware update, waiting for the other pods (#125) | UPDATE_READY | whole ring green | static, 30 % |
+| Firmware update failed (#125) | UPDATE_FAILED | red, whole ring (the error blink) | blink 1000 on / 1000 off, three times (6000), then dark; the normal state again |
 | Auto power-off | SLEEP | white ring drains anticlockwise with ease-out while dimming to dark | drain 1600, dim 2000, then deep sleep (§8.2) |
 | Game | – | owned by the program (effects, colours) | unchanged |
 

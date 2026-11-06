@@ -102,6 +102,9 @@ class LEDManager {
         // Plays a system pattern (SystemPattern.h), firmware only. startUs as for playEffect. The ring as it is
         // now is kept as the snapshot that SELECT / SELECT_CANCEL draw over.
         void playPattern(SystemPattern::Id id, const SystemPattern::Args& args = SystemPattern::Args(), int64_t startUs = 0);
+        // Bar of a playing UPDATE pattern (0 ... 100); other patterns are not changed. Drawn by service() at most
+        // every UPDATE_FRAME_US (SystemPattern::updateProgress)
+        void setPatternPercent(uint8_t percent);
 
         // Stops the effect; the LEDs keep the last frame
         void stopEffect() { this->effectState = EffectState::IDLE; }
@@ -147,6 +150,7 @@ class LEDManager {
 
         static const uint32_t ALL_LEDS = (1UL << NEOPIXEL_SIZE) - 1;
         static const int64_t MIN_FRAME_US = 16000;     // at most ~60 frames per second
+        static const int64_t UPDATE_FRAME_US = 50000;  // the update bar: at most 20 frames per second (#125, #122)
 
     private:
         enum class EffectState : uint8_t { IDLE, RUNNING, HOLD };    // HOLD: finished or static, last frame stays
