@@ -13,7 +13,6 @@ import argparse, asyncio, base64, json, sys, threading, time, zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from reactpod_serial import PodSerial  # noqa: E402
 
 BIN = Path(__file__).resolve().parent.parent / "firmware/.pio/build/NewBoard/firmware.bin"
 SET_ID = "1895801b"
@@ -23,12 +22,49 @@ def out(kind, **kw):
     print(json.dumps({"run": kind, **kw}), flush=True)
 
 
+class Pod:
+    """Minimal synchronous serial client (PodSerial's reader blocks in read(1024) = a 100 ms floor per request)."""
+
+    def __init__(self, port):
+        import serial
+        self.ser = serial.Serial()
+        self.ser.port, self.ser.baudrate, self.ser.timeout = port, 115200, 0.02
+        self.ser.dtr = False
+        self.ser.rts = False
+        self.ser.open()
+        self.buf = b""
+        self.next_id = 1
+        self.ser.write(b"\n")       # ends a half line a failed earlier run may have left in the pod
+        time.sleep(0.2)
+        self.ser.reset_input_buffer()
+
+    def stop(self):
+        self.ser.close()
+
+    def request(self, op, timeout=10, **kw):
+        rid = self.next_id
+        self.next_id += 1
+        self.ser.write((json.dumps({"op": op, "id": rid, **kw}) + "\n").encode())
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            self.buf += self.ser.read(max(1, self.ser.in_waiting))
+            while b"\n" in self.buf:
+                line, self.buf = self.buf.split(b"\n", 1)
+                line = line.strip()
+                if line.startswith(b"{"):
+                    try:
+                        r = json.loads(line)
+                    except ValueError:
+                        continue
+                    if r.get("id") == rid:
+                        if not r.get("ok"):
+                            raise RuntimeError(f"{op}: {r}")
+                        return r
+        raise TimeoutError(f"{op} on {self.ser.port}")
+
+
 def pod(port):
-    p = PodSerial(port, show="none")
-    p.start()
-    if not p.connected.wait(10):
-        raise SystemExit(f"{port} not available")
-    return p
+    return Pod(port)
 
 
 def bits_of(hexs):
