@@ -59,7 +59,7 @@ the central only (not synced) and advertised after the current connection ends.
 | `ota_failed` | firmware update (§5 Firmware update): image or hash rejected, nothing activated (fw ≥ 2.19) |
 | `overflow` | data came faster than processed: resend |
 | `auth_required`, `auth_failed` | PIN (§8) |
-| `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed; `select` while an update runs; `otaBegin` outside the menu |
+| `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed; `select` while an update runs; `otaBegin` outside the menu or while the new image is on trial (15 s after an `otaActivate`) |
 | `not_ready` | no block waits / pods missing / pod too old; `otaWrite` / `otaEnd` / `otaActivate` in the wrong update state |
 | `low_battery` | `start` with a pod < 5 % (fw ≥ 2.13); `otaBegin` below 30 % (fw ≥ 2.19) |
 | `not_editable`, `out_of_range` | `setVariables` |
@@ -191,15 +191,18 @@ old firmware stays in its slot; the image is only used after a successful `otaEn
   ESP-IDF check the image; failure `ota_failed`, the update is `failed`, nothing changes in the boot choice.
   Takes about 150 ms.
 - `otaActivate`: only in state `ready`. Selects the new slot, keeps the current role for the next start
-  (a central comes back as central) and restarts, like `reboot`. The new firmware marks itself valid at
-  start (rollback test: #124); `info.ota.lastResult` reports the outcome.
+  (a central comes back as central) and restarts, like `reboot`. The new image is **on trial** (fw >= 2.19,
+  architecture §4.1): it is marked valid only after 15 s and a self-test, otherwise the bootloader returns
+  to the old firmware at the next reset. `info.ota.lastResult` reports the outcome.
 - `otaAbort`: discards the update (also `ready` and `failed`).
 - Rules: allowed only when the pod is in the **menu** (central: state MENU) or, for a peripheral, **not in a
   game** (unclaimed or ready), else `busy`. PIN as for `put` (`auth_required`, serial needs none), for all five
   ops. `otaBegin` below 30 % battery: `low_battery` (a pod with no reading is allowed). `size` above
   `slotSize`: `too_large`. `size` or `sha256` missing / bad: `bad_request`. During an update the pod does not
   switch off, `select` (and the menu button) is refused (`busy`), a peripheral ignores the central, and an
-  unfinished update is lost on reboot. A write error in the slot is `storage`.
+  unfinished update is lost on reboot. A write error in the slot is `storage`. `otaBegin` in the first 15 s
+  after an `otaActivate` (the image is still on trial, the ESP-IDF refuses to write the next image then):
+  `busy`, "the running firmware is still being tested"; try again after a few seconds.
 - Ring (architecture §7.1): `UPDATE` with the bar while receiving, `UPDATE_VERIFY` in `otaEnd`,
   `UPDATE_READY` once verified, `UPDATE_FAILED` (three red blinks) on failure; after `otaAbort`, a failure
   and the timeout the normal state of the role again.
@@ -208,9 +211,10 @@ old firmware stays in its slot; the image is only used after a successful `otaEn
 - `status.ota` = `{"state":"idle|receiving|verifying|ready|failed","received":0,"total":0,"version":""}`
   (`verifying` is only visible to other transports, `otaEnd` answers when it is over).
   `info.ota` = `{"slotSize":1835008,"running":"app0","lastResult":"none|ok|rolledBack"}`: `running` is the
-  slot of the running image; `lastResult` is the outcome of the last `otaActivate`, seen at the following start
-  (`ok`: the new image runs, `rolledBack`: the bootloader returned to the old one) and kept until the next
-  `otaActivate`.
+  slot of the running image; `lastResult` is the outcome of the last `otaActivate` (`none`: no update since the
+  last `otaBegin`, or the new image is still on trial; `ok`: the new image runs and is valid; `rolledBack`: the
+  new image panicked, failed its self-test or was reset inside the 15 s, and the bootloader returned to the old
+  one). It is set at the start after the outcome and kept until the next `otaBegin`.
 
 ### Control and test ops
 
