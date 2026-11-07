@@ -9,13 +9,20 @@ Ask which part and confirm the version. Tags are outward-facing: push only after
 
 ## Firmware `fw-vMAJOR.MINOR.PATCH`
 
+0. **Signing key (once, user only).** The firmware accepts an OTA image only if it is signed with the key its own
+   image carries (`docs/firmware/testing.md` §14.1). The release key is the GitHub secret `OTA_SIGNING_KEY` (PEM). Check
+   `gh secret list | grep OTA_SIGNING_KEY`; if it is missing, stop and give the user the steps of §14.1 (generate,
+   offline backup, `gh secret set`). Never create or print the key yourself. A lost key means every pod needs a USB
+   flash. The first release signed with it must be flashed over USB once on every pod (`bootloader.bin`,
+   `partitions.bin`, `firmware.bin` from the release): pods with developer builds (test key) do not accept it.
 1. `main` up to date and green (`gh run list --branch main --limit 5`). Run the hardware release checklist
    (`docs/firmware/testing.md` §12) on the release build, results into the release PR; ask the user for the
    manual lines (two sets, battery run-down, logic analyser, auto power-off).
 2. `FW_VERSION_MAJOR/MINOR` in `firmware/src/_Definitions.h` match the tag; else bump on a
    `chore/release-fw-…` PR, squash-merge, pull. PATCH lives only in the tag (fixes without API change).
 3. `git tag fw-vX.Y.Z && git push origin fw-vX.Y.Z`.
-4. `gh run watch` **Firmware release**: checks tag vs `FW_VERSION`, builds, creates the release
+4. `gh run watch` **Firmware release**: checks tag vs `FW_VERSION`, builds (fails without `OTA_SIGNING_KEY`;
+   `firmware.bin` comes out signed), creates the release
    (`firmware.bin`, `bootloader.bin`, `partitions.bin`, `spiffs.bin`, `ota-manifest.json`), then starts the
    **App** workflow, which publishes them at `https://runningjoke.github.io/reactionButton/firmware/`.
 5. Check `…/firmware/ota-manifest.json` loads; report the release URL.

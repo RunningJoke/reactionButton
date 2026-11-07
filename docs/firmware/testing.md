@@ -138,3 +138,31 @@ A run that is interrupted (Ctrl+C, cable) leaves the update open: the same comma
 Measured over USB with fw 2.19 (1.11 MB, 2048-byte chunks, 543 requests): upload 30 s at 37 kB/s, 34 s with
 the activation and the restart. The reader no longer waits 100 ms per answer (#122).
 Tests: `python tools/test_reactpod_config.py` (fake pod: normal run, resume, `bad_offset` with abort, `--no-activate`).
+
+### 14.1 Signed images and keys (fw ≥ 2.20, #134)
+Every `firmware.bin` is signed after the build by `firmware/sign_ota.py` (secure boot v2 signature block, RSA-3072; **no**
+secure boot, no eFuse, USB flashing unchanged; architecture §4.2). A pod trusts the key **its own running image** was signed
+with, so an update must be signed with the key of the firmware the pod runs now.
+- **Developer builds:** key `firmware/ota_test_key.pem`, created on the first build, git-ignored (`*.pem`). Flash the file
+  `firmware/.pio/build/NewBoard/firmware.bin` (it is the signed one) over USB or OTA. Pods flashed from source update from
+  source builds of the same checkout. Another PC / a fresh clone makes another test key: reflash the pods over USB or copy
+  the file. `OTA_SIGNING_KEY_FILE=<pem>` selects another key (tests with a wrong key). The first build installs the Python
+  modules `cryptography` and `ecdsa` into the PlatformIO python (`espsecure.py` needs them).
+- **Release key** (once, by the user, never in the repo or in chat):
+  1. `python ~/.platformio/packages/tool-esptoolpy/espsecure.py generate_signing_key --version 2 --scheme rsa3072 ota_release_key.pem`
+     (or `pip install esptool` and `espsecure.py …`; do it outside the repo).
+  2. Offline backup before anything else: at least two copies (password manager and an encrypted USB stick). **If the key is
+     lost or leaked, no pod accepts a new key by OTA: every pod must be flashed again over USB** with a build signed by a new key.
+  3. `gh secret set OTA_SIGNING_KEY < ota_release_key.pem`, then delete the working copy or keep it only with the backups.
+  4. `release-firmware.yml` passes the secret to `firmware.yml`, which writes it to a temporary file (`OTA_SIGNING_KEY_FILE`);
+     the release fails without the secret, the signature is checked with the same key right after signing.
+  5. First release: flash every pod over USB with the release's `bootloader.bin`, `partitions.bin`, `firmware.bin`
+     (`esptool.py write_flash 0x0 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin`, then `uploadfs` or
+     `spiffs.bin` at `0x390000`). Pods with developer builds reject the release image with `ota_failed`, by design.
+- **Check an image by hand:** `espsecure.py verify_signature --version 2 --keyfile <pem> firmware.bin` (a pod holding an
+  older, valid signature in the sector behind a shorter unsigned image of the same content would accept it: the signature
+  covers the content, so this is not a hole, but it makes "unsigned" tests with a truncated signed file meaningless; use a
+  real unsigned build).
+- CI builds (PRs, `main`) sign with a throw-away key. The signature block adds 13 KB to `firmware.bin`
+  (1 121 296 → 1 134 592 bytes, 63 % of a slot), which the flash-usage step already counts.
+

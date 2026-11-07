@@ -13,6 +13,9 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/firmware.yml
+    with:
+      release: true
+    secrets: inherit
 
   release:
     needs: build
