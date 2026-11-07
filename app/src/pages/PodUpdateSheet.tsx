@@ -128,6 +128,16 @@ export function UpdateSheet() {
           </>
         )}
 
+        {/* above the steps: the lower part of the sheet can be behind a notice at 360 px */}
+        {running && flow.step === "sending" && (
+          <div>
+            <progress className={styles.progress} value={flow.done} max={flow.total || 1} aria-label={t("firmware.flow.steps.sending")} />
+            <p className={styles.note}>
+              <span className={styles.counter}>{percent} %</span>
+              {left !== null && ` · ${t("firmware.flow.left", { time: clock(left) })}`}
+            </p>
+          </div>
+        )}
         {(running || flow.phase === "done" || flow.phase === "error") && (
           <ol className={styles.steps}>
             {OTA_STEPS.map((step, i) => {
@@ -147,15 +157,6 @@ export function UpdateSheet() {
           </ol>
         )}
 
-        {running && flow.step === "sending" && (
-          <div>
-            <progress className={styles.progress} value={flow.done} max={flow.total || 1} aria-label={t("firmware.flow.steps.sending")} />
-            <p className={styles.note}>
-              <span className={styles.counter}>{percent} %</span>
-              {left !== null && ` · ${t("firmware.flow.left", { time: clock(left) })}`}
-            </p>
-          </div>
-        )}
         {running && flow.step === "testing" && <p className={styles.warn}>{t("firmware.flow.testNote")}</p>}
         {running && flow.step === "restarting" && (
           <>
