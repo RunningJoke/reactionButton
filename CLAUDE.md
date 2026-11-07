@@ -52,7 +52,7 @@ checks. Program-model and platform tests run **only locally**: run them whenever
 
 | Part | Version lives in | Tag | Release |
 |---|---|---|---|
-| Firmware | `FW_VERSION_MAJOR/MINOR` in `firmware/src/_Definitions.h` (= `info.firmware`) | `fw-vX.Y.Z` | GitHub release with binaries, also on Pages `/firmware/`. Flashed over USB only (ADR 0006) |
+| Firmware | `FW_VERSION_MAJOR/MINOR` in `firmware/src/_Definitions.h` (= `info.firmware`) | `fw-vX.Y.Z` | GitHub release with binaries, also on Pages `/firmware/`. Pods update over the air from the app (ADR 0009, images signed with the release key, `OTA_SIGNING_KEY`); USB flashing stays the first install and the recovery |
 | Program format | `PROGRAM_FORMAT` in `BlockFactory.h`, `validate_programs.py`, `program-model/src/limits.ts` | – | programs.md §6 |
 | App | `version` in `app/package.json` | `app-vX.Y.Z` | every merge to `main` touching `app/` or `firmware/data/` deploys Pages (`.github/workflows/app.yml`) |
 | Platform | `version` in `platform/package.json` | `platform-vX.Y.Z` | planned: image `ghcr.io/runningjoke/reactpod-platform`, staging deploy (no workflow in the repo yet) |

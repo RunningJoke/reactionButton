@@ -106,6 +106,14 @@ line in the release PR. Automated lines: `python tools/reactpod_hwtest.py --cent
 | 10 | start spread (§8), only with a logic analyser, after link / clock / LED timing changes | < 15 ms with and without phone | no |
 | 11 | app against the release: BLE + USB, push, restore defaults, training view | as the app acceptance tests | no |
 | 12 | auto power-off: unclaimed pod and phone-less central in MENU sleep after 10 min (build with 1 for a quick check), on battery / plain charger (a computer keeps it awake; over USB check `status.powerOff.idleMs` counts and resets on press / claim); drain, a press wakes into a normal boot; claimed pods, a central with phone or in DISCOVERY never sleep | as described | no |
+| 13 | OTA signature (§14.1): unsigned image, image signed with another key → `ota_failed`, old firmware keeps running; correct image accepted; the same for a peripheral through `ota-set` | as described | yes (§14.2) |
+| 14 | OTA power loss, simulated by a hard reset (§14.2) at each stage on central and peripheral: during the upload to the central, during the slot erase of a peripheral, mid distribution, with the image `ready`, in the first 15 s after the restart | old firmware or the update runs, pod usable, the next update works | yes (§14.2) |
+| 15 | OTA rollback: reset inside the 15 s trial; an image that panics at boot | `rolledBack`, old firmware, a central stays central | yes (§14.2) |
+| 16 | 10 update cycles in a row over `ota-set` (2.22 ↔ 2.23, signed) | both slots alternate, every `lastResult` `ok`, no pod lost | yes (§14.2) |
+| 17 | after the updates: line 2, 4, 5 (`reactpod_hwtest.py --quick`) and a game | all pass | yes |
+| 18 | OTA from the app: phone leaves during the transfer and comes back; pod out of range (switched off) during distribution; update refused below 30 % battery; update with a nearly full store | resumes or fails with a message, no pod left unusable | no (user) |
+| 19 | OTA real power-off (switch / unplug battery) at each stage, also in the first 15 s after the restart | as line 14 | no (user) |
+| 20 | the user updates a set from the app on a phone, from one published release to the next | `info.firmware` of every pod = release, `lastResult` `ok` | no (user) |
 
 ### 12.1 `reactpod_hwtest.py`
 Central + ≥ 1 peripheral of one set on USB. Reboots the central into the menu, runs lines 1, 2, 4, 5, 6 (USB),
@@ -166,3 +174,35 @@ with, so an update must be signed with the key of the firmware the pod runs now.
 - CI builds (PRs, `main`) sign with a throw-away key. The signature block adds 13 KB to `firmware.bin`
   (1 121 296 → 1 134 592 bytes, 63 % of a slot), which the flash-usage step already counts.
 
+### 14.2 Hardware checks of the update (lines 13 to 17 of §12)
+Three pods on USB (central COM4, peripherals COM3 / COM5 here), all with the same developer build. A **power cut** is
+simulated by a hard reset through the open USB port, so the tool keeps running: `ser.rts = True; ser.dtr = False;
+sleep 0.2; ser.rts = False; ser.dtr = False` (pyserial; setting only RTS does nothing on Windows). The pod comes back
+as a peripheral (a hard reset forgets the one-shot central role): `reactpod_serial.py reboot central`. Images: the
+developer build with `FW_VERSION_MINOR` raised (2.22 / 2.23, restore afterwards), a copy re-signed with
+`OTA_SIGNING_KEY_FILE=<other.pem>` or `espsecure.py sign_data --version 2 --keyfile other.pem`, an unsigned build from an
+older checkout and a build with `abort();` first in `setup()` (panics at boot). A shorter image that is the prefix of a
+signed one is no unsigned image (§14.1).
+
+| Stage | How | Expected | Run 2026-11-07 (fw 2.20 source + 2.21 … 2.24 test images) |
+|---|---|---|---|
+| unsigned image, single pod | `ota unsigned.bin` | `ota_failed: image rejected`, pod keeps running, uptime not reset | pass (COM3, 2 images) |
+| other key, single pod | `ota other.bin` | same | pass |
+| unsigned image, `ota-set` | central rejects at `otaEnd`, nothing is distributed | same | pass |
+| other key at a peripheral | peripheral flashed with the other key, central (test key) distributes | peripheral `failed`, the other pod `ready`, nothing runs the new image after `otaAbort` | pass |
+| signed image, single pod / set | `ota good.bin`, `ota-set` | new version, `ok` | pass (COM3; set of 3) |
+| reset of the central during the upload (otaWrite 250 of 554) | | old firmware running, slot not corrupt, new update from the start works | pass |
+| reset of a peripheral during the USB upload | same | same | pass |
+| reset of a peripheral during its slot erase (`transferring` +1 s) | `stage` | rejoins, distribution finishes (70 s instead of 30 s), activation fine | pass |
+| reset of a peripheral mid distribution (40 to 50 %) | | same | pass |
+| reset of a peripheral with the image `ready` | | pod rejoins the update, `ready` again, `otaActivate` updates all | pass |
+| reset of the central 15 s into the distribution | | peripherals fall back to UNCLAIMED, running old firmware; central comes back (as peripheral), a new `ota-set` works | pass |
+| reset of a peripheral 5 s after the activation (trial) | | `rolledBack`, old firmware, others updated (mixed set plays) | pass |
+| reset of the central in the trial | | `rolledBack`, old firmware, central role kept | pass |
+| image that panics at boot (peripheral) | `ota crash.bin` | bootloader returns to the old slot, `rolledBack`, tool says so | pass |
+| 10 cycles `ota-set` 2.22 / 2.23 | | slots alternate app0 / app1 on each pod, `ok` every time, about 3 min per cycle | pass 10 of 10 |
+| after the updates | `reactpod_hwtest.py --quick` (2 peripherals) | line 2, 4, 5 | 23 passed, 0 failed |
+
+Not run from the PC: phone leaves / returns, out of range, low battery (refusal below 30 %), nearly full store, a real power
+cut, the update from the app on a phone (lines 18 to 20). A pod that reports `lastResult` `rolledBack` keeps it until the next
+`otaBegin` or `otaActivate`; a USB flash does not clear it.
