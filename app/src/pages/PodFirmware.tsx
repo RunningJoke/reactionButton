@@ -160,7 +160,7 @@ export function FirmwareCard({
           ) : (
             <p className={styles.note}>{t("firmware.notStoredOffline")}</p>
           )}
-          {onUpdate && (
+          {onUpdate && pending === undefined && (
             <button
               className={`${styles.textButton} ${styles.primaryButton}`}
               onClick={() => onUpdate(manifest.version, () => prepare(manifest))}
