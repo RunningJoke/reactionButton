@@ -102,6 +102,19 @@ reboot. Wake from deep sleep is a normal boot.
   asking only `esp_ota_get_last_invalid_partition`) because it also knows `ok` and can be reset by `otaBegin`,
   while the invalid mark stays in `otadata` until the slot is written again.
 
+### 4.2 Signed images (#134, ADR 0009)
+
+`CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT` + `CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME` +
+`CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT` (`sdkconfig.NewBoard`): `esp_ota_end` (and `esp_ota_set_boot_partition`)
+verify an RSA-3072 signature block (secure boot v2 format, appended after the image, 4 KB aligned) in the app, **without**
+secure boot: no eFuse is read or burned, `CONFIG_SECURE_BOOT` and flash encryption stay off, the bootloader does not
+check signatures, USB flashing of any image still works. The trusted key is the one the **running** image was signed with
+(`esp_secure_boot_get_signature_blocks_for_running_app`, nothing is embedded in the source): an update is accepted only
+if it carries a valid block of the same public key. So a pod must itself run a signed image, and a pod flashed with a
+developer build (test key) accepts only developer images. `firmware/sign_ota.py` (PlatformIO `post:` script) signs
+`firmware.bin` after every build with `espsecure.py sign_data --version 2` and checks the result. Cost: `firmware.bin`
++13 KB (code 9 KB, signature sector 4 KB). Setup, release key and tests: testing §14, skill `/release`.
+
 ## 5. State machines
 
 ### 5.1 Peripheral

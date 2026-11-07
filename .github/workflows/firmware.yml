@@ -8,6 +8,13 @@ on:
   pull_request:
     paths: ["firmware/**", "tools/*.py", "tools/*.json", ".github/workflows/firmware.yml"]
   workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
+    secrets:
+      OTA_SIGNING_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -27,6 +34,18 @@ jobs:
             firmware/.pio
           key: pio-${{ hashFiles('firmware/platformio.ini', 'firmware/sdkconfig.NewBoard') }}
       - run: pip install platformio
+      # Release: sign with the release key (PEM in the secret). Otherwise sign_ota.py makes a throw-away test key.
+      - name: OTA signing key
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+          RELEASE: ${{ inputs.release }}
+        run: |
+          if [ -n "$OTA_SIGNING_KEY" ]; then
+            printf '%s\n' "$OTA_SIGNING_KEY" > "$RUNNER_TEMP/ota_key.pem"
+            echo "OTA_SIGNING_KEY_FILE=$RUNNER_TEMP/ota_key.pem" >> "$GITHUB_ENV"
+          elif [ "$RELEASE" = "true" ]; then
+            echo "::error::secret OTA_SIGNING_KEY is missing: a release must be signed with the release key (testing.md §14)"; exit 1
+          fi
       - run: python tools/validate_programs.py
       - run: pip install bleak pyserial && python -m unittest discover -s tools -p "test_*.py"
       - run: pio test -d firmware -e native
