@@ -24,8 +24,9 @@ results. Pod contract: [config-api.md](../firmware/config-api.md); program forma
 | F13 | installable offline PWA, mobile first |
 | F14 | athletes, sessions, reports, statistics, CSV (§9.5) |
 | F15 | training view: live state, `communicate` controls, pause / resume, reconnect (§9.5) |
+| F16 | pod software on This set: installed and available version (`ota-manifest.json` of the release, or the last one stored when offline); image download for offline use, SHA-256 checked, stored in IndexedDB (#128); the Update action comes with #129 (ADR 0009) |
 
-Not planned: editing library fragments, firmware OTA (ADR 0006), several sets at once (#46, on hold).
+Not planned: editing library fragments, several sets at once (#46, on hold).
 Native shell (Capacitor) later; all platform access is behind interfaces (§4).
 
 ## 2. Platforms
@@ -94,7 +95,7 @@ Sub-pages show a back arrow in the header (to an explicit parent computed per ro
 | `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary, pod status, Try / Change settings (my games) or Make my copy, Blocks (expert). Change settings and ··· → Game settings open Edit with the game settings panel (`panel=settings`). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
 | `/games/new` | wizard |
 | **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
-| **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; send, Reset menu; *Train* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
+| **This set** `/set` (chip when connected; no tab) | set name, id, firmware and the available release (F16, #128), free space, generation; file list with sync state; send, Reset menu; *Train* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
 | `/set/menu` | order of `/programs.json`, LED ring picker per game |
 | Settings `/settings` (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
 

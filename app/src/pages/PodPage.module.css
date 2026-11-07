@@ -311,3 +311,23 @@ ol.files .file::before {
 .bottom > * {
   justify-content: center;
 }
+
+/* Pod software (PodFirmware.tsx): the download and the Update action */
+.firmwareActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.primaryButton {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

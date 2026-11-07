@@ -2,6 +2,27 @@
   "app": {
     "title": "ReactPod Config"
   },
+  "firmware": {
+    "title": "Pod-Software",
+    "installed": "Installiert",
+    "release": "Verfügbar",
+    "checking": "Suche nach einer neuen Version…",
+    "upToDate": "Aktuell.",
+    "available": "Version {{version}} ist verfügbar.",
+    "availableUsb": "Version {{version}} ist verfügbar. Diese Firmware wird nur über USB aktualisiert.",
+    "noRelease": "Keine Versionsinformation verfügbar.",
+    "offline": "Offline: Stand der letzten Prüfung.",
+    "programFormat": "Programme gehören nicht zum Update. Diese Version nutzt Programmformat {{release}}, dieser Pod {{pod}}, die App {{app}}.",
+    "stored": "Für Offline-Nutzung gespeichert: {{version}}, {{size}}.",
+    "notStoredOffline": "Nicht für Offline-Nutzung gespeichert. Lade sie online herunter.",
+    "download": "Für Offline-Nutzung laden ({{size}})",
+    "update": "Aktualisieren",
+    "errors": {
+      "no_crypto": "Der Download kann über diese Verbindung nicht geprüft werden. Öffne die App über HTTPS.",
+      "mismatch": "Der Download passt nicht zur Prüfsumme der Version. Nichts wurde gespeichert; versuche es erneut.",
+      "download": "Der Download ist fehlgeschlagen. Prüfe die Verbindung und versuche es erneut."
+    }
+  },
   "nav": {
     "train": "Training",
     "set": "Dieses Set",

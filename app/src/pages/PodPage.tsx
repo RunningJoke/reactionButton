@@ -13,6 +13,7 @@ import { canFind, podHealth, type PodHealth } from "../pod/setView";
 import type { SyncStatus } from "../pod/sync";
 import { useMenuOverBudget, useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
+import { FirmwareCard } from "./PodFirmware";
 import { ResetMenuButton, SyncBadge, UnsentCard } from "./PodSync";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
@@ -135,6 +136,7 @@ function Connected() {
           <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
         </p>
       )}
+      <FirmwareCard info={info} />
     </>
   );
   const sync = <UnsentCard states={states} readOnly={readOnly} />;

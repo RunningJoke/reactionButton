@@ -87,10 +87,10 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.17 info: program format 6 with the summary bar, the patterns and the start variables", () => {
+  it("reports the firmware 2.19 info by default: program format 6 with the summary bar, the patterns, the start variables and the update", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.17", setName: "Halle 2", pinRequired: false, programFormat: 6 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns", "startVars"]);
+    expect(info).toMatchObject({ firmware: "2.19", setName: "Halle 2", pinRequired: false, programFormat: 6 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns", "startVars", "ota"]);
     expect(info.linkRevision).toBe(5);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate", "summary"]));

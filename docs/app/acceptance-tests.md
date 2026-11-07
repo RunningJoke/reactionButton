@@ -138,6 +138,18 @@ mark "pass" only when the user reported it.
 | AT-D29 | desktop: **This set** with an unsent change; **Games on the pods** → tap a ring | the sync card with Send to pods sticks on the right; the menu pattern editor opens beside the list instead of a sheet; drag and arrows still work |
 | AT-D30 | desktop: **Send to pods** | centred dialog with a dimmed background; the checks count "1 of 1", never past the total |
 
+## O – Pod software on This set (#128; fw 2.19 for the update; all "open" until the user reports them)
+| ID | Steps | Expected |
+|---|---|---|
+| AT-O1 | pod on 2.19 (feature `ota`), release 2.20 published on Pages | This set: "Version 2.20.0 is available.", **Download for offline use (1.1 MB)**; no Update button yet (#129) |
+| AT-O2 | pod on the release version (or newer) | "Up to date.", no button |
+| AT-O3 | pod without `ota` (fw 2.17), release 2.20 | "Version 2.20.0 is available. This firmware updates over USB only."; no download button |
+| AT-O4 | dev server (`npm run dev`), or a Pages build without a release | "No release information available."; the page works |
+| AT-O5 | online: download for offline use; go offline; reload; connect the demo or a pod | "Offline: this is the release information from the last check." and "Stored for offline use: 2.20.0, 1.1 MB."; the page works |
+| AT-O6 | offline with the release info but no stored image | "Not stored for offline use. Download it while online."; no download button |
+| AT-O7 | release with another program format than the pod | "Programs are not part of the update. This release uses program format …"; the games are unchanged |
+| AT-O8 | 360 px and 1200 px, light and dark, states AT-O1–O6 | nothing cut off, no horizontal scroll, buttons ≥ 44 px, texts in de and en; screenshots looked at |
+
 ## U – Usability
 | ID | Steps | Expected |
 |---|---|---|
@@ -161,3 +173,4 @@ mark "pass" only when the user reported it.
 | AT-L13–L17 | – | – | open (#87, specified, not built) |
 | AT-D1–D25 | 2026-11-03 | 2.17 | pass (P10, #106) |
 | AT-D26–D30 | – | – | open (#107 desktop layouts, for the user to test) |
+| AT-O1–O8 | – | – | open (#128 pod software on This set, for the user to test) |
