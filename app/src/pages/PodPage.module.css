@@ -406,3 +406,22 @@ ol.files .file::before {
   color: var(--text);
   font: inherit;
 }
+
+/* a pod of the set in the update sheet: state in words, its own progress */
+.podState {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.podState[data-bad="true"] {
+  color: var(--error);
+}
+
+.podBar {
+  flex: none;
+  width: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}

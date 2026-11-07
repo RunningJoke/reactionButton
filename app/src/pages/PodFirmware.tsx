@@ -35,7 +35,18 @@ export function formatMegabytes(bytes: number, locale: string): string {
  * Update action. `onUpdate` gets the version and a function that yields the verified image (stored or downloaded,
  * the first step of the update); without it no Update button is shown.
  */
-export function FirmwareCard({ info, onUpdate }: { info: InfoResponse; onUpdate?: (version: string, prepare: () => Promise<FirmwareImage>) => void }) {
+export function FirmwareCard({
+  info,
+  onUpdate,
+  pending,
+  onResume,
+}: {
+  info: InfoResponse;
+  onUpdate?: (version: string, prepare: () => Promise<FirmwareImage>) => void;
+  /** version of an update of the set that the main pod still holds (`status.ota.pods`, #133) */
+  pending?: string;
+  onResume?: (version: string) => void;
+}) {
   const { t, i18n } = useTranslation();
   // undefined = still checking
   const [release, setRelease] = useState<Release | null | undefined>(undefined);
@@ -124,6 +135,14 @@ export function FirmwareCard({ info, onUpdate }: { info: InfoResponse; onUpdate?
         <p className={styles.note}>
           <Info size={14} aria-hidden /> {t("firmware.programFormat", { release: manifest.programFormat, pod: info.programFormat ?? 1, app: PROGRAM_FORMAT })}
         </p>
+      )}
+      {pending !== undefined && onResume && (
+        <div className={styles.firmwareActions}>
+          <p className={styles.note}>{t("firmware.resumeNote", { version: pending })}</p>
+          <button className={`${styles.textButton} ${styles.primaryButton}`} onClick={() => onResume(pending)}>
+            {t("firmware.resume")}
+          </button>
+        </div>
       )}
       {manifest && status === "available" && ota && (
         <div className={styles.firmwareActions}>

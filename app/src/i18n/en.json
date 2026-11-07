@@ -17,17 +17,53 @@
     "notStoredOffline": "Not stored for offline use. Download it while online.",
     "download": "Download for offline use ({{size}})",
     "update": "Update",
+    "resumeNote": "An update of the set is on the main pod: {{version}}.",
+    "resume": "Show the update",
     "flow": {
       "title": "Update pod software",
       "sub": "{{from}} to {{to}}",
       "keepOn": "The update takes a few minutes. Keep the phone close and the app open. Do not switch the pod off.",
       "peripherals": "Only this pod is updated. Pods of a set can run different firmware, but a feature of a newer version is used only with pods that have it (an older pod shows, for example, a static colour instead of an effect). Update every pod of the set.",
+      "peripheralsSet": "All pods of the set are updated together: the app sends the update to the main pod, the main pod passes it on to the other pods, and then they all restart. You can leave after the first step; the games stay playable until the restart.",
+      "distributeNote": "The main pod sends the update to the pods one at a time. You can close this sheet; it goes on without the phone.",
+      "leaveSet": "Leave the sheet? The main pod goes on sending by itself. The pods restart only when you open the update again under Pod software.",
+      "joiningNote": "Waiting for the pods to rejoin the set.",
+      "decide": {
+        "title": "Some pods are not ready",
+        "notReady": "{{ready}} of {{count}} pods are ready. The others did not receive the update.",
+        "mixed": "Wait: switch on or charge the missing pods. Or update only the ready pods now: the main pod and the ready pods get the new version, the others keep the old one. A set with mixed versions plays, but features of the new version run only on the updated pods.",
+        "none": "No pod is ready. Switch on or charge the missing pods and wait, or cancel the update.",
+        "wait": "Wait for the other pods",
+        "only": "Update the {{count}} ready pods"
+      },
+      "pod": {
+        "list": "Pods of the set",
+        "progress": "Pod {{number}}",
+        "state": {
+          "queued": "Waiting",
+          "transferring": "Receiving",
+          "ready": "Ready",
+          "current": "Already up to date",
+          "failed": "Failed, did not receive the update",
+          "offline": "Not reachable. Switch it on.",
+          "refused": "Refused. Is the battery below 30 %?",
+          "unknown": "Unknown"
+        },
+        "result": {
+          "updated": "Updated to {{firmware}}",
+          "old": "Still on {{firmware}}",
+          "missing": "Not back yet. Switch it on and check This set."
+        }
+      },
       "start": "Start update",
       "cancel": "Cancel",
       "close": "Close",
       "steps": {
         "preparing": "Preparing the image",
         "sending": "Sending to the pod",
+        "sendingSet": "Step 1: phone to main pod",
+        "distributing": "Step 2: main pod to the other pods",
+        "joining": "Step 3: pods restart and rejoin",
         "checking": "Checking the image",
         "restarting": "Restarting the pod",
         "testing": "Checking the new firmware",
@@ -52,6 +88,7 @@
       },
       "outcome": {
         "success": "Updated to {{version}}. The new firmware runs.",
+        "mixed": "The main pod runs {{version}}, but not every pod does. See the list. A set with mixed versions plays; update the others again.",
         "rolledBack": "The new firmware did not pass its check. The pod went back to the old firmware ({{installed}}). Nothing is lost; you can try again.",
         "wrongVersion": "The pod runs, but not version {{version}}. Check the version on This set.",
         "unconfirmed": "The new firmware has not been confirmed yet. Keep the pod on and check the version on This set in a minute."

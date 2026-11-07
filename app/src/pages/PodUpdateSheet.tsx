@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, CircleCheck, Download, Info } from "lucide-react";
 import { useScreenWakeLock } from "../app/wakeLock";
 import { Sheet } from "../components/Sheet";
-import { OTA_CHUNK, OTA_STEPS, otaBlocker, type OtaBlocker } from "../pod/ota";
-import { closeUpdate, otaTiming, reconnectUsb, startUpdate, useOtaFlow, type OtaFlow } from "../pod/otaFlow";
+import { OTA_CHUNK, OTA_SET_STEPS, OTA_STEPS, otaBlocker, type OtaBlocker } from "../pod/ota";
+import { closeUpdate, detachUpdate, forceUpdate, otaTiming, reconnectUsb, startUpdate, useOtaFlow, waitForPods, type OtaFlow } from "../pod/otaFlow";
+import { OTA_DISTRIBUTE_FEATURE } from "../pod/otaSet";
 import { PodError } from "../pod/protocol";
-import { needsPin, usePodSession } from "../pod/session";
+import { hasFeature, needsPin, usePodSession } from "../pod/session";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
 
@@ -16,6 +17,38 @@ export function secondsLeft(flow: Pick<OtaFlow, "done" | "total" | "startDone" |
   const elapsed = now - flow.startedAt;
   if (flow.startDone < 0 || sent < 5 * OTA_CHUNK || elapsed <= 0) return null;
   return Math.ceil(((flow.total - flow.done) * elapsed) / sent / 1000);
+}
+
+/** The pods of the set during step 2 (state, percent) and after the restart (what each one runs). Identity colour from `status.pods`. */
+function PodRows({ flow }: { flow: OtaFlow }) {
+  const { t } = useTranslation();
+  const status = usePodSession((s) => s.status);
+  const rows = flow.results.length > 0 ? flow.results.map((r) => ({ id: r.id, key: `result.${r.result}`, percent: null, bad: r.result !== "updated", firmware: r.firmware })) : flow.pods.map((p) => ({ id: p.id, key: `state.${p.state}`, percent: p.percent, bad: ["failed", "offline", "refused"].includes(p.state), firmware: "" }));
+  if (rows.length === 0) return null;
+  return (
+    <ul className={styles.podList} aria-label={t("firmware.flow.pod.list")}>
+      {rows.map((row) => {
+        const pod = status?.pods?.find((p) => p.id === row.id);
+        return (
+          <li key={row.id} className={styles.podRow}>
+            {pod?.color && <span className={styles.colorDot} style={{ background: pod.color }} aria-hidden />}
+            <span className={styles.podText}>
+              <span className={styles.podLabel}>{t("pod.podList.number", { number: pod?.number ?? row.id + 1 })}</span>
+              <span className={styles.podState} data-bad={row.bad}>
+                {t([`firmware.flow.pod.${row.key}`, "firmware.flow.pod.state.unknown"], { firmware: row.firmware })}
+              </span>
+            </span>
+            {row.percent !== null && (
+              <span className={styles.podBar}>
+                <progress className={styles.progress} value={row.percent} max={100} aria-label={t("firmware.flow.pod.progress", { number: pod?.number ?? row.id + 1 })} />
+                <span className={styles.counter}>{row.percent} %</span>
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -42,6 +75,12 @@ export function UpdateSheet() {
   const activated = running && (flow.step === "restarting" || flow.step === "testing");
   const central = session.role === "central";
   const hasPods = (session.status?.pods?.length ?? 0) > 0;
+  const wholeSet = central && hasPods && hasFeature(info, OTA_DISTRIBUTE_FEATURE);
+  const steps = flow.set ? OTA_SET_STEPS : OTA_STEPS;
+  // step 2: the central goes on without the phone
+  const distributing = running && flow.step === "distributing";
+  const deciding = distributing && flow.stuck && !flow.waiting && !flow.force;
+  const readyPods = flow.pods.filter((p) => p.state === "ready").length;
 
   const start = async () => {
     setRefusal(null);
@@ -71,11 +110,16 @@ export function UpdateSheet() {
       <div className={styles.updateBody} aria-live="polite">
         {closing && running && (
           <div className={page.section} role="alertdialog" aria-label={t("firmware.flow.stopAsk")}>
-            <p className={styles.warn}>{t(activated ? "firmware.flow.stopWatching" : "firmware.flow.stopAsk")}</p>
+            <p className={styles.warn}>{t(distributing ? "firmware.flow.leaveSet" : activated ? "firmware.flow.stopWatching" : "firmware.flow.stopAsk")}</p>
             <div className={styles.firmwareActions}>
               <button className={styles.textButton} onClick={() => setClosing(false)}>
                 {t("firmware.flow.keepGoing")}
               </button>
+              {distributing && (
+                <button className={styles.textButton} onClick={detachUpdate}>
+                  {t("firmware.flow.stopWatchingYes")}
+                </button>
+              )}
               <button className={`${styles.textButton} ${styles.primaryButton}`} onClick={closeUpdate}>
                 {t(activated ? "firmware.flow.stopWatchingYes" : "firmware.flow.stopYes")}
               </button>
@@ -124,7 +168,7 @@ export function UpdateSheet() {
                 {t("firmware.flow.cancel")}
               </button>
             </div>
-            {central && hasPods && <p className={styles.note}>{t("firmware.flow.peripherals")}</p>}
+            {central && hasPods && <p className={styles.note}>{t(wholeSet ? "firmware.flow.peripheralsSet" : "firmware.flow.peripherals")}</p>}
           </>
         )}
 
@@ -140,23 +184,44 @@ export function UpdateSheet() {
         )}
         {(running || flow.phase === "done" || flow.phase === "error") && (
           <ol className={styles.steps}>
-            {OTA_STEPS.map((step, i) => {
+            {steps.map((step, i) => {
               // a rollback or an unconfirmed result is a failure of the check, never a finished "Done"
-              const failed = flow.phase === "error" || (flow.phase === "done" && flow.outcome !== "success");
-              const at = flow.phase === "done" && failed ? OTA_STEPS.indexOf("testing") : flow.step ? OTA_STEPS.indexOf(flow.step) : -1;
+              const failed = flow.phase === "error" || (flow.phase === "done" && flow.outcome !== "success" && flow.outcome !== "mixed");
+              const at = flow.phase === "done" && failed ? steps.indexOf("testing") : flow.step ? steps.indexOf(flow.step) : -1;
               const state = flow.phase === "done" && !failed ? "done" : i < at ? "done" : i === at ? (failed ? "failed" : "current") : "todo";
               return (
                 <li key={step} data-state={state} aria-current={state === "current" ? "step" : undefined}>
                   <span className={styles.stepMark} aria-hidden>
                     {state === "done" ? "✓" : state === "failed" ? "!" : state === "current" ? "›" : ""}
                   </span>
-                  {t(`firmware.flow.steps.${step}`)}
+                  {t(`firmware.flow.steps.${step === "sending" && flow.set ? "sendingSet" : step}`)}
                 </li>
               );
             })}
           </ol>
         )}
 
+        {deciding && (
+          <div className={page.section} role="group" aria-label={t("firmware.flow.decide.title")}>
+            <p className={styles.warn}>
+              <AlertTriangle size={14} aria-hidden /> {t("firmware.flow.decide.notReady", { ready: readyPods, count: flow.pods.length })}
+            </p>
+            <p className={styles.note}>{t(readyPods > 0 ? "firmware.flow.decide.mixed" : "firmware.flow.decide.none")}</p>
+            <div className={styles.firmwareActions}>
+              <button className={styles.textButton} onClick={waitForPods}>
+                {t("firmware.flow.decide.wait")}
+              </button>
+              {readyPods > 0 && (
+                <button className={`${styles.textButton} ${styles.primaryButton}`} onClick={forceUpdate}>
+                  {t("firmware.flow.decide.only", { count: readyPods })}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {distributing && !deciding && !flow.force && flow.pods.length > 0 && <p className={styles.note}>{t("firmware.flow.distributeNote")}</p>}
+        {flow.set && flow.pods.length > 0 && (running ? ["distributing", "restarting", "testing", "joining"].includes(flow.step ?? "") : flow.phase === "done") && <PodRows flow={flow} />}
+        {running && flow.step === "joining" && <p className={styles.note}>{t("firmware.flow.joiningNote")}</p>}
         {running && flow.step === "testing" && <p className={styles.warn}>{t("firmware.flow.testNote")}</p>}
         {running && flow.step === "restarting" && (
           <>
