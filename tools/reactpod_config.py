@@ -46,7 +46,7 @@ from bleak import BleakClient, BleakScanner
 from bleak.exc import BleakError
 
 from reactpod_format import report_line
-from reactpod_ota import (OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
+from reactpod_ota import (TRIAL_WAIT_S, OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
                           result_lines, run_async)
 
 SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab"
@@ -471,6 +471,7 @@ async def ota(args) -> int:
               "run ota again without --no-activate to activate it)")
         return 0
     print("activating; the pod restarts ...")
+    await asyncio.sleep(TRIAL_WAIT_S)
     info = await wait_for_pod(address, args)
     if info is None:
         print("the pod did not answer after the restart; check it with info", file=sys.stderr)

@@ -102,8 +102,8 @@ class LEDManager {
         // Plays a system pattern (SystemPattern.h), firmware only. startUs as for playEffect. The ring as it is
         // now is kept as the snapshot that SELECT / SELECT_CANCEL draw over.
         void playPattern(SystemPattern::Id id, const SystemPattern::Args& args = SystemPattern::Args(), int64_t startUs = 0);
-        // Bar of a playing UPDATE pattern (0 ... 100); other patterns are not changed. Drawn by service() at most
-        // every UPDATE_FRAME_US (SystemPattern::updateProgress)
+        // Bar of a playing UPDATE pattern (0 ... 100); other patterns are not changed. Call it between a request and
+        // its response: it draws the frame (at most every UPDATE_FRAME_US, about 0.6 ms) while no bytes arrive
         void setPatternPercent(uint8_t percent);
 
         // Stops the effect; the LEDs keep the last frame
@@ -151,6 +151,7 @@ class LEDManager {
         static const uint32_t ALL_LEDS = (1UL << NEOPIXEL_SIZE) - 1;
         static const int64_t MIN_FRAME_US = 16000;     // at most ~60 frames per second
         static const int64_t UPDATE_FRAME_US = 50000;  // the update bar: at most 20 frames per second (#125, #122)
+        static const int64_t UPDATE_STREAM_US = 500000;  // no chunk for this long: service() draws the bar again
 
     private:
         enum class EffectState : uint8_t { IDLE, RUNNING, HOLD };    // HOLD: finished or static, last frame stays
@@ -159,7 +160,7 @@ class LEDManager {
         uint32_t scaled(const ColorSet& color, uint8_t level) const;
         // show() if the buffer changed since the last show()
         void present();
-        void serviceEffect();
+        void serviceEffect(bool updateFrame = false);
         void renderEffect(int64_t nowUs);
         // pattern frame into next[]; true when the pattern has ended
         bool renderPattern(uint32_t elapsedMs, uint32_t* next);
@@ -180,6 +181,7 @@ class LEDManager {
         EffectState effectState = EffectState::IDLE;
         int64_t effectStart = 0;
         int64_t lastFrameUs = 0;
+        int64_t updateStreamUs = -UPDATE_STREAM_US;   // last chunk of an update (setPatternPercent)
         uint32_t ledMask = ALL_LEDS;
         uint32_t frame[NEOPIXEL_SIZE];
         uint32_t shown[NEOPIXEL_SIZE];              // what the driver was given last (present())
