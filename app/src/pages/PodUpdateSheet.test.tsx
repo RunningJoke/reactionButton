@@ -97,6 +97,9 @@ describe("the update sheet on the demo pod", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start update" }));
     await screen.findByText(/did not pass its check/, {}, { timeout: 5000 });
     expect(pod.firmware).toBe("2.19");
+    // the check failed: it is marked, and "Done" is not ticked
+    expect(screen.getByText("Checking the new firmware").closest("li")?.getAttribute("data-state")).toBe("failed");
+    expect(screen.getByText("Done").closest("li")?.getAttribute("data-state")).toBe("todo");
   });
 
   it("tells that only this pod is updated when the central has peripherals", async () => {

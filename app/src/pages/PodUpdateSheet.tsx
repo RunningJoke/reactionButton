@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, CircleCheck, Download, Info } from "lucide-react";
 import { useScreenWakeLock } from "../app/wakeLock";
@@ -29,6 +29,11 @@ export function UpdateSheet() {
   const [refusal, setRefusal] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   useScreenWakeLock(flow.phase === "running");
+  // the checks read the pod's state as it is now, not as it was at the last refresh
+  const confirming = flow.phase === "confirm";
+  useEffect(() => {
+    if (confirming) void usePodSession.getState().refreshStatus();
+  }, [confirming]);
   if (!flow.phase) return null;
 
   const info = session.info;
@@ -64,6 +69,19 @@ export function UpdateSheet() {
       onClose={() => (running ? setClosing(true) : closeUpdate())}
     >
       <div className={styles.updateBody} aria-live="polite">
+        {closing && running && (
+          <div className={page.section} role="alertdialog" aria-label={t("firmware.flow.stopAsk")}>
+            <p className={styles.warn}>{t(activated ? "firmware.flow.stopWatching" : "firmware.flow.stopAsk")}</p>
+            <div className={styles.firmwareActions}>
+              <button className={styles.textButton} onClick={() => setClosing(false)}>
+                {t("firmware.flow.keepGoing")}
+              </button>
+              <button className={`${styles.textButton} ${styles.primaryButton}`} onClick={closeUpdate}>
+                {t(activated ? "firmware.flow.stopWatchingYes" : "firmware.flow.stopYes")}
+              </button>
+            </div>
+          </div>
+        )}
         {flow.phase === "confirm" && (
           <>
             {blocker && blocker !== "needsPin" ? (
@@ -75,7 +93,6 @@ export function UpdateSheet() {
                 <Info size={14} aria-hidden /> {t("firmware.flow.keepOn")}
               </p>
             )}
-            {central && hasPods && <p className={styles.note}>{t("firmware.flow.peripherals")}</p>}
             {blocker === "needsPin" && (
               <>
                 <label htmlFor="ota-pin">{t("pod.pin")}</label>
@@ -107,14 +124,17 @@ export function UpdateSheet() {
                 {t("firmware.flow.cancel")}
               </button>
             </div>
+            {central && hasPods && <p className={styles.note}>{t("firmware.flow.peripherals")}</p>}
           </>
         )}
 
         {(running || flow.phase === "done" || flow.phase === "error") && (
           <ol className={styles.steps}>
             {OTA_STEPS.map((step, i) => {
-              const at = flow.step ? OTA_STEPS.indexOf(flow.step) : -1;
-              const state = flow.phase === "done" || i < at ? "done" : i === at && flow.phase !== "error" ? "current" : i === at ? "failed" : "todo";
+              // a rollback or an unconfirmed result is a failure of the check, never a finished "Done"
+              const failed = flow.phase === "error" || (flow.phase === "done" && flow.outcome !== "success");
+              const at = flow.phase === "done" && failed ? OTA_STEPS.indexOf("testing") : flow.step ? OTA_STEPS.indexOf(flow.step) : -1;
+              const state = flow.phase === "done" && !failed ? "done" : i < at ? "done" : i === at ? (failed ? "failed" : "current") : "todo";
               return (
                 <li key={step} data-state={state} aria-current={state === "current" ? "step" : undefined}>
                   <span className={styles.stepMark} aria-hidden>
@@ -169,19 +189,6 @@ export function UpdateSheet() {
           </div>
         )}
 
-        {closing && running && (
-          <div className={page.section} role="alertdialog" aria-label={t("firmware.flow.stopAsk")}>
-            <p className={styles.warn}>{t(activated ? "firmware.flow.stopWatching" : "firmware.flow.stopAsk")}</p>
-            <div className={styles.firmwareActions}>
-              <button className={styles.textButton} onClick={() => setClosing(false)}>
-                {t("firmware.flow.keepGoing")}
-              </button>
-              <button className={`${styles.textButton} ${styles.primaryButton}`} onClick={closeUpdate}>
-                {t(activated ? "firmware.flow.stopWatchingYes" : "firmware.flow.stopYes")}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </Sheet>
   );

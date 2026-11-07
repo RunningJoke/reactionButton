@@ -125,7 +125,8 @@ async function verdict(env: OtaEnv, client: PodClient, target: string, h: OtaHan
       if (!isLinkLoss(e) || restarts >= 3) throw e;
       restarts++;
       h.step("restarting");
-      client = await env.next(client, false, h.signal);
+      // a timeout may leave the same link up; after a drop only the client of the new link is connected anyway
+      client = await env.next(client, true, h.signal);
       since = env.now();
       h.step("testing");
     }
