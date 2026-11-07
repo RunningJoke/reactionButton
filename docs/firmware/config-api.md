@@ -56,7 +56,7 @@ the central only (not synced) and advertised after the current connection ends.
 | `crc_mismatch`, `invalid_json` | final `put` chunk rejected, nothing stored |
 | `invalid_program` | `validate`: `message` names file + block |
 | `storage` | flash write failed (`otaBegin` / `otaWrite`: the update is `failed`) |
-| `ota_failed` | firmware update (§5 Firmware update): image or hash rejected, nothing activated (fw ≥ 2.19) |
+| `ota_failed` | firmware update (§5 Firmware update): image, hash or signature rejected, nothing activated (fw ≥ 2.19; signature fw ≥ 2.20) |
 | `overflow` | data came faster than processed: resend |
 | `auth_required`, `auth_failed` | PIN (§8) |
 | `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed; `select` while an update runs; `otaBegin` outside the menu or while the new image is on trial (15 s after an `otaActivate`) |
@@ -190,8 +190,10 @@ old firmware stays in its slot; the image is only used after a successful `otaEn
   base64 of 1 to `maxChunk` raw bytes (a request fits `maxRequest`). The first chunk must start with the
   image header, else `ota_failed`. Past `size`: `too_large`.
 - `otaEnd`: needs `received` = `size` (else `not_ready`). Compares SHA-256 with `sha256` and lets the
-  ESP-IDF check the image; failure `ota_failed`, the update is `failed`, nothing changes in the boot choice.
-  Takes about 150 ms.
+  ESP-IDF check the image **and its signature** (fw >= 2.20, #134: RSA-3072 signature block, see architecture
+  §4.2); an unsigned image or one signed with another key than the running firmware's gives `ota_failed`
+  ("image rejected: ESP_ERR_IMAGE_INVALID"), the update is `failed`, nothing changes in the boot choice.
+  Takes about 150 ms (about 1 s with the signature check).
 - `otaActivate`: only in state `ready`. Selects the new slot, keeps the current role for the next start
   (a central comes back as central) and restarts, like `reboot`. The new image is **on trial** (fw >= 2.19,
   architecture §4.1): it is marked valid only after 15 s and a self-test, otherwise the bootloader returns

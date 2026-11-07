@@ -9,7 +9,7 @@ are JSON block graphs; the **Config App** builds, simulates and uploads them.
 - **Developing:** [CLAUDE.md](CLAUDE.md) (map, commands, workflow, rules) and the specs in [docs/](docs/)
 
 ```sh
-pio run -d firmware -e NewBoard -t upload      # flash (USB; no OTA, ADR 0006)
+pio run -d firmware -e NewBoard -t upload      # flash over USB (first install, recovery); later versions: Config App, This set (ADR 0009)
 pio run -d firmware -e NewBoard -t uploadfs    # flash the programs
 python tools/reactpod_serial.py monitor        # log over USB
 cd app && npm install && npm run dev           # http://localhost:5173
