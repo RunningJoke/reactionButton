@@ -45,12 +45,16 @@
  *
  *   SYNC_READ_REQ (path, offset) ───►
  *                                ◄─── SYNC_READ_RESP (offset, total, data)
+ *
+ * Link protocol revision 6 (firmware 2.20) adds the firmware update of the peripherals (LINK_FEATURE_OTA,
+ * link-protocol.md §5.3): OTA_OFFER, OTA_CHUNK and OTA_ACTIVATE (C -> P), the path "@ota" of SYNC_READ_REQ,
+ * otaState / otaPercent appended to PING and the PONG flags OTA / OTA_PULL.
  */
 namespace Protocol {
 
     const uint8_t MAGIC = 0x52;     // 'R'
     const uint8_t VERSION = 1;          // frame header version, see "Extensions" above
-    const uint8_t REVISION = 5;        // link protocol revision (reported as info.linkRevision)
+    const uint8_t REVISION = 6;        // link protocol revision (reported as info.linkRevision)
     const uint8_t MAX_FRAME = 250;     // ESP-NOW limit
 
     enum class MsgType : uint8_t {
@@ -66,6 +70,9 @@ namespace Protocol {
         SYNC_READ_RESP,
         EFFECT,             // firmware >= 2.8, only sent to pods with LINK_FEATURE_EFFECTS
         RELEASED,           // firmware >= 2.9, peripheral -> central, hold report (LINK_FEATURE_HOLD)
+        OTA_OFFER,          // firmware >= 2.20, central -> peripheral, start / continue an update (LINK_FEATURE_OTA)
+        OTA_ACTIVATE,       // firmware >= 2.20, central -> peripheral, boot the received image
+        OTA_CHUNK,          // firmware >= 2.20, central -> broadcast, one chunk of the image
     };
 
     // ClaimAck::linkFeatures (firmware >= 2.8; a shorter CLAIM_ACK means 0)
@@ -73,6 +80,7 @@ namespace Protocol {
     const uint8_t LINK_FEATURE_HOLD = 0x02;        // PodMode CHARGE / RELEASE, ARM hold parameters, RELEASED (firmware >= 2.9)
     const uint8_t LINK_FEATURE_TOGGLE = 0x04;      // PodMode TOGGLE, ARM toggle parameters, PRESSED owner / flipCount (firmware >= 2.10)
     const uint8_t LINK_FEATURE_BATTERY = 0x08;     // PING batteryMv (firmware >= 2.13)
+    const uint8_t LINK_FEATURE_OTA = 0x10;         // OTA_OFFER / OTA_CHUNK / OTA_ACTIVATE, PING otaState (firmware >= 2.20)
 
     enum class PodMode : uint8_t {
         HIT = 1,    // pod should be pressed
@@ -210,10 +218,14 @@ namespace Protocol {
         int64_t t1;
         StoreState store;
         uint16_t batteryMv;     // appended, firmware >= 2.13 (LINK_FEATURE_BATTERY): cell voltage, 0 = unknown
+        uint8_t otaState;       // appended, firmware >= 2.20 (LINK_FEATURE_OTA): OTA_POD_*, 0 = no update
+        uint8_t otaPercent;     // appended with otaState: received part of the image, 0 ... 100
     };
 
     const uint8_t PONG_FLAG_SYNC_ALLOWED = 0x01;   // central is not running a game: sync may run
     const uint8_t PONG_FLAG_IDENTIFY = 0x02;       // central in menu / discovery / confirm: pods show their identity (rev. 4)
+    const uint8_t PONG_FLAG_OTA = 0x04;            // central is distributing an image (rev. 6): a pod keeps its update, without the flag it discards it
+    const uint8_t PONG_FLAG_OTA_PULL = 0x08;       // rev. 6: pods that wait for a broadcast pass (OTA_OFFER_FLAG_BROADCAST) may pull their missing chunks
 
     // central -> peripheral. t2 = central clock at PING reception, t3 = central clock at transmission
     struct __attribute__((packed)) Pong {
@@ -302,12 +314,51 @@ namespace Protocol {
         uint8_t data[SYNC_CHUNK];   // only len bytes are sent
     };
 
+    // Firmware update (rev. 6, link-protocol.md §5.3). These layouts and SYNC_READ stay byte-compatible in every
+    // future link version, otherwise a newer central could not update its older peripherals.
+    const char* const OTA_PATH = "@ota";           // SYNC_READ_REQ path: the image in the central's inactive slot
+    const uint8_t OTA_VERSION_LEN = 12;
+    const uint8_t OTA_OFFER_FLAG_BROADCAST = 0x01; // the image comes as OTA_CHUNK broadcasts first, pull only after PONG_FLAG_OTA_PULL
+    const uint8_t OTA_CHUNK_DATA = 200;            // bytes per chunk (= SYNC_CHUNK); chunk i holds bytes i * 200 ...
+
+    // PING otaState
+    const uint8_t OTA_POD_NONE = 0;
+    const uint8_t OTA_POD_PREPARING = 1;           // erasing the slot (about 4 s, the pod is deaf)
+    const uint8_t OTA_POD_RECEIVING = 2;
+    const uint8_t OTA_POD_READY = 3;               // image complete and verified
+    const uint8_t OTA_POD_FAILED = 4;              // hash or image rejected, storage error
+    const uint8_t OTA_POD_LOW_BATTERY = 5;         // refused, below 30 %
+
+    // central -> peripheral (acked, repeated until the pod reports a state)
+    struct __attribute__((packed)) OtaOffer {
+        Header header;
+        uint32_t size;
+        uint8_t sha256[32];
+        uint8_t flags;                  // OTA_OFFER_FLAG_*
+        char version[OTA_VERSION_LEN];  // "2.20", null terminated
+    };
+
+    // central -> peripheral (acked)
+    struct __attribute__((packed)) OtaActivate {
+        Header header;
+        uint8_t sha256[8];              // first bytes of the offered hash: only a pod that holds this image switches
+    };
+
+    // central -> broadcast, not acked; the length of data is the frame length minus offsetof(data)
+    struct __attribute__((packed)) OtaChunk {
+        Header header;
+        uint16_t index;
+        uint8_t data[OTA_CHUNK_DATA];
+    };
+
     static_assert(sizeof(Pong) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(SyncReadResp) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Arm) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Pressed) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Effect) <= MAX_FRAME, "frame too large");
     static_assert(sizeof(Released) <= MAX_FRAME, "frame too large");
+    static_assert(sizeof(OtaOffer) <= MAX_FRAME, "frame too large");
+    static_assert(sizeof(OtaChunk) <= MAX_FRAME, "frame too large");
 
     inline void fillHeader(Header& header, MsgType type, uint32_t setId) {
         header.magic = MAGIC;
@@ -335,7 +386,7 @@ namespace Protocol {
             case MsgType::HELLO: return sizeof(Hello);
             case MsgType::CLAIM: return sizeof(Claim);
             case MsgType::CLAIM_ACK: return offsetof(ClaimAck, linkFeatures);
-            case MsgType::PING: return offsetof(Ping, batteryMv);   // batteryMv is appended
+            case MsgType::PING: return offsetof(Ping, batteryMv);   // batteryMv, otaState and otaPercent are appended
             case MsgType::PONG: return sizeof(Pong);
             case MsgType::ARM: return offsetof(Arm, waiting);       // waiting, hold and toggle are appended
             case MsgType::RESET: return sizeof(Reset);
@@ -344,6 +395,9 @@ namespace Protocol {
             case MsgType::SYNC_READ_RESP: return offsetof(SyncReadResp, data);   // + len bytes
             case MsgType::EFFECT: return sizeof(Effect);
             case MsgType::RELEASED: return sizeof(Released);
+            case MsgType::OTA_OFFER: return sizeof(OtaOffer);
+            case MsgType::OTA_ACTIVATE: return sizeof(OtaActivate);
+            case MsgType::OTA_CHUNK: return offsetof(OtaChunk, data) + 1;
         }
         return 0;
     }

@@ -40,6 +40,7 @@ const char* CentralRole::stateName(State state) {
         case State::RUN: return "RUN";
         case State::PAUSED: return "PAUSED";
         case State::ERROR: return "ERROR";
+        case State::DISTRIBUTING: return "DISTRIBUTING";
     }
     return "?";
 }
@@ -175,6 +176,33 @@ void CentralRole::run() {
         case State::ERROR:
             LEDManager::getManager()->setLEDColors(errorPattern);
             break;
+
+        case State::DISTRIBUTING:
+            this->runDistribution();
+            break;
+    }
+}
+
+// DISTRIBUTING (PodNetwork::otaService drives the pods): overall progress on the ring, then the restart after otaActivate
+void CentralRole::runDistribution() {
+    bool ready = this->network.otaNotReady().empty();
+    if(ready != this->otaReadyShown) {
+        this->otaReadyShown = ready;
+        SystemPattern::Args args;
+        args.percent = this->network.otaPercent();
+        LEDManager::getManager()->playPattern(ready ? SystemPattern::Id::UPDATE_READY : SystemPattern::Id::UPDATE, args);
+    } else if(!ready) {
+        SystemPattern::updateProgress(this->network.otaPercent());
+    }
+
+    if(this->otaActivateDeadlineUs != 0 && (this->network.otaFlushed() || esp_timer_get_time() >= this->otaActivateDeadlineUs)) {
+        this->otaActivateDeadlineUs = 0;
+        JsonDocument ignored;
+        if(Ota::opActivate(ignored)) {
+            Console.flush();
+            delay(300);     // the last OTA_ACTIVATE is on air
+            esp_restart();
+        }
     }
 }
 
@@ -425,6 +453,9 @@ void CentralRole::describe(JsonObject status) {
         describeEditable(status["ready"].to<JsonObject>()["editable"].to<JsonObject>(), this->startEditables());
     }
     this->network.describe(status["pods"].to<JsonArray>());
+    if(this->state == State::DISTRIBUTING) {
+        this->network.otaDescribe(status["ota"]["pods"].to<JsonArray>());
+    }
 
     if(this->state == State::RUN || this->state == State::PAUSED) {
         status["block"] = BlockManager::getManager()->currentBlockName();
@@ -471,6 +502,10 @@ bool CentralRole::control(const char* op, JsonObjectConst request, JsonDocument&
         this->opPause(response);
     } else if(strcmp(op, "resume") == 0) {
         this->opResume(response);
+    } else if(strcmp(op, "otaDistribute") == 0) {
+        this->opOtaDistribute(request, response);
+    } else if(strcmp(op, "otaActivate") == 0 && this->state == State::DISTRIBUTING) {
+        this->opOtaActivate(request, response);
     } else if(strcmp(op, "stop") == 0) {
         this->stopToMenu();
         response["ok"] = true;
@@ -525,11 +560,75 @@ void CentralRole::opPrograms(JsonDocument& response) {
 // A firmware update is over or discarded (Ota): the menu ring again; updateMenuRing then plays the MENU pattern
 void CentralRole::otaEnded() {
     LEDManager* leds = LEDManager::getManager();
+    if(this->state == State::DISTRIBUTING) {
+        // otaAbort: the pods see the PONGs without the OTA flag and discard their update
+        this->network.otaStop();
+        this->network.setAcceptNewPods(false, 0);
+        this->otaActivateDeadlineUs = 0;
+        this->setState(State::MENU);
+    }
     if(this->state == State::MENU && this->catalog.size() > 0) {
         this->catalog.showMenu(this->selectedModel, *leds);
     } else {
         leds->turnOff();
     }
+}
+
+// otaDistribute {"mode":"auto|unicast|broadcast"}: from the menu, with a verified image (otaEnd)
+void CentralRole::opOtaDistribute(JsonObjectConst request, JsonDocument& response) {
+    if(this->state != State::MENU) {
+        ConfigApi::setError(response, "busy", String("distribution needs the menu (state ") + stateName(this->state) + ")");
+        return;
+    }
+    if(!Ota::imageReady()) {
+        ConfigApi::setError(response, "not_ready", "no verified image, send otaBegin ... otaEnd first");
+        return;
+    }
+    const char* name = request["mode"] | "auto";
+    PodNetwork::OtaMode mode = strcmp(name, "unicast") == 0 ? PodNetwork::OtaMode::UNICAST
+                             : strcmp(name, "broadcast") == 0 ? PodNetwork::OtaMode::BROADCAST : PodNetwork::OtaMode::AUTO;
+    if(mode == PodNetwork::OtaMode::AUTO && strcmp(name, "auto") != 0) {
+        ConfigApi::setError(response, "bad_request", "'mode' must be auto, unicast or broadcast");
+        return;
+    }
+    if(!this->network.begin(Settings::getOrCreateSetId())) {
+        ConfigApi::setError(response, "storage", "the radio (ESP-NOW) could not be started");
+        return;
+    }
+    this->network.setSyncAllowed(false);
+    this->network.setAcceptNewPods(true, MAX_PERIPHERALS);
+    this->network.otaStart(mode);
+    this->otaReadyShown = false;
+    this->otaActivateDeadlineUs = 0;
+    this->setState(State::DISTRIBUTING);
+    SystemPattern::Args args;
+    args.percent = 0;
+    LEDManager::getManager()->playPattern(SystemPattern::Id::UPDATE, args);
+    response["ok"] = true;
+    response["mode"] = name;
+}
+
+// otaActivate while distributing: the ready pods switch first, then the central (runDistribution)
+void CentralRole::opOtaActivate(JsonObjectConst request, JsonDocument& response) {
+    std::vector<uint8_t> missing = this->network.otaNotReady();
+    if(!missing.empty()) {
+        if(!request["force"].as<bool>()) {
+            ConfigApi::setError(response, "not_ready", String(missing.size()) + " pod(s) are not ready, see status.ota.pods (or force)");
+            JsonArray ids = response["pods"].to<JsonArray>();
+            for(uint8_t id : missing) {
+                ids.add(id);
+            }
+            return;
+        }
+        if(!OtaRules::forceAllowed(Ota::imageLinkProtocol(), Protocol::VERSION)) {
+            ConfigApi::setError(response, "bad_request",
+                String("force needs the new firmware's linkProtocol (otaBegin) to be ") + Protocol::VERSION + ", the protocol of this firmware");
+            return;
+        }
+    }
+    response["ok"] = true;
+    response["pods"] = this->network.otaActivatePods();
+    this->otaActivateDeadlineUs = esp_timer_get_time() + 2000000;
 }
 
 void CentralRole::opSelect(JsonObjectConst request, JsonDocument& response) {

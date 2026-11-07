@@ -27,6 +27,10 @@ PeripheralRole::PeripheralRole() {
 }
 
 void PeripheralRole::becomeUnclaimed() {
+    if(Ota::viaRadio()) {
+        Ota::radioAbort();      // the central is gone: a half-received image is no use
+    }
+    this->otaLowBattery = false;
     this->state = State::UNCLAIMED;
     this->clock.clear();
     this->pairResetDone = false;
@@ -45,14 +49,20 @@ void PeripheralRole::run() {
     button.update();
     this->link.service();
 
+    // an update over the config API owns the pod: the central is ignored, claimed or not. An update from the
+    // central (UPDATE) keeps the link going.
+    bool configUpdate = Ota::busy() && !Ota::viaRadio();
     RxFrame frame;
     while(this->link.receive(frame)) {
-        if(!Ota::busy()) {      // a firmware update owns the pod: the central is ignored, claimed or not
+        if(!configUpdate) {
             this->handleFrame(frame);
         }
     }
-    if(Ota::busy()) {
+    if(configUpdate) {
         return;
+    }
+    if(this->state == State::UPDATE && !Ota::viaRadio()) {
+        this->leaveUpdate();        // aborted over USB
     }
 
     int64_t now = esp_timer_get_time();
@@ -96,6 +106,10 @@ void PeripheralRole::run() {
     // ring, so programs never see either during a game.
     if(this->state == State::READY) {
         this->updateIdentity(now);
+    }
+    if(this->state == State::UPDATE) {
+        this->runUpdate(now);
+        return;
     }
 
     switch(this->state) {
@@ -251,6 +265,8 @@ void PeripheralRole::sendPing() {
     ping.t1 = 0;    // stamped by the link when the frame goes to the radio
     ping.store = StoreSync::localState();
     ping.batteryMv = Battery::milliVolts();
+    ping.otaState = this->otaPingState();
+    ping.otaPercent = Ota::viaRadio() ? Ota::radioPercent() : 0;
     this->link.send(this->centralMac, &ping, sizeof(ping), 0, (int8_t)offsetof(Ping, t1));
 }
 
@@ -276,25 +292,59 @@ void PeripheralRole::handleFrame(const RxFrame& frame) {
         {
             const Pong* pong = reinterpret_cast<const Pong*>(frame.data);
             this->clock.addSample(pong->t1, pong->t2, pong->t3, frame.rxUs);
-            this->lastPongUs = frame.rxUs;
+            if(frame.rxUs > this->lastPongUs) {     // a PONG queued before a blocking erase is older than the supervision restart
+                this->lastPongUs = frame.rxUs;
+            }
             this->identifyWanted = (pong->flags & PONG_FLAG_IDENTIFY) != 0;     // revision 4; older centrals never set it
+            this->otaPullAllowed = (pong->flags & PONG_FLAG_OTA_PULL) != 0;
+            if((pong->flags & PONG_FLAG_OTA) == 0) {
+                this->otaLowBattery = false;
+                if(this->state == State::UPDATE) {
+                    this->leaveUpdate();        // the central does not distribute (any more)
+                }
+            }
             this->sync.peerState(frame.mac, pong->store, (pong->flags & PONG_FLAG_SYNC_ALLOWED) != 0);
             break;
         }
         case MsgType::ARM:
-            this->handleArm(frame);
+            if(this->state != State::UPDATE) {
+                this->handleArm(frame);
+            }
             break;
 
         case MsgType::EFFECT:
-            this->handleEffect(*reinterpret_cast<const Effect*>(frame.data));
+            if(this->state != State::UPDATE) {
+                this->handleEffect(*reinterpret_cast<const Effect*>(frame.data));
+            }
+            break;
+
+        case MsgType::OTA_OFFER:
+            this->handleOffer(frame);
+            break;
+
+        case MsgType::OTA_CHUNK:
+            this->handleOtaChunk(frame);
+            break;
+
+        case MsgType::OTA_ACTIVATE:
+            this->handleOtaActivate(frame);
+            break;
+
+        case MsgType::SYNC_READ_RESP:
+            if(this->handleOtaResponse(frame)) {
+                break;
+            }
+            this->sync.handleFrame(frame);
             break;
 
         case MsgType::SYNC_READ_REQ:
-        case MsgType::SYNC_READ_RESP:
             this->sync.handleFrame(frame);
             break;
 
         case MsgType::RESET:
+            if(this->state == State::UPDATE) {
+                break;
+            }
             this->hold.end();
             this->state = State::READY;
             this->identityBlockedUntilUs = 0;
@@ -331,7 +381,7 @@ void PeripheralRole::handleClaim(const RxFrame& frame) {
     ClaimAck ack;
     fillHeader(ack.header, MsgType::CLAIM_ACK, this->setId);
     ack.podId = this->podId;
-    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE | LINK_FEATURE_BATTERY;
+    ack.linkFeatures = LINK_FEATURE_EFFECTS | LINK_FEATURE_HOLD | LINK_FEATURE_TOGGLE | LINK_FEATURE_BATTERY | LINK_FEATURE_OTA;
     this->link.send(this->centralMac, &ack, sizeof(ack), 3);
 
     this->claimJoinedUntilUs = esp_timer_get_time() + CLAIM_JOINED_US;
@@ -449,6 +499,157 @@ void PeripheralRole::activate() {
     this->state = State::ACTIVE;
 }
 
+// ---------------------------------------------------------------- firmware update from the central (#130, #132)
+
+uint8_t PeripheralRole::otaPingState() const {
+    if(this->otaPreparing) return OTA_POD_PREPARING;
+    if(this->otaLowBattery) return OTA_POD_LOW_BATTERY;
+    if(!Ota::viaRadio()) return OTA_POD_NONE;
+    switch(Ota::currentState()) {
+        case OtaRules::State::READY: return OTA_POD_READY;
+        case OtaRules::State::FAILED: return OTA_POD_FAILED;
+        default: return OTA_POD_RECEIVING;
+    }
+}
+
+void PeripheralRole::handleOffer(const RxFrame& frame) {
+    const OtaOffer* offer = reinterpret_cast<const OtaOffer*>(frame.data);
+    if(this->state != State::READY && this->state != State::UPDATE) {
+        return;
+    }
+    char sha[65];
+    OtaRules::bytesToHex(offer->sha256, sha);
+    if(Ota::radioIs(offer->size, sha)) {
+        return;     // the offer is repeated until we report a state
+    }
+    char version[OTA_VERSION_LEN + 1];
+    memcpy(version, offer->version, OTA_VERSION_LEN);
+    version[OTA_VERSION_LEN] = '\0';
+
+    // the erase stops the loop and the radio for about 4 s: say so first, and do not take the silence for a lost central
+    this->otaPreparing = true;
+    this->sendPing();
+    Ota::RadioBegin result = Ota::radioBegin(offer->size, sha, version);
+    this->otaPreparing = false;
+    ESP_LOGI(TAG, "update offer %s (%u bytes): begin result %d", version, (unsigned)offer->size, (int)result);
+    this->lastPongUs = esp_timer_get_time();
+    this->lastPingUs = 0;
+    this->otaLowBattery = result == Ota::RadioBegin::LOW_BATTERY;
+    if(!Ota::viaRadio()) {
+        return;     // refused (battery, the new image is on trial, ...): the central sees no state and offers again
+    }
+    this->state = State::UPDATE;
+    this->identityShown = IdentityShow::NONE;
+    this->otaBroadcast = (offer->flags & OTA_OFFER_FLAG_BROADCAST) != 0;
+    this->otaRequested = -1;
+    this->otaRetries = 0;
+    this->otaPauseUntilUs = 0;
+    this->otaCursor = 0;
+}
+
+void PeripheralRole::handleOtaChunk(const RxFrame& frame) {
+    if(this->state != State::UPDATE) {
+        return;
+    }
+    const OtaChunk* chunk = reinterpret_cast<const OtaChunk*>(frame.data);
+    Ota::radioChunk(chunk->index, chunk->data, frame.len - offsetof(OtaChunk, data));
+}
+
+// The answer to our "@ota" request; false if it is not (a store sync response)
+bool PeripheralRole::handleOtaResponse(const RxFrame& frame) {
+    const SyncReadResp* resp = reinterpret_cast<const SyncReadResp*>(frame.data);
+    if(this->state != State::UPDATE || this->otaRequested < 0 || resp->reqId != this->otaReqId
+       || resp->offset != OtaBitmap::chunkOffset((uint16_t)this->otaRequested)) {
+        return false;
+    }
+    if(resp->status != SyncStatus::OK || frame.len < offsetof(SyncReadResp, data) + resp->len
+       || !Ota::radioChunk((uint16_t)this->otaRequested, resp->data, resp->len)) {
+        if(Ota::radioNextMissing((uint16_t)this->otaRequested) != this->otaRequested) {
+            this->otaCursor = (uint16_t)(this->otaRequested + 1);       // we have it already (a broadcast came in meanwhile)
+        } else {
+            this->otaPauseUntilUs = esp_timer_get_time() + 2000000;     // the central cannot serve it now
+        }
+    } else {
+        this->otaCursor = (uint16_t)(this->otaRequested + 1);
+    }
+    this->otaRequested = -1;
+    return true;
+}
+
+void PeripheralRole::runUpdate(int64_t now) {
+    if(Ota::currentState() != OtaRules::State::RECEIVING) {
+        return;     // ready or failed: nothing to fetch
+    }
+    if(Ota::radioComplete()) {
+        Ota::radioFinish();     // hashes the image from the flash, about half a second
+        this->lastPongUs = esp_timer_get_time();
+        this->lastPingUs = 0;
+        return;
+    }
+    if((this->otaBroadcast && !this->otaPullAllowed) || now < this->otaPauseUntilUs) {
+        return;
+    }
+    if(this->otaRequested >= 0) {
+        if(now - this->otaRequestUs < OTA_REQUEST_TIMEOUT_US) {
+            return;
+        }
+        if(++this->otaRetries > OTA_MAX_RETRIES) {
+            this->otaRetries = 0;
+            this->otaRequested = -1;
+            this->otaPauseUntilUs = now + 2000000;
+            return;
+        }
+    } else {
+        int32_t next = Ota::radioNextMissing(this->otaCursor);
+        if(next < 0) {
+            return;
+        }
+        this->otaRequested = next;
+        this->otaRetries = 0;
+        this->otaReqId++;
+    }
+    SyncReadReq request;
+    fillHeader(request.header, MsgType::SYNC_READ_REQ, this->setId);
+    request.reqId = this->otaReqId;
+    request.offset = OtaBitmap::chunkOffset((uint16_t)this->otaRequested);
+    memset(request.path, 0, SYNC_PATH_LEN);
+    strncpy(request.path, OTA_PATH, SYNC_PATH_LEN - 1);
+    this->link.send(this->centralMac, &request, sizeof(request), 3);
+    this->otaRequestUs = now;
+}
+
+void PeripheralRole::handleOtaActivate(const RxFrame& frame) {
+    const OtaActivate* activate = reinterpret_cast<const OtaActivate*>(frame.data);
+    uint8_t digest[32];
+    if(this->state != State::UPDATE || Ota::currentState() != OtaRules::State::READY
+       || !OtaRules::hexToBytes(Ota::imageSha(), digest) || memcmp(digest, activate->sha256, sizeof(activate->sha256)) != 0) {
+        return;
+    }
+    JsonDocument ignored;
+    if(Ota::opActivate(ignored)) {
+        delay(200);     // the frame is acknowledged by the radio already
+        esp_restart();
+    }
+}
+
+// The central does not distribute any more (otaAbort) or the update was aborted over USB: back to a plain READY pod
+void PeripheralRole::leaveUpdate() {
+    ESP_LOGI(TAG, "update discarded");
+    Ota::radioAbort();
+    this->state = State::READY;
+    this->identityShown = IdentityShow::NONE;
+    this->identityBlockedUntilUs = 0;
+    LEDManager::getManager()->turnOff();
+}
+
+void PeripheralRole::otaEnded() {
+    if(this->state == State::UPDATE) {
+        LEDManager::getManager()->turnOff();    // the failure blink is over, the pod waits for the central's decision
+    } else {
+        this->becomeUnclaimed();
+    }
+}
+
 // ---------------------------------------------------------------- configuration API
 
 const char* PeripheralRole::stateName(State state) {
@@ -459,12 +660,14 @@ const char* PeripheralRole::stateName(State state) {
         case State::ACTIVE: return "ACTIVE";
         case State::HOLDING: return "HOLDING";
         case State::DONE: return "DONE";
+        case State::UPDATE: return "UPDATE";
     }
     return "?";
 }
 
 bool PeripheralRole::storeEditable() const {
-    return !this->sync.isPulling() && this->state != State::ACTIVE && this->state != State::HOLDING && this->state != State::SCHEDULED;
+    return !this->sync.isPulling() && this->state != State::ACTIVE && this->state != State::HOLDING && this->state != State::SCHEDULED
+        && this->state != State::UPDATE;
 }
 
 void PeripheralRole::describe(JsonObject status) {

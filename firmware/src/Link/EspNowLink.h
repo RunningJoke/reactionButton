@@ -55,6 +55,9 @@ class EspNowLink {
 
         bool isStarted() const { return this->started; }
 
+        // Every queued unicast frame has been sent (or given up): nothing is waiting for the radio
+        bool idle() const;
+
         // Per-peer statistics (for status / link tests)
         struct LinkStats {
             uint32_t txFrames = 0;      // frames acknowledged by the receiver's radio

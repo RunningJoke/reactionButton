@@ -16,6 +16,7 @@ extern "C" {
 #endif
 esp_err_t esp_ota_begin(const esp_partition_t* partition, size_t image_size, esp_ota_handle_t* out_handle);
 esp_err_t esp_ota_write(esp_ota_handle_t handle, const void* data, size_t size);
+esp_err_t esp_ota_write_with_offset(esp_ota_handle_t handle, const void* data, size_t size, uint32_t offset);
 esp_err_t esp_ota_end(esp_ota_handle_t handle);
 esp_err_t esp_ota_abort(esp_ota_handle_t handle);
 esp_err_t esp_ota_set_boot_partition(const esp_partition_t* partition);

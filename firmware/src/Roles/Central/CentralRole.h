@@ -28,6 +28,8 @@
  *              continue by itself; "resume" ends it, and a peripheral lost meanwhile still
  *              holds it (config-api.md §5).
  *   ERROR      red blinking: program error or radio failure.
+ *   DISTRIBUTING  otaDistribute (#130): the verified image goes to the peripherals over ESP-NOW (PodNetwork::ota*),
+ *              the ring shows the overall progress. Left by otaAbort (the pods discard) or by otaActivate (restart).
  *
  * Every state change is reported as {"event":"state",...} on the serial console.
  */
@@ -49,7 +51,7 @@ class CentralRole : public IRole {
         void otaEnded() override;
 
     private:
-        enum class State : uint8_t { MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR };
+        enum class State : uint8_t { MENU, DISCOVERY, CONFIRM, RUN, PAUSED, ERROR, DISTRIBUTING };
 
         static const uint8_t MAX_PERIPHERALS = 7;
 
@@ -69,6 +71,10 @@ class CentralRole : public IRole {
         void updateMenuRing();
         void fail(const char* message);
         void stopToMenu();
+
+        void opOtaDistribute(JsonObjectConst request, JsonDocument& response);
+        void opOtaActivate(JsonObjectConst request, JsonDocument& response);
+        void runDistribution();
 
         void opPrograms(JsonDocument& response);
         void opSelect(JsonObjectConst request, JsonDocument& response);
@@ -111,6 +117,9 @@ class CentralRole : public IRole {
         uint32_t pressCountAtConfirm = 0;
         bool readyPending = false;         // CONFIRM: READY starts once SELECTED has ended (SOLO)
         int64_t refusedUntilUs = 0;        // CONFIRM: red after a refused start until this time, then READY again
+
+        bool otaReadyShown = false;        // DISTRIBUTING: the ring shows UPDATE_READY
+        int64_t otaActivateDeadlineUs = 0; // DISTRIBUTING: the central restarts when the OTA_ACTIVATE frames are out, at the latest then (0 = not activating)
 
         int64_t blinkEndUs = 0;            // "blink" of the central itself ends here (0 = not blinking)
 };

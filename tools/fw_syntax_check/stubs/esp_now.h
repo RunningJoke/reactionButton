@@ -28,6 +28,7 @@ typedef void (*esp_now_recv_cb_t)(const uint8_t* mac_addr, const uint8_t* data, 
 typedef void (*esp_now_send_cb_t)(const uint8_t* mac_addr, esp_now_send_status_t status);
 
 esp_err_t esp_now_init(void);
+esp_err_t esp_wifi_config_espnow_rate(wifi_interface_t ifx, wifi_phy_rate_t rate);
 esp_err_t esp_now_deinit(void);
 esp_err_t esp_now_register_recv_cb(esp_now_recv_cb_t cb);
 esp_err_t esp_now_register_send_cb(esp_now_send_cb_t cb);

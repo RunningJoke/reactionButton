@@ -23,6 +23,10 @@
  *              A TOGGLE activation stays ACTIVE: every press flips the colour between team A and B
  *              (runToggle) and reports PRESSED with the owner, until RESET or the next ARM.
  *   DONE       pressed and reported, waiting for RESET or the next ARM.
+ *   UPDATE     firmware update from the central (#130): OTA_OFFER starts it, the image is pulled with SYNC_READ "@ota"
+ *              (or heard as OTA_CHUNK broadcasts) into the inactive slot (Ota::radio*). The pod keeps pinging, shows the
+ *              progress and ignores games. It ends with OTA_ACTIVATE (restart) or when the PONGs lose PONG_FLAG_OTA
+ *              (the central aborted: discard, READY). Link-protocol.md section 5.3.
  *
  * EFFECT frames play an effect on the ring in any claimed state; they do not change the
  * state. Effect start times are converted to the local clock with ClockSync.
@@ -53,11 +57,12 @@ class PeripheralRole : public IRole {
         bool powerOffAllowed() const override { return this->state == State::UNCLAIMED; }
         // not in a game: unclaimed or claimed and waiting
         bool otaAllowed() const override { return this->state == State::UNCLAIMED || this->state == State::READY; }
-        // the update ignored the central: start over, becoming unclaimed shows the SEARCH ring
-        void otaEnded() override { this->becomeUnclaimed(); }
+        // the update ignored the central: start over, becoming unclaimed shows the SEARCH ring. An update from the central
+        // (UPDATE) only ends the failure blink: the pod stays in its set.
+        void otaEnded() override;
 
     private:
-        enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE };
+        enum class State : uint8_t { UNCLAIMED, READY, SCHEDULED, ACTIVE, HOLDING, DONE, UPDATE };
         enum class IdentityShow : uint8_t { NONE, JOINED, LOW_BATTERY };
 
         static const int64_t HELLO_INTERVAL_US = 250000;
@@ -75,6 +80,13 @@ class PeripheralRole : public IRole {
         void runHold();
         void runToggle();
         void showToggleOwner();
+        void handleOffer(const RxFrame& frame);
+        void handleOtaChunk(const RxFrame& frame);
+        bool handleOtaResponse(const RxFrame& frame);
+        void handleOtaActivate(const RxFrame& frame);
+        void runUpdate(int64_t now);
+        void leaveUpdate();
+        uint8_t otaPingState() const;
         void becomeUnclaimed();
         void showUnclaimed();
         void updateIdentity(int64_t now);
@@ -100,6 +112,20 @@ class PeripheralRole : public IRole {
         int64_t claimJoinedUntilUs = 0;             // JOINED after a claim until then
         int64_t identityBlockedUntilUs = 0;         // an EFFECT from the central owns the ring until then
         IdentityShow identityShown = IdentityShow::NONE;
+
+        // firmware update from the central (UPDATE)
+        static const int64_t OTA_REQUEST_TIMEOUT_US = 300000;
+        static const uint8_t OTA_MAX_RETRIES = 5;
+        bool otaBroadcast = false;                  // the offer announced a broadcast pass: pull only when PONG_FLAG_OTA_PULL says so
+        bool otaPullAllowed = false;                // PONG_FLAG_OTA_PULL of the last PONG
+        bool otaPreparing = false;                  // erasing the slot
+        bool otaLowBattery = false;                 // refused an offer
+        int32_t otaRequested = -1;                  // chunk of the request in flight
+        uint8_t otaReqId = 0;
+        uint8_t otaRetries = 0;
+        int64_t otaRequestUs = 0;
+        int64_t otaPauseUntilUs = 0;
+        uint16_t otaCursor = 0;                     // where the search for a missing chunk goes on
 
         // current activation
         uint8_t cmdSeq = 0;
