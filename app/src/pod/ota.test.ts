@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { PodClient } from "./client";
 import type { FirmwareImage } from "./firmwareUpdate";
-import { OTA_CHUNK, OtaCancelled, otaBlocker, runUpdate, type OtaEnv, type OtaStep } from "./ota";
+import { OTA_CHUNK, OtaCancelled, otaBlocker, runUpdate, type OtaEnv, type OtaHandlers, type OtaStep } from "./ota";
 import { PodError, type InfoResponse, type StatusResponse } from "./protocol";
 import { SimulatedPod, type SimulatedPodOptions } from "./simulated/SimulatedPod";
 import { SimulatedTransport } from "./simulated/SimulatedTransport";
@@ -43,7 +43,7 @@ async function rig(options: SimulatedPodOptions = {}, podClockStuck = false) {
   const steps: OtaStep[] = [];
   const progress: number[] = [];
   const abort = new AbortController();
-  const handlers = {
+  const handlers: OtaHandlers = {
     signal: abort.signal,
     step: (s: OtaStep) => void (steps.at(-1) !== s && steps.push(s)),
     progress: (done: number) => void progress.push(done),
@@ -99,8 +99,8 @@ describe("runUpdate on the demo pod", () => {
     expect(await r.state()).toBe("ready");
     const before = r.ops.length;
     expect(await runUpdate(r.env, r.client(), image, r.handlers)).toBe("success");
-    // otaBegin, status (to see `ready`), otaActivate: no write and no otaEnd (that would be not_ready)
-    expect(r.ops.slice(before, before + 3)).toEqual(["otaBegin", "status", "otaActivate"]);
+    // info, status (single pod or set?), otaBegin, status (to see `ready`), otaActivate: no write and no otaEnd (that would be not_ready)
+    expect(r.ops.slice(before, before + 5)).toEqual(["info", "status", "otaBegin", "status", "otaActivate"]);
   });
 
   it("a rolled-back image is a rollback, not a success", async () => {
@@ -202,6 +202,105 @@ describe("runUpdate on the demo pod", () => {
       r.handlers.progress = () => void r.transport.disconnect();
       expect(await code(() => runUpdate(r.env, r.client(), makeImage(), r.handlers))).toBe("disconnected");
     });
+  });
+});
+
+async function uploaded(r: Awaited<ReturnType<typeof rig>>, image: FirmwareImage) {
+  const c = r.client();
+  await c.request("otaBegin", { size: image.size, sha256: image.sha256, version: image.version });
+  const bytes = new Uint8Array(image.data);
+  for (let o = 0; o < image.size; o += 3072) await c.request("otaWrite", { offset: o, data: Buffer.from(bytes.subarray(o, o + 3072)).toString("base64") });
+  await c.request("otaEnd");
+  return c;
+}
+
+describe("runUpdate on a set (#133)", () => {
+  const setHandlers = (r: Awaited<ReturnType<typeof rig>>, extra: Record<string, unknown> = {}) => {
+    const log = { stuck: [] as boolean[], states: [] as string[][], results: [] as { id: number; result: string }[] };
+    Object.assign(r.handlers, {
+      pods: (pods: { state: string }[], stuck: boolean) => void (log.stuck.push(stuck), log.states.push(pods.map((p) => p.state))),
+      results: (res: { id: number; result: string }[]) => void (log.results = res),
+      ...extra,
+    });
+    return log;
+  };
+
+  it("distributes, activates when every pod is ready, and reports each pod as updated", async () => {
+    const r = await rig({ pods: 3 });
+    const log = setHandlers(r);
+    expect(await runUpdate(r.env, r.client(), makeImage(), r.handlers)).toBe("success");
+    expect(r.steps).toEqual(["sending", "checking", "distributing", "restarting", "testing", "joining"]);
+    expect(r.ops.filter((o) => o === "otaDistribute")).toHaveLength(1);
+    expect(log.states.some((s) => s.includes("transferring"))).toBe(true);
+    expect(log.results.map((p) => p.result)).toEqual(["updated", "updated", "updated"]);
+  });
+
+  it("a failing pod stops the activation until the user updates the ready ones: mixed set, the failed pod stays old", async () => {
+    const r = await rig({ pods: 3, otaFailingPods: [1] });
+    let force = false;
+    const log = setHandlers(r, { forced: () => force });
+    const record = r.handlers.pods as (pods: { state: string }[], stuck: boolean) => void;
+    r.handlers.pods = (pods, stuck) => {
+      record(pods, stuck);
+      if (stuck) force = true;
+    };
+    expect(await runUpdate(r.env, r.client(), makeImage(), r.handlers)).toBe("mixed");
+    expect(log.stuck).toContain(true);
+    expect(log.results.map((p) => p.result)).toEqual(["updated", "old", "updated"]);
+  });
+
+  it("a pod whose new image fails its check rolls back and is listed as old", async () => {
+    const r = await rig({ pods: 2, otaRollbackPods: [0] });
+    const log = setHandlers(r);
+    expect(await runUpdate(r.env, r.client(), makeImage(), r.handlers)).toBe("mixed");
+    expect(log.results.map((p) => p.result)).toEqual(["old", "updated"]);
+  });
+
+  it("the central rolling back is still a rollback; the pods on the new version are reported", async () => {
+    const r = await rig({ pods: 2 });
+    r.pod.otaSelfTestFails = true;
+    const log = setHandlers(r);
+    expect(await runUpdate(r.env, r.client(), makeImage(), r.handlers)).toBe("rolledBack");
+    expect(log.results.map((p) => p.result)).toEqual(["updated", "updated"]);
+  });
+
+  it("otaActivate answers not_ready with the pods that are not, and force activates the ready ones", async () => {
+    const r = await rig({ pods: 3, otaFailingPods: [2], otaMsPerPod: 1000 });
+    const c = await uploaded(r, makeImage());
+    await c.request("otaDistribute");
+    r.clock.ms += 10_000;
+    const err = await c.request("otaActivate").catch((e: PodError) => e);
+    expect((err as PodError).code).toBe("not_ready");
+    await c.request("otaActivate", { force: true });
+  });
+
+  it("a central without the distribute feature updates itself only", async () => {
+    const r = await rig({ pods: 2, otaDistribute: false });
+    expect(await runUpdate(r.env, r.client(), makeImage(), r.handlers)).toBe("success");
+    expect(r.ops).not.toContain("otaDistribute");
+    expect(r.steps).not.toContain("distributing");
+  });
+
+  it("resumes at step 2 from the central's state, without an upload", async () => {
+    const r = await rig({ pods: 2 });
+    const image = makeImage();
+    const c = await uploaded(r, image);
+    await c.request("otaDistribute");
+    const writes = r.writes();
+    expect(await runUpdate(r.env, c, null, r.handlers, image.version)).toBe("success");
+    expect(r.writes()).toBe(writes);
+    expect(r.ops.filter((o) => o === "otaDistribute")).toHaveLength(1);
+  });
+
+  it("leaving the sheet keeps the distribution; cancelling aborts it", async () => {
+    for (const detach of [true, false]) {
+      const r = await rig({ pods: 2 });
+      setHandlers(r, { detached: () => detach });
+      r.handlers.step = (s) => void (s === "distributing" && r.abort.abort());
+      await runUpdate(r.env, r.client(), makeImage(), r.handlers).catch(() => undefined);
+      expect(r.ops.includes("otaAbort")).toBe(!detach);
+      expect((await r.client().status()).ota?.state).toBe(detach ? "ready" : "idle");
+    }
   });
 });
 

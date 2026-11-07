@@ -7,7 +7,7 @@ import { BLOCK_TYPES } from "@reactpod/program-model";
 import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_REQUEST, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
 import { validateProgram, type Issue } from "@reactpod/program-model";
 import { crc32, crcHex, hex32 } from "../crc32";
-import type { ApiErrorCode, OtaStatus, PodRole } from "../protocol";
+import type { ApiErrorCode, OtaPodStatus, OtaStatus, PodRole } from "../protocol";
 import { batteryPercent } from "../battery";
 import { byteLength, encodeUtf8 } from "../utf8";
 import { Sha256 } from "./sha256";
@@ -55,6 +55,16 @@ export type SimulatedPodOptions = {
    * `Date.now`; tests pass their own.
    */
   clock?: () => number;
+  /**
+   * Update of the whole set (#130 / #131, feature `otaDistribute`): `otaDistribute` hands the image to the
+   * `pods` one after the other, `msPerPod` each (default 3 s). Default: on for a central with firmware >= 2.19 and pods.
+   */
+  otaDistribute?: boolean;
+  otaMsPerPod?: number;
+  /** pod ids: the transfer to this pod fails at 40 % (state `failed`) */
+  otaFailingPods?: number[];
+  /** pod ids: this pod's new image fails its self-test after the activation and rolls back (it rejoins on the old version) */
+  otaRollbackPods?: number[];
 };
 
 /** Firmware update (firmware ≥ 2.19, config-api.md "Firmware update"): slot size, chunk size, trial, idle timeout. */
@@ -177,6 +187,15 @@ export class SimulatedPod {
   otaFailNextVerify = false;
   /** a reboot happened (otaActivate, rollback): the transport drops the connection after the answer */
   private restart = false;
+  /** update of the set: the distribution to the pods (null = none), what each pod runs, when it rejoins after the activation */
+  private dist: { startMs: number; order: number[] } | null = null;
+  private podFirmware: string[] = [];
+  private rejoinAt: number[] = [];
+  private readonly distOption: boolean;
+  private readonly msPerPod: number;
+  /** test hooks, see the options of the same name */
+  readonly otaFailingPods: Set<number>;
+  readonly otaRollbackPods: Set<number>;
 
   constructor(options: SimulatedPodOptions = {}) {
     this.clock = options.clock ?? Date.now;
@@ -187,6 +206,10 @@ export class SimulatedPod {
     this.generation = options.generation ?? 1;
     this.programFormat = options.programFormat ?? PROGRAM_FORMAT;
     this.podCount = options.pods;
+    this.distOption = options.otaDistribute ?? true;
+    this.msPerPod = options.otaMsPerPod ?? 3000;
+    this.otaFailingPods = new Set(options.otaFailingPods);
+    this.otaRollbackPods = new Set(options.otaRollbackPods);
     this.liveBleOption = options.liveBle;
     this.batteryOption = options.battery ?? this.programFormat >= 6;
     this.firmware =
@@ -243,6 +266,26 @@ export class SimulatedPod {
   /** firmware ≥ 2.19: firmware update over the config API, feature `ota`, `info.ota`, `status.ota` */
   get otaEnabled(): boolean {
     return Number(this.firmware.split(".")[1]) >= 19;
+  }
+
+  /** firmware >= 2.19 central with pods: the image can be handed to the pods (feature `otaDistribute`) */
+  get distributes(): boolean {
+    return this.otaEnabled && this.distOption && this.role === "central" && (this.podCount ?? 0) > 0;
+  }
+
+  /** The central's view of each pod during and after the distribution; null before `otaDistribute`. */
+  private distView(): OtaPodStatus[] | null {
+    const d = this.dist;
+    if (!d) return null;
+    const now = this.clock();
+    return Array.from({ length: this.podCount ?? 0 }, (_, id) => {
+      const firmware = this.podFirmware[id] ?? this.firmware;
+      const k = d.order.indexOf(id);
+      if (k < 0) return { id, state: "current", percent: 100, firmware };
+      const p = Math.min(1, Math.max(0, (now - d.startMs - k * this.msPerPod) / this.msPerPod));
+      if (this.otaFailingPods.has(id) && p >= 0.4) return { id, state: "failed", percent: 40, firmware };
+      return { id, state: p >= 1 ? "ready" : p > 0 ? "transferring" : "queued", percent: Math.floor(p * 100), firmware };
+    });
   }
 
   /** A new client connected: it has to authenticate again, an unfinished upload is dropped. */
@@ -326,6 +369,7 @@ export class SimulatedPod {
             ...(this.role === "central" && this.identifies ? ["blink"] : []),
             ...(this.role === "central" && this.patterns ? ["pattern"] : []),
             ...(this.otaEnabled ? ["otaBegin", "otaWrite", "otaEnd", "otaActivate", "otaAbort"] : []),
+            ...(this.distributes ? ["otaDistribute"] : []),
           ],
           transport: "simulated",
         };
@@ -371,6 +415,9 @@ export class SimulatedPod {
       case "otaAbort":
         if (this.otaEnabled) return this.firmwareUpdate(op, req);
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
+      case "otaDistribute":
+        if (this.distributes) return this.firmwareUpdate(op, req);
+        throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
       default:
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
     }
@@ -407,6 +454,7 @@ export class SimulatedPod {
         ...(this.patterns ? ["patterns"] : []),
         ...(this.startVars ? ["startVars"] : []),
         ...(this.otaEnabled ? ["ota"] : []),
+        ...(this.distributes ? ["otaDistribute"] : []),
       ],
       blockTypes: this.blockTypes,
       ...(this.otaEnabled
@@ -431,7 +479,7 @@ export class SimulatedPod {
       // firmware >= 2.13: the battery of this pod (config-api.md §5)
       ...(this.battery ? { battery: this.batteryLevel("self") } : {}),
       ...(this.otaEnabled
-        ? { ota: { state: this.ota.state, received: this.ota.received, total: this.ota.total, version: this.ota.version } }
+        ? { ota: { state: this.ota.state, received: this.ota.received, total: this.ota.total, version: this.ota.version, ...(this.distView() ? { pods: this.distView() } : {}) } }
         : {}),
       // central in a game, firmware ≥ 2.8 (config-api.md §5)
       ...(this.role === "central" && (this.state === "RUN" || this.state === "PAUSED") && this.programFormat >= 2
@@ -442,8 +490,9 @@ export class SimulatedPod {
             pods: Array.from({ length: this.podCount }, (_, id) => ({
               id,
               mac: `24:6f:28:00:00:${id.toString(16).padStart(2, "0")}`,
-              alive: true,
+              alive: this.clock() >= (this.rejoinAt[id] ?? 0),
               lastSeenMs: 40,
+              ...(this.otaEnabled ? { firmware: this.clock() >= (this.rejoinAt[id] ?? 0) ? (this.podFirmware[id] ?? this.firmware) : "" } : {}),
               effects: this.programFormat >= 2,
               ...(this.programFormat >= 3 ? { hold: true } : {}),
               ...(this.programFormat >= 4 ? { toggle: true } : {}),
@@ -499,7 +548,11 @@ export class SimulatedPod {
     }
     if ((this.ota.state === "receiving" || this.ota.state === "ready") && now - this.ota.lastMs >= OTA_IDLE_MS) {
       this.ota = freshUpdate();
+      this.dist = null;
     }
+    // the central is DISTRIBUTING as long as a pod is on its way
+    const view = this.distView();
+    if (view) this.state = view.some((p) => p.state === "queued" || p.state === "transferring") ? "DISTRIBUTING" : "MENU";
   }
 
   /** firmware ≥ 2.19 (config-api.md "Firmware update"): the five ops; a PIN needs `auth` for all of them, as for put. */
@@ -513,11 +566,30 @@ export class SimulatedPod {
       case "otaEnd":
         return this.otaEnd();
       case "otaActivate":
-        return this.otaActivate();
+        return this.otaActivate(req);
+      case "otaDistribute":
+        return this.otaDistribute();
       default:
         this.ota = freshUpdate();
+        this.dist = null;
+        this.state = "MENU";
         return {};
     }
+  }
+
+  /** #130: from MENU after otaEnd. The pods get the image one at a time; already running it = `current`. Asking again is a no-op. */
+  private otaDistribute(): Json {
+    if (this.dist) return {};
+    if (this.state !== "MENU") throw new ApiFailure("busy", "distributing needs the menu");
+    if (this.ota.state !== "ready") throw new ApiFailure("not_ready", `no verified image, send otaEnd first (update state ${this.ota.state})`);
+    const order: number[] = [];
+    for (let id = 0; id < (this.podCount ?? 0); id++) {
+      this.podFirmware[id] ??= this.firmware;
+      if (this.podFirmware[id] !== this.ota.version) order.push(id);
+    }
+    this.dist = { startMs: this.clock(), order };
+    this.state = "DISTRIBUTING";
+    return {};
   }
 
   private otaBegin(req: Json): Json {
@@ -603,8 +675,23 @@ export class SimulatedPod {
   }
 
   /** The pod reboots into the new image: the update is gone, the image is on trial for 15 s (settleOta). */
-  private otaActivate(): Json {
+  private otaActivate(req: Json): Json {
     if (this.ota.state !== "ready") throw new ApiFailure("not_ready", `no verified image, send otaEnd first (update state ${this.ota.state})`);
+    const view = this.distView();
+    if (view) {
+      const waiting = view.filter((p) => p.state !== "ready" && p.state !== "current");
+      if (waiting.length > 0 && req.force !== true) {
+        throw new ApiFailure("not_ready", `${waiting.length} pod(s) not ready`, { pods: waiting.map((p) => p.id) });
+      }
+      const now = this.clock();
+      for (const p of view.filter((p) => p.state === "ready")) {
+        // pods reboot with the central and rejoin one after the other; a rolled-back pod needs its trial first
+        this.rejoinAt[p.id] = now + 4000 + p.id * 700 + (this.otaRollbackPods.has(p.id) ? OTA_TRIAL_MS : 0);
+        if (!this.otaRollbackPods.has(p.id)) this.podFirmware[p.id] = this.ota.version;
+      }
+      this.dist = null;
+      this.state = "MENU";
+    }
     this.trial = {
       startMs: this.clock(),
       fails: this.otaSelfTestFails,

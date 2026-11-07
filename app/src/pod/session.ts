@@ -132,7 +132,16 @@ function createTransport(kind: TransportKind, usedSetIds: string[]): Transport {
       // the demo pod is program format 6 (firmware 2.13): reports and remote ops (#41 / #42), the summary bar.
       // A further demo connection gets a set of its own (#46).
       const demo = DEMO_SETS.find((d) => !usedSetIds.includes(d.setId)) ?? DEMO_SETS[0]!;
-      const pod = new SimulatedPod({ files: DEFAULT_FILES, setId: demo.setId, setName: demo.setName });
+      // `?demoPods=7&demoFail=3` (demo and screenshots): peripherals for the set update (#133), one of them failing
+      const query = typeof location === "undefined" ? new URLSearchParams() : new URLSearchParams(location.search);
+      const pods = Math.min(7, Number(query.get("demoPods")) || 0);
+      const fail = query.get("demoFail");
+      const pod = new SimulatedPod({
+        files: DEFAULT_FILES,
+        setId: demo.setId,
+        setName: demo.setName,
+        ...(pods > 0 ? { pods, otaFailingPods: fail === null ? [] : [Number(fail)], otaRollbackPods: query.has("demoRollback") ? [Number(query.get("demoRollback"))] : [] } : {}),
+      });
       return new SimulatedTransport(pod, { latencyMs: 30 });
     }
   }

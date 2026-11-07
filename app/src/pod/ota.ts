@@ -5,7 +5,8 @@
  */
 import type { PodClient } from "./client";
 import { compareVersions, type FirmwareImage } from "./firmwareUpdate";
-import { PodError, type InfoResponse, type OtaBeginResponse, type OtaWriteResponse, type StatusResponse } from "./protocol";
+import { DISTRIBUTE_POLL_MS, isSetUpdate, podResults, REJOIN_WAIT_MS, summarize, type PodResult } from "./otaSet";
+import { PodError, type InfoResponse, type OtaBeginResponse, type OtaPodStatus, type OtaWriteResponse, type StatusResponse } from "./protocol";
 
 /** Raw bytes per otaWrite: the pod's `maxChunk` (3072) capped here. BLE throughput is not measured yet (#129). */
 export const OTA_CHUNK = 2048;
@@ -19,11 +20,13 @@ export const OTA_MIN_BATTERY_PERCENT = 30;
 const MAX_STALLS = 5;
 const VERDICT_POLL_MS = 2000;
 
-export type OtaStep = "preparing" | "sending" | "checking" | "restarting" | "testing" | "done";
+export type OtaStep = "preparing" | "sending" | "checking" | "distributing" | "restarting" | "testing" | "joining" | "done";
 export const OTA_STEPS: OtaStep[] = ["preparing", "sending", "checking", "restarting", "testing", "done"];
+/** The steps of an update of the whole set (#133): phone to central, central to pods, activate, per-pod result. */
+export const OTA_SET_STEPS: OtaStep[] = ["preparing", "sending", "checking", "distributing", "restarting", "testing", "joining", "done"];
 
-/** `success`: the target runs and is valid. The others never read as success. */
-export type OtaOutcome = "success" | "rolledBack" | "wrongVersion" | "unconfirmed";
+/** `success`: the target runs and is valid. The others never read as success; `mixed`: the central runs it, a pod does not. */
+export type OtaOutcome = "success" | "mixed" | "rolledBack" | "wrongVersion" | "unconfirmed";
 
 export class OtaCancelled extends Error {}
 
@@ -41,6 +44,14 @@ export type OtaHandlers = {
   signal: AbortSignal;
   step(step: OtaStep): void;
   progress(done: number, total: number): void;
+  /** The set update (#133); all optional, a single pod needs none of them. */
+  set?(on: boolean): void;
+  pods?(pods: OtaPodStatus[], stuck: boolean): void;
+  /** the user chose "update only the ready pods" */
+  forced?(): boolean;
+  /** the user left the sheet while the central distributes: it goes on by itself, nothing is aborted */
+  detached?(): boolean;
+  results?(results: PodResult[]): void;
 };
 
 /** Why an update cannot start now, from `info` and `status`; null = allowed. */
@@ -134,27 +145,90 @@ async function verdict(env: OtaEnv, client: PodClient, target: string, h: OtaHan
 }
 
 /**
+ * Step 2: the central hands the image to its pods (`otaDistribute`, once; a resumed update finds it running).
+ * Returns when every expected pod is ready, or when the user chose to go on with the ready ones.
+ */
+async function distribute(env: OtaEnv, client: PodClient, h: OtaHandlers): Promise<PodClient> {
+  h.step("distributing");
+  let started = false;
+  for (;;) {
+    check(h.signal);
+    try {
+      const status = await client.status();
+      const pods = status.ota?.pods ?? [];
+      if (!started && pods.length === 0) await client.request("otaDistribute");
+      started = true;
+      if (pods.length > 0 && (status.ota?.state === "idle" || status.ota?.state === "failed")) {
+        throw new PodError("ota_failed", "the update on the main pod ended", "otaDistribute");
+      }
+      const sum = summarize(pods);
+      h.pods?.(pods, sum.stuck);
+      if (sum.allReady || (sum.stuck && sum.ready > 0 && h.forced?.())) return client;
+      await env.sleep(DISTRIBUTE_POLL_MS, h.signal);
+    } catch (e) {
+      if (!isLinkLoss(e)) throw e;
+      client = await env.next(client, true, h.signal);
+    }
+  }
+}
+
+/** After the verdict: waits until every pod has rejoined and reports what each one runs (best effort). */
+async function rejoin(env: OtaEnv, client: PodClient, target: string, outcome: OtaOutcome, h: OtaHandlers): Promise<OtaOutcome> {
+  h.step("joining");
+  const until = env.now() + REJOIN_WAIT_MS;
+  let results: PodResult[] = [];
+  for (;;) {
+    check(h.signal);
+    try {
+      results = podResults(await client.status(), target);
+      h.results?.(results);
+    } catch (e) {
+      if (!isLinkLoss(e)) throw e;
+      // e.g. the central restarts after a rollback
+      client = await env.next(client, true, h.signal);
+    }
+    if (results.length > 0 && results.every((r) => r.result !== "missing")) break;
+    if (env.now() >= until) break;
+    await env.sleep(DISTRIBUTE_POLL_MS * 2, h.signal);
+  }
+  return outcome === "success" && results.some((r) => r.result !== "updated") ? "mixed" : outcome;
+}
+
+/**
  * The whole update. `image` is checked already. Returns the outcome after the restart; throws PodError for a
  * refusal or a failure (the open update is aborted, except for a lost link: it can be resumed), OtaCancelled
  * after a cancel (otaAbort sent before the image was activated).
  */
-export async function runUpdate(env: OtaEnv, client: PodClient, image: FirmwareImage, h: OtaHandlers): Promise<OtaOutcome> {
+export async function runUpdate(env: OtaEnv, client: PodClient, image: FirmwareImage | null, h: OtaHandlers, resumeVersion = ""): Promise<OtaOutcome> {
   let activated = false;
+  const target = image?.version ?? resumeVersion;
   try {
-    client = await upload(env, client, image, h);
+    // a central with pods and the distribute feature updates the whole set; otherwise just this pod
+    const setMode = isSetUpdate(await client.info(), await client.status());
+    h.set?.(setMode);
+    if (image) client = await upload(env, client, image, h);
     check(h.signal);
-    try {
-      await client.request("otaActivate");
-    } catch (e) {
-      // the pod restarts at once: the answer may be lost with the link
-      if (!isLinkLoss(e)) throw e;
+    for (;;) {
+      if (setMode) client = await distribute(env, client, h);
+      try {
+        await client.request("otaActivate", setMode && h.forced?.() ? { force: true } : {});
+        break;
+      } catch (e) {
+        // the pod restarts at once: the answer may be lost with the link
+        if (isLinkLoss(e)) break;
+        if (!setMode || !(e instanceof PodError && e.code === "not_ready")) throw e;
+        // a pod fell out of ready meanwhile: back to the distribution, which shows who
+        await env.sleep(DISTRIBUTE_POLL_MS, h.signal);
+      }
     }
     activated = true;
     h.step("restarting");
     client = await env.next(client, false, h.signal);
-    return await verdict(env, client, image.version, h);
+    const outcome = await verdict(env, client, target, h);
+    return setMode && (outcome === "success" || outcome === "rolledBack") ? await rejoin(env, client, target, outcome, h) : outcome;
   } catch (e) {
-    if (!activated && (e instanceof OtaCancelled || !isLinkLoss(e))) await client.request("otaAbort").catch(() => undefined);
+    const keep = h.detached?.() && !activated;
+    if (!activated && !keep && (e instanceof OtaCancelled || !isLinkLoss(e))) await client.request("otaAbort").catch(() => undefined);
     throw e;
   }
 }

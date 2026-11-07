@@ -17,17 +17,53 @@
     "notStoredOffline": "Nicht für Offline-Nutzung gespeichert. Lade sie online herunter.",
     "download": "Für Offline-Nutzung laden ({{size}})",
     "update": "Aktualisieren",
+    "resumeNote": "Ein Update des Sets liegt auf der Zentrale: {{version}}.",
+    "resume": "Update anzeigen",
     "flow": {
       "title": "Pod-Software aktualisieren",
       "sub": "{{from}} auf {{to}}",
       "keepOn": "Das Update dauert einige Minuten. Halte das Handy in der Nähe und die App offen. Schalte den Pod nicht aus.",
       "peripherals": "Nur dieser Pod wird aktualisiert. Die Pods eines Sets können unterschiedliche Firmware haben, aber eine Funktion einer neueren Version wird nur mit Pods genutzt, die sie haben (ein älterer Pod zeigt zum Beispiel eine feste Farbe statt eines Effekts). Aktualisiere alle Pods des Sets.",
+      "peripheralsSet": "Alle Pods des Sets werden zusammen aktualisiert: Die App sendet das Update an die Zentrale, die Zentrale gibt es an die anderen Pods weiter, danach starten alle neu. Nach dem ersten Schritt kannst du gehen; die Spiele bleiben bis zum Neustart spielbar.",
+      "distributeNote": "Die Zentrale sendet das Update nacheinander an die Pods. Du kannst dieses Fenster schließen; es geht ohne das Handy weiter.",
+      "leaveSet": "Fenster verlassen? Die Zentrale sendet von selbst weiter. Die Pods starten erst neu, wenn du das Update unter Pod-Software wieder öffnest.",
+      "joiningNote": "Warten, bis die Pods wieder im Set sind.",
+      "decide": {
+        "title": "Nicht alle Pods sind bereit",
+        "notReady": "{{ready}} von {{count}} Pods sind bereit. Die anderen haben das Update nicht erhalten.",
+        "mixed": "Warten: Schalte die fehlenden Pods ein oder lade sie. Oder aktualisiere jetzt nur die bereiten Pods: Die Zentrale und die bereiten Pods bekommen die neue Version, die anderen behalten die alte. Ein Set mit gemischten Versionen spielt, aber Funktionen der neuen Version laufen nur auf den aktualisierten Pods.",
+        "none": "Kein Pod ist bereit. Schalte die fehlenden Pods ein oder lade sie und warte, oder brich das Update ab.",
+        "wait": "Auf die anderen Pods warten",
+        "only": "{{count}} bereite Pods aktualisieren"
+      },
+      "pod": {
+        "list": "Pods des Sets",
+        "progress": "Pod {{number}}",
+        "state": {
+          "queued": "Wartet",
+          "transferring": "Empfängt",
+          "ready": "Bereit",
+          "current": "Schon aktuell",
+          "failed": "Fehlgeschlagen, hat das Update nicht erhalten",
+          "offline": "Nicht erreichbar. Schalte ihn ein.",
+          "refused": "Abgelehnt. Ist der Akku unter 30 %?",
+          "unknown": "Unbekannt"
+        },
+        "result": {
+          "updated": "Auf {{firmware}} aktualisiert",
+          "old": "Noch auf {{firmware}}",
+          "missing": "Noch nicht zurück. Schalte ihn ein und prüfe Dieses Set."
+        }
+      },
       "start": "Update starten",
       "cancel": "Abbrechen",
       "close": "Schließen",
       "steps": {
         "preparing": "Abbild vorbereiten",
         "sending": "An den Pod senden",
+        "sendingSet": "Schritt 1: Handy an Zentrale",
+        "distributing": "Schritt 2: Zentrale an die anderen Pods",
+        "joining": "Schritt 3: Pods starten neu und kommen zurück",
         "checking": "Abbild prüfen",
         "restarting": "Pod neu starten",
         "testing": "Neue Firmware prüfen",
@@ -52,6 +88,7 @@
       },
       "outcome": {
         "success": "Auf {{version}} aktualisiert. Die neue Firmware läuft.",
+        "mixed": "Die Zentrale läuft mit {{version}}, aber nicht jeder Pod. Siehe die Liste. Ein Set mit gemischten Versionen spielt; aktualisiere die anderen erneut.",
         "rolledBack": "Die neue Firmware hat ihre Prüfung nicht bestanden. Der Pod ist zur alten Firmware ({{installed}}) zurückgekehrt. Nichts ist verloren; du kannst es erneut versuchen.",
         "wrongVersion": "Der Pod läuft, aber nicht mit Version {{version}}. Prüfe die Version unter Dieses Set.",
         "unconfirmed": "Die neue Firmware ist noch nicht bestätigt. Lass den Pod eingeschaltet und prüfe in einer Minute die Version unter Dieses Set."

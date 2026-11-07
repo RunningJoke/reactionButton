@@ -13,7 +13,7 @@ import { canFind, podHealth, type PodHealth } from "../pod/setView";
 import type { SyncStatus } from "../pod/sync";
 import { useMenuOverBudget, useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
-import { openUpdate } from "../pod/otaFlow";
+import { openUpdate, resumeUpdate, useOtaFlow } from "../pod/otaFlow";
 import { FirmwareCard } from "./PodFirmware";
 import { UpdateSheet } from "./PodUpdateSheet";
 import { ResetMenuButton, SyncBadge, UnsentCard } from "./PodSync";
@@ -91,6 +91,7 @@ const BATTERY_REFRESH_MS = 5000;
 function Connected() {
   const { t, i18n } = useTranslation();
   const session = usePodSession();
+  const updating = useOtaFlow((s) => s.phase !== null);
   const { info, list, role, kind } = session;
   const [renaming, setRenaming] = useState(false);
   const [details, setDetails] = useState(false);
@@ -139,7 +140,12 @@ function Connected() {
           <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
         </p>
       )}
-      <FirmwareCard info={info} onUpdate={(version, prepare) => openUpdate(info.firmware, version, prepare)} />
+      <FirmwareCard
+        info={info}
+        onUpdate={(version, prepare) => openUpdate(info.firmware, version, prepare)}
+        pending={!updating && session.status?.ota?.pods?.length ? session.status.ota.version : undefined}
+        onResume={(version) => resumeUpdate(info.firmware, version)}
+      />
     </>
   );
   const sync = <UnsentCard states={states} readOnly={readOnly} />;
