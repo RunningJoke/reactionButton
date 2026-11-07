@@ -2,6 +2,84 @@
   "app": {
     "title": "ReactPod Config"
   },
+  "firmware": {
+    "title": "Pod software",
+    "installed": "Installed",
+    "release": "Available",
+    "checking": "Checking for a new release…",
+    "upToDate": "Up to date.",
+    "available": "Version {{version}} is available.",
+    "availableUsb": "Version {{version}} is available. This firmware updates over USB only.",
+    "noRelease": "No release information available.",
+    "offline": "Offline: this is the release information from the last check.",
+    "programFormat": "Programs are not part of the update. This release uses program format {{release}}, this pod {{pod}}, the app {{app}}.",
+    "stored": "Stored for offline use: {{version}}, {{size}}.",
+    "notStoredOffline": "Not stored for offline use. Download it while online.",
+    "download": "Download for offline use ({{size}})",
+    "update": "Update",
+    "flow": {
+      "title": "Update pod software",
+      "sub": "{{from}} to {{to}}",
+      "keepOn": "The update takes a few minutes. Keep the phone close and the app open. Do not switch the pod off.",
+      "peripherals": "Only this pod is updated. Pods of a set can run different firmware, but a feature of a newer version is used only with pods that have it (an older pod shows, for example, a static colour instead of an effect). Update every pod of the set.",
+      "start": "Start update",
+      "cancel": "Cancel",
+      "close": "Close",
+      "steps": {
+        "preparing": "Preparing the image",
+        "sending": "Sending to the pod",
+        "checking": "Checking the image",
+        "restarting": "Restarting the pod",
+        "testing": "Checking the new firmware",
+        "done": "Done"
+      },
+      "preparingNote": "The image is read from the app or downloaded.",
+      "left": "{{time}} left",
+      "restartNote": "Waiting for the pod to come back. This can take up to a minute.",
+      "reconnectUsb": "The pod restarted and its USB port is new. Choose it again to go on.",
+      "reconnect": "Reconnect",
+      "testNote": "The new firmware is being checked, this takes about 15 seconds. The pod must stay on: if it loses power now, it returns to the old firmware.",
+      "stopAsk": "Stop the update? The pod keeps its current firmware.",
+      "stopYes": "Stop update",
+      "stopWatching": "Stop watching? The pod goes on by itself. Check the version on This set afterwards.",
+      "stopWatchingYes": "Stop watching",
+      "keepGoing": "Keep going",
+      "blocked": {
+        "unsupported": "This pod cannot be updated from the app. Update it over USB.",
+        "notMenu": "The pod is in a game. Stop the game and go back to the menu first.",
+        "lowBattery": "The battery is below 30 %. Charge the pod first.",
+        "needsPin": "Enter the PIN of this pod."
+      },
+      "outcome": {
+        "success": "Updated to {{version}}. The new firmware runs.",
+        "rolledBack": "The new firmware did not pass its check. The pod went back to the old firmware ({{installed}}). Nothing is lost; you can try again.",
+        "wrongVersion": "The pod runs, but not version {{version}}. Check the version on This set.",
+        "unconfirmed": "The new firmware has not been confirmed yet. Keep the pod on and check the version on This set in a minute."
+      },
+      "errors": {
+        "busy": "The pod is busy: a game runs, or it is still checking new firmware (15 seconds after an update). Wait a moment and try again.",
+        "low_battery": "The battery is below 30 %. Charge the pod first.",
+        "auth_required": "This pod is protected with a PIN. Enter it to update.",
+        "auth_failed": "The PIN is wrong. Wait a few seconds and try again.",
+        "ota_failed": "The pod rejected the image. Nothing was changed; try again.",
+        "too_large": "The image does not fit the pod.",
+        "storage": "The pod could not write the image. Try again.",
+        "not_ready": "The pod is not ready for this. Try again.",
+        "bad_request": "The pod does not accept the request. Update the app.",
+        "bad_offset": "The transfer got out of step. Try again.",
+        "timeout": "The pod did not answer.",
+        "disconnected": "The connection was lost.",
+        "protocol": "The pod answered unexpectedly. Try again.",
+        "reconnect_timeout": "The pod did not come back within a minute. If it restarted, connect it again and check the version on This set. Keep it switched on.",
+        "unknown": "Something went wrong. Try again."
+      }
+    },
+    "errors": {
+      "no_crypto": "The download cannot be checked over this connection. Open the app over HTTPS.",
+      "mismatch": "The download does not match the release checksum. Nothing was stored; try again.",
+      "download": "The download failed. Check the connection and try again."
+    }
+  },
   "nav": {
     "train": "Train",
     "set": "This set",

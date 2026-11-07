@@ -2,6 +2,84 @@
   "app": {
     "title": "ReactPod Config"
   },
+  "firmware": {
+    "title": "Pod-Software",
+    "installed": "Installiert",
+    "release": "Verfügbar",
+    "checking": "Suche nach einer neuen Version…",
+    "upToDate": "Aktuell.",
+    "available": "Version {{version}} ist verfügbar.",
+    "availableUsb": "Version {{version}} ist verfügbar. Diese Firmware wird nur über USB aktualisiert.",
+    "noRelease": "Keine Versionsinformation verfügbar.",
+    "offline": "Offline: Stand der letzten Prüfung.",
+    "programFormat": "Programme gehören nicht zum Update. Diese Version nutzt Programmformat {{release}}, dieser Pod {{pod}}, die App {{app}}.",
+    "stored": "Für Offline-Nutzung gespeichert: {{version}}, {{size}}.",
+    "notStoredOffline": "Nicht für Offline-Nutzung gespeichert. Lade sie online herunter.",
+    "download": "Für Offline-Nutzung laden ({{size}})",
+    "update": "Aktualisieren",
+    "flow": {
+      "title": "Pod-Software aktualisieren",
+      "sub": "{{from}} auf {{to}}",
+      "keepOn": "Das Update dauert einige Minuten. Halte das Handy in der Nähe und die App offen. Schalte den Pod nicht aus.",
+      "peripherals": "Nur dieser Pod wird aktualisiert. Die Pods eines Sets können unterschiedliche Firmware haben, aber eine Funktion einer neueren Version wird nur mit Pods genutzt, die sie haben (ein älterer Pod zeigt zum Beispiel eine feste Farbe statt eines Effekts). Aktualisiere alle Pods des Sets.",
+      "start": "Update starten",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "steps": {
+        "preparing": "Abbild vorbereiten",
+        "sending": "An den Pod senden",
+        "checking": "Abbild prüfen",
+        "restarting": "Pod neu starten",
+        "testing": "Neue Firmware prüfen",
+        "done": "Fertig"
+      },
+      "preparingNote": "Das Abbild wird aus der App gelesen oder heruntergeladen.",
+      "left": "noch {{time}}",
+      "restartNote": "Warten, bis der Pod wieder da ist. Das kann bis zu einer Minute dauern.",
+      "reconnectUsb": "Der Pod wurde neu gestartet, sein USB-Anschluss ist neu. Wähle ihn erneut, um fortzufahren.",
+      "reconnect": "Neu verbinden",
+      "testNote": "Die neue Firmware wird geprüft, das dauert etwa 15 Sekunden. Der Pod muss eingeschaltet bleiben: Fällt jetzt der Strom aus, kehrt er zur alten Firmware zurück.",
+      "stopAsk": "Update abbrechen? Der Pod behält seine jetzige Firmware.",
+      "stopYes": "Update abbrechen",
+      "stopWatching": "Nicht mehr zusehen? Der Pod macht von selbst weiter. Prüfe danach die Version unter Dieses Set.",
+      "stopWatchingYes": "Nicht mehr zusehen",
+      "keepGoing": "Weitermachen",
+      "blocked": {
+        "unsupported": "Dieser Pod lässt sich nicht aus der App aktualisieren. Aktualisiere ihn über USB.",
+        "notMenu": "Der Pod ist in einem Spiel. Beende das Spiel und gehe zuerst zurück ins Menü.",
+        "lowBattery": "Der Akku ist unter 30 %. Lade den Pod zuerst auf.",
+        "needsPin": "Gib die PIN dieses Pods ein."
+      },
+      "outcome": {
+        "success": "Auf {{version}} aktualisiert. Die neue Firmware läuft.",
+        "rolledBack": "Die neue Firmware hat ihre Prüfung nicht bestanden. Der Pod ist zur alten Firmware ({{installed}}) zurückgekehrt. Nichts ist verloren; du kannst es erneut versuchen.",
+        "wrongVersion": "Der Pod läuft, aber nicht mit Version {{version}}. Prüfe die Version unter Dieses Set.",
+        "unconfirmed": "Die neue Firmware ist noch nicht bestätigt. Lass den Pod eingeschaltet und prüfe in einer Minute die Version unter Dieses Set."
+      },
+      "errors": {
+        "busy": "Der Pod ist beschäftigt: Ein Spiel läuft, oder er prüft noch neue Firmware (15 Sekunden nach einem Update). Warte einen Moment und versuche es erneut.",
+        "low_battery": "Der Akku ist unter 30 %. Lade den Pod zuerst auf.",
+        "auth_required": "Dieser Pod ist mit einer PIN geschützt. Gib sie ein, um zu aktualisieren.",
+        "auth_failed": "Die PIN ist falsch. Einige Sekunden warten und erneut versuchen.",
+        "ota_failed": "Der Pod hat das Abbild abgelehnt. Nichts wurde geändert; versuche es erneut.",
+        "too_large": "Das Abbild passt nicht auf den Pod.",
+        "storage": "Der Pod konnte das Abbild nicht schreiben. Versuche es erneut.",
+        "not_ready": "Der Pod ist dafür gerade nicht bereit. Versuche es erneut.",
+        "bad_request": "Der Pod nimmt die Anfrage nicht an. Aktualisiere die App.",
+        "bad_offset": "Die Übertragung ist aus dem Takt geraten. Versuche es erneut.",
+        "timeout": "Der Pod hat nicht geantwortet.",
+        "disconnected": "Die Verbindung wurde unterbrochen.",
+        "protocol": "Der Pod hat unerwartet geantwortet. Versuche es erneut.",
+        "reconnect_timeout": "Der Pod ist innerhalb einer Minute nicht zurückgekommen. Wenn er neu gestartet ist, verbinde ihn erneut und prüfe die Version unter Dieses Set. Lass ihn eingeschaltet.",
+        "unknown": "Etwas ist schiefgelaufen. Versuche es erneut."
+      }
+    },
+    "errors": {
+      "no_crypto": "Der Download kann über diese Verbindung nicht geprüft werden. Öffne die App über HTTPS.",
+      "mismatch": "Der Download passt nicht zur Prüfsumme der Version. Nichts wurde gespeichert; versuche es erneut.",
+      "download": "Der Download ist fehlgeschlagen. Prüfe die Verbindung und versuche es erneut."
+    }
+  },
   "nav": {
     "train": "Training",
     "set": "Dieses Set",

@@ -23,22 +23,28 @@ export class MemoryFileCache implements FileCache {
   }
 }
 
-export class IdbFileCache implements FileCache {
-  private db: Promise<IDBPDatabase> | null = null;
-  private readonly fallback = new MemoryFileCache();
+let filesDb: Promise<IDBPDatabase> | null = null;
 
-  private open() {
-    this.db ??= openDB("reactpod-files", 1, {
-      upgrade(db) {
-        db.createObjectStore("files");
-      },
-    });
-    return this.db;
-  }
+/** The one connection to "reactpod-files". v1: "files" (text). v2 adds "firmware" (images, manifest; firmwareCache.ts). */
+export function openFilesDb(): Promise<IDBPDatabase> {
+  filesDb ??= openDB("reactpod-files", 2, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains("files")) db.createObjectStore("files");
+      if (!db.objectStoreNames.contains("firmware")) db.createObjectStore("firmware");
+    },
+  }).catch((e) => {
+    filesDb = null; // a failed open is tried again on the next use
+    throw e;
+  });
+  return filesDb;
+}
+
+export class IdbFileCache implements FileCache {
+  private readonly fallback = new MemoryFileCache();
 
   async get(size: number, crc: string) {
     try {
-      const text = (await (await this.open()).get("files", key(size, crc))) as string | undefined;
+      const text = (await (await openFilesDb()).get("files", key(size, crc))) as string | undefined;
       // never trust the cache blindly: it must still match the CRC
       return text !== undefined && crcHex(text) === crc.toLowerCase() ? text : undefined;
     } catch {
@@ -48,7 +54,7 @@ export class IdbFileCache implements FileCache {
 
   async put(text: string) {
     try {
-      await (await this.open()).put("files", text, key(byteLength(text), crcHex(text)));
+      await (await openFilesDb()).put("files", text, key(byteLength(text), crcHex(text)));
     } catch {
       await this.fallback.put(text);
     }

@@ -24,8 +24,9 @@ results. Pod contract: [config-api.md](../firmware/config-api.md); program forma
 | F13 | installable offline PWA, mobile first |
 | F14 | athletes, sessions, reports, statistics, CSV (§9.5) |
 | F15 | training view: live state, `communicate` controls, pause / resume, reconnect (§9.5) |
+| F16 | pod software on This set: installed and available version (`ota-manifest.json` of the release, or the last one stored when offline); image download for offline use, SHA-256 checked, stored in IndexedDB (#128); **Update** (#129, ADR 0009): a sheet checks first (central in MENU, battery ≥ 30 %, PIN if set), sends the image in chunks of at most 2048 bytes with a percent bar and the time left, resumes after a lost link (`otaBegin.received`), `otaEnd` (skipped if the pod holds the verified image), `otaActivate`, waits for the pod to come back (BLE reconnects by itself, USB asks to choose the port again, 60 s limit), then about 17 s for the pod's self-test. Success means `info.firmware` = the release and `info.ota.lastResult` = `ok`; `rolledBack` and other results have their own messages. Closing asks and aborts (`otaAbort`). The connected pod only; distribution to the set is #130 to #133. Keeps the screen on |
 
-Not planned: editing library fragments, firmware OTA (ADR 0006), several sets at once (#46, on hold).
+Not planned: editing library fragments, several sets at once (#46, on hold).
 Native shell (Capacitor) later; all platform access is behind interfaces (§4).
 
 ## 2. Platforms
@@ -94,7 +95,7 @@ Sub-pages show a back arrow in the header (to an explicit parent computed per ro
 | `/games/game?source=&path=` or `?id=`, `&mode=` about, edit or try | the game page: header (name, pods needed, origin, ··· menu), segmented control **About · Edit · Try** (mode switch replaces the URL). About: story, settings summary, pod status, Try / Change settings (my games) or Make my copy, Blocks (expert). Change settings and ··· → Game settings open Edit with the game settings panel (`panel=settings`). Edit: the editor (§7, editor-ux.md; shipped games read only + Make my copy). Try: simulator (§8). No game named → `/games` |
 | `/games/new` | wizard |
 | **Results** `/results` (+ `/results/athlete`, `/results/session`) | athletes on this phone; statistics (counted reports only), sessions → reports → values, discard / count again, CSV (one row per measurement) |
-| **This set** `/set` (chip when connected; no tab) | set name, id, firmware, free space, generation; file list with sync state; send, Reset menu; *Train* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
+| **This set** `/set` (chip when connected; no tab) | set name, id, firmware and the available release (F16, #128), free space, generation; file list with sync state; send, Reset menu; *Train* section (athlete, live report, continue / repeat / stop with `reports` / `remote`); link to Menu and the training view. Not connected: Connect |
 | `/set/menu` | order of `/programs.json`, LED ring picker per game |
 | Settings `/settings` (gear) | language, expert mode, platform preview, about, advanced (debug console, delete files §9.4) |
 

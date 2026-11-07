@@ -1,7 +1,10 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILES } from "../../defaults";
 import { crcHex } from "../crc32";
-import { SimulatedPod } from "./SimulatedPod";
+import { SimulatedPod, type SimulatedPodOptions } from "./SimulatedPod";
+import { SimulatedTransport } from "./SimulatedTransport";
+import { Sha256 } from "./sha256";
 
 type Json = Record<string, unknown>;
 
@@ -84,10 +87,10 @@ describe("SimulatedPod (config API)", () => {
     expect(bad.message).toContain("'Hit'");
   });
 
-  it("reports the firmware 2.17 info: program format 6 with the summary bar, the patterns and the start variables", () => {
+  it("reports the firmware 2.19 info by default: program format 6 with the summary bar, the patterns, the start variables and the update", () => {
     const info = call(new SimulatedPod({ setName: "Halle 2" }), { op: "info" });
-    expect(info).toMatchObject({ firmware: "2.17", setName: "Halle 2", pinRequired: false, programFormat: 6 });
-    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns", "startVars"]);
+    expect(info).toMatchObject({ firmware: "2.19", setName: "Halle 2", pinRequired: false, programFormat: 6 });
+    expect(info.features).toEqual(["validateInline", "listMeta", "effects", "hold", "toggle", "reports", "remote", "pause", "liveBle", "identify", "battery", "patterns", "startVars", "ota"]);
     expect(info.linkRevision).toBe(5);
     expect(info.blockTypes).toContain("repeat");
     expect(info.blockTypes).toEqual(expect.arrayContaining(["effect", "charge", "release", "toggle", "communicate", "summary"]));
@@ -470,5 +473,233 @@ describe("SimulatedPod (start variables, firmware 2.17)", () => {
     pod.state = "CONFIRM";
     expect(call(pod, { op: "status" })).not.toHaveProperty("ready");
     expect(call(pod, { op: "setVariables", values: { MAX_LOOPS: 20 } })).toMatchObject({ error: "not_ready" });
+  });
+});
+
+describe("SimulatedPod (firmware update, firmware 2.19)", () => {
+  // an image of `size` bytes that starts with the ESP image header (0xE9)
+  const image = (size = 5000) => {
+    const bytes = new Uint8Array(size);
+    bytes[0] = 0xe9;
+    for (let i = 1; i < size; i++) bytes[i] = (i * 31) & 0xff;
+    return bytes;
+  };
+  const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+  const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+  const write = (pod: SimulatedPod, bytes: Uint8Array, offset: number, length: number) =>
+    call(pod, { op: "otaWrite", offset, data: b64(bytes.subarray(offset, offset + length)) });
+  /** a pod with a clock the test moves; the update needs firmware 2.19 */
+  function make(options: SimulatedPodOptions = {}) {
+    const clock = { ms: 1_000_000 };
+    const pod = new SimulatedPod({ firmware: "2.19", clock: () => clock.ms, ...options });
+    return { pod, clock };
+  }
+
+  it("hashes like SHA-256 whatever the piece sizes", () => {
+    for (const size of [1, 55, 56, 63, 64, 65, 119, 120, 5000]) {
+      const bytes = image(size);
+      const hash = new Sha256();
+      for (let i = 0; i < bytes.length; i += 7) hash.update(bytes.subarray(i, i + 7));
+      expect(hash.hexDigest()).toBe(sha(bytes));
+    }
+  });
+
+  it("receives an image in chunks, checks its hash, activates it and runs the new version after the trial", () => {
+    const { pod, clock } = make();
+    const bytes = image();
+    expect(call(pod, { op: "info" })).toMatchObject({ ota: { slotSize: 1835008, running: "app0", lastResult: "none" } });
+    expect(call(pod, { op: "info" }).features).toContain("ota");
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes), version: "2.20" })).toMatchObject({
+      ok: true,
+      slotSize: 1835008,
+      maxChunk: 3072,
+      received: 0,
+    });
+    expect(write(pod, bytes, 0, 3072)).toMatchObject({ ok: true, received: 3072 });
+    expect(call(pod, { op: "status" }).ota).toEqual({ state: "receiving", received: 3072, total: 5000, version: "2.20" });
+    expect(write(pod, bytes, 3072, 1928)).toMatchObject({ ok: true, received: 5000 });
+    expect(call(pod, { op: "otaEnd" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "ready", received: 5000 });
+    expect(call(pod, { op: "otaActivate" })).toMatchObject({ ok: true });
+    expect(pod.takeRestart()).toBe(true);
+    expect(pod.takeRestart()).toBe(false);
+
+    // on trial: the new version runs, the result is still none, no update can begin
+    expect(call(pod, { op: "info" })).toMatchObject({ firmware: "2.20", ota: { running: "app1", lastResult: "none" } });
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) })).toMatchObject({ error: "busy" });
+
+    clock.ms += 14_999;
+    expect(call(pod, { op: "info" })).toMatchObject({ ota: { lastResult: "none" } });
+    clock.ms += 1;
+    expect(call(pod, { op: "info" })).toMatchObject({ ota: { running: "app1", lastResult: "ok" } });
+    expect(call(pod, { op: "status" }).ota).toEqual({ state: "idle", received: 0, total: 0, version: "" });
+  });
+
+  it("resumes the open image at its received bytes, and restarts a different image at 0", () => {
+    const { pod } = make();
+    const bytes = image();
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    write(pod, bytes, 0, 3072);
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes).toUpperCase() })).toMatchObject({ ok: true, received: 3072 });
+
+    const other = image();
+    other[100]! ^= 1;
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(other) })).toMatchObject({ ok: true, received: 0 });
+    expect(call(pod, { op: "status" }).ota).toEqual({ state: "receiving", received: 0, total: 5000, version: "" });
+
+    // a ready update answers received = size and stays ready
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(other) });
+    write(pod, other, 0, 3072);
+    write(pod, other, 3072, 1928);
+    expect(call(pod, { op: "otaEnd" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(other) })).toMatchObject({ ok: true, received: 5000 });
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "ready", received: 5000 });
+  });
+
+  it("answers bad_request for a missing size, a bad hash or version, and busy outside the menu", () => {
+    const { pod } = make();
+    const bytes = image();
+    expect(call(pod, { op: "otaBegin", sha256: sha(bytes) })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "otaBegin", size: 0, sha256: sha(bytes) })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: "xyz" })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes), version: "v".repeat(32) })).toMatchObject({ error: "bad_request" });
+    pod.state = "RUN";
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) })).toMatchObject({ error: "busy" });
+  });
+
+  it("answers low_battery below 30 % and too_large above the slot; a pod with no battery reading may update", () => {
+    const { pod } = make();
+    const bytes = image();
+    pod.selfBatteryMv = 3650; // 22 %
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) })).toMatchObject({ error: "low_battery" });
+    pod.selfBatteryMv = 3950;
+    expect(call(pod, { op: "otaBegin", size: 1835009, sha256: sha(bytes) })).toMatchObject({ error: "too_large" });
+    expect(call(make({ battery: false }).pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) })).toMatchObject({ ok: true });
+  });
+
+  it("answers not_ready for write, end and activate outside an update", () => {
+    const { pod } = make();
+    const bytes = image();
+    expect(call(pod, { op: "otaWrite", offset: 0, data: b64(bytes.subarray(0, 10)) })).toMatchObject({ error: "not_ready" });
+    expect(call(pod, { op: "otaEnd" })).toMatchObject({ error: "not_ready" });
+    expect(call(pod, { op: "otaActivate" })).toMatchObject({ error: "not_ready" });
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    write(pod, bytes, 0, 3072);
+    expect(call(pod, { op: "otaEnd" })).toMatchObject({ error: "not_ready", message: "received 3072 of 5000 bytes" });
+    expect(call(pod, { op: "otaActivate" })).toMatchObject({ error: "not_ready" });
+  });
+
+  it("answers bad_offset with the received count, bad_request for bad data, too_large past the size", () => {
+    const { pod } = make();
+    const bytes = image();
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    expect(call(pod, { op: "otaWrite", offset: 100, data: b64(bytes.subarray(0, 10)) })).toMatchObject({ error: "bad_offset", received: 0 });
+    expect(call(pod, { op: "otaWrite", offset: 0, data: "" })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "otaWrite", offset: 0, data: "!!!!" })).toMatchObject({ error: "bad_request" });
+    expect(call(pod, { op: "otaWrite", offset: 0, data: "A".repeat(4100) })).toMatchObject({ error: "bad_request" });
+    write(pod, bytes, 0, 3072);
+    expect(call(pod, { op: "otaWrite", offset: 3072, data: b64(new Uint8Array(2000)) })).toMatchObject({ error: "too_large" });
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "receiving", received: 3072 });
+  });
+
+  it("fails the update on a first chunk without the image header (ota_failed), and begins again", () => {
+    const { pod } = make();
+    const bytes = image();
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    expect(call(pod, { op: "otaWrite", offset: 0, data: b64(new Uint8Array([0x00, 1, 2])) })).toMatchObject({ error: "ota_failed" });
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "failed" });
+    expect(call(pod, { op: "otaWrite", offset: 0, data: b64(bytes.subarray(0, 10)) })).toMatchObject({ error: "not_ready" });
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) })).toMatchObject({ ok: true, received: 0 });
+  });
+
+  it("fails otaEnd on a wrong hash and on a rejected image (test hook), then starts again", () => {
+    const { pod } = make();
+    const bytes = image();
+    const other = image();
+    other[7]! ^= 0xff;
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(other) });
+    write(pod, bytes, 0, 3072);
+    write(pod, bytes, 3072, 1928);
+    expect(call(pod, { op: "otaEnd" })).toMatchObject({ error: "ota_failed" });
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "failed" });
+
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    write(pod, bytes, 0, 3072);
+    write(pod, bytes, 3072, 1928);
+    pod.otaFailNextVerify = true;
+    expect(call(pod, { op: "otaEnd" })).toMatchObject({ error: "ota_failed" });
+    expect(pod.otaFailNextVerify).toBe(false);
+    expect(call(pod, { op: "info" })).toMatchObject({ ota: { running: "app0", lastResult: "none" } });
+  });
+
+  it("rolls back an image whose trial fails: the old version runs, lastResult rolledBack, and a new begin resets it", () => {
+    const { pod, clock } = make();
+    const bytes = image();
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes), version: "2.20" });
+    write(pod, bytes, 0, 3072);
+    write(pod, bytes, 3072, 1928);
+    call(pod, { op: "otaEnd" });
+    pod.otaSelfTestFails = true;
+    call(pod, { op: "otaActivate" });
+    expect(call(pod, { op: "info" })).toMatchObject({ firmware: "2.20", ota: { running: "app1" } });
+
+    clock.ms += 15_000;
+    expect(call(pod, { op: "info" })).toMatchObject({ firmware: "2.19", ota: { running: "app0", lastResult: "rolledBack" } });
+    expect(pod.takeRestart()).toBe(true);
+
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    expect(call(pod, { op: "info" })).toMatchObject({ ota: { lastResult: "none" } });
+  });
+
+  it("aborts an update at any time, and discards an update idle for 10 minutes", () => {
+    const { pod, clock } = make();
+    const bytes = image();
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    write(pod, bytes, 0, 3072);
+    expect(call(pod, { op: "otaAbort" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "idle", received: 0, total: 0 });
+    expect(call(pod, { op: "otaWrite", offset: 0, data: b64(bytes.subarray(0, 10)) })).toMatchObject({ error: "not_ready" });
+
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    write(pod, bytes, 0, 3072);
+    clock.ms += 10 * 60 * 1000 - 1;
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "receiving", received: 3072 });
+    clock.ms += 1;
+    expect(call(pod, { op: "status" }).ota).toMatchObject({ state: "idle", received: 0 });
+  });
+
+  it("needs the PIN for all five ops, as for put", () => {
+    const { pod } = make({ pin: "1234" });
+    const bytes = image();
+    for (const op of ["otaBegin", "otaWrite", "otaEnd", "otaActivate", "otaAbort"]) {
+      expect(call(pod, { op })).toMatchObject({ error: "auth_required" });
+    }
+    expect(call(pod, { op: "auth", pin: "1234" })).toMatchObject({ ok: true });
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) })).toMatchObject({ ok: true });
+  });
+
+  it("has no ota feature, info or ops before firmware 2.19", () => {
+    const pod = new SimulatedPod({ firmware: "2.18" });
+    expect(call(pod, { op: "info" }).features).not.toContain("ota");
+    expect(call(pod, { op: "info" })).not.toHaveProperty("ota");
+    expect(call(pod, { op: "status" })).not.toHaveProperty("ota");
+    expect(call(pod, { op: "otaBegin", size: 5000, sha256: "0".repeat(64) })).toMatchObject({ error: "bad_request" });
+  });
+
+  it("drops the connection after otaActivate answers, like the reboot", async () => {
+    const { pod } = make();
+    const bytes = image();
+    call(pod, { op: "otaBegin", size: 5000, sha256: sha(bytes) });
+    write(pod, bytes, 0, 3072);
+    write(pod, bytes, 3072, 1928);
+    call(pod, { op: "otaEnd" });
+    const transport = new SimulatedTransport(pod);
+    const lines: string[] = [];
+    transport.onLine((line) => lines.push(line));
+    await transport.connect();
+    await transport.send(JSON.stringify({ op: "otaActivate" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(JSON.parse(lines[0]!)).toMatchObject({ op: "otaActivate", ok: true }); // the answer arrives first
+    expect(transport.connected).toBe(false);
   });
 });

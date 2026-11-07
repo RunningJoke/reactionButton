@@ -57,10 +57,13 @@ export class SimulatedTransport implements Transport {
   async send(line: string) {
     if (!this.isConnected) throw new Error("not connected");
     const response = this.pod.handle(line);
+    // a reboot (otaActivate, a rolled-back trial) drops the link after its answer, like the pod does
+    const restart = this.pod.takeRestart();
     const deliver = () => {
       if (!this.isConnected) return;
       for (const log of this.options.logLines ?? []) this.receive(`${log}\n`);
       this.receive(`${response}\n`);
+      if (restart) void this.disconnect();
     };
     const latency = this.options.latencyMs ?? 0;
     if (latency > 0) setTimeout(deliver, latency);

@@ -7,9 +7,10 @@ import { BLOCK_TYPES } from "@reactpod/program-model";
 import { INDEX_PATH, isValidPath, MAX_FILE_SIZE, MAX_GET_CHUNK, MAX_PATH, MAX_REQUEST, MAX_SET_NAME, PROGRAM_FORMAT } from "@reactpod/program-model";
 import { validateProgram, type Issue } from "@reactpod/program-model";
 import { crc32, crcHex, hex32 } from "../crc32";
-import type { ApiErrorCode, PodRole } from "../protocol";
+import type { ApiErrorCode, OtaStatus, PodRole } from "../protocol";
 import { batteryPercent } from "../battery";
 import { byteLength, encodeUtf8 } from "../utf8";
+import { Sha256 } from "./sha256";
 
 const BAD_PATH_MESSAGE = `path must be /programs.json or /prog/... (max ${MAX_PATH} characters)`;
 
@@ -27,7 +28,7 @@ export type SimulatedPodOptions = {
   /**
    * `info.programFormat` (programs.md §6), default PROGRAM_FORMAT. A lower value simulates an older
    * central: its default `blockTypes` leave out newer types (format 1: no `repeat`), `firmware`
-   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.17", the summary bar, identify and battery (2.13), auto power-off, the system patterns (2.15) and start variables (2.17)), and
+   * defaults to "2.7" (format 2: "2.8", format 3: "2.9", format 4: "2.10", format 5: "2.12", the newest firmware with pause and liveBle; format 6: "2.19", the summary bar, identify and battery (2.13), auto power-off, the system patterns (2.15), start variables (2.17) and the firmware update (2.19)), and
    * `status` has no `timers`. Format 5 adds the reports and the remote ops (`reports`, `ack`,
    * `command`, `setVariables`, `session`, `pause`, `resume`); `emitSampleReport()` makes a demo report.
    */
@@ -49,7 +50,31 @@ export type SimulatedPodOptions = {
    * Default: on with program format 5 (firmware 2.13).
    */
   battery?: boolean;
+  /**
+   * Clock in ms for the time-based parts (the firmware update's 15 s trial and idle timeout). Default
+   * `Date.now`; tests pass their own.
+   */
+  clock?: () => number;
 };
+
+/** Firmware update (firmware ≥ 2.19, config-api.md "Firmware update"): slot size, chunk size, trial, idle timeout. */
+const OTA_SLOT_SIZE = 1835008;
+const OTA_MAX_CHUNK = 3072;
+const OTA_TRIAL_MS = 15000;
+const OTA_IDLE_MS = 10 * 60 * 1000;
+const OTA_MIN_BATTERY_PERCENT = 30;
+const OTA_VERSION_MAX = 31;
+const OTA_IMAGE_MAGIC = 0xe9;
+const SHA256_HEX = /^[0-9a-fA-F]{64}$/;
+
+type OtaUpdate = { state: OtaStatus["state"]; received: number; total: number; version: string; sha: string; hash: Sha256; lastMs: number };
+const freshUpdate = (): OtaUpdate => ({ state: "idle", received: 0, total: 0, version: "", sha: "", hash: new Sha256(), lastMs: 0 });
+
+/** Base64 of the image chunk; null when it is not valid base64 (strict, padded, like mbedtls). */
+function decodeBase64(text: string): Uint8Array | null {
+  if (text.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text)) return null;
+  return Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+}
 
 /** Reports the central keeps until they are acknowledged (#41). */
 const REPORT_BUFFER = 8;
@@ -86,6 +111,8 @@ class ApiFailure extends Error {
   constructor(
     readonly code: ApiErrorCode,
     message: string,
+    /** more response fields, e.g. `received` of bad_offset */
+    readonly extra: Json = {},
   ) {
     super(message);
   }
@@ -133,9 +160,27 @@ export class SimulatedPod {
   private authenticated = false;
   private nextReportId = 1;
   private cycle = 0;
-  private readonly bootAt = Date.now();
+  private readonly bootAt: number;
+  private readonly clock: () => number;
+
+  /** central's cell voltage in mV (3.95 V = 60 %); below 30 % `otaBegin` answers low_battery */
+  selfBatteryMv = 3950;
+  /** firmware update (firmware ≥ 2.19): the update in progress */
+  private ota: OtaUpdate = freshUpdate();
+  private running: "app0" | "app1" = "app0";
+  private lastResult: "none" | "ok" | "rolledBack" = "none";
+  /** the image activated by otaActivate is on trial until `startMs` + 15 s; `previous` is what a rollback returns to */
+  private trial: { startMs: number; fails: boolean; previous: { firmware: string; running: "app0" | "app1" } } | null = null;
+  /** test hook: the next otaActivate's image fails its self-test in the trial and is rolled back */
+  otaSelfTestFails = false;
+  /** test hook: the next otaEnd fails the image check (esp_ota_end), as for a corrupt image */
+  otaFailNextVerify = false;
+  /** a reboot happened (otaActivate, rollback): the transport drops the connection after the answer */
+  private restart = false;
 
   constructor(options: SimulatedPodOptions = {}) {
+    this.clock = options.clock ?? Date.now;
+    this.bootAt = this.clock();
     for (const [path, text] of Object.entries(options.files ?? {})) this.files.set(path, text);
     this.role = options.role ?? "central";
     this.setId = options.setId ?? "5f3a91c2";
@@ -146,7 +191,7 @@ export class SimulatedPod {
     this.batteryOption = options.battery ?? this.programFormat >= 6;
     this.firmware =
       options.firmware ??
-      (this.programFormat >= 6 ? "2.17" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
+      (this.programFormat >= 6 ? "2.19" : this.programFormat >= 5 ? "2.12" : this.programFormat >= 4 ? "2.10" : this.programFormat >= 3 ? "2.9" : this.programFormat >= 2 ? "2.8" : "2.7");
     this.blockTypes = options.blockTypes ?? BLOCK_TYPES.filter((t) => (t.minFormat ?? 1) <= this.programFormat).map((t) => t.type);
     this.freeBytes = options.freeBytes ?? 1_800_000;
     this.setName = options.setName ?? "";
@@ -180,7 +225,7 @@ export class SimulatedPod {
 
   /** Demo cell voltage (mV) of the pod with this id; the central ("self") is at 3.95 V. */
   private batteryMv(id: number | "self"): number {
-    if (id === "self") return 3950;
+    if (id === "self") return this.selfBatteryMv;
     const demo = [4080, 3760, 3640, 4150, 3900, 3700, 4010];
     return demo[id % demo.length]!;
   }
@@ -195,10 +240,22 @@ export class SimulatedPod {
     return this.liveBleOption ?? this.remote;
   }
 
+  /** firmware ≥ 2.19: firmware update over the config API, feature `ota`, `info.ota`, `status.ota` */
+  get otaEnabled(): boolean {
+    return Number(this.firmware.split(".")[1]) >= 19;
+  }
+
   /** A new client connected: it has to authenticate again, an unfinished upload is dropped. */
   newSession() {
     this.authenticated = false;
     this.upload = null;
+  }
+
+  /** True once after a reboot (otaActivate, rollback): the transport then drops the connection, like the pod does. */
+  takeRestart(): boolean {
+    const restart = this.restart;
+    this.restart = false;
+    return restart;
   }
 
   /** Handles one request line, returns the response line (without "\n"). */
@@ -207,6 +264,7 @@ export class SimulatedPod {
       this.overflowNext--;
       return JSON.stringify({ ok: false, error: "overflow", message: "request data arrived faster than it could be processed" });
     }
+    this.settleOta();
     if (byteLength(line) > MAX_REQUEST) {
       return JSON.stringify({ ok: false, error: "too_large", message: `request larger than ${MAX_REQUEST} bytes` });
     }
@@ -227,7 +285,7 @@ export class SimulatedPod {
       Object.assign(response, { ok: true }, this.dispatch(op, req));
     } catch (e) {
       if (!(e instanceof ApiFailure)) throw e;
-      Object.assign(response, { ok: false, error: e.code, message: e.message });
+      Object.assign(response, { ok: false, error: e.code, message: e.message }, e.extra);
     }
     return JSON.stringify(response);
   }
@@ -267,6 +325,7 @@ export class SimulatedPod {
             ...(this.remote ? ["reports", "ack", "session", "command", "setVariables", "pause", "resume", "start"] : []),
             ...(this.role === "central" && this.identifies ? ["blink"] : []),
             ...(this.role === "central" && this.patterns ? ["pattern"] : []),
+            ...(this.otaEnabled ? ["otaBegin", "otaWrite", "otaEnd", "otaActivate", "otaAbort"] : []),
           ],
           transport: "simulated",
         };
@@ -305,6 +364,13 @@ export class SimulatedPod {
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
       case "start":
         return this.start();
+      case "otaBegin":
+      case "otaWrite":
+      case "otaEnd":
+      case "otaActivate":
+      case "otaAbort":
+        if (this.otaEnabled) return this.firmwareUpdate(op, req);
+        throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
       default:
         throw new ApiFailure("bad_request", `unknown op '${op}' (try 'help')`);
     }
@@ -340,8 +406,12 @@ export class SimulatedPod {
         ...(this.battery ? ["battery"] : []),
         ...(this.patterns ? ["patterns"] : []),
         ...(this.startVars ? ["startVars"] : []),
+        ...(this.otaEnabled ? ["ota"] : []),
       ],
       blockTypes: this.blockTypes,
+      ...(this.otaEnabled
+        ? { ota: { slotSize: OTA_SLOT_SIZE, running: this.running, lastResult: this.lastResult } }
+        : {}),
     };
   }
 
@@ -360,6 +430,9 @@ export class SimulatedPod {
         : {}),
       // firmware >= 2.13: the battery of this pod (config-api.md §5)
       ...(this.battery ? { battery: this.batteryLevel("self") } : {}),
+      ...(this.otaEnabled
+        ? { ota: { state: this.ota.state, received: this.ota.received, total: this.ota.total, version: this.ota.version } }
+        : {}),
       // central in a game, firmware ≥ 2.8 (config-api.md §5)
       ...(this.role === "central" && (this.state === "RUN" || this.state === "PAUSED") && this.programFormat >= 2
         ? { timers: { orphanStops: this.orphanStops } }
@@ -406,6 +479,144 @@ export class SimulatedPod {
     if (this.state !== "CONFIRM") throw new ApiFailure("not_ready", `state is ${this.state}, not CONFIRM`);
     this.state = "RUN";
     return { state: this.state };
+  }
+
+  /** What the pod does on its own clock, before each request: the verdict on a trial image, the idle timeout of an update. */
+  private settleOta() {
+    const now = this.clock();
+    if (this.trial && now - this.trial.startMs >= OTA_TRIAL_MS) {
+      const { fails, previous } = this.trial;
+      this.trial = null;
+      if (fails) {
+        // the bootloader returns to the old image; the pod restarts
+        this.firmware = previous.firmware;
+        this.running = previous.running;
+        this.lastResult = "rolledBack";
+        this.restart = true;
+      } else {
+        this.lastResult = "ok";
+      }
+    }
+    if ((this.ota.state === "receiving" || this.ota.state === "ready") && now - this.ota.lastMs >= OTA_IDLE_MS) {
+      this.ota = freshUpdate();
+    }
+  }
+
+  /** firmware ≥ 2.19 (config-api.md "Firmware update"): the five ops; a PIN needs `auth` for all of them, as for put. */
+  private firmwareUpdate(op: string, req: Json): Json {
+    this.requireWriteAccess();
+    switch (op) {
+      case "otaBegin":
+        return this.otaBegin(req);
+      case "otaWrite":
+        return this.otaWrite(req);
+      case "otaEnd":
+        return this.otaEnd();
+      case "otaActivate":
+        return this.otaActivate();
+      default:
+        this.ota = freshUpdate();
+        return {};
+    }
+  }
+
+  private otaBegin(req: Json): Json {
+    // firmware: only in the menu (central) or a peripheral not in a game
+    if (this.state !== "MENU") throw new ApiFailure("busy", "a firmware update needs the menu (central) or a pod not in a game");
+    const size = req.size;
+    if (typeof size !== "number" || !Number.isInteger(size) || size <= 0 || size > 0xffffffff) {
+      throw new ApiFailure("bad_request", "'size' (bytes of the image, > 0) missing");
+    }
+    if (typeof req.sha256 !== "string" || !SHA256_HEX.test(req.sha256)) {
+      throw new ApiFailure("bad_request", "'sha256' (64 hex characters) missing");
+    }
+    const sha = req.sha256.toLowerCase();
+    const version = req.version ?? "";
+    if (typeof version !== "string" || byteLength(version) > OTA_VERSION_MAX) {
+      throw new ApiFailure("bad_request", `'version' must be a string of at most ${OTA_VERSION_MAX} characters`);
+    }
+    // a pod with no battery reading is allowed (firmware batteryAllows)
+    const percent = batteryPercent(this.selfBatteryMv);
+    if (this.battery && percent < OTA_MIN_BATTERY_PERCENT) {
+      throw new ApiFailure("low_battery", `battery at ${percent} %, an update needs ${OTA_MIN_BATTERY_PERCENT} %`);
+    }
+    if (this.trial) throw new ApiFailure("busy", "the running firmware is still being tested (15 s after an update), try again");
+    if (size > OTA_SLOT_SIZE) throw new ApiFailure("too_large", `image larger than the slot (${OTA_SLOT_SIZE} bytes)`);
+
+    const now = this.clock();
+    const answer = { slotSize: OTA_SLOT_SIZE, maxChunk: OTA_MAX_CHUNK };
+    const u = this.ota;
+    // the same image while it is open (receiving or ready): continue there; a dropped connection does not end it
+    if ((u.state === "receiving" || u.state === "ready") && u.total === size && u.sha === sha) {
+      u.lastMs = now;
+      return { ...answer, received: u.received };
+    }
+    this.lastResult = "none";
+    this.ota = { ...freshUpdate(), state: "receiving", total: size, version, sha, lastMs: now };
+    return { ...answer, received: 0 };
+  }
+
+  private otaWrite(req: Json): Json {
+    const u = this.ota;
+    if (u.state !== "receiving") throw new ApiFailure("not_ready", `no update is receiving (update state ${u.state}), send otaBegin first`);
+    if (typeof req.offset !== "number" || !Number.isInteger(req.offset) || req.offset < 0 || typeof req.data !== "string") {
+      throw new ApiFailure("bad_request", "'offset' (number) and 'data' (base64 string) needed");
+    }
+    // base64 of maxChunk bytes is at most 4096 characters
+    if (req.data.length > (OTA_MAX_CHUNK / 3) * 4) {
+      throw new ApiFailure("bad_request", `'data' longer than maxChunk (${OTA_MAX_CHUNK} bytes)`);
+    }
+    const bytes = decodeBase64(req.data);
+    if (bytes === null || bytes.length > OTA_MAX_CHUNK) {
+      throw new ApiFailure("bad_request", "'data' is not valid base64 or larger than maxChunk");
+    }
+    if (bytes.length === 0) throw new ApiFailure("bad_request", "'data' is empty");
+    if (req.offset !== u.received) throw new ApiFailure("bad_offset", `expected offset ${u.received}`, { received: u.received });
+    if (u.received + bytes.length > u.total) throw new ApiFailure("too_large", `data past the announced size ${u.total}`);
+    if (u.received === 0 && bytes[0] !== OTA_IMAGE_MAGIC) {
+      // esp_ota_write checks the image header of the first chunk; the update is over
+      u.state = "failed";
+      throw new ApiFailure("ota_failed", "the image does not start with the image header (0xE9)");
+    }
+    u.hash.update(bytes);
+    u.received += bytes.length;
+    u.lastMs = this.clock();
+    return { received: u.received };
+  }
+
+  private otaEnd(): Json {
+    const u = this.ota;
+    if (u.state !== "receiving") throw new ApiFailure("not_ready", `no update is receiving (update state ${u.state})`);
+    if (u.received !== u.total) throw new ApiFailure("not_ready", `received ${u.received} of ${u.total} bytes`);
+    if (u.hash.hexDigest() !== u.sha) {
+      u.state = "failed";
+      throw new ApiFailure("ota_failed", "SHA-256 of the received image differs from 'sha256'");
+    }
+    if (this.otaFailNextVerify) {
+      this.otaFailNextVerify = false;
+      u.state = "failed";
+      throw new ApiFailure("ota_failed", "image rejected by the image check (test hook otaFailNextVerify)");
+    }
+    u.state = "ready";
+    u.lastMs = this.clock();
+    return {};
+  }
+
+  /** The pod reboots into the new image: the update is gone, the image is on trial for 15 s (settleOta). */
+  private otaActivate(): Json {
+    if (this.ota.state !== "ready") throw new ApiFailure("not_ready", `no verified image, send otaEnd first (update state ${this.ota.state})`);
+    this.trial = {
+      startMs: this.clock(),
+      fails: this.otaSelfTestFails,
+      previous: { firmware: this.firmware, running: this.running },
+    };
+    this.otaSelfTestFails = false;
+    // the demo has no real image: the update's version (if given) is the firmware it runs
+    if (this.ota.version !== "") this.firmware = this.ota.version;
+    this.running = this.running === "app0" ? "app1" : "app0";
+    this.ota = freshUpdate();
+    this.restart = true;
+    return {};
   }
 
   /** firmware ≥ 2.13 (config-api.md §5): blinks a pod of the set, or the central ("pod" -1 or missing) for 2 s. */

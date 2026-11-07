@@ -33,6 +33,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,json,woff2}"],
+        // firmware binaries and the manifest come from dist/firmware (app.yml): never precached (#128),
+        // and a navigation under /firmware/ never gets index.html
+        globIgnores: ["firmware/**"],
+        navigateFallbackDenylist: [/\/firmware\//],
       },
     }),
   ],
