@@ -2,6 +2,7 @@
 
 #include <ArduinoJson.h>
 #include "Ota/OtaRules.h"
+#include "Ota/OtaBitmap.h"
 
 /**
  * Firmware update over the config API (#123, docs/firmware/config-api.md "Firmware update", ADR 0009).
@@ -33,6 +34,31 @@ namespace Ota {
     void opEnd(JsonDocument& response);
     bool opActivate(JsonDocument& response);
     void opAbort(JsonDocument& response);
+
+    // --- distribution over ESP-NOW (#130, #131, #132) ---
+
+    // Central: the verified image, served to the peripherals (path "@ota") and offered to them
+    bool imageReady();
+    uint32_t imageSize();
+    const char* imageSha();             // 64 hex characters
+    const char* imageVersion();         // "" = not given
+    uint8_t imageLinkProtocol();        // of the new firmware (otaBegin linkProtocol), 0 = not given
+    bool readImage(uint32_t offset, uint8_t* out, size_t max, size_t& length, uint32_t& total);
+    void keepAlive();                   // distributing is not an idle update
+
+    // Peripheral: the image arrives from the central, chunk by chunk in any order (OtaBitmap)
+    enum class RadioBegin : uint8_t { OK, BUSY, LOW_BATTERY, TOO_LARGE, STORAGE };
+    // Erases the whole slot (about 4 s, the loop and the radio stand still). OK as well if this image is already open.
+    RadioBegin radioBegin(uint32_t size, const char* sha256Hex, const char* version);
+    bool viaRadio();                    // an update from the central is open (receiving, ready or failed)
+    bool radioIs(uint32_t size, const char* sha256Hex);     // ... and it is this image
+    OtaRules::State currentState();
+    bool radioChunk(uint16_t index, const uint8_t* data, size_t length);     // true if it was new and written
+    int32_t radioNextMissing(uint16_t from);
+    bool radioComplete();
+    uint8_t radioPercent();
+    void radioFinish();                 // all chunks there: SHA-256 from the flash, image check, then ready or failed
+    void radioAbort();                  // discard; the caller shows the ring
 
     void describeStatus(JsonObject status);     // status.ota
     void describeInfo(JsonObject info);         // info.ota

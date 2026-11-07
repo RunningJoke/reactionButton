@@ -89,6 +89,10 @@ reboot. Wake from deep sleep is a normal boot.
   at the next reset, marks the image aborted and starts the old one. A pod switched off in the first 15 s
   after an update therefore comes back with the old firmware; this is the design (the image has not
   proved itself yet), the update has to be repeated.
+- **Role after a rollback.** `otaActivate` stores the pod's role in the high nibble of the pending-slot entry. The failed
+  boot uses up the one-shot boot role, so after a rollback `Ota::boot` sets it again: a central that rolled back comes
+  back as a central, not as a peripheral. An entry written by firmware 2.19 has no role (a rollback to or from it keeps the
+  old behaviour).
 - `otaBegin` is refused with `busy` during the 15 s (ESP-IDF cannot start a new image while the running one
   is pending).
 - `lastResult` (`Ota::boot`): `otaActivate` stores the new slot in NVS. At the next start the pod compares
@@ -111,6 +115,7 @@ reboot. Wake from deep sleep is a normal boot.
 | ACTIVE | LEDs updated, then `t0` taken; only presses that start after count; reaction = press edge − `t0` (µs) |
 | DONE | press reported (PRESSED); → READY on RESET |
 | HOLDING | CHARGE / RELEASE activation running (`HoldSession`) |
+| UPDATE | firmware update from the central (fw ≥ 2.20, link-protocol §5.3): entered with `OTA_OFFER` from READY. The slot is erased (about 4 s, PING `otaState` preparing first, supervision restarted afterwards), then the image is pulled (`@ota`) or heard (`OTA_CHUNK`), chunks in any order (`OtaBitmap`), written with `esp_ota_write_with_offset`, hashed from the flash, `esp_ota_end`, READY ring green. PING/PONG go on, ARM / EFFECT / RESET are ignored. Left by `OTA_ACTIVATE` (restart as peripheral), by a PONG without `PONG_FLAG_OTA` (discard, READY), or by losing the central (UNCLAIMED). A failed update stays `failed` (red blink, then dark) until the central ends the distribution |
 
 RESET from any armed state → READY. No PONG for 2 s → UNCLAIMED. Frames are handled on arrival, in send
 order. An EFFECT takes the ring until it ends; ARM or RESET gives the ring back to the activation.
@@ -125,6 +130,7 @@ order. An EFFECT takes the ring until it ends; ARM or RESET gives the ring back 
 | DISCOVERY | non-blocking, one claim per HELLO; LEDs 0–7 pod markers in the pod colour, SEARCH on 8–17 (§7.1); SOLO (0 peripherals) never starts ESP-NOW |
 | CONFIRM | all required pods claimed: READY (whole ring breathes green); a press that starts after entering starts the game; earlier events dropped. `setVariables` is accepted here (`startVars`, config-api §3): the values are used by the first cycle. Start refused below 5 % battery: red 1 s |
 | RUN | the game. `stop` (config API) leaves any state after MENU for MENU without a reboot: block, variables, results and reports are dropped, the ring shows the menu, BLE stays connected, the radio keeps running and the joined pods get RESET and stay joined (UNCLAIMED only if the central is silent > 2 s). The next `select` keeps the first `peripherals` of them and goes through DISCOVERY |
+| DISTRIBUTING | `otaDistribute` from MENU (fw ≥ 2.20, link-protocol §5.3): ESP-NOW on, pods claimed as in DISCOVERY, no game, no store sync, `PONG_FLAG_OTA` set. `PodNetwork::otaService` offers the image (one pod at a time, or all pods and a broadcast pass), ring: UPDATE bar with the mean progress, UPDATE_READY when every pod is ready. Left by `otaAbort` / `stop` (MENU) or `otaActivate` (OTA_ACTIVATE to the ready pods, then the central restarts as central) |
 | PAUSED | PAUSED pattern (whole ring breathes amber) for a pod silent > 1.5 s or phone `pause` (`phonePaused`). Pod loss resumes by itself when all are back; a phone pause only with `resume` (config-api §5). The current block is left and re-entered (re-arms its pods) |
 
 BLE (fw ≥ 2.12, `liveBle`, ADR 0005) stays connected in every state; `PhoneConfig::service()` runs in
@@ -250,6 +256,7 @@ for orange, violet and cream are provisional until checked on the real LEDs (bri
 | Firmware update (#125, #123: `otaBegin` ... `otaEnd`) | UPDATE | dim white bar (40 %) fills clockwise, one LED per 5.6 % (`updateProgress`, ≤ 20 fps, drawn between a request and its response: a frame sent while bytes arrive flickers); the rest breathe dark red | breathes 2200 (floor 30 %, peak 60 % of dark red); the colours are a first guess, check on the LEDs |
 | Firmware update, image being checked (#125; not played by `otaEnd`, which takes about 150 ms and keeps the bar) | UPDATE_VERIFY | full white bar, dimmed, breathing | breathes 2200 at 60 % |
 | Firmware update, waiting for the other pods (#125) | UPDATE_READY | whole ring green | static, 30 % |
+| Distribution (#130): central, and a peripheral receiving from the central | UPDATE | as above; the central shows the mean of the pods, a peripheral its own chunks | as above |
 | Firmware update failed (#125) | UPDATE_FAILED | red, whole ring (the error blink) | blink 1000 on / 1000 off, three times (6000), then dark; the normal state again |
 | Auto power-off | SLEEP | white ring drains anticlockwise with ease-out while dimming to dark | drain 1600, dim 2000, then deep sleep (§8.2) |
 | Game | – | owned by the program (effects, colours) | unchanged |

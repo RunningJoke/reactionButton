@@ -154,12 +154,25 @@ mark "pass" only when the user reported it.
 | AT-O11 | during the sending: close the sheet (X) | it asks "Stop the update? The pod keeps its current firmware."; **Keep going** continues, **Stop update** closes the sheet and the pod stays on the old firmware (on the real pod the ring leaves the update light) |
 | AT-O12 | central in a game (or demo pod with a running game) | the sheet says why: "The pod is in a game …"; **Start update** is off. Battery below 30 %: "The battery is below 30 % …" |
 | AT-O13 | pod with a PIN | the sheet asks for the PIN, **Start update** is off until it is typed; a wrong PIN is refused with the PIN text |
-| AT-O14 | central with peripherals | the sheet says that only this pod is updated and that all pods of the set should be updated |
+| AT-O14 | central with peripherals, firmware without `otaDistribute` (#130 not on the pod) | the sheet says that only this pod is updated and that all pods of the set should be updated; the steps are the single-pod steps |
 | AT-O15 | real pod on USB (Chrome, desktop), release with a higher version (see the test notes of #129): **Update** | progress to 100 %, the pod restarts, the USB port goes away; **Reconnect** appears, choose the port; after the 15 s check "Updated to …"; This set shows the new version, the games are unchanged |
 | AT-O16 | real pod on Android BLE: **Update**, phone close to the pod | progress to 100 % (note the minutes it took), the app reconnects by itself after the restart, "Checking the new firmware" for about 15 s, then the success text |
 | AT-O17 | real pod: unplug USB / walk away (BLE) in the middle of the sending, then come back | the update goes on from where it stopped (the percent does not fall back to 0), or after a minute a clear "did not come back" message with a way out |
 | AT-O18 | real pod: switch the pod off during "Checking the new firmware", switch it on again | the pod runs the old firmware; the app shows no success |
 | AT-O19 | 360 px and 1200 px, light and dark, de and en: the sheet in all states (confirm, sending, testing, done, error, refused) | nothing cut off, no horizontal scroll, buttons ≥ 44 px, the tab bar does not cover the buttons; screenshots looked at |
+
+### Update of the whole set (#133; all "open"; demo: `…/?demoPods=7&demoFail=3&demoRollback=5#/set`, URL parameters of the demo pod)
+| ID | Steps | Expected |
+|---|---|---|
+| AT-O20 | demo with 7 pods, no failing pod (`?demoPods=7`): **Update**, **Start update** | the sheet says all pods are updated together; steps "Step 1: phone to main pod", "Step 2: main pod to the other pods", "Step 3: pods restart and rejoin"; in step 2 a row per pod with its identity colour, "Waiting" / "Receiving" / "Ready" and its own percent, one pod at a time; when all 7 are ready the update continues by itself (no question); the result lists 7 times "Updated to 2.20.0" and the success text |
+| AT-O21 | demo with a failing pod (`?demoPods=7&demoFail=3`) | step 2 ends with the pod "Failed, did not receive the update" and the question "6 of 7 pods are ready" with **Wait for the other pods** and **Update the 6 ready pods**; the text explains that the set will run mixed versions; nothing restarts before the choice |
+| AT-O22 | as AT-O21: **Update the 6 ready pods** | the set restarts, the result lists the failed pod as "Still on 2.19" (red, in words) and the others updated; the message says the main pod runs 2.20.0 but not every pod; the steps are all ticked (the central is fine) |
+| AT-O23 | as AT-O21: **Wait for the other pods** | the question disappears, the sheet stays in step 2 and waits; nothing restarts |
+| AT-O24 | demo with a rollback pod (`?demoPods=7&demoRollback=5`) | all pods ready, the set restarts by itself; the result lists pod 6 as "Still on 2.19" and the message "not every pod" (rolled back, set still plays) |
+| AT-O25 | during step 2: close the sheet (X), **Stop watching**; This set shows "An update of the set is on the main pod"; **Show the update** | the main pod goes on distributing (demo: the rows are further on); the sheet opens at step 2 with the current state and goes on to the activation, no second upload. **Stop update** instead of Stop watching aborts: the pods discard it, no card on This set |
+| AT-O26 | USB / BLE link lost during step 2 (walk away, come back) | the sheet reconnects and shows the progress from `status.ota`; no pod is sent twice by the app |
+| AT-O27 | real set, central + 1 or more peripherals, firmware with #130 / #131 and a release | step 2 rows follow the real pods (state and percent); a peripheral switched off mid-transfer shows "Not reachable" and the question appears when nothing else moves; after the activation every pod's row shows the new version; a bad image on a peripheral shows it as old (rollback), a bad image on the central the rollback message with the pods listed |
+| AT-O28 | 360 px and 1200 px, light and dark, de and en, 7 pods: confirm, step 2, the question, the result | nothing cut off, no horizontal scroll, buttons ≥ 44 px, colours only from the theme (identity colours are data), states in words not by colour alone; screenshots looked at |
 
 ## U – Usability
 | ID | Steps | Expected |

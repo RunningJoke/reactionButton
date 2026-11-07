@@ -111,6 +111,25 @@ void test_clock_sync_picks_sample_with_smallest_delay() {
     TEST_ASSERT_FALSE(sync.isSynced());
 }
 
+// Firmware update frames (rev. 6): the layouts are frozen (link-protocol.md section 7), and a PING from an older pod is shorter
+void test_ota_frames_keep_their_layout() {
+    TEST_ASSERT_EQUAL(8 + 4 + 32 + 1 + OTA_VERSION_LEN, sizeof(OtaOffer));
+    TEST_ASSERT_EQUAL(8 + 8, sizeof(OtaActivate));
+    TEST_ASSERT_EQUAL(8 + 2 + OTA_CHUNK_DATA, sizeof(OtaChunk));
+    TEST_ASSERT_EQUAL(10, offsetof(OtaChunk, data));
+    TEST_ASSERT_EQUAL(sizeof(OtaOffer), frameSize(MsgType::OTA_OFFER));
+    TEST_ASSERT_EQUAL(sizeof(OtaActivate), frameSize(MsgType::OTA_ACTIVATE));
+    TEST_ASSERT_EQUAL(11, frameSize(MsgType::OTA_CHUNK));          // header, index and at least one data byte
+    TEST_ASSERT_EQUAL(6, REVISION);
+    TEST_ASSERT_EQUAL(0x10, LINK_FEATURE_OTA);
+}
+
+void test_ping_with_ota_fields_is_an_extension() {
+    TEST_ASSERT_EQUAL(offsetof(Ping, batteryMv), frameSize(MsgType::PING));     // older centrals still accept it
+    TEST_ASSERT_EQUAL(offsetof(Ping, otaState) + 2, sizeof(Ping));
+    TEST_ASSERT_TRUE(offsetof(Ping, otaState) < sizeof(Ping));                  // a PING of firmware 2.13 ... 2.19 ends here: no ota state
+}
+
 int main(int argc, char** argv) {
     UNITY_BEGIN();
     RUN_TEST(test_pressed_frame_round_trip);
@@ -119,5 +138,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_effect_and_hold_structs_keep_wire_size);
     RUN_TEST(test_ping_pong_timestamps_round_trip);
     RUN_TEST(test_clock_sync_picks_sample_with_smallest_delay);
+    RUN_TEST(test_ota_frames_keep_their_layout);
+    RUN_TEST(test_ping_with_ota_fields_is_an_extension);
     return UNITY_END();
 }

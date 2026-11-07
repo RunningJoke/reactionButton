@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import i18n from "../i18n";
 import type { FirmwareImage } from "../pod/firmwareUpdate";
-import { closeUpdate, openUpdate, otaTiming, useOtaFlow } from "../pod/otaFlow";
+import { closeUpdate, openUpdate, otaTiming, resumeUpdate, useOtaFlow } from "../pod/otaFlow";
 import { connectPod, usePodSession } from "../pod/session";
 import { SimulatedPod } from "../pod/simulated/SimulatedPod";
 import { SimulatedTransport } from "../pod/simulated/SimulatedTransport";
@@ -102,8 +102,8 @@ describe("the update sheet on the demo pod", () => {
     expect(screen.getByText("Done").closest("li")?.getAttribute("data-state")).toBe("todo");
   });
 
-  it("tells that only this pod is updated when the central has peripherals", async () => {
-    await setup({ pods: 2 });
+  it("tells that only this pod is updated when the central cannot distribute", async () => {
+    await setup({ pods: 2, otaDistribute: false });
     render(<UpdateSheet />);
     open();
     expect(screen.getByText(/Only this pod is updated/)).toBeTruthy();
@@ -125,6 +125,51 @@ describe("the update sheet on the demo pod", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stop update" }));
     expect(useOtaFlow.getState().phase).toBeNull();
     release();
+  });
+});
+
+describe("the update sheet for a set (#133)", () => {
+  // the waits in step 2 must let the page and the test run: real (short) timers, the pod's clock moves with them
+  beforeEach(() => {
+    otaTiming.sleep = (ms) => new Promise((resolve) => setTimeout(() => ((clock.ms += ms), resolve()), 5));
+  });
+
+  it("shows a row per pod, activates by itself and lists what each pod runs", async () => {
+    await setup({ pods: 3 });
+    render(<UpdateSheet />);
+    open();
+    expect(screen.getByText(/All pods of the set are updated together/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Start update" }));
+    await screen.findByText("Updated to 2.20.0. The new firmware runs.", {}, { timeout: 5000 });
+    expect(screen.getByText("Step 2: main pod to the other pods")).toBeTruthy();
+    expect(screen.getAllByText("Updated to 2.20.0")).toHaveLength(3);
+  });
+
+  it("asks what to do when a pod failed; updating only the ready ones ends mixed", async () => {
+    await setup({ pods: 3, otaFailingPods: [1] });
+    render(<UpdateSheet />);
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Start update" }));
+    await screen.findByText(/2 of 3 pods are ready/, {}, { timeout: 5000 });
+    expect(screen.getByText(/Failed, did not receive the update/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Update the 2 ready pods" }));
+    await screen.findByText(/not every pod does/, {}, { timeout: 5000 });
+    expect(screen.getByText("Still on 2.19")).toBeTruthy();
+  });
+
+  it("leaving during step 2 can leave the main pod distributing, and it can be picked up again", async () => {
+    await setup({ pods: 2, otaMsPerPod: 1_000_000 });
+    render(<UpdateSheet />);
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Start update" }));
+    await screen.findByText(/sends the update to the pods one at a time/, {}, { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop watching" }));
+    expect(useOtaFlow.getState().phase).toBeNull();
+    const status = await usePodSession.getState().client!.status();
+    expect(status.ota?.pods?.length).toBe(2);
+    act(() => resumeUpdate("2.19", "2.20.0"));
+    await screen.findByText("Step 2: main pod to the other pods");
   });
 });
 

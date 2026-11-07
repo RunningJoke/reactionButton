@@ -5,8 +5,9 @@
 import { create } from "zustand";
 import type { PodClient } from "./client";
 import { FirmwareError, type FirmwareImage } from "./firmwareUpdate";
-import { OtaCancelled, OTA_STEPS, RECONNECT_TIMEOUT_MS, runUpdate, type OtaEnv, type OtaOutcome, type OtaStep } from "./ota";
-import { PodError } from "./protocol";
+import { OtaCancelled, OTA_SET_STEPS, OTA_STEPS, RECONNECT_TIMEOUT_MS, runUpdate, type OtaEnv, type OtaOutcome, type OtaStep } from "./ota";
+import type { PodResult } from "./otaSet";
+import { PodError, type OtaPodStatus } from "./protocol";
 import { connectPod, usePodSession } from "./session";
 import type { Transport, TransportKind } from "./transport/Transport";
 
@@ -27,9 +28,24 @@ export type OtaFlow = {
   error: string | null;
   /** USB: the port is gone after the restart and the user has to choose it again */
   needsReconnect: boolean;
+  /** the update covers the pods of the set (#133): steps 2 and 3, a row per pod */
+  set: boolean;
+  /** the central's view of each pod during step 2 */
+  pods: OtaPodStatus[];
+  /** no pod moves and some are not ready: the user decides between waiting and updating the ready ones */
+  stuck: boolean;
+  /** the user waits for the missing pods: the choice is hidden until the pods change */
+  waiting: boolean;
+  /** the user chose to update only the ready pods */
+  force: boolean;
+  /** what each pod runs after the restart */
+  results: PodResult[];
 };
 
-const IDLE: OtaFlow = { phase: null, from: "", version: "", step: null, done: 0, total: 0, startedAt: 0, startDone: 0, outcome: null, error: null, needsReconnect: false };
+const IDLE: OtaFlow = {
+  phase: null, from: "", version: "", step: null, done: 0, total: 0, startedAt: 0, startDone: 0, outcome: null, error: null, needsReconnect: false,
+  set: false, pods: [], stuck: false, waiting: false, force: false, results: [],
+};
 
 export const useOtaFlow = create<OtaFlow>(() => IDLE);
 const set = useOtaFlow.setState;
@@ -47,6 +63,8 @@ export const otaTiming = {
 };
 
 let controller: AbortController | null = null;
+/** the sheet was left while the central distributes: the update goes on without the phone */
+let detached = false;
 let prepare: (() => Promise<FirmwareImage>) | null = null;
 
 /** Opens the sheet for an update from `from` to `version`; `prepareImage` yields the checked image (stored one or a download). */
@@ -62,6 +80,22 @@ export function closeUpdate() {
   controller = null;
   prepare = null;
   set(IDLE);
+}
+
+/** Closes the sheet but leaves the central distributing and waiting (#133): the sheet picks it up again from `status.ota`. */
+export function detachUpdate() {
+  detached = true;
+  closeUpdate();
+}
+
+/** Step 2 stays on the ready pods only. */
+export function forceUpdate() {
+  set({ force: true });
+}
+
+/** Step 2 waits for the missing pods (switch them on, charge them). */
+export function waitForPods() {
+  set({ waiting: true });
 }
 
 function connectedClient(): PodClient | null {
@@ -106,21 +140,46 @@ function errorKey(e: unknown): string {
   return "unknown";
 }
 
+/** Shows the update that the central still holds (`status.ota` of a set): picks it up at step 2 and goes on. */
+export function resumeUpdate(from: string, version: string) {
+  if (useOtaFlow.getState().phase === "running") return;
+  prepare = null;
+  set({ ...IDLE, from, version, set: true, step: "distributing" });
+  void execute(async () => null);
+}
+
 /** Starts the update from the confirm screen. A PIN, if the pod needs one, was sent by the sheet already. */
-export async function startUpdate() {
+export function startUpdate() {
+  if (prepare) void execute(prepare);
+}
+
+async function execute(load: () => Promise<FirmwareImage | null>) {
   const session = usePodSession.getState();
   const client = session.client;
-  if (!client || !prepare || useOtaFlow.getState().phase === "running") return;
+  if (!client || useOtaFlow.getState().phase === "running") return;
+  detached = false;
   const abort = new AbortController();
   controller = abort;
   const env = makeEnv(client.transport.kind, client.transport);
   const flowIsMine = () => controller === abort;
-  set({ phase: "running", step: "preparing", error: null, outcome: null, done: 0, total: 0, needsReconnect: false });
+  set({ phase: "running", step: useOtaFlow.getState().step ?? "preparing", error: null, outcome: null, done: 0, total: 0, needsReconnect: false });
   try {
-    const image = await prepare();
+    const image = await load();
     if (abort.signal.aborted) throw new OtaCancelled();
     const outcome = await runUpdate(env, client, image, {
       signal: abort.signal,
+      set: (on) => flowIsMine() && set({ set: on }),
+      pods: (pods, stuck) =>
+        flowIsMine() &&
+        set((s) => ({
+          pods,
+          stuck,
+          // a change among the pods ends the user's "wait": the choice may be needed again
+          waiting: s.waiting && s.pods.filter((p) => p.state === "ready").length === pods.filter((p) => p.state === "ready").length,
+        })),
+      forced: () => useOtaFlow.getState().force,
+      detached: () => detached,
+      results: (results) => flowIsMine() && set({ results }),
       // each (re)start of the upload fixes a new point for the rate: startDone is taken from its first progress
       step: (step) => flowIsMine() && set(step === "sending" ? { step, startedAt: otaTiming.now(), startDone: -1 } : { step }),
       progress: (done, total) => {
@@ -135,4 +194,4 @@ export async function startUpdate() {
   }
 }
 
-export { OTA_STEPS };
+export { OTA_SET_STEPS, OTA_STEPS };

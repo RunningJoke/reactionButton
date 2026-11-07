@@ -1,8 +1,11 @@
 #include "PodNetwork.h"
+#include <algorithm>
 #include "_Definitions.h"
 #include "LEDManager/LEDManager.h"
 #include "LEDManager/Identity.h"
 #include "Battery/Battery.h"
+#include "Ota/Ota.h"
+#include <esp_wifi.h>
 
 using namespace Protocol;
 
@@ -32,6 +35,7 @@ void PodNetwork::endGame() {
     this->acceptNew = false;
     this->claimPending = false;
     this->setSyncAllowed(false);
+    this->otaStop();
 }
 
 void PodNetwork::keepPods(uint8_t maxPods) {
@@ -118,6 +122,7 @@ void PodNetwork::service() {
     }
 
     this->sync.service();
+    this->otaService();
 }
 
 void PodNetwork::sendClaim(const uint8_t* mac, uint8_t podId) {
@@ -137,6 +142,8 @@ void PodNetwork::handleHello(const RxFrame& frame) {
     int16_t known = this->findPod(frame.mac);
     if(known >= 0) {
         // pod rebooted or lost us: take it back with the same id
+        this->pods[known].fwMajor = hello->fwMajor;
+        this->pods[known].fwMinor = hello->fwMinor;
         this->sendClaim(frame.mac, (uint8_t)known);
         return;
     }
@@ -147,6 +154,8 @@ void PodNetwork::handleHello(const RxFrame& frame) {
 
     this->claimPending = true;
     memcpy(this->claimMac, frame.mac, 6);
+    this->claimFwMajor = hello->fwMajor;
+    this->claimFwMinor = hello->fwMinor;
     this->claimSentUs = esp_timer_get_time();
     this->sendClaim(frame.mac, (uint8_t)this->pods.size());
     ESP_LOGI(TAG, "claiming pod %u (fw %u.%u)", (unsigned)this->pods.size(), hello->fwMajor, hello->fwMinor);
@@ -174,6 +183,9 @@ void PodNetwork::handleClaimAck(const RxFrame& frame) {
     memcpy(pod.mac, frame.mac, 6);
     pod.lastSeenUs = esp_timer_get_time();
     pod.linkFeatures = features;
+    pod.fwMajor = this->claimFwMajor;
+    pod.fwMinor = this->claimFwMinor;
+    this->ota.lastJoinUs = pod.lastSeenUs;
     this->pods.push_back(pod);
     ESP_LOGI(TAG, "pod %u joined (link features %02x)", ack->podId, features);
 }
@@ -187,11 +199,17 @@ void PodNetwork::handlePing(const RxFrame& frame, int16_t podId) {
     pong.t2 = frame.rxUs;
     pong.t3 = 0;    // stamped by the link when the frame goes to the radio
     pong.store = StoreSync::localState();
-    pong.flags = (this->syncAllowed ? PONG_FLAG_SYNC_ALLOWED : 0) | (this->identify ? PONG_FLAG_IDENTIFY : 0);
+    pong.flags = (this->syncAllowed ? PONG_FLAG_SYNC_ALLOWED : 0) | (this->identify ? PONG_FLAG_IDENTIFY : 0)
+               | (this->ota.active ? PONG_FLAG_OTA : 0)
+               | (this->ota.active && this->ota.phase == OtaRun::Phase::PULL ? PONG_FLAG_OTA_PULL : 0);
     this->link.send(this->pods[podId].mac, &pong, sizeof(pong), 0, (int8_t)offsetof(Pong, t3));
 
     // appended by firmware >= 2.13: a shorter PING (older pod) leaves the level unknown
-    this->pods[podId].batteryMv = frame.len >= sizeof(Ping) ? ping->batteryMv : 0;
+    this->pods[podId].batteryMv = frame.len >= offsetof(Ping, otaState) ? ping->batteryMv : 0;
+    // appended by firmware >= 2.20; without it the pod has no update
+    bool hasOta = frame.len >= sizeof(Ping);
+    this->pods[podId].otaState = hasOta ? ping->otaState : OTA_POD_NONE;
+    this->pods[podId].otaPercent = hasOta ? ping->otaPercent : 0;
 
     // the peripheral may have a newer program store than we do
     this->sync.peerState(frame.mac, ping->store, true);
@@ -313,6 +331,202 @@ bool PodNetwork::pollEvent(PodEvent& event) {
     return true;
 }
 
+// ---------------------------------------------------------------- firmware distribution (#130, #131, #132)
+
+namespace {
+    const int64_t OTA_JOIN_GRACE_US = 2000000;      // pods that are not joined yet get this long after the start / the last join
+    const int64_t OTA_OFFER_REPEAT_US = 1500000;    // an offer without an answer is repeated
+    const int64_t OTA_PREPARE_MAX_US = 20000000;    // erasing takes 4 s; a pod that needs longer is served later, one by one
+    const int64_t OTA_PREPARING_ALIVE_US = 10000000;// a pod that erases does not answer
+    const int64_t OTA_CHUNK_PACE_US = 4000;         // broadcast: 4 ms per frame, 0 loss at 1M (#122); 2 ms overruns the driver
+}
+
+bool PodNetwork::otaSupported(const Pod& pod) const {
+    return (pod.linkFeatures & LINK_FEATURE_OTA) != 0;
+}
+
+bool PodNetwork::otaCurrent(const Pod& pod) const {
+    char text[8];
+    snprintf(text, sizeof(text), "%u.%u", pod.fwMajor, pod.fwMinor);
+    return pod.fwMajor != 0 && Ota::imageVersion()[0] != '\0' && strcmp(text, Ota::imageVersion()) == 0;
+}
+
+bool PodNetwork::otaAlive(const Pod& pod) const {
+    int64_t silent = esp_timer_get_time() - pod.lastSeenUs;
+    return silent < (pod.otaState == OTA_POD_PREPARING ? OTA_PREPARING_ALIVE_US : POD_TIMEOUT_US);
+}
+
+void PodNetwork::otaStart(OtaMode mode) {
+    this->ota = OtaRun();
+    this->ota.active = true;
+    this->ota.mode = mode;
+    this->ota.phaseUs = this->ota.lastJoinUs = esp_timer_get_time();
+}
+
+void PodNetwork::otaStop() {
+    this->ota.active = false;       // the next PONGs lack PONG_FLAG_OTA: the pods discard their update
+}
+
+void PodNetwork::otaOffer(Pod& pod, bool broadcast) {
+    OtaOffer offer = {};
+    fillHeader(offer.header, MsgType::OTA_OFFER, this->setId);
+    offer.size = Ota::imageSize();
+    OtaRules::hexToBytes(Ota::imageSha(), offer.sha256);
+    offer.flags = broadcast ? OTA_OFFER_FLAG_BROADCAST : 0;
+    snprintf(offer.version, sizeof(offer.version), "%s", Ota::imageVersion());
+    this->link.send(pod.mac, &offer, sizeof(offer), 5, -1, true);
+    pod.otaOfferedUs = esp_timer_get_time();
+}
+
+void PodNetwork::otaService() {
+    if(!this->ota.active) {
+        return;
+    }
+    Ota::keepAlive();
+    int64_t now = esp_timer_get_time();
+
+    if(this->ota.phase == OtaRun::Phase::WAIT) {
+        if(now - this->ota.lastJoinUs < OTA_JOIN_GRACE_US) {
+            return;
+        }
+        uint8_t needing = 0;
+        for(const Pod& pod : this->pods) {
+            needing += this->otaSupported(pod) && !this->otaCurrent(pod) && this->otaAlive(pod) ? 1 : 0;
+        }
+        bool broadcast = this->ota.mode == OtaMode::BROADCAST || (this->ota.mode == OtaMode::AUTO && needing >= 2);
+        this->ota.phase = broadcast ? OtaRun::Phase::PREPARE : OtaRun::Phase::PULL;
+        this->ota.phaseUs = now;
+        ESP_LOGI(TAG, "distributing %s to %u pod(s), %s", Ota::imageVersion(), (unsigned)needing, broadcast ? "broadcast" : "one at a time");
+    }
+
+    if(this->ota.phase == OtaRun::Phase::PREPARE) {
+        bool preparing = false;
+        bool receiving = false;
+        for(Pod& pod : this->pods) {
+            if(!this->otaSupported(pod) || this->otaCurrent(pod) || !this->otaAlive(pod)) {
+                continue;
+            }
+            if(pod.otaState == OTA_POD_NONE && now - pod.otaOfferedUs >= OTA_OFFER_REPEAT_US) {
+                this->otaOffer(pod, true);
+            }
+            preparing |= pod.otaState == OTA_POD_NONE || pod.otaState == OTA_POD_PREPARING;
+            receiving |= pod.otaState == OTA_POD_RECEIVING;
+        }
+        if(preparing && now - this->ota.phaseUs < OTA_PREPARE_MAX_US) {
+            return;
+        }
+        this->ota.phase = receiving ? OtaRun::Phase::STREAM : OtaRun::Phase::PULL;
+        this->ota.phaseUs = this->ota.nextChunkUs = now;
+        this->ota.cursor = 0;
+        if(receiving) {
+            esp_wifi_config_espnow_rate(WIFI_IF_STA, WIFI_PHY_RATE_1M_L);     // sticks until reboot: set it, do not trust the default
+        }
+        return;
+    }
+
+    if(this->ota.phase == OtaRun::Phase::STREAM) {
+        uint32_t chunks = OtaBitmap::chunkCount(Ota::imageSize());
+        if(this->ota.cursor >= chunks) {
+            ESP_LOGI(TAG, "broadcast pass done after %u ms", (unsigned)((now - this->ota.phaseUs) / 1000));
+            this->ota.phase = OtaRun::Phase::PULL;
+            this->ota.phaseUs = now;
+            return;
+        }
+        if(now < this->ota.nextChunkUs) {
+            return;
+        }
+        OtaChunk chunk;
+        fillHeader(chunk.header, MsgType::OTA_CHUNK, this->setId);
+        chunk.index = (uint16_t)this->ota.cursor;
+        size_t length = 0;
+        uint32_t total = 0;
+        if(!Ota::readImage(OtaBitmap::chunkOffset(chunk.index), chunk.data, OTA_CHUNK_DATA, length, total)) {
+            this->ota.cursor = chunks;      // cannot happen with a verified image; the pull phase takes over
+            return;
+        }
+        if(this->link.broadcast(&chunk, (uint8_t)(offsetof(OtaChunk, data) + length))) {
+            this->ota.cursor++;
+            // one frame per pace, no burst after a long loop pass
+            this->ota.nextChunkUs = std::max(this->ota.nextChunkUs + OTA_CHUNK_PACE_US, now - OTA_CHUNK_PACE_US);
+        } else {
+            this->ota.nextChunkUs = now + OTA_CHUNK_PACE_US;      // driver queue full
+        }
+        return;
+    }
+
+    // PULL: the pods fetch from us. A pod that has nothing yet is offered the image when no other pod is busy with it.
+    bool busy = false;
+    for(const Pod& pod : this->pods) {
+        busy |= this->otaSupported(pod) && !this->otaCurrent(pod) && this->otaAlive(pod)
+                && (pod.otaState == OTA_POD_PREPARING || pod.otaState == OTA_POD_RECEIVING
+                    || (pod.otaState == OTA_POD_NONE && now - pod.otaOfferedUs < OTA_OFFER_REPEAT_US));     // offered, no answer yet
+    }
+    for(Pod& pod : this->pods) {
+        if(busy) {
+            break;
+        }
+        if(this->otaSupported(pod) && !this->otaCurrent(pod) && this->otaAlive(pod) && pod.otaState == OTA_POD_NONE
+           && now - pod.otaOfferedUs >= OTA_OFFER_REPEAT_US) {
+            this->otaOffer(pod, false);
+            break;
+        }
+    }
+}
+
+uint8_t PodNetwork::otaPercent() const {
+    uint32_t sum = 0;
+    uint32_t pods = 0;
+    for(const Pod& pod : this->pods) {
+        if(this->otaSupported(pod) && !this->otaCurrent(pod)) {
+            sum += pod.otaState == OTA_POD_READY ? 100 : pod.otaPercent;
+            pods++;
+        }
+    }
+    return OtaRules::overallPercent(sum, pods);
+}
+
+std::vector<uint8_t> PodNetwork::otaNotReady() const {
+    std::vector<uint8_t> ids;
+    for(size_t i = 0; i < this->pods.size(); i++) {
+        const Pod& pod = this->pods[i];
+        if(!this->otaCurrent(pod) && !(this->otaSupported(pod) && pod.otaState == OTA_POD_READY && this->otaAlive(pod))) {
+            ids.push_back((uint8_t)i);
+        }
+    }
+    return ids;
+}
+
+uint8_t PodNetwork::otaActivatePods() {
+    uint8_t count = 0;
+    for(Pod& pod : this->pods) {
+        if(this->otaCurrent(pod) || !this->otaSupported(pod) || pod.otaState != OTA_POD_READY || !this->otaAlive(pod)) {
+            continue;
+        }
+        OtaActivate activate = {};
+        fillHeader(activate.header, MsgType::OTA_ACTIVATE, this->setId);
+        uint8_t digest[32];
+        OtaRules::hexToBytes(Ota::imageSha(), digest);
+        memcpy(activate.sha256, digest, sizeof(activate.sha256));
+        this->link.send(pod.mac, &activate, sizeof(activate), 5, -1, true);
+        count++;
+    }
+    return count;
+}
+
+void PodNetwork::otaDescribe(JsonArray out) const {
+    for(size_t i = 0; i < this->pods.size(); i++) {
+        const Pod& pod = this->pods[i];
+        bool current = this->otaCurrent(pod);
+        JsonObject entry = out.add<JsonObject>();
+        entry["id"] = i;
+        entry["state"] = OtaRules::podStateName(pod.otaState, this->otaAlive(pod), current, this->otaSupported(pod));
+        entry["percent"] = current ? 100 : pod.otaState == OTA_POD_READY ? 100 : pod.otaPercent;
+        if(pod.fwMajor != 0) {
+            entry["firmware"] = String(pod.fwMajor) + "." + String(pod.fwMinor);
+        }
+    }
+}
+
 void PodNetwork::describe(JsonArray out) const {
     int64_t now = esp_timer_get_time();
     for(size_t i = 0; i < this->pods.size(); i++) {
@@ -334,6 +548,9 @@ void PodNetwork::describe(JsonArray out) const {
         entry["effects"] = (pod.linkFeatures & LINK_FEATURE_EFFECTS) != 0;
         entry["hold"] = (pod.linkFeatures & LINK_FEATURE_HOLD) != 0;
         entry["toggle"] = (pod.linkFeatures & LINK_FEATURE_TOGGLE) != 0;
+        if(pod.fwMajor != 0) {
+            entry["firmware"] = String(pod.fwMajor) + "." + String(pod.fwMinor);
+        }
         if(pod.batteryMv != 0) {
             JsonObject b = entry["battery"].to<JsonObject>();
             b["percent"] = Battery::percentOf(pod.batteryMv);

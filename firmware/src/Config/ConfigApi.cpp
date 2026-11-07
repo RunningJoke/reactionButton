@@ -153,7 +153,7 @@ void ConfigApi::opHelp(JsonDocument& response) {
     IRole* role = RoleManager::getManager()->current();
     if(role != nullptr && strcmp(role->name(), "central") == 0) {
         const char* central[] = {"programs", "select", "start", "press", "effect", "pattern", "blink", "stop",
-                                 "reports", "ack", "command", "setVariables", "session", "pause", "resume"};
+                                 "reports", "ack", "command", "setVariables", "session", "pause", "resume", "otaDistribute"};
         for(const char* op : central) ops.add(op);
     } else {
         ops.add("press");
@@ -226,6 +226,8 @@ void ConfigApi::opInfo(JsonDocument& response) {
     features.add("patterns");
     features.add("startVars");
     features.add("ota");
+    IRole* current = RoleManager::getManager()->current();
+    if(current != nullptr && strcmp(current->name(), "central") == 0) features.add("otaDistribute");
     Ota::describeInfo(response.as<JsonObject>());
     JsonArray types = response["blockTypes"].to<JsonArray>();
     for(size_t i = 0; BlockFactory::typeName(i) != nullptr; i++) {
@@ -275,7 +277,14 @@ bool ConfigApi::opOta(const char* op, JsonObjectConst request, JsonDocument& res
     if(!this->checkWriteAccess(response)) {
         return false;
     }
-    if(strcmp(op, "otaBegin") == 0) Ota::opBegin(request, response);
+    IRole* role = RoleManager::getManager()->current();
+    if(strcmp(op, "otaDistribute") == 0) {
+        if(role == nullptr || !role->control(op, request, response)) {
+            setError(response, "bad_request", "otaDistribute needs a central");
+        }
+    }
+    else if(strcmp(op, "otaActivate") == 0 && role != nullptr && role->control(op, request, response)) {}      // a central that distributes
+    else if(strcmp(op, "otaBegin") == 0) Ota::opBegin(request, response);
     else if(strcmp(op, "otaWrite") == 0) Ota::opWrite(request, response);
     else if(strcmp(op, "otaEnd") == 0) Ota::opEnd(response);
     else if(strcmp(op, "otaAbort") == 0) Ota::opAbort(response);

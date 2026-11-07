@@ -23,6 +23,8 @@ Requires: pip install pyserial
     python tools/reactpod_serial.py push firmware/data
     python tools/reactpod_serial.py test --program /prog/duo.json
     python tools/reactpod_serial.py ota firmware/.pio/build/NewBoard/firmware.bin [--no-activate]   # firmware >= 2.19
+    python tools/reactpod_serial.py ota-set firmware.bin --version 2.21 --link-protocol 1 [--mode unicast|broadcast] [--force]
+                                                                              # a whole set from its central, firmware >= 2.20
 
 --port is optional; without it the first Espressif USB port (VID 303A) is used.
 --log FILE writes everything received to a file (with timestamps).
@@ -48,7 +50,7 @@ import serial.tools.list_ports
 
 from reactpod_format import report_line
 from reactpod_ota import (TRIAL_WAIT_S, OtaError, Progress, failure_lines, load_image, ota_steps, ota_supported,
-                          result_lines, run_sync)
+                          result_lines, run_sync, set_steps)
 
 PUT_CHUNK = 2048
 ESPRESSIF_VID = 0x303A
@@ -439,6 +441,62 @@ def run_ota(pod: PodSerial, args) -> int:
     return code
 
 
+def run_ota_set(pod: PodSerial, args) -> int:
+    """Firmware update of a whole set (fw >= 2.20): this central gets the image, hands it to the peripherals, all switch."""
+    image = load_image(args.image)
+    info = pod.request("info")
+    status = pod.request("status")
+    if not ota_supported(info) or status.get("role") != "central" or "ota" not in info.get("features", []):
+        hint(f"{args.port or 'this pod'} must be a central with firmware 2.20 or newer (is {status.get('role')}, {info.get('firmware')})")
+        return 1
+    running = info.get("ota", {}).get("running")
+    say(f"image {args.image}: {len(image)} bytes, version {args.version}; central slot {running}, firmware {info.get('firmware')}")
+    pod.drain_events()
+    progress = Progress(say)
+    last = {"line": "", "at": 0.0}
+    seen = {"done": None}
+
+    def report(seconds, pods):
+        line = "  ".join(f"pod{p['id']} {p['state']} {p['percent']}%" for p in pods) or "(no peripherals yet)"
+        if all(p["state"] in ("ready", "current") for p in pods) and pods and seen["done"] is None:
+            seen["done"] = seconds
+        if line != last["line"] and (seconds - last["at"] >= 2 or "ready" in line):
+            say(f"  [{seconds:6.1f} s] {line}")
+            last["line"], last["at"] = line, seconds
+
+    started = time.time()
+    try:
+        run_sync(set_steps(image, mode=args.mode, activate=not args.no_activate, force=args.force, version=args.version,
+                           link_protocol=args.link_protocol, progress=progress, report=report),
+                 lambda op, fields: pod.request(op, timeout=30, check=False, **fields))
+    except OtaError as error:
+        for line in failure_lines(error):
+            hint(line)
+        return 1
+    say(f"image on the central in {progress.elapsed:.1f} s")
+    if seen["done"] is not None:
+        say(f"distribution to the peripherals: {seen['done']:.1f} s until every pod was ready (mode {args.mode})")
+    if args.no_activate:
+        say("all pods hold the image; not activated (send otaActivate, or otaAbort to discard it)")
+        return 0
+    say("activating; the central restarts ...")
+    if pod.wait_event(lambda e: e.get("event") == "boot", 60) is None:
+        hint("the central did not restart after otaActivate. Press its RESET button or switch it off and on.")
+        return 1
+    if pod.wait_ready(lambda s: True, timeout=120, prompt_after=15, reason="after the update") is None:
+        hint("the central does not answer after the restart")
+        return 1
+    say(f"total {time.time() - started:.1f} s; waiting for the self-test of the new firmware ...")
+    time.sleep(TRIAL_WAIT_S)
+    if pod.wait_ready(lambda s: True, timeout=120, prompt_after=15, reason="after the self-test") is None:
+        hint("the central does not answer after the self-test")
+        return 1
+    lines, code = result_lines(running, pod.request("info"))
+    for line in lines:
+        say(line)
+    return code
+
+
 def print_pods(status: dict):
     pods = status.get("pods", [])
     if not pods:
@@ -715,6 +773,13 @@ def main():
     p = sub.add_parser("ota", help="update the firmware from a firmware.bin (firmware >= 2.19)")
     p.add_argument("image", help="firmware.bin, e.g. firmware/.pio/build/NewBoard/firmware.bin")
     p.add_argument("--no-activate", action="store_true", help="stop after otaEnd: verified, not activated")
+    p = sub.add_parser("ota-set", help="update a whole set from this central (firmware >= 2.20)")
+    p.add_argument("image", help="firmware.bin")
+    p.add_argument("--version", required=True, help="version of the image, e.g. 2.21: pods that run it are skipped")
+    p.add_argument("--link-protocol", type=int, default=1, help="link protocol of the new firmware (default 1); --force needs it")
+    p.add_argument("--mode", choices=["auto", "unicast", "broadcast"], default="auto")
+    p.add_argument("--force", action="store_true", help="activate the ready pods although others are not")
+    p.add_argument("--no-activate", action="store_true", help="stop when every pod holds the image")
     sub.add_parser("reports", help="reports not acknowledged yet (firmware >= 2.11)")
     p = sub.add_parser("ack", help="acknowledge a report: it and the older ones leave the buffer"); p.add_argument("id", type=int)
     p = sub.add_parser("command", help="answer a waiting communicate block")
@@ -849,6 +914,8 @@ def main():
             return run_test(pod, args)
         elif args.command == "ota":
             return run_ota(pod, args)
+        elif args.command == "ota-set":
+            return run_ota_set(pod, args)
     except KeyboardInterrupt:
         say("\naborted")
     except (TimeoutError, ConnectionError, RuntimeError) as e:

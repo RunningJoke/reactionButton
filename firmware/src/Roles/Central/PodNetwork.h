@@ -46,6 +46,18 @@ class PodNetwork : public IPodNetwork {
 
         bool allAlive() const;
 
+        // --- firmware distribution to the peripherals (#130, #131, #132; link-protocol.md section 5.3) ---
+        // The image is the verified one in Ota. AUTO sends it to all pods at once when two or more need it.
+        enum class OtaMode : uint8_t { AUTO, UNICAST, BROADCAST };
+        void otaStart(OtaMode mode);
+        void otaStop();                                 // pods discard what they have (PONG_FLAG_OTA gone)
+        bool otaActive() const { return this->ota.active; }
+        uint8_t otaPercent() const;                     // the mean of the pods that need the image
+        void otaDescribe(JsonArray out) const;          // status.ota.pods[]
+        std::vector<uint8_t> otaNotReady() const;       // pods that run another version and do not hold the image
+        uint8_t otaActivatePods();                      // OTA_ACTIVATE to every ready pod; how many
+        bool otaFlushed() const { return this->link.idle(); }
+
         bool isStarted() const { return this->link.isStarted(); }
         bool isSyncing() const { return this->sync.isPulling(); }
 
@@ -76,10 +88,34 @@ class PodNetwork : public IPodNetwork {
             uint8_t cmdSeq = 0;
             uint8_t linkFeatures = 0;   // Protocol::LINK_FEATURE_*
             uint16_t batteryMv = 0;     // from PING (firmware >= 2.13), 0 = unknown
+            uint8_t fwMajor = 0;        // from HELLO, 0 = not known
+            uint8_t fwMinor = 0;
+            uint8_t otaState = 0;       // from PING (firmware >= 2.20): Protocol::OTA_POD_*
+            uint8_t otaPercent = 0;
+            int64_t otaOfferedUs = 0;   // last OTA_OFFER to this pod
+        };
+
+        // One distribution. WAIT: pods may still join. PREPARE (broadcast): the pods erase their slot. STREAM: the
+        // chunks go out as broadcasts. PULL: pods fetch what they miss, one at a time for the pods that have nothing.
+        struct OtaRun {
+            enum class Phase : uint8_t { WAIT, PREPARE, STREAM, PULL };
+            bool active = false;
+            OtaMode mode = OtaMode::AUTO;
+            Phase phase = Phase::WAIT;
+            int64_t phaseUs = 0;        // start of the phase
+            int64_t lastJoinUs = 0;
+            uint32_t cursor = 0;        // STREAM: next chunk
+            int64_t nextChunkUs = 0;
         };
 
         int16_t findPod(const uint8_t* mac) const;
         void sendClaim(const uint8_t* mac, uint8_t podId);
+
+        void otaService();
+        void otaOffer(Pod& pod, bool broadcast);
+        bool otaCurrent(const Pod& pod) const;          // runs the offered version already
+        bool otaSupported(const Pod& pod) const;
+        bool otaAlive(const Pod& pod) const;
 
         void handleHello(const RxFrame& frame);
         void handleClaimAck(const RxFrame& frame);
@@ -98,7 +134,11 @@ class PodNetwork : public IPodNetwork {
         bool acceptNew = false;
         uint8_t maxPods = 0;
 
+        OtaRun ota;
+
         bool claimPending = false;
         uint8_t claimMac[6];
+        uint8_t claimFwMajor = 0;
+        uint8_t claimFwMinor = 0;
         int64_t claimSentUs = 0;
 };

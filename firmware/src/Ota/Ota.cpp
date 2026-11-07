@@ -1,4 +1,5 @@
 #include "Ota.h"
+#include <algorithm>
 #include <esp_ota_ops.h>
 #include <SPIFFS.h>
 #include <NimBLEDevice.h>
@@ -36,6 +37,9 @@ namespace {
     uint32_t received = 0;
     char sha[65] = "";
     char version[MAX_VERSION + 1] = "";
+    uint8_t linkProtocol = 0;       // of the new firmware, from otaBegin (0 = not given): decides whether otaActivate may force
+    bool radio = false;             // the update comes from the central over ESP-NOW (a peripheral)
+    OtaBitmap bitmap;               // radio: the chunks that are in the slot
     mbedtls_sha256_context hash;
     uint32_t lastActivityMs = 0;
     uint32_t restoreAtMs = 0;       // after UPDATE_FAILED: the ring of the role again (0 = none due)
@@ -96,14 +100,20 @@ namespace {
         state = State::IDLE;
         total = received = 0;
         sha[0] = version[0] = '\0';
+        linkProtocol = 0;
+        radio = false;
     }
 
     // the update is over with an error: the old firmware keeps running, the ring blinks, then the role shows itself
-    void fail(JsonDocument& response, const char* code, const String& message) {
+    void markFailed() {
         closeImage();
         state = State::FAILED;
         LEDManager::getManager()->playPattern(SystemPattern::Id::UPDATE_FAILED);
         restoreAtMs = millis() + SystemPattern::durationMs(SystemPattern::Id::UPDATE_FAILED, SystemPattern::Args()) + 1;
+    }
+
+    void fail(JsonDocument& response, const char* code, const String& message) {
+        markFailed();
         ConfigApi::setError(response, code, message);
     }
 
@@ -114,7 +124,7 @@ namespace {
 }
 
 bool Ota::isOp(const char* op) {
-    return strcmp(op, "otaBegin") == 0 || strcmp(op, "otaWrite") == 0 || strcmp(op, "otaEnd") == 0
+    return strcmp(op, "otaBegin") == 0 || strcmp(op, "otaWrite") == 0 || strcmp(op, "otaDistribute") == 0 || strcmp(op, "otaEnd") == 0
         || strcmp(op, "otaActivate") == 0 || strcmp(op, "otaAbort") == 0;
 }
 
@@ -131,7 +141,8 @@ bool Ota::busy() {
 // Kept until the next otaBegin.
 void Ota::boot() {
     onTrial = runningOnTrial();
-    uint8_t pending = Settings::getOtaPending();
+    uint8_t pendingRole = Settings::getOtaPending() >> 4;       // the role the pod had when it activated (1 central, 2 peripheral)
+    uint8_t pending = Settings::getOtaPending() & 0x0F;
     if(pending == 0 || (pending == slotIndex(esp_ota_get_running_partition()) && onTrial)) {
         return;
     }
@@ -139,6 +150,9 @@ void Ota::boot() {
         Settings::setOtaResult(RESULT_OK);
     } else if(slotIndex(esp_ota_get_last_invalid_partition()) == pending) {
         Settings::setOtaResult(RESULT_ROLLED_BACK);
+        if(pendingRole != 0) {
+            Settings::setBootRole(pendingRole);     // the failed boot used up the role of otaActivate: the old image starts in it again
+        }
     }
     Settings::setOtaPending(0);
 }
@@ -154,7 +168,7 @@ void Ota::service() {
     if(onTrial && now >= SELF_TEST_MS) {
         judge();
     }
-    if(inProgress(state) && expired(now, lastActivityMs)) {
+    if(inProgress(state) && !radio && expired(now, lastActivityMs)) {      // a radio update lasts as long as the central distributes
         reset();
         restoreRing();
     }
@@ -204,6 +218,12 @@ void Ota::opBegin(JsonObjectConst request, JsonDocument& response) {
         return;
     }
 
+    JsonVariantConst link = request["linkProtocol"];
+    if(!link.isNull() && (!link.is<uint32_t>() || link.as<uint32_t>() == 0 || link.as<uint32_t>() > 255)) {
+        ConfigApi::setError(response, "bad_request", "'linkProtocol' must be a number from 1 to 255");
+        return;
+    }
+
     lastActivityMs = millis();
     restoreAtMs = 0;
     if(!resumes(state, total, sha, size, hex)) {
@@ -225,6 +245,9 @@ void Ota::opBegin(JsonObjectConst request, JsonDocument& response) {
         SystemPattern::Args args;
         args.percent = 0;
         LEDManager::getManager()->playPattern(SystemPattern::Id::UPDATE, args);
+    }
+    if(!link.isNull()) {
+        linkProtocol = link.as<uint8_t>();
     }
     response["ok"] = true;
     response["slotSize"] = (uint32_t)slot->size;
@@ -330,10 +353,133 @@ bool Ota::opActivate(JsonDocument& response) {
         return false;
     }
     IRole* role = RoleManager::getManager()->current();
-    Settings::setBootRole(role != nullptr && strcmp(role->name(), "central") == 0 ? 1 : 2);   // the role comes back without the button
-    Settings::setOtaPending((uint8_t)slotIndex(target));
+    uint8_t bootRole = role != nullptr && strcmp(role->name(), "central") == 0 ? 1 : 2;
+    Settings::setBootRole(bootRole);   // the role comes back without the button
+    Settings::setOtaPending((uint8_t)(slotIndex(target) | bootRole << 4));      // role too: a rollback needs it
     response["ok"] = true;
     return true;
+}
+
+bool Ota::imageReady() { return state == State::READY; }
+uint32_t Ota::imageSize() { return total; }
+const char* Ota::imageSha() { return sha; }
+const char* Ota::imageVersion() { return version; }
+uint8_t Ota::imageLinkProtocol() { return linkProtocol; }
+void Ota::keepAlive() { lastActivityMs = millis(); }
+
+bool Ota::readImage(uint32_t offset, uint8_t* out, size_t max, size_t& length, uint32_t& size) {
+    size = total;
+    length = 0;
+    if(state != State::READY || offset > total) {
+        return false;
+    }
+    length = std::min((size_t)(total - offset), max);
+    return esp_partition_read(target, offset, out, length) == ESP_OK;
+}
+
+Ota::RadioBegin Ota::radioBegin(uint32_t size, const char* hex, const char* name) {
+    if(radioIs(size, hex)) {
+        return RadioBegin::OK;          // the offer is repeated until the pod reports a state
+    }
+    if(!isSha256Hex(hex) || OtaBitmap::chunkCount(size) > OtaBitmap::MAX_CHUNKS) {
+        return RadioBegin::TOO_LARGE;
+    }
+    if((inProgress(state) && !radio) || onTrial) {
+        return RadioBegin::BUSY;
+    }
+    if(!batteryAllows(Battery::known(), Battery::percent())) {
+        return RadioBegin::LOW_BATTERY;
+    }
+    const esp_partition_t* slot = esp_ota_get_next_update_partition(nullptr);
+    if(slot == nullptr || size > slot->size) {
+        return RadioBegin::TOO_LARGE;
+    }
+
+    reset();
+    Settings::setOtaResult(RESULT_NONE);
+    radio = true;
+    lastActivityMs = millis();
+    restoreAtMs = 0;
+    snprintf(sha, sizeof(sha), "%s", hex);
+    snprintf(version, sizeof(version), "%s", name);
+    total = size;
+    bitmap.reset(size);
+    target = slot;
+    SystemPattern::Args args;
+    args.percent = 0;
+    LEDManager::getManager()->playPattern(SystemPattern::Id::UPDATE, args);
+    // the whole slot at once: chunks arrive in any order, which OTA_WITH_SEQUENTIAL_WRITES cannot take
+    esp_err_t err = esp_ota_begin(slot, size, &handle);
+    if(err != ESP_OK) {
+        handle = 0;
+        markFailed();
+        return RadioBegin::STORAGE;
+    }
+    state = State::RECEIVING;
+    return RadioBegin::OK;
+}
+
+bool Ota::viaRadio() { return radio && state != State::IDLE; }
+bool Ota::radioIs(uint32_t size, const char* hex) { return viaRadio() && size == total && strcasecmp(hex, sha) == 0; }
+OtaRules::State Ota::currentState() { return state; }
+bool Ota::radioComplete() { return radio && bitmap.complete(); }
+uint8_t Ota::radioPercent() { return state == State::READY ? 100 : bitmap.percent(); }
+int32_t Ota::radioNextMissing(uint16_t from) { return bitmap.nextMissing(from); }
+
+bool Ota::radioChunk(uint16_t index, const uint8_t* data, size_t length) {
+    if(!radio || state != State::RECEIVING || bitmap.has(index) || length != OtaBitmap::chunkLength(index, total)) {
+        return false;
+    }
+    if(esp_ota_write_with_offset(handle, data, length, OtaBitmap::chunkOffset(index)) != ESP_OK) {
+        markFailed();
+        return false;
+    }
+    bitmap.set(index);
+    received = bitmap.bytes();
+    lastActivityMs = millis();
+    SystemPattern::updateProgress(bitmap.percent());
+    return true;
+}
+
+void Ota::radioFinish() {
+    if(!radio || state != State::RECEIVING || !bitmap.complete()) {
+        return;
+    }
+    state = State::VERIFYING;
+    mbedtls_sha256_context check;
+    mbedtls_sha256_init(&check);
+    mbedtls_sha256_starts_ret(&check, 0);
+    uint8_t buffer[512];
+    for(uint32_t offset = 0; offset < total; offset += sizeof(buffer)) {
+        size_t n = std::min((size_t)(total - offset), sizeof(buffer));
+        if(esp_partition_read(target, offset, buffer, n) != ESP_OK) {
+            mbedtls_sha256_free(&check);
+            markFailed();
+            return;
+        }
+        mbedtls_sha256_update_ret(&check, buffer, n);
+    }
+    uint8_t digest[32];
+    mbedtls_sha256_finish_ret(&check, digest);
+    mbedtls_sha256_free(&check);
+    if(!hexMatches(sha, digest)) {
+        markFailed();
+        return;
+    }
+    esp_err_t err = esp_ota_end(handle);
+    handle = 0;
+    if(err != ESP_OK) {
+        markFailed();
+        return;
+    }
+    state = State::READY;
+    lastActivityMs = millis();
+    LEDManager::getManager()->playPattern(SystemPattern::Id::UPDATE_READY);
+}
+
+void Ota::radioAbort() {
+    reset();
+    restoreAtMs = 0;
 }
 
 void Ota::opAbort(JsonDocument& response) {

@@ -259,6 +259,15 @@ void EspNowLink::service() {
     }
 }
 
+bool EspNowLink::idle() const {
+    for(const Peer& peer : this->peers) {
+        if(!peer.queue.empty()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void EspNowLink::idleWait(uint32_t ms) {
     if(!this->started || this->rxQueue == nullptr) {
         vTaskDelay(pdMS_TO_TICKS(ms));

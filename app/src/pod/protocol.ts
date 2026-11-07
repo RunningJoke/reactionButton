@@ -183,10 +183,20 @@ export type PodStatus = {
   toggle?: boolean;
   /** firmware ≥ 2.13: missing = unknown (older pod or no reading) */
   battery?: BatteryLevel;
+  /** the firmware this pod runs (#131); missing or "" = unknown (older central, or not rejoined yet) */
+  firmware?: string;
 };
 
 /** Firmware update over the config API (firmware ≥ 2.19, feature `ota`; config-api.md "Firmware update"). */
-export type OtaStatus = { state: "idle" | "receiving" | "verifying" | "ready" | "failed"; received: number; total: number; version: string };
+export type OtaStatus = {
+  state: "idle" | "receiving" | "verifying" | "ready" | "failed";
+  received: number;
+  total: number;
+  version: string;
+  /** central, after `otaDistribute` (#130; the state names are assumptions, see pod/otaSet.ts) */
+  pods?: OtaPodStatus[];
+};
+export type OtaPodStatus = { id: number; state: string; percent: number; firmware: string };
 export type OtaBeginRequest = { size: number; sha256: string; version?: string };
 /** `received` > 0: the same image was open and continues there. Chunks are base64 of up to `maxChunk` raw bytes. */
 export type OtaBeginResponse = ResponseBase & { slotSize: number; maxChunk: number; received: number };

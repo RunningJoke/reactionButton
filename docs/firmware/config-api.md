@@ -60,7 +60,7 @@ the central only (not synced) and advertised after the current connection ends.
 | `overflow` | data came faster than processed: resend |
 | `auth_required`, `auth_failed` | PIN (§8) |
 | `busy` | not now: file change from DISCOVERY on, validate during a game, sync, effect / pattern while armed; `select` while an update runs; `otaBegin` outside the menu or while the new image is on trial (15 s after an `otaActivate`) |
-| `not_ready` | no block waits / pods missing / pod too old; `otaWrite` / `otaEnd` / `otaActivate` in the wrong update state |
+| `not_ready` | no block waits / pods missing / pod too old; `otaWrite` / `otaEnd` / `otaActivate` in the wrong update state; `otaDistribute` without a verified image; `otaActivate` of a set with pods that are not ready (the error carries `pods`: their ids) |
 | `low_battery` | `start` with a pod < 5 % (fw ≥ 2.13); `otaBegin` below 30 % (fw ≥ 2.19) |
 | `not_editable`, `out_of_range` | `setVariables` |
 | `not_running`, `not_paused` | `pause` outside RUN, `resume` without a phone pause |
@@ -114,6 +114,7 @@ Bluetooth does not expose it). `features` and fields by firmware:
 | 2.17 | `startVars` | `setVariables` also in CONFIRM; `status.ready.editable` (§3 start variables); MaxLoop override cleared after the next select |
 | 2.18 | – | `stop` returns to MENU without a reboot (BLE stays connected, peripherals stay joined) |
 | 2.19 | `ota` | firmware update over the config API (ops `otaBegin`, `otaWrite`, `otaEnd`, `otaActivate`, `otaAbort`), `info.ota`, `status.ota`; USB requests up to `maxRequest` (12288) work (before: about 4 KB) |
+| 2.20 | `otaDistribute` | central only: op `otaDistribute`, `status.ota.pods[]`, `status.pods[].firmware`, `otaActivate` for a whole set, `otaBegin.linkProtocol`; link revision 6 (link-protocol §5.3) |
 
 **Battery** (`{percent, mv}`, missing = unknown): one Li-ion cell, 3.30 V = 0 %, 4.20 V = 100 %, piecewise
 linear (`Battery.cpp`); 16 samples, refreshed every 3 s; on USB it reads the charge voltage (≈ 100 %).
@@ -164,7 +165,7 @@ checked, and the pod boots it on `otaActivate`. The programs and settings (NVS, 
 old firmware stays in its slot; the image is only used after a successful `otaEnd` and `otaActivate`.
 
 ```json
-→ {"op":"otaBegin","size":1095344,"sha256":"<64 hex>","version":"2.20"}
+→ {"op":"otaBegin","size":1095344,"sha256":"<64 hex>","version":"2.20","linkProtocol":1}
 ← {"op":"otaBegin","ok":true,"slotSize":1835008,"maxChunk":3072,"received":0}
 → {"op":"otaWrite","offset":0,"data":"<base64 of up to maxChunk bytes>"}
 ← {"op":"otaWrite","ok":true,"received":3072}
@@ -174,7 +175,8 @@ old firmware stays in its slot; the image is only used after a successful `otaEn
 ```
 
 - `otaBegin`: `size` (bytes of `firmware.bin`, > 0), `sha256` (hex of the whole image), optional `version`
-  (≤ 31 characters, shown in `status.ota`). Answers at once, there is no long erase: each 4 KB sector is
+  (≤ 31 characters, shown in `status.ota`; a central skips the pods that run this version), optional `linkProtocol`
+  (1 … 255, the new firmware's link protocol: `otaActivate {"force":true}` needs it, fw >= 2.20). Answers at once, there is no long erase: each 4 KB sector is
   erased just before it is written (`OTA_WITH_SEQUENTIAL_WRITES`; the pod is busy for that time, the client
   sends one request at a time, so an `otaWrite` answers after about 80 ms instead of 30 ms). That mode needs
   the lossless, in-order stream that `bad_offset` enforces; it must not be used for a broadcast. The firmware
@@ -208,6 +210,30 @@ old firmware stays in its slot; the image is only used after a successful `otaEn
   and the timeout the normal state of the role again.
 - `maxChunk` is 3072 (4096 base64 characters). Over USB, measured with fw 2.19: 1.1 MB in 30 s (37 kB/s),
   the same at 2048 and at `maxChunk`; with the full-size erase 17 s (4.4 s `otaBegin`, then 84 to 86 kB/s).
+- **Update of a whole set (central, fw >= 2.20, `info.features` `otaDistribute`).** After `otaEnd` the central hands
+  the image to its peripherals over ESP-NOW while it keeps running the old firmware (link-protocol §5.3):
+  - `{"op":"otaDistribute","mode":"auto|unicast|broadcast"}` (valid from MENU with a verified image, else `busy` /
+    `not_ready`; default `auto` = broadcast when two or more pods need the image). Answers at once and works in the
+    background. State `DISTRIBUTING`: ESP-NOW on, pods are claimed as in DISCOVERY, no game, no program store sync, no
+    phone needed. `status.ota.state` stays `ready`.
+  - `status.ota.pods[]` = `{id, state, percent, firmware}` from `otaDistribute` until `otaActivate` or `otaAbort`.
+    `state`: `queued` (waits for its turn or the offer), `transferring` (erasing its slot, then receiving), `ready`
+    (complete and verified), `current` (already runs the offered version, nothing sent), `failed` (hash / image
+    rejected, storage error, pod without the `ota` link feature), `offline` (silent for 1.5 s), `refused` (battery
+    below 30 %). `percent` 0 … 100. `status.pods[].firmware` = `"2.19"` as the pod announced itself (missing until it
+    has joined).
+  - `otaActivate` on a distributing central: sends `OTA_ACTIVATE` to every `ready` pod, then restarts the central
+    (it comes back as central; the pods rejoin by the normal claim, the next `select` shows `status.pods[].firmware`).
+    Pods that are neither `ready` nor `current`: error `not_ready` with `pods: [ids]`, nothing happens.
+    `{"force":true}` activates the ready ones and leaves the others on the old firmware (listed, not hidden); it needs
+    the new firmware's `linkProtocol` (from `otaBegin`) to equal the running one, else `bad_request`. The central
+    never activates by itself.
+  - `otaAbort` ends the distribution: the pods discard their update and are ready again, the central goes back to MENU
+    and discards the central's own image as well (one update for the whole set). `stop` ends the
+    distribution only (the image stays verified, `otaDistribute` can start again). A pod that fails stays `failed` until the distribution is aborted; a pod that reboots or is
+    switched off meanwhile is offered the image again when it joins.
+  - Ring: central `UPDATE` bar with the mean progress of the pods, `UPDATE_READY` when all are ready; peripheral
+    its own bar (architecture §7.1).
 - `status.ota` = `{"state":"idle|receiving|verifying|ready|failed","received":0,"total":0,"version":""}`
   (`verifying` is only visible to other transports, `otaEnd` answers when it is over).
   `info.ota` = `{"slotSize":1835008,"running":"app0","lastResult":"none|ok|rolledBack"}`: `running` is the

@@ -38,11 +38,12 @@ jobs:
           cd bin
           version="${GITHUB_REF_NAME#fw-v}"
           format=$(sed -n 's/.*PROGRAM_FORMAT = \([0-9]*\).*/\1/p' ../firmware/src/Block/BlockFactory/BlockFactory.h)
+          link=$(sed -n 's/.*uint8_t VERSION = \([0-9]*\);.*/\1/p' ../firmware/src/Link/Protocol.h)
           files=""
           for f in *.bin; do
             files="$files{\"name\":\"$f\",\"size\":$(stat -c %s "$f"),\"sha256\":\"$(sha256sum "$f" | cut -d' ' -f1)\"},"
           done
-          echo "{\"version\":\"$version\",\"programFormat\":$format,\"board\":\"NewBoard\",\"files\":[${files%,}]}" > ota-manifest.json
+          echo "{\"version\":\"$version\",\"programFormat\":$format,\"linkProtocol\":$link,\"board\":\"NewBoard\",\"files\":[${files%,}]}" > ota-manifest.json
           cat ota-manifest.json
       - name: GitHub release
         env:

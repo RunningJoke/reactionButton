@@ -17,6 +17,10 @@ typedef enum {
 } wifi_second_chan_t;
 
 typedef enum {
+    WIFI_PHY_RATE_1M_L = 0x00
+} wifi_phy_rate_t;
+
+typedef enum {
     WIFI_PS_NONE,
     WIFI_PS_MIN_MODEM,
     WIFI_PS_MAX_MODEM

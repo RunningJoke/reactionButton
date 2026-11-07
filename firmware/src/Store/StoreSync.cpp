@@ -1,4 +1,5 @@
 #include "StoreSync.h"
+#include "Ota/Ota.h"
 
 using namespace Protocol;
 
@@ -94,6 +95,16 @@ void StoreSync::serve(const RxFrame& frame) {
             memcpy(resp.data, this->servedManifest.data() + req->offset, n);
             resp.len = (uint8_t)n;
         }
+    } else if(strcmp(path, OTA_PATH) == 0) {
+        // the verified image in the central's inactive slot (#130); a pod that holds no image answers NOT_FOUND
+        size_t n = 0;
+        uint32_t total = 0;
+        if(!Ota::readImage(req->offset, resp.data, SYNC_CHUNK, n, total)) {
+            resp.status = Ota::imageReady() ? SyncStatus::BAD_OFFSET : SyncStatus::NOT_FOUND;
+        }
+        resp.total = total;
+        resp.len = (uint8_t)n;
+        Ota::keepAlive();
     } else {
         size_t n = 0;
         uint32_t total = 0;
