@@ -138,10 +138,10 @@ mark "pass" only when the user reported it.
 | AT-D29 | desktop: **This set** with an unsent change; **Games on the pods** → tap a ring | the sync card with Send to pods sticks on the right; the menu pattern editor opens beside the list instead of a sheet; drag and arrows still work |
 | AT-D30 | desktop: **Send to pods** | centred dialog with a dimmed background; the checks count "1 of 1", never past the total |
 
-## O – Pod software on This set (#128; fw 2.19 for the update; all "open" until the user reports them)
+## O – Pod software on This set (#128, #129; fw 2.19 for the update; all "open" until the user reports them)
 | ID | Steps | Expected |
 |---|---|---|
-| AT-O1 | pod on 2.19 (feature `ota`), release 2.20 published on Pages | This set: "Version 2.20.0 is available.", **Download for offline use (1.1 MB)**; no Update button yet (#129) |
+| AT-O1 | pod on 2.19 (feature `ota`), release 2.20 published on Pages | This set: "Version 2.20.0 is available.", **Download for offline use (1.1 MB)**; **Update** button (#129) |
 | AT-O2 | pod on the release version (or newer) | "Up to date.", no button |
 | AT-O3 | pod without `ota` (fw 2.17), release 2.20 | "Version 2.20.0 is available. This firmware updates over USB only."; no download button |
 | AT-O4 | dev server (`npm run dev`), or a Pages build without a release | "No release information available."; the page works |
@@ -149,6 +149,17 @@ mark "pass" only when the user reported it.
 | AT-O6 | offline with the release info but no stored image | "Not stored for offline use. Download it while online."; no download button |
 | AT-O7 | release with another program format than the pod | "Programs are not part of the update. This release uses program format …"; the games are unchanged |
 | AT-O8 | 360 px and 1200 px, light and dark, states AT-O1–O6 | nothing cut off, no horizontal scroll, buttons ≥ 44 px, texts in de and en; screenshots looked at |
+| AT-O9 | demo pod (fw 2.19), a release 2.20.0 on Pages; **Update** | the sheet "Update pod software" with "2.19 to 2.20.0", the keep-the-pod-on text and **Start update**; **Cancel** closes it, nothing changes |
+| AT-O10 | demo pod: **Start update** | steps Preparing, Sending, Checking, Restarting, Checking the new firmware, Done; a plain progress bar with percent, the time left appears after a few chunks; at the end "Updated to 2.20.0. The new firmware runs." and This set shows 2.20.0 |
+| AT-O11 | during the sending: close the sheet (X) | it asks "Stop the update? The pod keeps its current firmware."; **Keep going** continues, **Stop update** closes the sheet and the pod stays on the old firmware (on the real pod the ring leaves the update light) |
+| AT-O12 | central in a game (or demo pod with a running game) | the sheet says why: "The pod is in a game …"; **Start update** is off. Battery below 30 %: "The battery is below 30 % …" |
+| AT-O13 | pod with a PIN | the sheet asks for the PIN, **Start update** is off until it is typed; a wrong PIN is refused with the PIN text |
+| AT-O14 | central with peripherals | the sheet says that only this pod is updated and that all pods of the set should be updated |
+| AT-O15 | real pod on USB (Chrome, desktop), release with a higher version (see the test notes of #129): **Update** | progress to 100 %, the pod restarts, the USB port goes away; **Reconnect** appears, choose the port; after the 15 s check "Updated to …"; This set shows the new version, the games are unchanged |
+| AT-O16 | real pod on Android BLE: **Update**, phone close to the pod | progress to 100 % (note the minutes it took), the app reconnects by itself after the restart, "Checking the new firmware" for about 15 s, then the success text |
+| AT-O17 | real pod: unplug USB / walk away (BLE) in the middle of the sending, then come back | the update goes on from where it stopped (the percent does not fall back to 0), or after a minute a clear "did not come back" message with a way out |
+| AT-O18 | real pod: switch the pod off during "Checking the new firmware", switch it on again | the pod runs the old firmware; the app shows no success |
+| AT-O19 | 360 px and 1200 px, light and dark, de and en: the sheet in all states (confirm, sending, testing, done, error, refused) | nothing cut off, no horizontal scroll, buttons ≥ 44 px, the tab bar does not cover the buttons; screenshots looked at |
 
 ## U – Usability
 | ID | Steps | Expected |
@@ -174,3 +185,4 @@ mark "pass" only when the user reported it.
 | AT-D1–D25 | 2026-11-03 | 2.17 | pass (P10, #106) |
 | AT-D26–D30 | – | – | open (#107 desktop layouts, for the user to test) |
 | AT-O1–O8 | – | – | open (#128 pod software on This set, for the user to test) |
+| AT-O9–O19 | – | – | open (#129 update from the app; O15–O18 need a real pod) |

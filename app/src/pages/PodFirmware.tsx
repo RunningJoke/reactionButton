@@ -32,9 +32,10 @@ export function formatMegabytes(bytes: number, locale: string): string {
 
 /**
  * Pod software on This set: installed and available version, the download for offline use, and the
- * Update action. `onUpdate` receives the verified image; without it no Update button is shown (#129 adds the sheet).
+ * Update action. `onUpdate` gets the version and a function that yields the verified image (stored or downloaded,
+ * the first step of the update); without it no Update button is shown.
  */
-export function FirmwareCard({ info, onUpdate }: { info: InfoResponse; onUpdate?: (image: FirmwareImage) => void }) {
+export function FirmwareCard({ info, onUpdate }: { info: InfoResponse; onUpdate?: (version: string, prepare: () => Promise<FirmwareImage>) => void }) {
   const { t, i18n } = useTranslation();
   // undefined = still checking
   const [release, setRelease] = useState<Release | null | undefined>(undefined);
@@ -143,7 +144,7 @@ export function FirmwareCard({ info, onUpdate }: { info: InfoResponse; onUpdate?
           {onUpdate && (
             <button
               className={`${styles.textButton} ${styles.primaryButton}`}
-              onClick={() => void run(async () => onUpdate(await prepare(manifest)))}
+              onClick={() => onUpdate(manifest.version, () => prepare(manifest))}
               disabled={busy || (!release?.fresh && !cached)}
             >
               {t("firmware.update")}

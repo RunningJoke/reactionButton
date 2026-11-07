@@ -103,7 +103,9 @@ describe("This set: pod software", () => {
     const update = await screen.findByRole("button", { name: "Update" });
     fireEvent.click(update);
     await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
-    const passed = onUpdate.mock.calls[0]![0] as FirmwareImage;
+    expect(onUpdate.mock.calls[0]![0]).toBe("2.20.0");
+    // the image is fetched when the update asks for it
+    const passed = await (onUpdate.mock.calls[0]![1] as () => Promise<FirmwareImage>)();
     expect(passed).toMatchObject({ version: "2.20.0", sha256: sha, size: SIZE });
     // the image is kept: the card now says so
     expect(await screen.findByText("Stored for offline use: 2.20.0, 1.1 MB.")).toBeTruthy();

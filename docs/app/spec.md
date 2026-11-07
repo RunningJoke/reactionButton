@@ -24,7 +24,7 @@ results. Pod contract: [config-api.md](../firmware/config-api.md); program forma
 | F13 | installable offline PWA, mobile first |
 | F14 | athletes, sessions, reports, statistics, CSV (§9.5) |
 | F15 | training view: live state, `communicate` controls, pause / resume, reconnect (§9.5) |
-| F16 | pod software on This set: installed and available version (`ota-manifest.json` of the release, or the last one stored when offline); image download for offline use, SHA-256 checked, stored in IndexedDB (#128); the Update action comes with #129 (ADR 0009) |
+| F16 | pod software on This set: installed and available version (`ota-manifest.json` of the release, or the last one stored when offline); image download for offline use, SHA-256 checked, stored in IndexedDB (#128); **Update** (#129, ADR 0009): a sheet checks first (central in MENU, battery ≥ 30 %, PIN if set), sends the image in chunks of at most 2048 bytes with a percent bar and the time left, resumes after a lost link (`otaBegin.received`), `otaEnd` (skipped if the pod holds the verified image), `otaActivate`, waits for the pod to come back (BLE reconnects by itself, USB asks to choose the port again, 60 s limit), then about 17 s for the pod's self-test. Success means `info.firmware` = the release and `info.ota.lastResult` = `ok`; `rolledBack` and other results have their own messages. Closing asks and aborts (`otaAbort`). The connected pod only; distribution to the set is #130 to #133. Keeps the screen on |
 
 Not planned: editing library fragments, several sets at once (#46, on hold).
 Native shell (Capacitor) later; all platform access is behind interfaces (§4).

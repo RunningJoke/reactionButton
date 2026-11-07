@@ -13,7 +13,9 @@ import { canFind, podHealth, type PodHealth } from "../pod/setView";
 import type { SyncStatus } from "../pod/sync";
 import { useMenuOverBudget, useSyncStates } from "../pod/syncActions";
 import { byteLength } from "../pod/utf8";
+import { openUpdate } from "../pod/otaFlow";
 import { FirmwareCard } from "./PodFirmware";
+import { UpdateSheet } from "./PodUpdateSheet";
 import { ResetMenuButton, SyncBadge, UnsentCard } from "./PodSync";
 import page from "./Page.module.css";
 import styles from "./PodPage.module.css";
@@ -24,6 +26,7 @@ export function PodPage() {
     <div className={state === "connected" ? `${page.page} ${page.wide}` : page.page}>
       <ErrorBanner />
       {state === "connected" ? <Connected /> : <NotConnected busy={state === "connecting"} />}
+      <UpdateSheet />
     </div>
   );
 }
@@ -136,7 +139,7 @@ function Connected() {
           <KeyRound size={14} aria-hidden /> {t("pod.pinHint")}
         </p>
       )}
-      <FirmwareCard info={info} />
+      <FirmwareCard info={info} onUpdate={(version, prepare) => openUpdate(info.firmware, version, prepare)} />
     </>
   );
   const sync = <UnsentCard states={states} readOnly={readOnly} />;
