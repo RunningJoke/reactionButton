@@ -29,7 +29,7 @@ import {
   type OnTimeout,
   type WizardAnswers,
 } from "./answers";
-import { generateProgram, loopFormFor, storyOf } from "./generate";
+import { generateProgram, loopFormFor, storyField, storyOf } from "./generate";
 import { OptionList, Segmented, SetDrawing, Stepper, Swatches, SwitchRow, useTick } from "./controls";
 import { READY_STEP, WIZARD_STEPS, useWizard } from "./wizardStore";
 import styles from "./Wizard.module.css";
@@ -319,10 +319,10 @@ function MeasureStep({ a, update }: StepProps) {
       )}
       <SwitchRow
         label={t("wizard.measure.countMisses")}
-        hint={canMiss ? t("wizard.measure.countMissesHint", { what: sources.join(", ") }) : t("wizard.measure.countMissesOff")}
+        hint={canMiss ? t("wizard.measure.countMissesHint", { what: sources.join(", ") }) : t("wizard.measure.countMissesAddsLimit")}
         checked={a.measure.countMisses && canMiss}
-        disabled={!canMiss}
-        onChange={(on) => update((x) => setCountMisses(x, on))}
+        // nothing to count yet: turning it on adds a 2 s time limit (#147 A5)
+        onChange={(on) => update((x) => (on && !canCountMisses(x) ? setTimeLimit(x, true) : setCountMisses(x, on)))}
       />
       <SwitchRow
         label={t("wizard.measure.results")}
@@ -338,7 +338,7 @@ function MeasureStep({ a, update }: StepProps) {
 /* ------------------------------------------------------------------ ready */
 
 function ReadyScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { answers, update, setStep, savedId, setSavedId } = useWizard();
   const programFormat = usePodSession((s) => (s.state === "connected" ? s.info?.programFormat : undefined));
@@ -358,8 +358,13 @@ function ReadyScreen() {
     if (!answers.name) update((x) => ({ ...x, name: gameName }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const json = useMemo(
-    () => ({ ...generateProgram({ ...a, name: a.name.trim() || gameName }, form), description: t(`wizard.games.${a.game}.line`) }),
-    [a, gameName, form, t],
+    () => ({
+      ...generateProgram({ ...a, name: a.name.trim() || gameName }, form),
+      description: t(`wizard.games.${a.game}.line`),
+      // the game page tells the whole game, as here (#147 B1)
+      story: storyField(a, (lang) => i18n.getFixedT(lang)),
+    }),
+    [a, gameName, form, t, i18n],
   );
   const size = byteLength(formatProgram(json));
   const story = storyOf(a, t);
@@ -400,34 +405,6 @@ function ReadyScreen() {
       </div>
 
       <div className={styles.body}>
-        <div className={styles.field}>
-          <label className={styles.fieldLabel} htmlFor="wizard-name">
-            {t("wizard.ready.name")}
-          </label>
-          <input id="wizard-name" className={styles.input} value={a.name} placeholder={gameName} maxLength={40} onChange={(e) => update((x) => ({ ...x, name: e.target.value }))} />
-        </div>
-
-        <div className={styles.card}>
-          <span className={styles.fieldLabel}>{t("wizard.ready.menu")}</span>
-          <div className={styles.menuRow}>
-            <LedRingPicker
-              colors={ringColors}
-              size={150}
-              label={t("wizard.ready.menu")}
-              onToggle={(i) =>
-                update((x) => {
-                  const current = x.menuLeds ?? defaultMenuLeds(x.game);
-                  const next = current.includes(i) ? current.filter((l) => l !== i) : [...current, i].sort((p, q) => p - q);
-                  return { ...x, menuLeds: next.length ? next : current };
-                })
-              }
-            />
-            <p className={styles.muted}>
-              {t("wizard.ready.menuHint")} {podsUsed(a) === 0 ? t("wizard.ready.centralOnly") : `${t("wizard.pods.total", { count: podsUsed(a) })}.`} {t("wizard.ready.size", { percent: Math.max(1, Math.round((size / MAX_FILE_SIZE) * 100)) })}
-            </p>
-          </div>
-        </div>
-
         <div className={styles.card}>
           <strong>{t("wizard.ready.story")}</strong>
           <p className={styles.storyIntro}>{story.intro}</p>
@@ -441,6 +418,13 @@ function ReadyScreen() {
               {s}
             </p>
           ))}
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="wizard-name">
+            {t("wizard.ready.name")}
+          </label>
+          <input id="wizard-name" className={styles.input} value={a.name} placeholder={gameName} maxLength={40} onChange={(e) => update((x) => ({ ...x, name: e.target.value }))} />
         </div>
 
         <div className={styles.actions}>
@@ -483,6 +467,27 @@ function ReadyScreen() {
           </div>
           {savedId && <p className={styles.muted}>{t("wizard.ready.saved")}</p>}
         </div>
+        {/* the icon in the pod menu: changeable, but not what a coach looks for first (#147 A6) */}
+        <details className={styles.card}>
+          <summary className={styles.fieldLabel}>{t("wizard.ready.menu")}</summary>
+          <div className={styles.menuRow}>
+            <LedRingPicker
+              colors={ringColors}
+              size={150}
+              label={t("wizard.ready.menu")}
+              onToggle={(i) =>
+                update((x) => {
+                  const current = x.menuLeds ?? defaultMenuLeds(x.game);
+                  const next = current.includes(i) ? current.filter((l) => l !== i) : [...current, i].sort((p, q) => p - q);
+                  return { ...x, menuLeds: next.length ? next : current };
+                })
+              }
+            />
+            <p className={styles.muted}>
+              {t("wizard.ready.menuHint")} {podsUsed(a) === 0 ? t("wizard.ready.centralOnly") : `${t("wizard.pods.total", { count: podsUsed(a) })}.`} {size / MAX_FILE_SIZE > 0.5 && t("wizard.ready.size", { percent: Math.round((size / MAX_FILE_SIZE) * 100) })}
+            </p>
+          </div>
+        </details>
       </div>
     </div>
   );

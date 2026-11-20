@@ -9,6 +9,8 @@ export type CatalogEntry = {
   kind: "program" | "fragment" | "broken";
   name: string;
   description?: string;
+  /** the program's story (`LocalizedText`): the games list shows its first sentence in the app's language (#147 E1) */
+  story?: unknown;
   peripherals: number;
   menu: MenuGroup[];
   blocks: number;
@@ -60,6 +62,7 @@ export function buildCatalog(paths: Iterable<string>, source: FileSource, option
         kind: "program",
         name: doc.name,
         description: typeof doc.description === "string" ? doc.description : undefined,
+        story: doc.story,
         peripherals: typeof doc.peripherals === "number" ? doc.peripherals : 0,
         menu: Array.isArray(doc.menu) ? doc.menu : [],
         blocks: resolved.blocks.length,

@@ -230,6 +230,20 @@ export function storyOf(a: WizardAnswers, t: TFunction): Story {
   return { intro: t("wizard.story.rounds", { count: a.rounds }), steps, outro };
 }
 
+/** The story as numbered lines, as the game page shows it ("What happens"). */
+export function storyLines(a: WizardAnswers, t: TFunction): string {
+  const story = storyOf(a, t);
+  return [story.intro, ...story.steps.map((step, i) => `${i + 1}. ${step}`), ...story.outro].join("\n");
+}
+
+/**
+ * The `story` a game made from answers keeps (en + de), so its game page tells the whole game, whichever way it
+ * was made (#147 B1). `tFor` gives the texts of one language (`i18n.getFixedT`).
+ */
+export function storyField(a: WizardAnswers, tFor: (lang: string) => TFunction): Record<string, string> {
+  return { en: storyLines(a, tFor("en")), de: storyLines(a, tFor("de")) };
+}
+
 /** Ready-screen story as one text. */
 export function describeAnswers(a: WizardAnswers, t: TFunction): string {
   const story = storyOf(a, t);

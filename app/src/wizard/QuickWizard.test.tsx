@@ -23,20 +23,25 @@ describe("Quick game", () => {
 
   it("builds a game from one screen and opens its page", async () => {
     render(<App />);
-    fireEvent.change(await screen.findByLabelText("Game"), { target: { value: "multi" } });
+    fireEvent.click(await screen.findByRole("radio", { name: /All at once/ }));
     fireEvent.click(screen.getByRole("button", { name: "More: Rounds" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "My drill" } });
     fireEvent.click(screen.getByRole("button", { name: "Create game" }));
     await waitFor(() => expect(useWorkspace.getState().programs).toHaveLength(1));
     const [doc] = useWorkspace.getState().programs;
     expect(doc!.json.name).toBe("My drill");
+    // the game keeps its whole story, in both languages (#147 B1)
+    const story = doc!.json.story as Record<string, string>;
+    expect(story.en).toContain("13 rounds, each one:");
+    expect(story.en).toContain("1. ");
+    expect(story.de).toContain("13 Runden");
     await waitFor(() => expect(window.location.hash).toContain(`id=${doc!.id}&mode=about`));
   });
 
   it("a game that needs more pods raises the pods; Create, then adjust opens the settings panel", async () => {
     useWizard.getState().update((a) => ({ ...a, pods: 0 }));
     render(<App />);
-    fireEvent.change(await screen.findByLabelText("Game"), { target: { value: "multi" } });
+    fireEvent.click(await screen.findByRole("radio", { name: /All at once/ }));
     expect(screen.getByRole("group", { name: "Pods besides the main pod" }).textContent).toContain("2");
     fireEvent.click(screen.getByRole("button", { name: "Create, then adjust" }));
     await waitFor(() => expect(window.location.hash).toContain("mode=edit&panel=settings"));

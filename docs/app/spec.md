@@ -410,7 +410,7 @@ The user approves each phase; acceptance tests: [acceptance-tests.md](acceptance
 | P8 | block builder for first-timers (editor-ux.md) | done (AT-E* 2026-10-26) |
 | P9 | training view, reconnect, wake lock (#46); several sets on hold | ready for test (AT-L*) |
 | P10 | design review rework (#106): Train · Games · Results, game page About · Edit · Try, This set, results progress, game texts per program, plain copy (en/de); acceptance tests AT-D1–D25 | done (desktop: #107, AT-D26–D30) |
-| P11 | design review 2, designing games (#147, [findings](design-review-2-games.md)): step 1 quick wins (wording, Extras, plain names, one number rule, colour row, one back control), step 2 editor clarity (timer start and miss counter folded, status line, pods hint, exit picker); AT-D31–D43 | in progress (steps 1–2 ready for test; steps 3–4 open) |
+| P11 | design review 2, designing games (#147, [findings](design-review-2-games.md)): step 1 quick wins (wording, Extras, plain names, one number rule, colour row, one back control), step 2 editor clarity (timer start and miss counter folded, status line, pods hint, exit picker); step 3 one new-game flow (Quick game + More options, story kept, Try run bar), step 4 games list (story line, New game + Files); AT-D31–D52 | ready for test (branch `claude/platform-design-architecture-ldjgo5`, not merged) |
 
 ## 14. Commands
 `npm run dev` · `npm test` · `npm run build` · `npm run preview` · `npm run icons` (redraws `public/icons/`

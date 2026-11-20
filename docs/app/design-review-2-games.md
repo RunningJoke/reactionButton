@@ -69,8 +69,12 @@ Severity: **H** blocks or misleads a first-time coach · **M** costs taps, decis
 2. **Editor clarity:** C1, C2, C3, C4, D3, D4, D5. *Built (AT-D38–D43, open).* C1/C2 fold in the simple view only
    (`stepList(…, { fold: true })` in the editor page; edit operations and expert mode see every block). C4 needed no
    change: the selected step already scrolls into the free part above the sheet (the blank area was the end of the list).
-3. **New game, one path:** A2–A6, A8, B1, B4.
-4. **Games list:** E1, E2.
+3. **New game, one path:** A2–A6, A8, B1, B4. *Built (AT-D44–D50, open).* The chooser has Quick game, Copy, Start
+   empty; "More options" on the Quick screen continues into the guided questions 3–5. B1: a game made from answers
+   keeps its numbered story (en + de) in `story`; it describes the game as made, later edits in the editor do not
+   rewrite it. A8: default name only (the modal's buttons stay as they are).
+4. **Games list:** E1, E2. *Built (AT-D51–D52, open).* The list shows the first sentence of the story in the app's
+   language; Stern, Weiche and Dreizack got a distinct first sentence ("Back and forth: …").
 
 Each step on an integration branch with acceptance tests AT-D31… in acceptance-tests.md. No step changes block
 semantics or the program format; C1 and C2 only change the display (the firmware program stays the same), so

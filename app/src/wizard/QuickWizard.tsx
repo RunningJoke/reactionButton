@@ -1,37 +1,60 @@
 /**
- * Quick game (docs/app/editor-ux.md §4 B): the whole wizard on one screen – game, pods, rounds, colour,
- * name. Everything else starts from the game's defaults and is changed afterwards in the game
- * settings (the same panel every game has). The guided wizard (WizardPage) stays for the other questions.
+ * New game (docs/app/editor-ux.md §4 B, #147 A2): one screen – game, pods, rounds, colour, name. Everything
+ * else starts from the game's defaults and is changed afterwards in the game settings. "More options" goes on
+ * with the same answers into the guided questions (rounds and timing, colours, measure) and its Ready screen.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { usePodSession } from "../pod/session";
 import { useTakenPaths } from "../programs/actions";
 import { gameUrl } from "../programs/sources";
 import { useWorkspace } from "../store/workspace";
 import { GAMES, LIMITS, TARGET_COLORS, answerProblems, gameNeeds, withGame, type GameId } from "./answers";
-import { generateProgram, loopFormFor } from "./generate";
+import { generateProgram, loopFormFor, storyField } from "./generate";
 import { Stepper, Swatches } from "./controls";
-import { useWizard } from "./wizardStore";
+import { WIZARD_PATH, useWizard } from "./wizardStore";
 import styles from "./Wizard.module.css";
 
+/** The guided question after game and pods: rounds and timing. */
+const MORE_STEP = 2;
+
 export function QuickWizard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { answers: a, update } = useWizard();
+  const { answers: a, update, setStep } = useWizard();
   const programFormat = usePodSession((s) => (s.state === "connected" ? s.info?.programFormat : undefined));
+  // pods of the connected set besides the main pod (#147 A4)
+  const setPods = usePodSession((s) => (s.state === "connected" && s.status?.pods ? s.status.pods.length : undefined));
   const form = loopFormFor(programFormat);
   const add = useWorkspace((s) => s.add);
   const taken = useTakenPaths();
-  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const gameName = t(`wizard.games.${a.game}.name`);
   const min = gameNeeds(a.game).minPods;
   const usesPods = a.game !== "solo" && a.game !== "duo";
   const problems = answerProblems(a);
-  const json = useMemo(() => ({ ...generateProgram({ ...a, name: name.trim() || gameName }, form), description: t(`wizard.games.${a.game}.line`) }), [a, name, gameName, form, t]);
+  const name = a.name;
+  const json = useMemo(
+    () => ({
+      ...generateProgram({ ...a, name: name.trim() || gameName }, form),
+      description: t(`wizard.games.${a.game}.line`),
+      story: storyField(a, (lang) => i18n.getFixedT(lang)),
+    }),
+    [a, name, gameName, form, t, i18n],
+  );
+
+  // a connected set knows its pods: start from them
+  useEffect(() => {
+    if (setPods !== undefined && setPods > 0) update((x) => ({ ...x, pods: Math.min(7, setPods) }));
+  }, [setPods]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (game: GameId) =>
+    update((x) => {
+      const next = withGame(x, game);
+      return { ...next, pods: Math.max(next.pods, gameNeeds(next.game).minPods) };
+    });
 
   const create = async (adjust: boolean) => {
     if (busy) return;
@@ -43,6 +66,12 @@ export function QuickWizard() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const more = () => {
+    if (!name.trim()) update((x) => ({ ...x, name: gameName }));
+    setStep(MORE_STEP);
+    navigate(WIZARD_PATH);
   };
 
   return (
@@ -58,30 +87,33 @@ export function QuickWizard() {
 
       <div className={styles.body}>
         <div className={styles.field}>
-          <label className={styles.fieldLabel} htmlFor="quick-game">
+          <span className={styles.fieldLabel} id="quick-game">
             {t("quick.game")}
-          </label>
-          <select
-            id="quick-game"
-            className={styles.input}
-            value={a.game}
-            onChange={(e) =>
-              update((x) => {
-                const next = withGame(x, e.target.value as GameId);
-                return { ...next, pods: Math.max(next.pods, gameNeeds(next.game).minPods) };
-              })
-            }
-          >
-            {GAMES.map((g) => (
-              <option key={g} value={g}>
-                {t(`wizard.games.${g}.name`)}
-              </option>
-            ))}
-          </select>
-          <p className={styles.muted}>{t(`wizard.games.${a.game}.line`)}</p>
+          </span>
+          {/* the same games as the guided path, as compact cards (#147 A3) */}
+          <div className={styles.compactCards} role="radiogroup" aria-labelledby="quick-game">
+            {GAMES.map((game) => {
+              const need = gameNeeds(game).minPods;
+              return (
+                <button key={game} type="button" role="radio" aria-checked={a.game === game} className={styles.compactChoice} onClick={() => pick(game)}>
+                  <span className={styles.choiceText}>
+                    <strong>{t(`wizard.games.${game}.name`)}</strong>
+                    <span>{t(`wizard.games.${game}.line`)}</span>
+                    <span className={styles.tag}>{need === 0 ? t("wizard.game.centralOnly") : t("wizard.game.needs", { count: need })}</span>
+                  </span>
+                  {a.game === game && <Check size={20} aria-hidden className={styles.checkMark} />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {usesPods && <Stepper label={t("wizard.pods.label")} value={Math.max(a.pods, min)} min={min} max={7} onChange={(pods) => update((x) => ({ ...x, pods }))} />}
+        {usesPods && (
+          <div className={styles.field}>
+            <Stepper label={t("wizard.pods.label")} value={Math.max(a.pods, min)} min={min} max={7} onChange={(pods) => update((x) => ({ ...x, pods }))} />
+            {setPods !== undefined && setPods > 0 && <p className={styles.muted}>{t("quick.fromSet", { count: setPods })}</p>}
+          </div>
+        )}
         <Stepper label={t("wizard.timing.rounds")} value={a.rounds} min={LIMITS.rounds.min} max={LIMITS.rounds.max} onChange={(rounds) => update((x) => ({ ...x, rounds }))} />
         <Swatches label={t("wizard.colors.target")} value={a.color} colors={TARGET_COLORS} disabled={a.game === "multi" && a.redPods > 0 ? ["red"] : []} onChange={(color) => update((x) => ({ ...x, color }))} />
 
@@ -89,7 +121,7 @@ export function QuickWizard() {
           <label className={styles.fieldLabel} htmlFor="quick-name">
             {t("wizard.ready.name")}
           </label>
-          <input id="quick-name" className={styles.input} value={name} placeholder={gameName} maxLength={40} onChange={(e) => setName(e.target.value)} />
+          <input id="quick-name" className={styles.input} value={name} placeholder={gameName} maxLength={40} onChange={(e) => update((x) => ({ ...x, name: e.target.value }))} />
         </div>
 
         {problems.map((p) => (
@@ -97,6 +129,13 @@ export function QuickWizard() {
             <AlertTriangle size={18} aria-hidden /> {t(`wizard.problems.${p}`, { game: gameName, count: min })}
           </p>
         ))}
+        <button type="button" className={styles.moreOptions} disabled={problems.length > 0} onClick={more}>
+          <span>
+            <strong>{t("quick.more")}</strong>
+            <span>{t("quick.moreLine")}</span>
+          </span>
+          <ChevronRight size={20} aria-hidden />
+        </button>
         <p className={styles.muted}>{t("quick.hint")}</p>
       </div>
 

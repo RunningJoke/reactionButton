@@ -617,3 +617,70 @@
     transition: none;
   }
 }
+
+/* New game: the game types as compact cards (#147 A3) */
+.compactCards {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.compactChoice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.compactChoice[aria-checked="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* "More options": goes on into the guided questions with the same answers (#147 A2) */
+.moreOptions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.moreOptions > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moreOptions > span > span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.moreOptions:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* a folded card (the pod-menu icon on the Ready screen, #147 A6) */
+details.card > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch);
+  cursor: pointer;
+}

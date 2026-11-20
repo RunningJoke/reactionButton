@@ -154,6 +154,15 @@ mark "pass" only when the user reported it.
 | AT-D41 | **Solo** (main pod only) → Add step | one line "This game uses only the main pod." with **Use more pods…**, which opens Game settings; pod cards say only "Needs pods besides the main pod" |
 | AT-D42 | Add step, both themes | cards show the category as an icon tile, no coloured top stripe |
 | AT-D43 | a press → Extras → Then go to… | the step itself is not offered; steps inside other steps' branches are not offered; a target that is already set stays listed and checked |
+| AT-D44 | Games → **New game** | three ways: Quick game (recommended), Copy a game, Start empty; no separate guided entry |
+| AT-D45 | Quick game at 360 px | the game types as compact cards with their pods (no drop-down); connected to a set with 3 pods: the pod count starts at 3 and says "Your set has 3 pods besides the main pod" |
+| AT-D46 | Quick game → **More options** → Next → Next → Build my game | goes on with the same answers at "Rounds and timing", then colours and measure; the Ready screen shows **What happens** first, then name and buttons; the menu pattern is folded at the end and shows no storage percentage |
+| AT-D47 | More options → Measure, with no time limit | "Count misses" can be turned on: it adds a 2 s time limit and says so |
+| AT-D48 | create a Quick game, open its **About** | What happens lists the numbered steps ("12 rounds, each one: 1. …"), in German too after switching the language |
+| AT-D49 | **Try** at 360 px | Run, Skip pause and Start over stay visible above the tab bar while scrolling |
+| AT-D50 | Start empty | the name field shows "My game n"; Create works without typing a name |
+| AT-D51 | Games at 360 px and 1200 px | every shipped game has a line about it in the app's language; Stern, Weiche and Dreizack start with "Back and forth: …"; German names stay |
+| AT-D52 | Games → My games header | "New game" button and one **Files** menu with Import, Export set, Import set; on desktop no floating + over the toast |
 
 ## O – Pod software on This set (#128, #129; fw 2.19 for the update; all "open" until the user reports them)
 | ID | Steps | Expected |
@@ -216,5 +225,6 @@ mark "pass" only when the user reported it.
 | AT-D26–D30 | – | – | open (#107 desktop layouts, for the user to test) |
 | AT-D31–D37 | – | – | open (#147 design review 2, step 1; branch `claude/platform-design-architecture-ldjgo5`, not merged) |
 | AT-D38–D43 | – | – | open (#147 step 2, same branch, not merged) |
+| AT-D44–D52 | – | – | open (#147 steps 3–4, same branch, not merged) |
 | AT-O1–O8 | – | – | open (#128 pod software on This set, for the user to test) |
 | AT-O9–O19 | – | – | open (#129 update from the app; O15–O18 need a real pod) |

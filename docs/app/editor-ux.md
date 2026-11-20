@@ -70,6 +70,11 @@ it and opens Edit with the game settings panel (F) open. Everything else (pauses
 pattern) starts from the game's defaults and is changed in the panel afterwards.
 
 ### B. Guided wizard ("Start from a game")
+
+Since #147 (design review 2) there is one new-game flow: the chooser offers Quick game, Copy a game and Start empty.
+The Quick screen picks the game from compact cards (pod count preset from a connected set) and its **More options**
+continues with the same answers at question 3 (rounds and timing) below; the Ready screen shows the story first and
+the game keeps it as its `story` (en + de).
 One question per screen, Back / Next, prefilled, ≤ 6 screens:
 1. Game: solo, star, random pod (never twice), all at once (with red pods), duo; animated LED preview and
    the pod count. 2. Pods: stepper; games that need more are explained, not hidden. 3. Rounds and timing:

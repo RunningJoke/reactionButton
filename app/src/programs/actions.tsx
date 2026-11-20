@@ -6,10 +6,10 @@ import { Modal, modalStyles } from "../components/Modal";
 import { DEFAULT_FILES } from "../defaults";
 import { formatProgram } from "@reactpod/program-model";
 import { newProgram, type ProgramJson } from "../editor/ops";
-import { Copy, FilePlus, Wand2, Zap } from "lucide-react";
+import { Copy, FilePlus, Zap } from "lucide-react";
 import type { MenuGroup } from "@reactpod/program-model";
 import { LedRing } from "../components/LedRing";
-import { QUICK_PATH, WIZARD_PATH, useWizard } from "../wizard/wizardStore";
+import { QUICK_PATH, useWizard } from "../wizard/wizardStore";
 import wizard from "../wizard/Wizard.module.css";
 import { buildCatalog } from "./catalog";
 import { usePodSession } from "../pod/session";
@@ -75,7 +75,9 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
   const taken = useTakenPaths();
   const [stage, setStage] = useState<NewStage>({ kind: "choose" });
   const [name, setName] = useState("");
-  const trimmed = name.trim();
+  const programCount = useWorkspace((s) => s.programs.length);
+  // a default name, so Create works at once (#147 A8)
+  const trimmed = name.trim() || (from ? t("programs.copyOf", { name: String(from.json.name) }) : t("programs.defaultName", { n: programCount + 1 }));
   const current: NewStage = from ? { kind: "name", from: from.json } : stage;
   const source = current.kind === "name" ? current.from : undefined;
 
@@ -101,11 +103,6 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
             useWizard.getState().start();
             close();
             navigate(QUICK_PATH);
-          }}
-          onGame={() => {
-            useWizard.getState().start();
-            close();
-            navigate(WIZARD_PATH);
           }}
           onCopy={() => setStage({ kind: "copy" })}
           onEmpty={() => setStage({ kind: "name" })}
@@ -157,7 +154,7 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
         id="new-program-name"
         className={modalStyles.input}
         value={name}
-        placeholder={source ? t("programs.copyOf", { name: String(source.name) }) : t("programs.namePlaceholder")}
+        placeholder={trimmed}
         autoFocus
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && void create()}
@@ -167,7 +164,7 @@ export function NewProgramModal({ open, onClose, from }: { open: boolean; onClos
 }
 
 /** The three ways to start a program. */
-function NewProgramChooser({ onQuick, onGame, onCopy, onEmpty }: { onQuick: () => void; onGame: () => void; onCopy: () => void; onEmpty: () => void }) {
+function NewProgramChooser({ onQuick, onCopy, onEmpty }: { onQuick: () => void; onCopy: () => void; onEmpty: () => void }) {
   const { t } = useTranslation();
   return (
     <div className={wizard.chooser}>
@@ -180,15 +177,6 @@ function NewProgramChooser({ onQuick, onGame, onCopy, onEmpty }: { onQuick: () =
           <strong>{t("wizard.chooser.quick")}</strong>
           <span>{t("wizard.chooser.quickLine")}</span>
           <span className={`${wizard.tag} ${wizard.tagAccent}`}>{t("wizard.chooser.recommended")}</span>
-        </span>
-      </button>
-      <button type="button" className={wizard.choice} onClick={onGame}>
-        <span className={wizard.choiceIcon}>
-          <Wand2 size={26} aria-hidden />
-        </span>
-        <span className={wizard.choiceText}>
-          <strong>{t("wizard.chooser.game")}</strong>
-          <span>{t("wizard.chooser.gameLine")}</span>
         </span>
       </button>
       <button type="button" className={wizard.choice} onClick={onCopy}>

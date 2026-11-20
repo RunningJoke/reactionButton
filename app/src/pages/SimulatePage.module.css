@@ -445,6 +445,13 @@
   box-shadow: var(--floating-shadow);
 }
 
+/* phones: the tab bar floats over the bottom of the scroll area, so Run stays in reach above it (#147 B4) */
+@media (max-width: 899px) {
+  .bar {
+    bottom: calc(var(--tabbar-h) + 2 * var(--tabbar-gap) + env(safe-area-inset-bottom));
+  }
+}
+
 .bar .control {
   min-width: 0;
   padding: 0 var(--space-2);

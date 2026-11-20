@@ -234,3 +234,64 @@
     right: var(--space-6);
   }
 }
+
+/* My games: "New game" visible, the file actions in one menu (#147 E2) */
+.newButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fileMenu {
+  position: relative;
+}
+
+.fileMenu > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  color: var(--text);
+  list-style: none;
+  cursor: pointer;
+}
+
+.fileMenu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fileMenuBody {
+  position: absolute;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-width: 180px;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--floating-shadow);
+}
+
+/* desktop: no tab bar, the header button is in reach */
+@media (min-width: 900px) {
+  .fab {
+    display: none;
+  }
+}

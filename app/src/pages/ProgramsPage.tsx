@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookLock, ChevronRight, CircleAlert, FileUp, FolderHeart, Loader, Package, Plus } from "lucide-react";
+import { AlertTriangle, BookLock, ChevronRight, CircleAlert, FileUp, FolderHeart, Loader, MoreHorizontal, Package, Plus } from "lucide-react";
 import { PodIcon } from "../components/PodIcon";
 import { LedRing } from "../components/LedRing";
 import { useExpertMode } from "../editor/expertMode";
+import { storyOf } from "@reactpod/program-model";
 import { buildCatalog, type CatalogEntry } from "../programs/catalog";
 import { NewProgramModal, useTakenPaths } from "../programs/actions";
 import { olderPodNeeds, podsNeeded, summaryOf } from "../programs/requirements";
@@ -38,8 +39,19 @@ export function ProgramsPage() {
             <FolderHeart size={16} aria-hidden /> {t("programs.mine")}
           </h2>
           <div className={styles.headerActions}>
-            <ImportButton />
-            <SetArchiveButtons className={styles.textButton} errorClassName={styles.importError} />
+            {/* the main action is visible; the file actions wait in one menu (#147 E2) */}
+            <button type="button" className={styles.newButton} onClick={() => setCreating(true)}>
+              <Plus size={18} aria-hidden /> {t("programs.new")}
+            </button>
+            <details className={styles.fileMenu}>
+              <summary aria-label={t("programs.files")} title={t("programs.files")}>
+                <MoreHorizontal size={20} aria-hidden /> <span>{t("programs.files")}</span>
+              </summary>
+              <div className={styles.fileMenuBody}>
+                <ImportButton />
+                <SetArchiveButtons className={styles.textButton} errorClassName={styles.importError} />
+              </div>
+            </details>
           </div>
         </div>
         {localCatalog.programs.length === 0 ? (
@@ -162,8 +174,13 @@ type ListProps = {
   tag?: (entry: CatalogEntry) => string | null;
 };
 
+/** One line about a game: the first sentence of its story in the app's language, else of its description (#147 E1). */
+function lineOf(entry: CatalogEntry, lang: string): string | undefined {
+  return summaryOf(storyOf({ story: entry.story }, lang)) ?? summaryOf(entry.description);
+}
+
 function EntryList({ entries, source, shipped, files, href, tag }: ListProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expert] = useExpertMode();
   const podFormat = usePodSession((s) => (s.state === "connected" ? podProgramFormat(s.info) : undefined));
   if (entries.length === 0) return <p className={page.muted}>{t("programs.none")}</p>;
@@ -193,7 +210,7 @@ function EntryList({ entries, source, shipped, files, href, tag }: ListProps) {
                 )}
                 {source === "pod" && !entry.inMenu && entry.kind === "program" && <span className={styles.tag}>{t("programs.notInMenu")}</span>}
               </span>
-              {summaryOf(entry.description) && <span className={styles.description}>{summaryOf(entry.description)}</span>}
+              {lineOf(entry, i18n.language) && <span className={styles.description}>{lineOf(entry, i18n.language)}</span>}
               {entry.kind === "program" && <span className={styles.meta}>{podsNeeded(entry.peripherals, t)}</span>}
               {expert && (
                 <span className={styles.meta}>

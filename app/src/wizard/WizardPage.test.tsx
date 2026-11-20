@@ -24,9 +24,9 @@ describe("New program chooser and game wizard", () => {
   });
   afterEach(cleanup);
 
-  it("offers three ways to start, the game first", async () => {
+  it("offers three ways to start, the new game first", async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "New game" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "New game" }))[0]!);
     const game = screen.getByRole("button", { name: /Quick game/ });
     expect(game.textContent).toContain("Recommended");
     expect(screen.getByRole("button", { name: /Copy a game/ })).toBeTruthy();
@@ -36,22 +36,19 @@ describe("New program chooser and game wizard", () => {
     expect(await within(dialog).findByRole("button", { name: /Solo/ })).toBeTruthy(); // shipped programs to copy
   });
 
-  it("walks through the five questions to the Ready screen", async () => {
+  it("one new-game flow: the Quick screen, then More options through the questions to the Ready screen (#147 A2)", async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "New game" }));
-    fireEvent.click(screen.getByRole("button", { name: /Answer a few questions/ }));
-    expect(await screen.findByText("Step 1 of 5")).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /All at once/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "New game" }))[0]!);
+    fireEvent.click(screen.getByRole("button", { name: /Quick game/ }));
+    fireEvent.click(await screen.findByRole("radio", { name: /All at once/ }));
 
-    // pods: a game that needs more pods is explained and Next is off
-    expect(screen.getByText("Step 2 of 5")).toBeTruthy();
+    // pods: a game that needs more pods is explained and More options is off
     useWizard.getState().update((a) => ({ ...a, pods: 1 }));
     expect((await screen.findByRole("alert")).textContent).toContain("All at once needs at least 2 pods");
-    expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /More options/ }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /More: Pods besides the main pod/ }));
-    expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    expect((screen.getByRole("button", { name: /More options/ }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: /More options/ }));
 
     expect(screen.getByText("Rounds and timing")).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: /Time limit/ }));
@@ -59,6 +56,11 @@ describe("New program chooser and game wizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
     expect(screen.getByText("Colour of the light to hit")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    expect(screen.getByRole("switch", { name: /Count misses/ })).toHaveProperty("checked", true);
+    // without a time limit "Count misses" turns one on instead of being greyed out (#147 A5)
+    useWizard.getState().update((a) => ({ ...a, redPods: 0, timeLimit: null, measure: { ...a.measure, countMisses: false } }));
+    fireEvent.click(await screen.findByRole("switch", { name: /Count misses/ }));
+    expect(useWizard.getState().answers.timeLimit?.ms).toBe(2000);
     expect(screen.getByRole("switch", { name: /Count misses/ })).toHaveProperty("checked", true);
     fireEvent.click(screen.getByRole("button", { name: /Build my game/ }));
 
