@@ -130,7 +130,8 @@ for (const width of widths) {
     await ed.getByRole("button", { name: str("view.close"), exact: true }).click();
     await ed.getByText(str("sentence.press")).first().click();
     await shot("press");
-    await ed.getByRole("button", { name: new RegExp(`^\\+ ${esc(str("editor.switch.timeLimit"))}`) }).click();
+    await ed.getByRole("button", { name: str("editor.sprinkle.add") }).click();
+    await ed.getByRole("button", { name: new RegExp(`^${esc(str("editor.sprinkle.timeLimit.name"))}`) }).click();
     await shot("press-time-limit");
     await ed.getByRole("button", { name: new RegExp(`^${esc(str("editor.exit.role.ifTooSlow"))}`) }).click();
     await shot("exit-picker");

@@ -40,6 +40,15 @@ export function formatMs(ms: number, locale: string): string {
   return `${nf.format(ms / 1000)} s`;
 }
 
+/**
+ * A duration a game is set up with (a pause, a time limit, a target): seconds, at most 2 decimals, no
+ * trailing zeros ("0.5 s", "2 s", "0.45 s"), locale decimal separator. Measured times use `formatMs`. (#147 B3)
+ */
+export function formatSeconds(ms: number, locale: string): string {
+  const nf = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
+  return `${nf.format(ms / 1000)} s`;
+}
+
 /** The metric a progress view follows: the reaction time if there is one, else the first by name. */
 export function mainMetric(metrics: readonly string[]): string | undefined {
   return metrics.includes("reaction") ? "reaction" : [...metrics].sort()[0];

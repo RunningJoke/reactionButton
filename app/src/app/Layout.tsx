@@ -37,7 +37,7 @@ export function Layout() {
       </nav>
 
       <header className={styles.header}>
-        {sub && (
+        {sub && !sub.ownBack && (
           <Link to={backOf(sub, search)} className={styles.backButton} aria-label={t("nav.back")}>
             <ArrowLeft size={22} aria-hidden />
           </Link>

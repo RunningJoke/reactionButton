@@ -32,13 +32,18 @@ export const DEFAULT_PATH = "/train";
  * Sub-pages: header title and back target. Their tab stays highlighted by the path prefix (/set highlights none).
  * `back` is an explicit parent, computed from the current query when it depends on it (never history(-1)).
  */
-export type SubPage = { titleKey: string; back: string | ((params: URLSearchParams) => string) };
+export type SubPage = {
+  titleKey: string;
+  back: string | ((params: URLSearchParams) => string);
+  /** the page draws its own back / close control, so the header shows none (one back per screen, #147 E3) */
+  ownBack?: boolean;
+};
 
 export const SUBPAGES: Record<string, SubPage> = {
   "/set": { titleKey: "nav.set", back: "/train" },
   "/set/menu": { titleKey: "nav.menu", back: "/set" },
   "/games/game": { titleKey: "nav.games", back: "/games" },
-  "/games/new": { titleKey: "nav.games", back: "/games" },
+  "/games/new": { titleKey: "nav.games", back: "/games", ownBack: true },
   "/results/athlete": { titleKey: "nav.results", back: "/results" },
   "/results/session": {
     titleKey: "nav.results",

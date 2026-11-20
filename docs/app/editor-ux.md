@@ -1,7 +1,7 @@
 # Block builder UX – simple by default, everything reachable
 
 Implemented in P8 (AT-E1–E14 passed 2026-10-26). The step sheet and the step list were rebuilt in #88 around
-**Sprinkles** (German: Streusel; code id `behaviour`, `app/src/editor/behaviours.ts`): §3, §4 C–E, §5 and §7
+**Extras** (until #147: Sprinkles / Streusel; code id `behaviour` and `sprinkle` keys, `app/src/editor/behaviours.ts`): §3, §4 C–E, §5 and §7
 describe the result, AT-E15–E19 test it. Extends [spec.md §7](spec.md#7-editor). Clickable prototype:
 [prototypes/editor-flow.html](prototypes/editor-flow.html) (page fragment, opens in any browser; shows the P8 sheet).
 
@@ -88,8 +88,8 @@ pattern (`setVariable RUNS +1`, `if RUNS >= MAX_LOOPS`). Both show as the same R
 ### C. Editor, simple view (default)
 Numbered step list in plain language (`editor/sentence.ts`), **one line per step**: number, category tile
 (icon, no coloured stripe), the sentence ("Light all LEDs green", "Wait 1–3 s (random)", "Wait for a press · max
-2 s · records time"). Simple facts (time limit, record) are part of the sentence. A **sliders badge with a count**
-shows only for advanced Sprinkles (`advancedCount`): long press, keep result, then go to…, average bar, countdown;
+2 s · records time"). Simple facts (time limit, record) are part of the sentence. A **sliders chip "+n extras"**
+shows only for advanced Extras (`advancedCount`): long press, keep result, then go to…, average bar, countdown;
 time limit and record alone show none. Exits that leave the normal flow are **lines under the step**
 ("↳ If too slow · Count a miss", "↳ Then · step 1 · Light the central blue"; `editor/exits.ts` decides what is
 "normal": the exit goes where the main exit goes); tapping a line opens its target. Loops = "Repeat 12 rounds"
@@ -107,9 +107,11 @@ a row per exit "If yes → Step 5 · …" that opens the exit picker. 4. **Sprin
 `Sprinkles.tsx`): optional things as rows (icon, name, value, chevron); a row opens in place (one at a time) and
 shows only its settings and "Remove"; a Sprinkle without settings (Record reaction, Turn pods off afterwards)
 has no body and carries "Remove" on its row; a step that only partly matches shows a "Custom" row that points to
-expert mode. "+ Add sprinkle" opens a second page grouped **Rules / Measure / Flow** with a one-line description,
+expert mode. "+ Add extra" opens a second page grouped **Rules / Measure / Flow** with a one-line description,
 only what this block supports and does not have; what the pod's `programFormat` cannot run is greyed out with the
-reason. Two unused Sprinkles appear as plain suggestions ("Try + Time limit"). 5. **More options** (collapsed):
+reason; within a group the common Extras come first (Time limit, Record reaction). It is the only way to add one
+(#147 D2 removed the "Try + Time limit" suggestions). Row values name metrics and variables in words ("Last reaction
+time", not `LAST_REACTION`; #147 D1). 5. **More options** (collapsed):
 at most 3 entries, none of them owned by a Sprinkle (§5). 6. **Actions**: move up / down, duplicate, delete (undo
 toast). 7. **Expert** (expert mode): name, type, raw keys, a raw "go to" select per port, raw JSON.
 

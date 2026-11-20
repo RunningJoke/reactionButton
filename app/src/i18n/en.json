@@ -395,11 +395,10 @@
       }
     },
     "sprinkle": {
-      "title": "Sprinkles",
-      "add": "Add sprinkle",
-      "addTitle": "Add a sprinkle",
+      "title": "Extras",
+      "add": "Add extra",
+      "addTitle": "Add an extra",
       "back": "Back",
-      "try": "Try",
       "remove": "Remove",
       "custom": "Custom",
       "customHint": "Set up in a way this view cannot change. Use expert mode to edit it.",
@@ -517,8 +516,8 @@
       "notConnected": "nothing (the game ends)",
       "goTo": "{{role}}: go to {{target}}",
       "records": "records time",
-      "advanced_one": "{{count}} advanced setting",
-      "advanced_other": "{{count}} advanced settings",
+      "advanced_one": "+{{count}} extra",
+      "advanced_other": "+{{count}} extras",
       "problems_one": "{{count}} problem",
       "problems_other": "{{count}} problems",
       "unsupported": "not supported by your pod",
@@ -1219,7 +1218,7 @@
       "shipped": "comes with the app"
     },
     "status": {
-      "inMenu": "No. {{place}} on the pods",
+      "inMenu": "Game {{place}} in the pod menu",
       "notOnPods": "Not on the pods yet",
       "onPodsNotInMenu": "On the pods, but not in their game list"
     }
@@ -2066,12 +2065,12 @@
     },
     "chooser": {
       "question": "How do you want to start?",
-      "game": "Start from a game",
+      "game": "Answer a few questions",
       "gameLine": "Answer five questions. The app builds the game, you can try it right away.",
       "quick": "Quick game",
       "quickLine": "One screen: pick the game, pods, rounds and colour. Change the rest later in the game settings.",
       "recommended": "Recommended",
-      "copy": "Copy one of my games",
+      "copy": "Copy a game",
       "copyLine": "Take one of your games or a shipped one and change it.",
       "empty": "Start empty",
       "emptyLine": "Build it block by block.",
@@ -2148,7 +2147,7 @@
     "game": "Game",
     "hint": "Everything else starts from the game's defaults. Change it any time in the game settings.",
     "create": "Create game",
-    "createAdjust": "Create and adjust"
+    "createAdjust": "Create, then adjust"
   },
   "switches": {
     "wholeGame": "For the whole game",

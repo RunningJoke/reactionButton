@@ -45,12 +45,12 @@ describe("step list", () => {
     expect(advancedCount({ name: "L", type: "led", color: "red", next: "X" }, jump)).toBe(1);
   });
 
-  it("one line per step: the sentence says what it records, a badge counts the advanced settings", () => {
+  it("one line per step: the sentence says what it records, a chip counts the extras the sentence leaves out", () => {
     view(program());
-    expect(screen.getByRole("img", { name: "3 advanced settings" }).textContent?.trim()).toBe("3");
+    expect(screen.getByText("+3 extras")).toBeTruthy();
     expect(screen.getAllByText(/records time/)).toHaveLength(1); // part of the sentence, not a chip of its own
     // the last step goes back to the first: "then go to" counts as one; the plain wait has no badge
-    expect(screen.getAllByRole("img", { name: /advanced/ }).map((b) => b.textContent?.trim())).toEqual(["3", "1"]);
+    expect(screen.getAllByText(/^\+\d extras?$/).map((b) => b.textContent?.trim())).toEqual(["+3 extras", "+1 extra"]);
   });
 
   it("exits that leave the normal flow are lines under the step, in the words of the picker", () => {

@@ -395,11 +395,10 @@
       }
     },
     "sprinkle": {
-      "title": "Streusel",
-      "add": "Streusel hinzufügen",
-      "addTitle": "Streusel hinzufügen",
+      "title": "Extras",
+      "add": "Extra hinzufügen",
+      "addTitle": "Extra hinzufügen",
       "back": "Zurück",
-      "try": "Probiere",
       "remove": "Entfernen",
       "custom": "Eigene Einstellung",
       "customHint": "So eingerichtet, dass diese Ansicht es nicht ändern kann. Im Expertenmodus lässt es sich bearbeiten.",
@@ -517,8 +516,8 @@
       "notConnected": "nichts (das Spiel endet)",
       "goTo": "{{role}}: weiter mit {{target}}",
       "records": "misst die Zeit",
-      "advanced_one": "{{count}} erweiterte Einstellung",
-      "advanced_other": "{{count}} erweiterte Einstellungen",
+      "advanced_one": "+{{count}} Extra",
+      "advanced_other": "+{{count}} Extras",
       "problems_one": "{{count}} Problem",
       "problems_other": "{{count}} Probleme",
       "unsupported": "kann dein Pod nicht",
@@ -1219,7 +1218,7 @@
       "shipped": "gehört zur App"
     },
     "status": {
-      "inMenu": "Nr. {{place}} auf den Pods",
+      "inMenu": "Spiel {{place}} im Pod-Menü",
       "notOnPods": "Noch nicht auf den Pods",
       "onPodsNotInMenu": "Auf den Pods, aber nicht in deren Spielliste"
     }
@@ -2066,12 +2065,12 @@
     },
     "chooser": {
       "question": "Wie möchtest du anfangen?",
-      "game": "Mit einem Spiel anfangen",
+      "game": "Ein paar Fragen beantworten",
       "gameLine": "Beantworte fünf Fragen. Die App baut das Spiel, du kannst es gleich ausprobieren.",
       "quick": "Schnelles Spiel",
       "quickLine": "Ein Bildschirm: Spiel, Pods, Runden und Farbe wählen. Den Rest änderst du später in den Spieleinstellungen.",
       "recommended": "Empfohlen",
-      "copy": "Eines meiner Spiele kopieren",
+      "copy": "Ein Spiel kopieren",
       "copyLine": "Nimm eines deiner Spiele oder ein mitgeliefertes und ändere es.",
       "empty": "Leer anfangen",
       "emptyLine": "Block für Block selbst bauen.",
@@ -2148,7 +2147,7 @@
     "game": "Spiel",
     "hint": "Alles andere startet mit den Voreinstellungen des Spiels. Du kannst es jederzeit in den Spieleinstellungen ändern.",
     "create": "Spiel erstellen",
-    "createAdjust": "Erstellen und anpassen"
+    "createAdjust": "Erstellen, dann anpassen"
   },
   "switches": {
     "wholeGame": "Für das ganze Spiel",

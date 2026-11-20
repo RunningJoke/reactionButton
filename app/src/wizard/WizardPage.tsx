@@ -33,6 +33,7 @@ import { generateProgram, loopFormFor, storyOf } from "./generate";
 import { OptionList, Segmented, SetDrawing, Stepper, Swatches, SwitchRow, useTick } from "./controls";
 import { READY_STEP, WIZARD_STEPS, useWizard } from "./wizardStore";
 import styles from "./Wizard.module.css";
+import { formatSeconds } from "../results/stats";
 
 export function WizardPage() {
   const { t } = useTranslation();
@@ -174,7 +175,7 @@ function PodsStep({ a, update }: StepProps) {
 
 /* ------------------------------------------------------------------ 3 timing */
 
-const seconds = (ms: number, locale: string) => `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ms / 1000)} s`;
+const seconds = formatSeconds;
 
 function TimingStep({ a, update }: StepProps) {
   const { t } = useTranslation();

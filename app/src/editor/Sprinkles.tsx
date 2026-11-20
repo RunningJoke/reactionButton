@@ -1,6 +1,6 @@
 /**
- * Sprinkles of the step sheet (issue #88, editor-ux.md §4 D): optional things of a step as quiet rows
- * (icon, name, value, chevron) that open in place, one at a time, and the "Add sprinkle" page.
+ * Extras (code name: sprinkles) of the step sheet (issue #88, editor-ux.md §4 D): optional things of a step as quiet rows
+ * (icon, name, value, chevron) that open in place, one at a time, and the "Add extra" page.
  * The state comes from the program through `behaviours.ts`; this file only draws it.
  */
 import type { ReactNode } from "react";
@@ -45,7 +45,10 @@ const ICONS: Record<string, LucideIcon> = {
 
 const GROUPS: readonly BehaviourGroup[] = ["rules", "measure", "flow"];
 
-/** Two behaviours worth offering first, in this order, when the step does not have them yet. */
+/** Extras whose row value is a list of names (metric, timer, variable). */
+const NAMED: readonly string[] = ["record", "keepResult", "stopwatch"];
+
+/** The order of the Add page within each group: the common Extras first. */
 const SUGGEST: readonly BehaviourId[] = ["timeLimit", "record", "keepResult", "stopwatch", "podsOff", "longPress", "holdFirst", "avoid", "showBar", "phoneSettings", "falseStart", "drains"];
 
 export type SprinkleContext = FieldProps & {
@@ -86,28 +89,22 @@ function offFormat(item: Item, block: Block, format?: number): boolean {
 
 export function SprinkleSection({ ctx, open, setOpen, onAdd }: { ctx: SprinkleContext; open: string | null; setOpen: (id: string | null) => void; onAdd: () => void }) {
   const { t } = useTranslation();
-  const { block, doc, format } = ctx;
+  const { block, doc } = ctx;
   const items = itemsOf(block, doc);
   const rows = items.filter((i) => i.state !== "off");
-  const suggestions = SUGGEST.map((id) => items.find((i) => i.id === id)).filter((i): i is Item => !!i && i.state === "off" && !offFormat(i, block, format) && canAdd(i, ctx)).slice(0, 2);
+  // one way to add: the Add page lists the common Extras first (#147 D2)
+  // (greyed-out entries count: the Add page says why the pod cannot run them)
+  const addable = items.some((i) => i.state === "off");
   return (
     <section className={styles.sprinkles} aria-label={t("editor.sprinkle.title")}>
       <h4 className={styles.sectionTitle}>{t("editor.sprinkle.title")}</h4>
       {rows.map((item) => (
         <SprinkleRow key={item.id} item={item} ctx={ctx} open={open === item.id} onToggle={() => setOpen(open === item.id ? null : item.id)} close={() => setOpen(null)} />
       ))}
-      <button type="button" className={styles.addButton} onClick={onAdd}>
-        <Plus size={18} aria-hidden /> {t("editor.sprinkle.add")}
-      </button>
-      {suggestions.length > 0 && (
-        <p className={styles.suggest}>
-          <span>{t("editor.sprinkle.try")}</span>
-          {suggestions.map((s) => (
-            <button key={s.id} type="button" onClick={() => add(s, ctx, setOpen)}>
-              + {t(`editor.sprinkle.${s.id}.name`)}
-            </button>
-          ))}
-        </p>
+      {addable && (
+        <button type="button" className={styles.addButton} onClick={onAdd}>
+          <Plus size={18} aria-hidden /> {t("editor.sprinkle.add")}
+        </button>
       )}
     </section>
   );
@@ -131,12 +128,12 @@ function add(item: Item, ctx: SprinkleContext, setOpen: (id: string | null) => v
 }
 
 function SprinkleRow({ item, ctx, open, onToggle, close }: { item: Item; ctx: SprinkleContext; open: boolean; onToggle: () => void; close: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { block, doc, apply } = ctx;
   const Icon = ICONS[item.id] ?? Zap;
   const name = t(`editor.sprinkle.${item.id}.name`);
   const custom = item.state === "custom";
-  const value = custom ? t("editor.sprinkle.custom") : rowValue(item, ctx, t);
+  const value = custom ? t("editor.sprinkle.custom") : rowValue(item, ctx, t, i18n.language);
   const body = custom ? null : bodyOf(item.id, ctx);
   const remove = () => {
     apply(item.id === "countdown" ? setCountdown(doc, block.name, null) : item.behaviour!.turnOff(doc, block.name));
@@ -185,7 +182,7 @@ function SprinkleRow({ item, ctx, open, onToggle, close }: { item: Item; ctx: Sp
 }
 
 /** The value shown right of the name. */
-function rowValue(item: Item, ctx: SprinkleContext, t: TFunction): string | undefined {
+function rowValue(item: Item, ctx: SprinkleContext, t: TFunction, lang: string): string | undefined {
   const { block, doc } = ctx;
   if (item.id === "countdown") {
     const style = countdownStyle(block);
@@ -196,6 +193,11 @@ function rowValue(item: Item, ctx: SprinkleContext, t: TFunction): string | unde
   if (!text) return item.id === "includeCentral" ? t("editor.sprinkle.yes") : undefined;
   if (item.id === "timeLimit" && typeof block.timeoutMs === "number" && block.type !== "remoteMultiPress" && block.type !== "button") return secondsText(block.timeoutMs, t);
   if (item.id === "avoid" && block.type === "remoteMultiPress") return t("editor.sprinkle.avoid.count", { count: Number(text) || 0 });
+  // metric, timer and variable names in words ("Last reaction time", not LAST_REACTION) (#147 D1)
+  if (NAMED.includes(item.id)) {
+    const labels = labelsOf(doc, lang);
+    return text.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (name) => labelOfName(name, t, labels));
+  }
   return localise(text, t);
 }
 
@@ -510,7 +512,10 @@ function CountdownRow(ctx: FieldProps) {
 export function AddSprinklePage({ ctx, onBack, onAdded }: { ctx: SprinkleContext; onBack: () => void; onAdded: (id: string) => void }) {
   const { t } = useTranslation();
   const { block, doc, format } = ctx;
-  const items = itemsOf(block, doc).filter((i) => i.state === "off");
+  const rank = (i: Item) => (SUGGEST.includes(i.id as BehaviourId) ? SUGGEST.indexOf(i.id as BehaviourId) : SUGGEST.length);
+  const items = itemsOf(block, doc)
+    .filter((i) => i.state === "off")
+    .sort((a, b) => rank(a) - rank(b));
   return (
     <div className={styles.addPage}>
       <button type="button" className={styles.back} onClick={onBack}>

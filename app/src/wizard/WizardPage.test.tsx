@@ -29,9 +29,9 @@ describe("New program chooser and game wizard", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New game" }));
     const game = screen.getByRole("button", { name: /Quick game/ });
     expect(game.textContent).toContain("Recommended");
-    expect(screen.getByRole("button", { name: /Copy one of my games/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Copy a game/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start empty/ }).textContent).toContain("For people who know blocks");
-    fireEvent.click(screen.getByRole("button", { name: /Copy one of my games/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy a game/ }));
     const dialog = screen.getByRole("dialog");
     expect(await within(dialog).findByRole("button", { name: /Solo/ })).toBeTruthy(); // shipped programs to copy
   });
@@ -39,7 +39,7 @@ describe("New program chooser and game wizard", () => {
   it("walks through the five questions to the Ready screen", async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "New game" }));
-    fireEvent.click(screen.getByRole("button", { name: /Start from a game/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Answer a few questions/ }));
     expect(await screen.findByText("Step 1 of 5")).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /All at once/ }));
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));

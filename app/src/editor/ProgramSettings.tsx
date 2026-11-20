@@ -6,7 +6,7 @@ import { DEFAULT_FILES } from "../defaults";
 import { BUILTIN_VARIABLES, formatProgram, isLibraryPath, isObject, MAX_PERIPHERALS, resolveProgram } from "@reactpod/program-model";
 import { OptionList, SetDrawing, Stepper, SwitchRow } from "../wizard/controls";
 import { LIMITS } from "../wizard/answers";
-import { formatMs } from "../results/stats";
+import { formatSeconds } from "../results/stats";
 import {
   programSwitchApplies,
   programSwitchState,
@@ -159,7 +159,7 @@ const readShipped = (p: string) => DEFAULT_FILES[p];
 /** Time limit, record times, results at the end – for every press of the game (programSwitches.ts). */
 function GameSwitches({ json, apply }: { json: ProgramJson; apply: (json: ProgramJson) => void }) {
   const { t } = useTranslation();
-  const sec = (ms: number) => formatMs(ms, t("wizard.numberLocale"));
+  const sec = (ms: number) => formatSeconds(ms, t("wizard.numberLocale"));
   const applies = (["timeLimit", "record", "results"] as const).filter((id) => programSwitchApplies(json, id));
   if (applies.length === 0) return <p className={styles.muted}>{t("switches.none")}</p>;
 

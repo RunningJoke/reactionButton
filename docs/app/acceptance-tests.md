@@ -138,6 +138,17 @@ mark "pass" only when the user reported it.
 | AT-D29 | desktop: **This set** with an unsent change; **Games on the pods** → tap a ring | the sync card with Send to pods sticks on the right; the menu pattern editor opens beside the list instead of a sheet; drag and arrows still work |
 | AT-D30 | desktop: **Send to pods** | centred dialog with a dimmed background; the checks count "1 of 1", never past the total |
 
+### Design review 2 – designing games (#147, [findings](design-review-2-games.md); step 1 quick wins; all "open")
+| ID | Steps | Expected |
+|---|---|---|
+| AT-D31 | Games → **+** | four ways, by outcome: Quick game, Answer a few questions, Copy a game, Start empty (de: Schnelles Spiel, Ein paar Fragen beantworten, Ein Spiel kopieren, Leer anfangen) |
+| AT-D32 | 360 px: guided step **Colours**, **Quick game**, a step sheet with a colour | all 7 colours on one row, each still a ≥ 44 px target; both themes |
+| AT-D33 | create a Quick game (pause 0.5–2 s) → **About** | Game settings read "0.5 s", "2 s" (no trailing zeros); no "Pods 4" row, the pods stand once under the title; Results still show "0.35 s" |
+| AT-D34 | connected: open a shipped game that is in the pod menu | "Game 9 in the pod menu" below Try / Edit, not between the settings and the buttons |
+| AT-D35 | my game → **Edit** → tap a press that records and keeps the result | the step card shows "+1 extra" instead of a bare number; the sheet's section is **Extras** (de: Extras); rows read "Reaction time" and "Last reaction time", never `reaction` or `LAST_REACTION` |
+| AT-D36 | same sheet: add an extra | one **Add extra** button, no "Try + …" row; the Add page lists Time limit first under Rules and Record reaction first under Measure; a step with nothing left to add shows no Add button |
+| AT-D37 | 360 px: **+** → Quick game, then Answer a few questions to "Your game is ready" | one back or close control per screen (no header ← next to the screen's own × / ←) |
+
 ## O – Pod software on This set (#128, #129; fw 2.19 for the update; all "open" until the user reports them)
 | ID | Steps | Expected |
 |---|---|---|
@@ -197,5 +208,6 @@ mark "pass" only when the user reported it.
 | AT-L13–L17 | – | – | open (#87, specified, not built) |
 | AT-D1–D25 | 2026-11-03 | 2.17 | pass (P10, #106) |
 | AT-D26–D30 | – | – | open (#107 desktop layouts, for the user to test) |
+| AT-D31–D37 | – | – | open (#147 design review 2, step 1; branch `claude/platform-design-architecture-ldjgo5`, not merged) |
 | AT-O1–O8 | – | – | open (#128 pod software on This set, for the user to test) |
 | AT-O9–O19 | – | – | open (#129 update from the app; O15–O18 need a real pod) |

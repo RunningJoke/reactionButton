@@ -33,12 +33,12 @@ describe("Quick game", () => {
     await waitFor(() => expect(window.location.hash).toContain(`id=${doc!.id}&mode=about`));
   });
 
-  it("a game that needs more pods raises the pods; Create and adjust opens the settings panel", async () => {
+  it("a game that needs more pods raises the pods; Create, then adjust opens the settings panel", async () => {
     useWizard.getState().update((a) => ({ ...a, pods: 0 }));
     render(<App />);
     fireEvent.change(await screen.findByLabelText("Game"), { target: { value: "multi" } });
     expect(screen.getByRole("group", { name: "Pods besides the main pod" }).textContent).toContain("2");
-    fireEvent.click(screen.getByRole("button", { name: "Create and adjust" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create, then adjust" }));
     await waitFor(() => expect(window.location.hash).toContain("mode=edit&panel=settings"));
     expect(await screen.findByText("Game settings")).toBeTruthy();
   });

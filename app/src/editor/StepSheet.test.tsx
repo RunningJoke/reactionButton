@@ -78,9 +78,9 @@ function Harness({ name, expert = false, round = false, format }: { name: string
 
 const block = (name: string) => ownBlocks(current).find((b) => b.name === name)!;
 
-/** "Add sprinkle" page, then the item; the new row opens in place on the main page. */
+/** "Add extra" page, then the item; the new row opens in place on the main page. */
 function addSprinkle(name: RegExp | string) {
-  fireEvent.click(screen.getByRole("button", { name: /Add sprinkle/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Add extra/ }));
   fireEvent.click(screen.getByRole("button", { name }));
 }
 
@@ -109,6 +109,9 @@ describe("step sheet", () => {
     expect(ownBlocks(current).some((b) => b.var === "MISSES")).toBe(false);
     addSprinkle(/Record reaction/);
     expect(block("Press").record).toBe("reaction");
+    // the row names the metric in words, not its file name (#147 D1)
+    expect(screen.getByText("Reaction time")).toBeTruthy();
+    expect(screen.queryByText("reaction")).toBeNull();
     // a Sprinkle without settings has no body: its row carries "Remove"
     expect(screen.queryByRole("region", { name: "Record reaction" })).toBeNull();
     remove();
@@ -128,16 +131,18 @@ describe("step sheet", () => {
     expect(screen.getAllByRole("button", { expanded: true })).toHaveLength(1);
   });
 
-  it("the add page is grouped, offers only what the step does not have and suggests two", () => {
+  it("the add page is the one way to add: grouped, common extras first, only what the step does not have", () => {
     render(<Harness name="Press" />);
-    const suggested = screen.getAllByRole("button", { name: /^\+ / });
-    expect(suggested.map((b) => b.textContent)).toEqual(["+ Time limit", "+ Record reaction"]);
-    fireEvent.click(screen.getByRole("button", { name: /Add sprinkle/ }));
+    expect(screen.queryAllByRole("button", { name: /^\+ / })).toEqual([]); // no second "Try" row (#147 D2)
+    fireEvent.click(screen.getByRole("button", { name: /Add extra/ }));
     expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Rules", "Measure", "Flow"]);
-    expect(screen.getByRole("button", { name: /Time limit/ })).toBeTruthy();
+    const rules = screen.getByRole("region", { name: "Rules" });
+    expect(within(rules).getAllByRole("button")[0]?.textContent).toMatch(/^Time limit/);
+    const measure = screen.getByRole("region", { name: "Measure" });
+    expect(within(measure).getAllByRole("button")[0]?.textContent).toMatch(/^Record reaction/);
     expect(screen.queryByRole("button", { name: /Hold first/ })).toBeNull(); // not for a press
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
-    expect(screen.getByRole("button", { name: /Add sprinkle/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Add extra/ })).toBeTruthy();
   });
 
   it("pause: Fixed | Random", () => {
@@ -369,7 +374,7 @@ describe("step sheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Traffic light" }));
     expect(screen.queryByRole("group", { name: "Second colour" })).toBeNull();
     // draining exists only while the charge adds up
-    fireEvent.click(screen.getByRole("button", { name: /Add sprinkle/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Add extra/ }));
     expect(screen.queryByRole("button", { name: /Drains over time/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
     fireEvent.click(screen.getByRole("radio", { name: "Letting go pauses it" }));
@@ -393,7 +398,7 @@ describe("step sheet", () => {
   it("let go: the mode switch moves between trigger and signal", () => {
     render(<Harness name="Let" />);
     expect(screen.queryByText("Colour of the signal")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Add sprinkle/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Add extra/ }));
     expect(screen.queryByRole("button", { name: /Record reaction/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
     fireEvent.click(screen.getByRole("radio", { name: "Let go at a signal" }));
@@ -433,7 +438,7 @@ describe("step sheet", () => {
 
   it("a pod with program format 2 greys out what it cannot run", () => {
     render(<Harness name="Pause" format={2} />);
-    fireEvent.click(screen.getByRole("button", { name: /Add sprinkle/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Add extra/ }));
     const countdown = screen.getByRole("button", { name: /Countdown/ }) as HTMLButtonElement;
     expect(countdown.disabled).toBe(true);
     expect(countdown.textContent).toMatch(/newer pod/);

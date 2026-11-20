@@ -282,8 +282,8 @@ const StepCard = memo(function StepCard({ step, block, text, own, issues, unsupp
               </span>
             )}
             {advanced > 0 && (
-              <span className={styles.chip} role="img" aria-label={t("editor.step.advanced", { count: advanced })}>
-                <SlidersHorizontal size={12} aria-hidden /> {advanced}
+              <span className={styles.chip}>
+                <SlidersHorizontal size={12} aria-hidden /> {t("editor.step.advanced", { count: advanced })}
               </span>
             )}
           </span>

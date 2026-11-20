@@ -66,7 +66,7 @@ describe("Game settings panel", () => {
     expect(results.checked).toBe(true);
     fireEvent.click(results);
     fireEvent.click(screen.getByRole("switch", { name: /Time limit/ }));
-    expect(screen.getByRole("group", { name: "Seconds to press" }).textContent).toContain("2.00 s");
+    expect(screen.getByRole("group", { name: "Seconds to press" }).textContent).toContain("2 s");
     fireEvent.click(screen.getByRole("radio", { name: "Count a miss and go on" }));
     const blocks = applied.at(-1)!.blocks as { type: string; timeoutMs?: unknown; var?: string }[];
     expect(blocks.some((b) => b.type === "summary")).toBe(false);

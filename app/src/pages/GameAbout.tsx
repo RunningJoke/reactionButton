@@ -13,7 +13,7 @@ import { podProgramFormat } from "../programs/sources";
 import { summaryOf } from "../programs/requirements";
 import type { GameMode, SourceId } from "../programs/sources";
 import { usePodSession } from "../pod/session";
-import { formatMs } from "../results/stats";
+import { formatSeconds } from "../results/stats";
 import { storyOf, type ResolvedProgram } from "@reactpod/program-model";
 import styles from "./Game.module.css";
 
@@ -37,7 +37,6 @@ export function GameAbout({ path, json, isProgram, resolved, graph, mine, copyLa
   const [expert] = useExpertMode();
   const [selected, setSelected] = useState<string | null>(null);
   const story = storyOf(json, i18n.language) ?? summaryOf(typeof json.description === "string" ? json.description : undefined);
-  const peripherals = Number(json.peripherals ?? 0);
   const settings = useMemo(() => tweakableSettings(resolved.variables, resolved.blocks.map((b) => b.block)), [resolved]);
   const timeLimit = programTimeLimit(json);
   const selectedNode = graph.nodes.find((n) => n.id === selected) ?? null;
@@ -55,7 +54,7 @@ export function GameAbout({ path, json, isProgram, resolved, graph, mine, copyLa
   const value = (name: string) => {
     const v = resolved.variables[name];
     if (typeof v !== "number") return String(v ?? "");
-    return isMsSetting(name) ? formatMs(v, t("wizard.numberLocale")) : String(v);
+    return isMsSetting(name) ? formatSeconds(v, t("wizard.numberLocale")) : String(v);
   };
 
   return (
@@ -90,17 +89,11 @@ export function GameAbout({ path, json, isProgram, resolved, graph, mine, copyLa
           {typeof timeLimit === "number" && (
             <div>
               <dt>{t("switches.timeLimit")}</dt>
-              <dd>{formatMs(timeLimit, t("wizard.numberLocale"))}</dd>
+              <dd>{formatSeconds(timeLimit, t("wizard.numberLocale"))}</dd>
             </div>
           )}
-          <div>
-            <dt>{t("game.pods")}</dt>
-            <dd>{peripherals + 1}</dd>
-          </div>
         </dl>
       </section>
-
-      <PodStatus path={path} />
 
       {resolved.issues.length > 0 && (
         <section className={styles.card} aria-label={t("game.notes")}>
@@ -117,6 +110,8 @@ export function GameAbout({ path, json, isProgram, resolved, graph, mine, copyLa
           <Pencil size={18} aria-hidden /> {mine ? t("game.edit") : copyLabel}
         </button>
       </div>
+
+      <PodStatus path={path} />
 
       {showBlocks && (
         <details className={styles.blocks}>
