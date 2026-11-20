@@ -90,7 +90,9 @@ Numbered step list in plain language (`editor/sentence.ts`), **one line per step
 (icon, no coloured stripe), the sentence ("Light all LEDs green", "Wait 1–3 s (random)", "Wait for a press · max
 2 s · records time"). Simple facts (time limit, record) are part of the sentence. A **sliders chip "+n extras"**
 shows only for advanced Extras (`advancedCount`): long press, keep result, then go to…, average bar, countdown;
-time limit and record alone show none. Exits that leave the normal flow are **lines under the step**
+time limit and record alone show none. Technical helpers are no steps (#147, simple view only): a zero wait that only starts a timer
+before a round (`StartCycle`) is a chip on the Repeat bracket ("Measures: Game time"), and the miss counter of "If too
+slow · Count a miss" lives in that exit line. The line above the list says "Ready to send to the pods" or names the first problem. Exits that leave the normal flow are **lines under the step**
 ("↳ If too slow · Count a miss", "↳ Then · step 1 · Light the central blue"; `editor/exits.ts` decides what is
 "normal": the exit goes where the main exit goes); tapping a line opens its target. Loops = "Repeat 12 rounds"
 bracket (from `repeat` or the `lib/loop` pattern, `editor/structure.ts`). No block names, port names or file

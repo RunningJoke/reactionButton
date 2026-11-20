@@ -485,6 +485,13 @@
         "coach": "Coach may change while it waits"
       }
     },
+    "status": {
+      "ready": "Ready to send to the pods",
+      "problems_one": "1 problem: {{first}}",
+      "problems_other": "{{count}} problems, first: {{first}}",
+      "notes_one": "1 note: {{first}}",
+      "notes_other": "{{count}} notes, first: {{first}}"
+    },
     "step": {
       "viewSteps": "Steps",
       "viewBlocks": "Blocks",
@@ -511,6 +518,7 @@
       },
       "toStep": "step {{n}}",
       "nextRound": "next round",
+      "measures": "Measures: {{name}}",
       "startOver": "start again",
       "toRounds": "the rounds",
       "notConnected": "nothing (the game ends)",
@@ -798,6 +806,8 @@
       "showAll": "Show all"
     },
     "add": {
+      "podsHint": "This game uses only the main pod.",
+      "usePods": "Use more pods…",
       "group": {
         "light": "Light",
         "wait": "Wait",
@@ -890,7 +900,7 @@
         }
       },
       "reason": {
-        "noPods": "The game uses no pods. Set the number of pods in the game settings.",
+        "noPods": "Needs pods besides the main pod",
         "noMetric": "Nothing records a time yet. Turn on “Record reaction time” on a press first.",
         "needsFormat": "Your pod needs newer firmware for this step.",
         "unsupported": "Your pod cannot run this step.",

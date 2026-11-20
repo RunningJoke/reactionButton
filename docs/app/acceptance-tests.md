@@ -148,6 +148,12 @@ mark "pass" only when the user reported it.
 | AT-D35 | my game → **Edit** → tap a press that records and keeps the result | the step card shows "+1 extra" instead of a bare number; the sheet's section is **Extras** (de: Extras); rows read "Reaction time" and "Last reaction time", never `reaction` or `LAST_REACTION` |
 | AT-D36 | same sheet: add an extra | one **Add extra** button, no "Try + …" row; the Add page lists Time limit first under Rules and Record reaction first under Measure; a step with nothing left to add shows no Add button |
 | AT-D37 | 360 px: **+** → Quick game, then Answer a few questions to "Your game is ready" | one back or close control per screen (no header ← next to the screen's own × / ←) |
+| AT-D38 | my copy of **Duo** → **Edit** | no "Go on right away" step: the list starts with the Repeat bracket, which shows "Measures: Game time"; the round's first step is step 1; expert mode still shows every block |
+| AT-D39 | same game: the press with "If too slow · Count a miss" | no extra step "Add 1 to Misses" under it; the miss is still counted in Try (Misses goes up after 5 s) |
+| AT-D40 | Edit: a valid game, then make it invalid (e.g. a jump to nothing in expert mode) | the line above the steps reads "Ready to send to the pods", then "1 problem: …" with the first problem; no step count |
+| AT-D41 | **Solo** (main pod only) → Add step | one line "This game uses only the main pod." with **Use more pods…**, which opens Game settings; pod cards say only "Needs pods besides the main pod" |
+| AT-D42 | Add step, both themes | cards show the category as an icon tile, no coloured top stripe |
+| AT-D43 | a press → Extras → Then go to… | the step itself is not offered; steps inside other steps' branches are not offered; a target that is already set stays listed and checked |
 
 ## O – Pod software on This set (#128, #129; fw 2.19 for the update; all "open" until the user reports them)
 | ID | Steps | Expected |
@@ -209,5 +215,6 @@ mark "pass" only when the user reported it.
 | AT-D1–D25 | 2026-11-03 | 2.17 | pass (P10, #106) |
 | AT-D26–D30 | – | – | open (#107 desktop layouts, for the user to test) |
 | AT-D31–D37 | – | – | open (#147 design review 2, step 1; branch `claude/platform-design-architecture-ldjgo5`, not merged) |
+| AT-D38–D43 | – | – | open (#147 step 2, same branch, not merged) |
 | AT-O1–O8 | – | – | open (#128 pod software on This set, for the user to test) |
 | AT-O9–O19 | – | – | open (#129 update from the app; O15–O18 need a real pod) |

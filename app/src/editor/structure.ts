@@ -29,7 +29,15 @@ export type LoopInfo = {
   after?: string;
   /** blocks the bracket stands for (not listed as steps) */
   hidden: string[];
+  /**
+   * A zero wait right before the round that only starts a timer (`StartCycle` of prog/lib/loop.json): folded
+   * into the bracket as an Extra ("Measures the game time") when the list is built with `fold` (#147 C1).
+   */
+  prelude?: { block: string; timer?: string };
 };
+
+/** Options of the step list. `fold`: technical helpers are no steps of their own (the simple view, #147 C1/C2). */
+export type StepListOptions = { fold?: boolean };
 
 /**
  * Words for a port (editor-ux.md §5 "Port names"): the model's roles, plus one the step list
@@ -112,6 +120,29 @@ function graphOf(program: ProgramJson): Graph {
   }
   const start = typeof program.start === "string" && blocks.has(program.start) ? program.start : (order[0] ?? null);
   return { blocks, order, start };
+}
+
+/** A zero wait that only starts (or stops) a timer: nothing for a coach to see as a step. */
+function isTimerPrelude(b: Block): boolean {
+  if (b.type !== "delay" || (b.ms !== undefined && b.ms !== 0) || typeof b.next !== "string") return false;
+  return Object.keys(b).every((k) => ["name", "type", "ms", "timerStart", "timerStop", "next", "comment"].includes(k)) && (typeof b.timerStart === "string" || typeof b.timerStop === "string");
+}
+
+/** A miss counter on a side exit that goes on where the step goes on: the "Count a miss" choice of the exit (#147 C2). */
+function isMissCounterOf(b: Block | undefined, flowsOn: string | undefined): boolean {
+  return !!b && !!flowsOn && b.type === "setVariable" && (b.op === "+" || b.op === "add") && b.value === 1 && typeof b.var === "string" && target(b, "next") === flowsOn;
+}
+
+/** Folds a timer prelude into the loop it leads to (only one block may lead there). */
+function foldPreludes(g: Graph, loops: LoopInfo[]): void {
+  for (const loop of loops) {
+    const leading = g.order.filter((n) => target(g.blocks.get(n)!, "next") === loop.entry && !loop.hidden.includes(n));
+    if (leading.length !== 1) continue;
+    const b = g.blocks.get(leading[0]!)!;
+    if (!isTimerPrelude(b)) continue;
+    loop.prelude = { block: b.name, timer: typeof b.timerStart === "string" ? b.timerStart : undefined };
+    loop.hidden.push(b.name);
+  }
 }
 
 const isIncrement = (b: Block) => b.type === "setVariable" && (b.op === "+" || b.op === "add") && typeof b.var === "string";
@@ -206,9 +237,11 @@ class Linearizer {
   constructor(
     private g: Graph,
     public loops: LoopInfo[],
+    private fold = false,
   ) {
     for (const loop of loops) {
       this.loopByEntry.set(loop.entry, loop);
+      if (loop.prelude) this.loopByEntry.set(loop.prelude.block, loop);
       for (const h of loop.hidden) this.hidden.add(h);
     }
   }
@@ -293,6 +326,11 @@ class Linearizer {
           continue;
         }
         step.branches.push({ port, role: portRole(b, port), target: to });
+        // "Count a miss": the exit line says it; its counter is no step of its own (#147 C2)
+        if (this.fold && isMissCounterOf(this.g.blocks.get(to), flowsOn) && !this.placed.has(to) && !reserved.has(to)) {
+          this.placed.add(to);
+          continue;
+        }
         // a branch's own steps follow directly, one level deeper
         if (to !== flowsOn && !this.placed.has(to) && !reserved.has(to) && !scope.stops.has(to) && !this.hidden.has(to)) {
           this.walk(to, {
@@ -336,9 +374,11 @@ class Linearizer {
   }
 }
 
-function analyse(program: ProgramJson): { loops: LoopInfo[]; steps: Step[] } {
+function analyse(program: ProgramJson, options: StepListOptions = {}): { loops: LoopInfo[]; steps: Step[] } {
   const g = graphOf(program);
-  const lin = new Linearizer(g, findLoops(g));
+  const loops = findLoops(g);
+  if (options.fold) foldPreludes(g, loops);
+  const lin = new Linearizer(g, loops, options.fold);
   lin.run();
   return { loops: lin.loops, steps: lin.steps };
 }
@@ -353,8 +393,8 @@ export function detectLoops(program: ProgramJson): LoopInfo[] {
  * of a branch follow the step it starts at, one level deeper; a loop is one bracket step with its
  * round inside. Blocks the start does not reach come last (`unreachable`).
  */
-export function stepList(program: ProgramJson): Step[] {
-  return analyse(program).steps;
+export function stepList(program: ProgramJson, options?: StepListOptions): Step[] {
+  return analyse(program, options).steps;
 }
 
 /** A flat program for the step list: the program's `start` with the blocks of all its files. */

@@ -7,7 +7,7 @@ import { blockCategory, blockIcon } from "./blockStyle";
 import { exitLabel } from "./ExitPicker";
 import { exitValue } from "./exits";
 import { repeatSentence, sentenceOptions, stepSentence, type SentenceOptions } from "./sentence";
-import { settingLabel } from "./settingLabels";
+import { labelOf, settingLabel } from "./settingLabels";
 import { isCatchEarly, portsOf, type Step, type StepBranch } from "./structure";
 import styles from "./StepList.module.css";
 import "./editor.css";
@@ -177,6 +177,12 @@ export function StepListView({ steps, blocks, own, issues, supportedTypes, value
               <strong>{repeatSentence(count, t, options)}</strong>
               {!own.has(step.block) && <Lock size={14} aria-label={t("editor.step.locked")} />}
               <IssueBadge issues={loop.hidden.flatMap((h) => problems.get(h) ?? [])} />
+              {loop.prelude?.timer && (
+                // the zero wait before the round that starts the game timer, as an Extra of the bracket (#147 C1)
+                <span className={styles.chip}>
+                  <SlidersHorizontal size={12} aria-hidden /> {t("editor.step.measures", { name: labelOf(loop.prelude.timer, t) })}
+                </span>
+              )}
             </button>
             {render(node.children, true)}
           </section>,

@@ -74,7 +74,6 @@
   min-height: 92px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--cat, var(--border));
   border-radius: var(--radius-m);
   background: var(--surface);
   color: var(--text);
@@ -82,7 +81,12 @@
   cursor: pointer;
 }
 
+/* the category as an icon tile, as in the step list (no coloured stripe, #147 D5) */
 .tile > svg {
+  box-sizing: content-box;
+  padding: 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cat, var(--text-muted)) 16%, transparent);
   color: var(--cat, var(--text-muted));
 }
 
@@ -125,4 +129,26 @@
 .text .reason,
 .tile .reason {
   color: var(--warn);
+}
+
+/* one hint for the steps that need pods, with the way to Game settings (#147 D3) */
+.podsHint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.podsHint button {
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }

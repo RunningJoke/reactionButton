@@ -66,7 +66,9 @@ Severity: **H** blocks or misleads a first-time coach · **M** costs taps, decis
 
 1. **Quick wins:** A1, A7, A9, B2, B3, B5, C5, D1, D2, E3. *Built (AT-D31–D37, open).* B2: the duplicate "Pods" row is
    gone (the title line already says it). B5: "Game 9 in the pod menu", below the buttons.
-2. **Editor clarity:** C1, C2, C3, C4, D3, D4, D5.
+2. **Editor clarity:** C1, C2, C3, C4, D3, D4, D5. *Built (AT-D38–D43, open).* C1/C2 fold in the simple view only
+   (`stepList(…, { fold: true })` in the editor page; edit operations and expert mode see every block). C4 needed no
+   change: the selected step already scrolls into the free part above the sheet (the blank area was the end of the list).
 3. **New game, one path:** A2–A6, A8, B1, B4.
 4. **Games list:** E1, E2.
 

@@ -495,6 +495,8 @@ describe("step sheet", () => {
     // the add button opens the picker; nothing is written until a step is chosen
     expect(block("Press").pressed).toBe("Pick");
     expect(screen.getByRole("radiogroup", { name: "Then" })).toBeTruthy();
+    // never to the step itself (#147 D4)
+    expect(screen.queryByRole("radio", { name: /Wait for a press on the main pod/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /Light the main pod blue/ }));
     expect(block("Press").pressed).toBe("End");
   });

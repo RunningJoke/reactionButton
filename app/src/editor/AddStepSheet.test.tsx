@@ -88,4 +88,13 @@ describe("Add a step sheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "loop" }));
     expect(onAdd).toHaveBeenCalledOnce();
   });
+
+  it("a game without pods: one hint with the way to Game settings, short reasons on the cards (#147 D3)", () => {
+    const onPods = vi.fn();
+    render(<AddStepSheet doc={solo} onAdd={() => {}} onClose={() => {}} onPods={onPods} />);
+    expect(screen.getByText("This game uses only the main pod.")).toBeTruthy();
+    expect(screen.getAllByText("Needs pods besides the main pod").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Use more pods…" }));
+    expect(onPods).toHaveBeenCalledOnce();
+  });
 });

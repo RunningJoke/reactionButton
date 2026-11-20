@@ -485,6 +485,13 @@
         "coach": "Trainer darf ändern, während es wartet"
       }
     },
+    "status": {
+      "ready": "Bereit zum Hochladen auf die Pods",
+      "problems_one": "1 Problem: {{first}}",
+      "problems_other": "{{count}} Probleme, zuerst: {{first}}",
+      "notes_one": "1 Hinweis: {{first}}",
+      "notes_other": "{{count}} Hinweise, zuerst: {{first}}"
+    },
     "step": {
       "viewSteps": "Schritte",
       "viewBlocks": "Blöcke",
@@ -511,6 +518,7 @@
       },
       "toStep": "Schritt {{n}}",
       "nextRound": "nächste Runde",
+      "measures": "Misst: {{name}}",
       "startOver": "von vorn",
       "toRounds": "die Runden",
       "notConnected": "nichts (das Spiel endet)",
@@ -798,6 +806,8 @@
       "showAll": "Alle anzeigen"
     },
     "add": {
+      "podsHint": "Dieses Spiel nutzt nur die Zentrale.",
+      "usePods": "Mehr Pods nutzen…",
       "group": {
         "light": "Licht",
         "wait": "Warten",
@@ -890,7 +900,7 @@
         }
       },
       "reason": {
-        "noPods": "Das Spiel nutzt keine Pods. Stelle die Anzahl der Pods in den Spieleinstellungen ein.",
+        "noPods": "Braucht Pods neben der Zentrale",
         "noMetric": "Noch nichts misst eine Zeit. Schalte zuerst bei einem Drücken „Reaktionszeit messen“ ein.",
         "needsFormat": "Dein Pod braucht für diesen Schritt eine neuere Firmware.",
         "unsupported": "Dein Pod kann diesen Schritt nicht ausführen.",

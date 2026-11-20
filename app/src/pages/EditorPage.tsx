@@ -12,7 +12,7 @@ import { addBlock, deleteBlock, deleteStep, duplicateStep, flattenIncludes, inse
 import { useExpertMode } from "../editor/expertMode";
 import { sentenceOptions } from "../editor/sentence";
 import { labelOf } from "../editor/settingLabels";
-import { RoundSheet, StepSheet } from "../editor/StepSheet";
+import { issueText, RoundSheet, StepSheet } from "../editor/StepSheet";
 import { Palette } from "../editor/Palette";
 import { AddStepSheet } from "../editor/AddStepSheet";
 import { ProgramColumnView } from "../editor/ProgramColumnView";
@@ -121,7 +121,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
     const library = [...new Set([...Object.keys(DEFAULT_FILES), ...Object.keys(podFiles ?? {})])].filter(isLibraryPath).sort();
     const blocks = resolved.blocks.filter((b) => isObject(b.block) && typeof b.block.name === "string").map((b) => b.block as Block);
     const flat = flatProgram(json, blocks, graph.start);
-    const steps = stepList(flat);
+    const steps = stepList(flat, { fold: true }); // helpers folded into brackets and exit lines (#147 C1/C2)
     const blockMap = new Map(blocks.map((b) => [b.name, b]));
     const own = new Set(graph.nodes.filter((n) => n.own && !n.external).map((n) => n.id));
     const sentence = sentenceOptions(blocks, resolved.variables, (n) => labelOf(n, t, labelsOf(json, i18n.language)));
@@ -242,7 +242,12 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
         <div className={styles.title}>
           <span className={styles.sub}>
             {view === "steps" ? (
-              t("editor.step.count", { count: model.steps.filter((s) => !s.loop).length })
+              // what the coach needs to know: can it go to the pods, or what is wrong first (#147 C3)
+              resolved.issues.length === 0 ? (
+                t("editor.status.ready")
+              ) : (
+                t(errors ? "editor.status.problems" : "editor.status.notes", { count: resolved.issues.length, first: issueText(resolved.issues[0]!, t) })
+              )
             ) : (
               <>
                 {t("programs.blocks", { count: resolved.blocks.length })} · <code>{doc.path}</code>
@@ -298,6 +303,7 @@ function ProgramEditor({ doc }: { doc: ProgramDoc }) {
             programFormat={source.programFormat}
             taken={taken}
             library={{ paths: model.library, read: model.read }}
+            onPods={() => (setPending(null), setPanel("settings"))}
             onAdd={(next, focus) => {
               apply(next, { select: focus });
               setFresh({ block: focus, at: Date.now() });

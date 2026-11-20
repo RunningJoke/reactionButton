@@ -32,9 +32,11 @@ export type AddStepSheetProps = {
   library?: { paths: readonly string[]; read: (path: string) => string | undefined };
   /** the new step goes on this exit of a step (the exit picker's "a new step here…") instead of into the flow */
   connect?: { from: string; port: string };
+  /** opens Game settings (the pod count), for steps that need pods (#147 D3) */
+  onPods?: () => void;
 };
 
-export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd, onClose, taken, library, connect }: AddStepSheetProps) {
+export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd, onClose, taken, library, connect, onPods }: AddStepSheetProps) {
   const { t } = useTranslation();
   const [expert] = useExpertMode();
 
@@ -85,6 +87,17 @@ export function AddStepSheet({ doc, after, supportedTypes, programFormat, onAdd,
 
       <section className={styles.group} aria-labelledby="add-steps">
         <h4 id="add-steps">{t("editor.add.steps")}</h4>
+        {intents.some((i) => i.reason === "noPods") && (
+          // one hint with the way out instead of the same warning on every pod step (#147 D3)
+          <p className={styles.podsHint}>
+            <span>{t("editor.add.podsHint")}</span>
+            {onPods && (
+              <button type="button" onClick={onPods}>
+                {t("editor.add.usePods")}
+              </button>
+            )}
+          </p>
+        )}
         {INTENT_GROUPS.map(([group, ids]) => (
           <div key={group} role="group" aria-label={t(`editor.add.group.${group}`)}>
             <h5 className={styles.subgroup}>{t(`editor.add.group.${group}`)}</h5>

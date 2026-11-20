@@ -222,3 +222,32 @@ describe("unconnected blocks and helpers", () => {
     expect(stepNeighbours(steps, "Fail").before).toBeUndefined();
   });
 });
+
+describe("folded step list (simple view, #147 C1/C2)", () => {
+  it("Duo: the timer start before the round and the miss counter are no steps of their own", () => {
+    const program = flat("/prog/duo.json");
+    const raw = stepList(program).map((s) => s.block);
+    expect(raw).toEqual(expect.arrayContaining(["StartCycle", "CentralMiss"]));
+    const steps = stepList(program, { fold: true });
+    const names = steps.map((s) => s.block);
+    expect(names).not.toContain("StartCycle");
+    expect(names).not.toContain("CentralMiss");
+    const bracket = steps.find((s) => s.loop)!;
+    expect(bracket.number).toBe("");
+    expect(bracket.loop!.prelude).toEqual({ block: "StartCycle", timer: "cycle" });
+    // the round's first step is step 1 now, and the press still says where a miss goes
+    expect(steps.find((s) => s.block === "EnterProgram")?.number).toBe("1");
+    const press = steps.find((s) => s.block === "CentralPress")!;
+    expect(press.branches.some((b) => b.target === "CentralMiss")).toBe(true);
+  });
+
+  for (const path of PROGRAMS) {
+    it(`folding ${path} lists every other block once`, () => {
+      const program = flat(path);
+      const all = stepList(program).filter((s) => !s.loop).map((s) => s.block);
+      const folded = stepList(program, { fold: true }).filter((s) => !s.loop).map((s) => s.block);
+      expect(new Set(folded).size).toBe(folded.length);
+      expect(folded.every((b) => all.includes(b))).toBe(true);
+    });
+  }
+});

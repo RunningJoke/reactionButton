@@ -97,7 +97,13 @@ export function ExitPickerPage({ env, block, port, onBack }: { env: ExitEnv; blo
       </span>
     </button>
   );
-  const targets = steps.filter((s) => !s.loop && env.blocks.has(s.block));
+  // no jump to the step itself or into another step's side branch (#147 D4)
+  // (the current target always stays, so the picker shows what is set)
+  const targets = steps.filter((s) => {
+    if (s.loop || !env.blocks.has(s.block)) return false;
+    if (sameChoice(value, { kind: "step", target: entryOf(s) })) return true;
+    return s.block !== block.name && (!s.branchOf || s.branchOf.block === block.name);
+  });
   return (
     <div className={styles.addPage}>
       <button type="button" className={styles.back} onClick={onBack}>
